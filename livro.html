@@ -233,9 +233,16 @@
     };
 
     document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
-    document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
 
     const $ = (id) => document.getElementById(id);
+
+    function buildCadastroUrl(nextUrl = location.href) {
+      const u = new URL(ROUTES.CADASTRO);
+      u.searchParams.set("next", nextUrl);
+      return u.toString();
+    }
+
+    document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
 
     const DEFAULT_SERVICE_MESSAGES = {
       em_organizacao: "A biblioteca está em organização. O atendimento ocorre conforme a capacidade operacional atual.",
@@ -589,7 +596,7 @@
         btnEntrar.setAttribute("aria-disabled", "false");
         btnEntrar.classList.remove("disabled");
         btnEntrar.title = "Entrar";
-        btnEntrar.href = ROUTES.CADASTRO;
+        btnEntrar.href = buildCadastroUrl(location.href);
       }
     }
 
@@ -605,7 +612,7 @@
 
       if (!session) {
         setStatus("Para reservar, você precisa entrar.", "warn");
-        location.assign(ROUTES.CADASTRO);
+        location.assign(buildCadastroUrl(location.href));
         return;
       }
 
