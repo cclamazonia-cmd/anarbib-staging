@@ -637,20 +637,46 @@
         return;
       }
 
-      const booksTable = await pickFirstExistingTable(["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"]);
+      const candidateTables = ["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"];
+
+      let booksTable = null;
+      let data = null;
+      let keys = [];
+      let sample = {};
+
+      for (const candidate of candidateTables) {
+        const peek = await supabase.from(candidate).select("*").limit(1);
+        if (peek.error) continue;
+
+        sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
+        keys = Object.keys(sample);
+
+        const candidateRefCol =
+          findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
+
+        const probe = await supabase
+          .from(candidate)
+          .select("*")
+          .eq(candidateRefCol, bib_ref)
+          .maybeSingle();
+
+        if (probe.error) continue;
+        if (probe.data) {
+          booksTable = candidate;
+          data = probe.data;
+          break;
+        }
+      }
+
       if (!booksTable) {
-        setStatus("Tabela de livros não encontrada.", "bad");
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        setStatus("Não encontrei esse livro no catálogo.", "warn");
         return;
       }
-
-      const peek = await supabase.from(booksTable).select("*").limit(1);
-      if (peek.error) {
-        setStatus("Erro ao inspecionar catálogo: " + peek.error.message, "bad");
-        return;
-      }
-
-      const sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
-      const keys = Object.keys(sample);
 
       const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
       const colTit = findCol(keys, ["titulo", "título", "title", "nome"]);
@@ -675,27 +701,6 @@
       const colRes = findCol(keys, ["resumo", "descricao", "descrição", "description", "obs", "observacao", "observação", "notas", "nota", "notes"]);
       const colPdf = findCol(keys, ["pdf_url", "url_pdf", "pdf", "arquivo_pdf", "link_pdf", "url"]);
       const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
-
-      const { data, error } = await supabase
-        .from(booksTable)
-        .select("*")
-        .eq(colRef, bib_ref)
-        .maybeSingle();
-
-      if (error) {
-        setStatus("Erro ao carregar livro: " + error.message, "bad");
-        return;
-      }
-
-      if (!data) {
-        $("title").textContent = "Livro não encontrado";
-        $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
-        setLine("subtitleLine", "");
-        $("authorLine").textContent = "—";
-        setCover("");
-        setStatus("Não encontrei esse livro no catálogo.", "warn");
-        return;
-      }
 
       const titulo = colTit ? (data[colTit] || "") : "";
       const subtitulo = colSub ? (data[colSub] || "") : "";
