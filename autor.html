@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BLMF — Autor</title>
+  <!-- build: 20260312-3 -->
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+
+  <style>
+    :root{
+      --panel:rgba(18,18,18,.96);
+      --text:#f2f2f2;
+      --muted:rgba(255,255,255,.74);
+      --red:#b30018;
+      --red2:#e11d2f;
+      --line:rgba(255,255,255,.10);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --ok:#4ade80;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+    body{
+      background-image:
+        linear-gradient(rgba(0,0,0,.78), rgba(0,0,0,.78)),
+        url('https://cclamazonia.noblogs.org/files/2024/11/Arte-CCLA-paredao.jpg');
+      background-size:cover;
+      background-position:center;
+      background-attachment:fixed;
+      background-repeat:no-repeat;
+    }
+    a,a:visited{color:inherit;text-decoration:none}
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      height:64px;width:auto;max-width:170px;object-fit:contain;display:block;flex-shrink:0;
+      filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));
+    }
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(18,18,18,.92);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+      font-weight:900;
+      font-size:.95rem;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .btn.primary{border:none;background:linear-gradient(135deg,var(--red2),var(--red))}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .btn:disabled,.btn.disabled,.btn[aria-disabled="true"]{opacity:.58;cursor:default;pointer-events:none}
+    .hero{
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
+      border-radius:22px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      margin-bottom:16px;
+    }
+    .hero h1{margin:0 0 6px;font-size:1.5rem}
+    .hero p{margin:0;color:rgba(255,255,255,.92)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:.9rem;
+      color:rgba(255,255,255,.86);
+      flex-wrap:wrap;
+      overflow-wrap:anywhere;
+    }
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .card{
+      border:1px solid rgba(255,255,255,.08);
+      background:var(--panel);
+      border-radius:22px;
+      padding:16px;
+      box-shadow:var(--shadow);
+    }
+    .detail{
+      display:grid;
+      grid-template-columns:280px minmax(0,1fr);
+      gap:22px;
+      align-items:start;
+    }
+    @media (max-width:980px){.detail{grid-template-columns:1fr}}
+    .photobox{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.03);
+      border-radius:18px;
+      padding:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:360px;
+    }
+    .photobox.empty{display:none}
+    .photoimg{
+      width:100%;
+      max-width:250px;
+      height:auto;
+      max-height:380px;
+      object-fit:contain;
+      display:block;
+      border-radius:12px;
+      box-shadow:var(--shadow);
+    }
+    .contentbox{min-width:0}
+    .section-title{margin:0 0 12px;font-size:1.15rem;color:#fff}
+    .mini{font-size:.86rem;color:var(--muted)}
+    .subtle{opacity:.92}
+    .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
+    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
+    .sep{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+    .bio{
+      white-space:pre-wrap;
+      line-height:1.62;
+      width:100%;
+      max-width:none;
+    }
+    .books{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:12px;
+    }
+    .book-card{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.03);
+      border-radius:16px;
+      padding:12px;
+      text-decoration:none;
+      transition:transform .12s ease, border-color .12s ease, background .12s ease;
+      min-height:140px;
+    }
+    .book-card:hover{
+      transform:translateY(-1px);
+      border-color:rgba(255,255,255,.22);
+      background:rgba(179,0,24,.12);
+    }
+    .book-title{font-weight:800;line-height:1.25}
+    .book-subtitle{
+      color:var(--muted);
+      font-style:italic;
+      font-size:.95rem;
+      line-height:1.3;
+    }
+    .book-meta{
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.35;
+    }
+    .empty-note{
+      color:var(--muted);
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius:16px;
+      padding:14px;
+      background:rgba(255,255,255,.02);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo"
+             src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png"
+             alt="BLMF" />
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="https://cclamazonia.noblogs.org/" rel="noopener">Voltar ao blogue</a>
+        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao catálogo</a>
+        <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
+        <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1 id="nameLine">Carregando…</h1>
+      <p id="heroIntro">Carregando dados do autor…</p>
+      <div class="chips">
+        <div class="chip" id="yearsPill" style="display:none"></div>
+        <div class="chip" id="countryPill" style="display:none"></div>
+        <div class="chip" id="booksCountPill" style="display:none"></div>
+        <div class="chip" id="viafPill" style="display:none"></div>
+        <div class="chip" id="isniPill" style="display:none"></div>
+        <div class="chip" id="wikidataPill" style="display:none"></div>
+        <div class="chip" id="sourcePill" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="detail">
+          <div class="photobox empty" id="photoBox">
+            <img class="photoimg" id="photoImg" alt="Foto do autor" />
+          </div>
+
+          <div class="contentbox">
+            <div class="mini subtle" id="sortLine" style="display:none"></div>
+            <div class="section-title" style="margin-top:0">Biografia e notas</div>
+            <div class="bio" id="bioLine">—</div>
+            <div class="status" id="status"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Livros no catálogo</h2>
+        <div id="booksList" class="books"></div>
+        <div id="booksEmpty" class="empty-note" style="display:none">Nenhum livro publicado foi encontrado para este autor.</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const GH_BASE = location.origin;
+    const ROUTES = {
+      BLOG_HOME: "https://cclamazonia.noblogs.org/",
+      CATALOGO: `${GH_BASE}/blmf-catalogo/`,
+      CADASTRO: `${GH_BASE}/blmf-conta/cadastro.html`,
+      CONTA: `${GH_BASE}/blmf-conta/conta.html`,
+      LIVRO: `${GH_BASE}/blmf-catalogo/livro.html`,
+      PAINEL: new URL("painel.html", `${GH_BASE}/blmf-conta/conta.html`).href,
+    };
+
+    document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
+    document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
+
+    const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    const AUTHOR_BUILD = "20260313-1";
+    document.documentElement.setAttribute("data-author-build", AUTHOR_BUILD);
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(msg, cls) {
+      const el = $("status");
+      el.className = "status" + (cls ? " " + cls : "");
+      el.textContent = msg || "";
+    }
+
+    function setPill(id, label, value, showDash = false) {
+      const el = $(id);
+      if (!el) return;
+
+      const txt = String(value ?? "").trim();
+      if (!txt) {
+        if (showDash) {
+          el.style.display = "inline-flex";
+          el.textContent = `${label}: —`;
+        } else {
+          el.style.display = "none";
+          el.textContent = "";
+        }
+        return;
+      }
+
+      el.style.display = "inline-flex";
+      el.textContent = `${label}: ${txt}`;
+    }
+
+    function setLine(id, value) {
+      const el = $(id);
+      if (!el) return;
+      const txt = String(value ?? "").trim();
+      el.textContent = txt;
+      el.style.display = txt ? "" : "none";
+    }
+
+    function getUrlBits() {
+      const u = new URL(location.href);
+      const rawId = (u.searchParams.get("id") || u.searchParams.get("author_id") || "").trim();
+      const parsedId = Number(rawId);
+      const authorId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null;
+      const authorName = (
+        u.searchParams.get("author")
+        || u.searchParams.get("name")
+        || u.searchParams.get("autor")
+        || u.searchParams.get("preferred_name")
+        || u.searchParams.get("sort_name")
+        || ""
+      ).trim() || null;
+      return { authorId, authorName };
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    function buildNameVariants(name) {
+      const txt = String(name || "").trim();
+      if (!txt) return [];
+      const out = new Set([txt]);
+      if (txt.includes(",")) {
+        const bits = txt.split(",").map(v => v.trim()).filter(Boolean);
+        if (bits.length >= 2) out.add(bits.slice(1).join(" ") + " " + bits[0]);
+      } else {
+        const bits = txt.split(/\s+/).filter(Boolean);
+        if (bits.length >= 2) {
+          const last = bits[bits.length - 1];
+          const firsts = bits.slice(0, -1).join(" ");
+          out.add(`${last}, ${firsts}`);
+        }
+      }
+      return [...out];
+    }
+
+    function yearsLabel(birth, death) {
+      const hasBirth = birth !== null && birth !== undefined && String(birth).trim() !== "" && String(birth).trim().toLowerCase() !== "null";
+      const hasDeath = death !== null && death !== undefined && String(death).trim() !== "" && String(death).trim().toLowerCase() !== "null";
+      const b = hasBirth ? String(birth).trim() : "";
+      const d = hasDeath ? String(death).trim() : "";
+      if (b && d) return `${b}–${d}`;
+      if (b && !d) return `${b} /`;
+      if (!b && d) return `/ ${d}`;
+      if (!b && !d) return "/";
+      return "";
+    }
+
+    function buildHeroIntro(author, booksCount) {
+      const parts = [];
+      if (author?.country) parts.push(String(author.country).trim());
+      if (Number.isFinite(Number(booksCount))) {
+        const n = Number(booksCount);
+        parts.push(`${n} ${n === 1 ? "livro ligado" : "livros ligados"}`);
+      }
+      const sourceLabel = [author?.source_kind || "", author?.source_label || ""].filter(Boolean).join(" · ");
+      if (sourceLabel) parts.push(sourceLabel);
+      return parts.join(" · ") || "Página pública de autor/a do catálogo BLMF.";
+    }
+
+    function uniqueStrings(values) {
+      return [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
+    }
+
+    function buildPhotoCandidates(pathOrUrl) {
+      const raw = String(pathOrUrl || "").trim();
+      if (!raw) return [];
+      if (/^https?:\/\//i.test(raw)) return [raw];
+      const stripped = raw.replace(/^\/+/, "");
+      const withoutPrefix = stripped.replace(/^(autor|authors|covers)\//i, "");
+      const candidates = [
+        supabase.storage.from("authors").getPublicUrl(stripped)?.data?.publicUrl || "",
+        supabase.storage.from("autor").getPublicUrl(stripped)?.data?.publicUrl || "",
+        supabase.storage.from("covers").getPublicUrl(stripped)?.data?.publicUrl || "",
+        supabase.storage.from("authors").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
+        supabase.storage.from("autor").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
+        supabase.storage.from("covers").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
+      ];
+      return uniqueStrings(candidates);
+    }
+
+    function tryLoadImage(img, box, candidates, idx = 0) {
+      if (!candidates.length || idx >= candidates.length) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        img.onerror = null;
+        return;
+      }
+      img.onerror = () => tryLoadImage(img, box, candidates, idx + 1);
+      img.onload = () => {
+        img.onerror = null;
+        box.classList.remove("empty");
+      };
+      img.src = candidates[idx];
+    }
+
+    function setPhoto(pathOrUrl) {
+      const box = $("photoBox");
+      const img = $("photoImg");
+      const candidates = buildPhotoCandidates(pathOrUrl);
+      if (!candidates.length) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        img.onerror = null;
+        return;
+      }
+      tryLoadImage(img, box, candidates, 0);
+    }
+
+    async function fetchRest(path) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        });
+        if (!res.ok) return [];
+        const text = await res.text();
+        return text ? JSON.parse(text) : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    async function fetchViewOneById(viewName, idValue) {
+      try {
+        const { data, error } = await supabase
+          .from(viewName)
+          .select("*")
+          .eq("id", idValue)
+          .limit(1)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (_) {}
+      return null;
+    }
+
+    async function fetchViewManyByAuthorId(viewName, idValue) {
+      try {
+        const { data, error } = await supabase
+          .from(viewName)
+          .select("*")
+          .eq("author_id", idValue)
+          .order("ord", { ascending: true })
+          .order("titulo", { ascending: true });
+        if (!error && Array.isArray(data)) return data;
+      } catch (_) {}
+      return [];
+    }
+
+    async function fetchAuthorPageById(authorId) {
+      if (!authorId) return null;
+
+      let data = await fetchViewOneById("v_author_page_public_v2", authorId);
+      if (data) return data;
+
+      data = await fetchViewOneById("v_author_page_public", authorId);
+      if (data) return data;
+
+      const rowsV2 = await fetchRest(`v_author_page_public_v2?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
+      if (rowsV2[0]) return rowsV2[0];
+
+      const rowsV1 = await fetchRest(`v_author_page_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
+      return rowsV1[0] || null;
+    }
+
+    async function fetchBooksByAuthorName(bookName) {
+      const out = [];
+      for (const tableName of ["v_books_catalog_public_v2", "v_books_catalog_public", "books_public"]) {
+        try {
+          const exact = await supabase
+            .from(tableName)
+            .select("*")
+            .eq("autor_exibicao", bookName)
+            .order("titulo", { ascending: true });
+          if (!exact.error && Array.isArray(exact.data) && exact.data.length) out.push(...exact.data);
+        } catch (_) {}
+        try {
+          const broad = await supabase
+            .from(tableName)
+            .select("*")
+            .or(`autor_exibicao.ilike.%${bookName}%,autor_texto_livro.ilike.%${bookName}%,autor.ilike.%${bookName}%`)
+            .order("titulo", { ascending: true });
+          if (!broad.error && Array.isArray(broad.data) && broad.data.length) out.push(...broad.data);
+        } catch (_) {}
+      }
+      return out;
+    }
+
+    async function fetchAuthorById(authorId) {
+      if (!authorId) return null;
+
+      const fromView = await fetchViewOneById("v_authors_public", authorId);
+      if (fromView) return fromView;
+
+      try {
+        const { data, error } = await supabase
+          .from("authors")
+          .select("*")
+          .eq("id", authorId)
+          .limit(1)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (_) {}
+
+      const rows = await fetchRest(`v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
+      return rows[0] || null;
+    }
+
+    async function fetchAuthorByName(authorName) {
+      const variants = buildNameVariants(authorName);
+      if (!variants.length) return null;
+      const wanted = new Set(variants.map(normalizeText));
+
+      for (const variant of variants) {
+        try {
+          const { data, error } = await supabase
+            .from("v_authors_public")
+            .select("*")
+            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
+            .limit(20);
+
+          if (!error && Array.isArray(data) && data.length) {
+            const ranked = data.map(row => {
+              const p = normalizeText(row?.preferred_name);
+              const s = normalizeText(row?.sort_name);
+              const exact = wanted.has(p) || wanted.has(s);
+              return { row, exact };
+            }).sort((a, b) => Number(b.exact) - Number(a.exact));
+            if (ranked[0]?.row) return ranked[0].row;
+          }
+        } catch (_) {}
+
+        const rows = await fetchRest(
+          `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
+        );
+        if (Array.isArray(rows) && rows.length) {
+          const ranked = rows.map(row => {
+            const p = normalizeText(row?.preferred_name);
+            const s = normalizeText(row?.sort_name);
+            const exact = wanted.has(p) || wanted.has(s);
+            return { row, exact };
+          }).sort((a, b) => Number(b.exact) - Number(a.exact));
+          if (ranked[0]?.row) return ranked[0].row;
+        }
+      }
+
+      for (const variant of variants) {
+        try {
+          const { data, error } = await supabase
+            .from("author_books_public")
+            .select("author_id,author_name")
+            .ilike("author_name", `%${variant}%`)
+            .limit(20);
+          const bridge = !error && Array.isArray(data) ? data.find(r => r?.author_id) : null;
+          if (bridge?.author_id) {
+            const author = await fetchAuthorById(bridge.author_id);
+            if (author) return author;
+          }
+        } catch (_) {}
+
+        const bridgeRows = await fetchRest(
+          `author_books_public?select=author_id,author_name&author_name=ilike.${encodeURIComponent(`%${variant}%`)}&limit=20`
+        );
+        const bridge = Array.isArray(bridgeRows) ? bridgeRows.find(r => r?.author_id) : null;
+        if (bridge?.author_id) {
+          const author = await fetchAuthorById(bridge.author_id);
+          if (author) return author;
+        }
+      }
+
+      return null;
+    }
+
+    async function fetchLinkedBooks(authorId, author) {
+      if (author && Array.isArray(author.books_json) && author.books_json.length) {
+        return author.books_json;
+      }
+
+      let rows = [];
+      if (authorId) {
+        rows = await fetchViewManyByAuthorId("v_author_books_public_compat_v2", authorId);
+        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public_compat", authorId);
+        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId);
+        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
+        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
+        if (!rows.length) rows = await fetchRest(`author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
+      }
+      if (Array.isArray(rows) && rows.length) return rows;
+
+      const names = [author?.display_name, author?.preferred_name, author?.sort_name].map(v => String(v || "").trim()).filter(Boolean);
+      const out = [];
+      for (const name of names) {
+        out.push(...await fetchBooksByAuthorName(name));
+      }
+      const seen = new Set();
+      return out.filter(row => {
+        const key = String(row?.bib_ref || row?.id || "").trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function sortBooks(rows) {
+      return [...(rows || [])].sort((a, b) => {
+        const ao = Number.isFinite(Number(a?.ord)) ? Number(a.ord) : 9999;
+        const bo = Number.isFinite(Number(b?.ord)) ? Number(b.ord) : 9999;
+        if (ao !== bo) return ao - bo;
+        const at = String(a?.titulo || "").localeCompare(String(b?.titulo || ""), "pt-BR", { sensitivity: "base" });
+        if (at !== 0) return at;
+        return String(a?.bib_ref || "").localeCompare(String(b?.bib_ref || ""), "pt-BR", { sensitivity: "base" });
+      });
+    }
+
+    function renderBooks(books) {
+      const list = $("booksList");
+      const empty = $("booksEmpty");
+      list.innerHTML = "";
+      if (!books.length) {
+        empty.style.display = "";
+        return;
+      }
+      empty.style.display = "none";
+      for (const row of books) {
+        const a = document.createElement("a");
+        a.className = "book-card";
+        a.href = `${ROUTES.LIVRO}?ref=${encodeURIComponent(row.bib_ref || "")}`;
+
+        const title = document.createElement("div");
+        title.className = "book-title";
+        title.textContent = row.titulo || "Sem título";
+
+        const subtitle = document.createElement("div");
+        subtitle.className = "book-subtitle";
+        const sub = String(row.subtitulo || "").trim();
+        if (sub) subtitle.textContent = sub;
+        else subtitle.style.display = "none";
+
+        const meta1 = document.createElement("div");
+        meta1.className = "book-meta";
+        meta1.textContent = [
+          row.bib_ref ? `ref: ${row.bib_ref}` : "",
+          row.ano ? `ano: ${row.ano}` : "",
+        ].filter(Boolean).join(" · ") || "—";
+
+        const meta2 = document.createElement("div");
+        meta2.className = "book-meta";
+        meta2.textContent = [row.editora || "", row.role ? `função: ${row.role}` : ""].filter(Boolean).join(" · ") || "";
+
+        a.append(title, subtitle, meta1, meta2);
+        list.appendChild(a);
+      }
+    }
+
+    async function setupContaButton() {
+      const btnConta = $("btnConta");
+      const btnEntrar = $("btnEntrar");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        let isLibrarian = false;
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("is_librarian")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          isLibrarian = !!data?.is_librarian;
+        } catch (_) {}
+
+        const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
+        btnConta.textContent = isLibrarian ? "Painel" : "Minha conta";
+        btnConta.setAttribute("aria-disabled", "false");
+        btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
+        btnConta.onclick = () => location.assign(targetHref);
+
+        btnEntrar.setAttribute("aria-disabled", "true");
+        btnEntrar.classList.add("disabled");
+        btnEntrar.title = "Você já está logado(a/e).";
+        btnEntrar.removeAttribute("href");
+        btnEntrar.addEventListener("click", (e) => e.preventDefault());
+      } else {
+        btnConta.textContent = "Painel / minha conta";
+        btnConta.setAttribute("aria-disabled", "true");
+        btnConta.title = "Disponível apenas quando logado(a/e).";
+        btnConta.onclick = (e) => e.preventDefault();
+
+        btnEntrar.setAttribute("aria-disabled", "false");
+        btnEntrar.classList.remove("disabled");
+        btnEntrar.title = "Entrar";
+        btnEntrar.href = ROUTES.CADASTRO;
+      }
+    }
+
+    async function loadAuthor() {
+      const { authorId, authorName } = getUrlBits();
+
+      if (!authorId && !authorName) {
+        $("nameLine").textContent = "Autor não encontrado";
+        $("heroIntro").textContent = "Faltou um id válido ou um nome de autor na URL.";
+        $("bioLine").textContent = "Abra esta página a partir de um nome de autor clicável no catálogo.";
+        setPhoto("");
+        setStatus("Abra esta página a partir de um nome de autor clicável no catálogo.", "warn");
+        $("booksEmpty").style.display = "";
+        return;
+      }
+
+      let author = null;
+      if (authorId) author = await fetchAuthorPageById(authorId);
+      if (!author && authorId) author = await fetchAuthorById(authorId);
+      if (!author && authorName) {
+        const authorByName = await fetchAuthorByName(authorName);
+        if (authorByName?.id) {
+          author = await fetchAuthorPageById(authorByName.id) || authorByName;
+        }
+      }
+
+      if (!author) {
+        $("nameLine").textContent = "Autor não encontrado";
+        $("heroIntro").textContent = "Não encontrei este autor nas vistas públicas.";
+        $("bioLine").textContent = "Confira o link de origem ou volte ao catálogo para tentar de novo.";
+        setPhoto("");
+        setStatus("Autor não encontrado.", "warn");
+        $("booksEmpty").style.display = "";
+        return;
+      }
+
+      const books = sortBooks(await fetchLinkedBooks(author.id, author));
+
+      const displayName = author.display_name || author.preferred_name || author.sort_name || "Sem nome";
+      const secondaryName = [author.sort_name, author.preferred_name]
+        .map(v => String(v || "").trim())
+        .find(v => v && v !== displayName) || "";
+
+      $("nameLine").textContent = displayName;
+      $("heroIntro").textContent = buildHeroIntro(author, author.books_count_resolved || books.length || author.books_count || 0);
+      setLine("sortLine", secondaryName);
+      $("bioLine").textContent = String(author.biography || author.notes || "—").trim() || "—";
+
+      setPill("yearsPill", "nascimento - falecimento", yearsLabel(author.birth_year, author.death_year));
+      setPill("countryPill", "País", author.country || "");
+      setPill("booksCountPill", "livros", String(author.books_count_resolved || books.length || author.books_count || 0));
+      setPill("viafPill", "VIAF", author.viaf_id || "");
+      setPill("isniPill", "ISNI", author.isni || "");
+      setPill("wikidataPill", "Wikidata", author.wikidata_id || "");
+      const sourceLabel = [author.source_kind || "", author.source_label || ""].filter(Boolean).join(" · ");
+      setPill("sourcePill", "fonte", sourceLabel);
+
+      setPhoto(author.photo_object_path || "");
+      renderBooks(books || []);
+      setStatus("", "");
+      document.title = `BLMF — ${author.display_name || author.preferred_name || author.sort_name || "Autor"}`;
+    }
+
+    await setupContaButton();
+    await loadAuthor();
+  </script>
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BLMF — Leitura restrita</title>
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <style>
+    :root{
+      --panel:rgba(18,18,18,.96);
+      --text:#f2f2f2;
+      --muted:rgba(255,255,255,.74);
+      --red:#b30018;
+      --red2:#e11d2f;
+      --line:rgba(255,255,255,.10);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --ok:#4ade80;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+    body{
+      background-image:
+        linear-gradient(rgba(0,0,0,.78), rgba(0,0,0,.78)),
+        url('https://cclamazonia.noblogs.org/files/2024/11/Arte-CCLA-paredao.jpg');
+      background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat;
+    }
+    a,a:visited{color:inherit;text-decoration:none}
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{height:64px;width:auto;max-width:170px;object-fit:contain;display:block;flex-shrink:0;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))}
+    .btn{
+      border:1px solid var(--line);background:rgba(18,18,18,.92);color:var(--text);
+      border-radius:14px;padding:10px 12px;cursor:pointer;box-shadow:var(--shadow);
+      font-weight:900;font-size:.95rem;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
+    }
+    .btn.primary{border:none;background:linear-gradient(135deg,var(--red2),var(--red))}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .btn:disabled{opacity:.58;cursor:default}
+    .btn.mini{padding:7px 10px;font-size:.85rem;border-radius:12px}
+    .hero{
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
+      border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px;
+    }
+    .hero h1{margin:0 0 6px;font-size:1.5rem}
+    .hero p{margin:0;color:rgba(255,255,255,.92)}
+    .muted{color:var(--muted)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);padding:7px 10px;border-radius:999px;font-size:.9rem;color:rgba(255,255,255,.86)
+    }
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .reader-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.8fr);gap:14px}
+    @media (max-width:1120px){.reader-grid{grid-template-columns:1fr}}
+    .card{border:1px solid rgba(255,255,255,.08);background:var(--panel);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .section-head h2,.section-head h3{margin:0}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .mini{font-size:.86rem;color:var(--muted)}
+    .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
+    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.12);font-size:.82rem;background:rgba(255,255,255,.04)}
+    .pill.ok{color:#b7ffcf}.pill.warn{color:#ffe6a0}.pill.bad{color:#ffc0cb}
+    .hidden{display:none !important}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .toolbar .btn{background:rgba(0,0,0,.34)}
+    .reader-stage{
+      min-height:62vh;border:1px solid rgba(255,255,255,.08);border-radius:18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        rgba(8,8,8,.78);
+      display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;
+    }
+    .reader-placeholder{
+      width:min(100%,860px);min-height:54vh;border:1px dashed rgba(255,255,255,.18);border-radius:18px;
+      background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:24px;gap:14px;
+    }
+    .reader-placeholder h3{margin:0;font-size:1.15rem}
+    .reader-placeholder p{margin:0;max-width:62ch;color:rgba(255,255,255,.86);line-height:1.45}
+    .reader-shell-ready .reader-placeholder{border-style:solid}
+    .pdf-host{width:min(100%,980px);display:flex;justify-content:center;align-items:flex-start}
+    .pdf-canvas-wrap{width:100%;display:flex;justify-content:center;align-items:flex-start}
+    .pdf-canvas-wrap canvas{display:block;max-width:100%;height:auto;background:#fff;border-radius:8px;box-shadow:0 14px 28px rgba(0,0,0,.42)}
+    .outline-list{display:grid;gap:8px;margin-top:12px}
+    .outline-btn{
+      width:100%;text-align:left;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);color:var(--text);
+      border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit
+    }
+    .outline-btn:hover{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.05)}
+    .outline-btn.level-1{padding-left:22px}
+    .outline-btn.level-2{padding-left:32px}
+    .outline-btn.level-3{padding-left:42px}
+    .meta-list{display:grid;gap:10px;margin-top:12px}
+    .meta-item{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.03)}
+    .meta-item strong{display:block;font-size:.9rem;margin-bottom:4px}
+    .sep{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+    .empty{padding:12px 14px;color:var(--muted)}
+    .warning-box{
+      border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 14px;background:rgba(179,0,24,.12)
+    }
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .book-subtitle{margin:0 0 6px;font-size:1rem;color:rgba(255,255,255,.92)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo" src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png" alt="BLMF">
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" id="btnBlog" href="#">Voltar ao blogue</a>
+        <a class="btn" id="btnCatalogo" href="#">Voltar ao catálogo</a>
+        <a class="btn" id="btnLivro" href="#">Voltar ao livro</a>
+        <a class="btn" id="btnConta" href="#">Minha conta</a>
+        <a class="btn primary hidden" id="btnEntrar" href="#">Entrar</a>
+        <button class="btn primary hidden" id="btnSair" type="button">Sair</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1 id="title">Leitura restrita</h1>
+      <p class="book-subtitle muted hidden" id="subtitleLine"></p>
+      <p id="heroIntro">Preparando o espaço de leitura…</p>
+      <p class="muted" id="authorLine" style="margin-top:6px">—</p>
+      <div class="chips">
+        <span class="chip" id="chipRef">Referência: —</span>
+        <span class="chip" id="chipSession">Sessão: —</span>
+        <span class="chip" id="chipConta">Conta ativa: —</span>
+        <span class="chip" id="chipResource">Recurso: —</span>
+        <span class="chip" id="chipFile">Arquivo: —</span>
+      </div>
+    </div>
+
+    <div class="reader-grid">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>Área de leitura</h2>
+            <div class="mini">Proxy fechado + PDF.js V1, sem URL pública permanente e sem botão de download explícito.</div>
+          </div>
+        </div>
+
+        <div class="toolbar" id="readerToolbar">
+          <button class="btn mini" id="btnPrevPage" type="button" disabled>Página anterior</button>
+          <span class="pill" id="pageIndicator">Página — / —</span>
+          <button class="btn mini" id="btnNextPage" type="button" disabled>Próxima página</button>
+          <button class="btn mini" id="btnZoomOut" type="button" disabled>Zoom −</button>
+          <button class="btn mini" id="btnZoomIn" type="button" disabled>Zoom +</button>
+          <button class="btn mini" id="btnFitWidth" type="button" disabled>Ajustar à largura</button>
+          <button class="btn mini" id="btnOutline" type="button" disabled>Sumário</button>
+        </div>
+
+        <div class="reader-stage" id="readerStage">
+          <div class="reader-placeholder" id="readerPlaceholder">
+            <span class="pill warn" id="readerStatePill">Aguardando verificação</span>
+            <h3 id="readerStateTitle">Verificando acesso à leitura</h3>
+            <p id="readerStateText">Esta página confere a sessão, o estado da conta e a disponibilidade da leitura restrita antes de carregar qualquer recurso.</p>
+          </div>
+          <div class="pdf-host hidden" id="pdfHost">
+            <div class="pdf-canvas-wrap">
+              <canvas id="pdfCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="status" id="pageStatus"></div>
+      </section>
+
+      <aside class="grid">
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2>Estado do acesso</h2>
+              <div class="mini">Sem URL pública permanente e sem botão de download explícito.</div>
+            </div>
+          </div>
+          <div class="meta-list" id="accessMetaList">
+            <div class="meta-item"><strong>Referência</strong><span id="metaRef">—</span></div>
+            <div class="meta-item"><strong>Livro encontrado</strong><span id="metaBookExists">—</span></div>
+            <div class="meta-item"><strong>Recurso de leitura</strong><span id="metaResource">—</span></div>
+            <div class="meta-item"><strong>Conta ativa</strong><span id="metaConta">—</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2>Orientações</h2>
+              <div class="mini">Doutrina de consulta encadrada da BLMF.</div>
+            </div>
+          </div>
+          <div class="warning-box">
+            <div class="mini" style="color:rgba(255,255,255,.9);line-height:1.5">
+              Esta leitura é pensada como consulta restrita. A presença da notice bibliográfica não implica automaticamente a disponibilidade de uma versão numérica. A biblioteca pode suspender ou retirar a leitura a qualquer momento.
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="mini">Esta V1 usa um proxy fechado pela Edge Function e carrega o PDF dentro do viewer com PDF.js, sem expor bucket ou path ao front.</div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2>Sumário / marcadores</h2>
+              <div class="mini">Quando o PDF trouxer outline, ele aparece aqui.</div>
+            </div>
+          </div>
+          <div id="outlinePane" class="empty">O sumário será carregado depois da abertura do documento.</div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "./js/blmf-supabase.js";
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    const GH_BASE = location.origin;
+    const ROUTES = {
+      BLOG_HOME: "https://cclamazonia.noblogs.org/",
+      CATALOGO: `${GH_BASE}/blmf-catalogo/`,
+      LIVRO: `${GH_BASE}/blmf-catalogo/livro.html`,
+      CONTA: `${GH_BASE}/blmf-conta/conta.html`,
+      CADASTRO: `${GH_BASE}/blmf-conta/cadastro.html`
+    };
+
+    const params = new URLSearchParams(location.search);
+    const bibRef = (params.get("ref") || "").trim();
+
+    $("btnBlog").href = ROUTES.BLOG_HOME;
+    $("btnCatalogo").href = ROUTES.CATALOGO;
+    $("btnConta").href = ROUTES.CONTA;
+    $("btnLivro").href = bibRef ? `${ROUTES.LIVRO}?ref=${encodeURIComponent(bibRef)}` : ROUTES.CATALOGO;
+    $("chipRef").textContent = `Referência: ${bibRef || '—'}`;
+    $("metaRef").textContent = bibRef || '—';
+
+    function setStatus(msg = '', cls = '') {
+      const el = $("pageStatus");
+      el.className = 'status' + (cls ? ` ${cls}` : '');
+      el.textContent = msg || '';
+    }
+
+    function setReaderState({ pillClass = 'warn', pill = 'Aguardando', title = '', text = '', ready = false } = {}) {
+      const stage = $("readerStage");
+      stage.classList.toggle('reader-shell-ready', !!ready);
+      $("readerStatePill").className = `pill ${pillClass}`;
+      $("readerStatePill").textContent = pill;
+      $("readerStateTitle").textContent = title;
+      $("readerStateText").textContent = text;
+    }
+
+    function setChip(id, value) {
+      const el = $(id);
+      if (el) el.textContent = value;
+    }
+
+    function boolLabel(v) {
+      return v ? 'Sim' : 'Não';
+    }
+
+    const PDFJS_BUILD_SRC = "./vendor/pdfjs/build/pdf.mjs";
+    const PDFJS_WORKER_SRC = "./vendor/pdfjs/build/pdf.worker.mjs";
+
+    let pdfjsLib = null;
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let manualScale = 1.15;
+    let fitWidthMode = true;
+    let outlineFlat = [];
+
+    function setToolbarEnabled(enabled) {
+      ["btnPrevPage","btnNextPage","btnZoomOut","btnZoomIn","btnFitWidth","btnOutline"].forEach((id) => {
+        const el = $(id);
+        if (el) el.disabled = !enabled;
+      });
+    }
+
+    function setPageIndicator(page = null, count = null) {
+      $("pageIndicator").textContent = (page && count) ? `Página ${page} / ${count}` : "Página — / —";
+    }
+
+    function showCanvasHost(show) {
+      $("pdfHost").classList.toggle("hidden", !show);
+      $("readerPlaceholder").classList.toggle("hidden", !!show);
+    }
+
+    async function ensurePdfJs() {
+      if (pdfjsLib) return pdfjsLib;
+      try {
+        pdfjsLib = await import(PDFJS_BUILD_SRC);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+        return pdfjsLib;
+      } catch (err) {
+        throw new Error("PDF.js não foi encontrado em ./vendor/pdfjs/build/. Confere se os ficheiros pdf.mjs e pdf.worker.mjs foram colocados nesse caminho.");
+      }
+    }
+
+    function flattenOutline(items = [], level = 0, acc = []) {
+      for (const item of items || []) {
+        acc.push({
+          title: String(item?.title || "Sem título"),
+          dest: item?.dest || null,
+          level
+        });
+        if (item?.items?.length) flattenOutline(item.items, level + 1, acc);
+      }
+      return acc;
+    }
+
+    async function resolveOutlinePage(item) {
+      if (!pdfDoc || !item?.dest) return null;
+      let destArray = item.dest;
+      if (typeof destArray === "string") {
+        destArray = await pdfDoc.getDestination(destArray);
+      }
+      if (!Array.isArray(destArray) || !destArray[0]) return null;
+      const pageIndex = await pdfDoc.getPageIndex(destArray[0]);
+      return pageIndex + 1;
+    }
+
+    function renderOutline(items) {
+      const pane = $("outlinePane");
+      if (!Array.isArray(items) || !items.length) {
+        pane.className = "empty";
+        pane.textContent = "Este PDF não traz sumário / marcadores navegáveis.";
+        $("btnOutline").disabled = true;
+        return;
+      }
+
+      outlineFlat = flattenOutline(items);
+      pane.className = "outline-list";
+      pane.innerHTML = "";
+      outlineFlat.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `outline-btn level-${Math.min(item.level, 3)}`;
+        btn.textContent = item.title;
+        btn.addEventListener("click", async () => {
+          const target = await resolveOutlinePage(item);
+          if (!target) return;
+          currentPage = target;
+          await renderCurrentPage();
+        });
+        pane.appendChild(btn);
+      });
+      $("btnOutline").disabled = false;
+    }
+
+    async function renderCurrentPage() {
+      if (!pdfDoc) return;
+      const page = await pdfDoc.getPage(currentPage);
+      const canvas = $("pdfCanvas");
+      const ctx = canvas.getContext("2d", { alpha: false });
+
+      const baseViewport = page.getViewport({ scale: 1 });
+      let scale = manualScale;
+      if (fitWidthMode) {
+        const availableWidth = Math.max(320, $("readerStage").clientWidth - 56);
+        scale = availableWidth / baseViewport.width;
+      }
+      const viewport = page.getViewport({ scale });
+
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = "100%";
+      canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = "auto";
+
+      await page.render({
+        canvasContext: ctx,
+        viewport
+      }).promise;
+
+      totalPages = pdfDoc.numPages;
+      setPageIndicator(currentPage, totalPages);
+      $("btnPrevPage").disabled = currentPage <= 1;
+      $("btnNextPage").disabled = currentPage >= totalPages;
+      showCanvasHost(true);
+    }
+
+    async function openRestrictedPdf(ref) {
+      const lib = await ensurePdfJs();
+      const { data, error } = await supabase.functions.invoke("read-pdf", {
+        body: { ref }
+      });
+
+      if (error) {
+        let msg = error.message || "A Edge Function recusou a leitura.";
+        const ctx = error.context;
+        if (ctx) {
+          try {
+            const payload = await ctx.json();
+            if (payload?.message) msg = payload.message;
+          } catch (_ignored) {}
+        }
+        throw new Error(msg);
+      }
+
+      const pdfBlob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+      const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
+
+      const task = lib.getDocument({
+        data: bytes,
+        disableRange: true,
+        disableStream: true,
+        disableAutoFetch: true
+      });
+
+      pdfDoc = await task.promise;
+      currentPage = 1;
+      totalPages = pdfDoc.numPages;
+      setPageIndicator(currentPage, totalPages);
+      setToolbarEnabled(true);
+
+      try {
+        const outline = await pdfDoc.getOutline();
+        renderOutline(outline || []);
+      } catch (_err) {
+        renderOutline([]);
+      }
+
+      await renderCurrentPage();
+    }
+
+    function wireReaderControls() {
+      $("btnPrevPage").addEventListener("click", async () => {
+        if (!pdfDoc || currentPage <= 1) return;
+        currentPage -= 1;
+        await renderCurrentPage();
+      });
+
+      $("btnNextPage").addEventListener("click", async () => {
+        if (!pdfDoc || currentPage >= totalPages) return;
+        currentPage += 1;
+        await renderCurrentPage();
+      });
+
+      $("btnZoomOut").addEventListener("click", async () => {
+        if (!pdfDoc) return;
+        fitWidthMode = false;
+        manualScale = Math.max(0.5, manualScale - 0.15);
+        await renderCurrentPage();
+      });
+
+      $("btnZoomIn").addEventListener("click", async () => {
+        if (!pdfDoc) return;
+        fitWidthMode = false;
+        manualScale = Math.min(4, manualScale + 0.15);
+        await renderCurrentPage();
+      });
+
+      $("btnFitWidth").addEventListener("click", async () => {
+        if (!pdfDoc) return;
+        fitWidthMode = true;
+        await renderCurrentPage();
+      });
+
+      $("btnOutline").addEventListener("click", () => {
+        $("outlinePane")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      window.addEventListener("resize", async () => {
+        if (!pdfDoc || !fitWidthMode) return;
+        await renderCurrentPage();
+      });
+    }
+
+    function renderBook(book) {
+      if (!book) return;
+      $("title").textContent = book.titulo || 'Leitura restrita';
+      const subtitle = String(book.subtitulo || '').trim();
+      const subtitleEl = $("subtitleLine");
+      if (subtitle) {
+        subtitleEl.textContent = subtitle;
+        subtitleEl.classList.remove('hidden');
+      } else {
+        subtitleEl.textContent = '';
+        subtitleEl.classList.add('hidden');
+      }
+      $("heroIntro").textContent = [book.tipo || 'livro', book.editora || '', book.ano || '', book.exemplares_text || ''].filter(Boolean).join(' · ') || 'Consulta encadrada de recurso digital restrito.';
+      $("authorLine").textContent = String(book.autor || '—');
+    }
+
+    async function loadBook(ref) {
+      const attempts = [
+        () => supabase.schema('api').from('books_public').select('*').eq('bib_ref', ref).maybeSingle(),
+        () => supabase.from('books_public').select('*').eq('bib_ref', ref).maybeSingle(),
+        () => supabase.from('books').select('*').eq('bib_ref', ref).maybeSingle()
+      ];
+
+      for (const run of attempts) {
+        try {
+          const { data, error } = await run();
+          if (error) continue;
+          if (data) return data;
+        } catch (_e) {}
+      }
+      return null;
+    }
+
+    function updateAccessMeta(state) {
+      $("metaBookExists").textContent = state?.book_exists ? 'Sim' : 'Não';
+      $("metaResource").textContent = state?.has_reading_resource ? `Sim (${state.resource_status || 'sem status'})` : 'Não';
+      $("metaConta").textContent = state?.user_account_active ? 'Sim' : 'Não';
+      setChip('chipResource', `Recurso: ${state?.has_reading_resource ? (state.resource_status || 'ativo') : 'ausente'}`);
+      setChip('chipFile', `Arquivo: ${state?.file_exists ? 'presente' : 'ausente'}`);
+      setChip('chipConta', `Conta ativa: ${state?.user_account_active ? 'sim' : 'não'}`);
+    }
+
+    function showSignedOutState() {
+      setChip('chipSession', 'Sessão: ausente');
+      setChip('chipConta', 'Conta ativa: não verificada');
+      setChip('chipResource', 'Recurso: não verificado');
+      setChip('chipFile', 'Arquivo: não verificado');
+      $("btnEntrar").href = ROUTES.CADASTRO;
+      $("btnEntrar").classList.remove('hidden');
+      $("btnSair").classList.add('hidden');
+      setReaderState({
+        pillClass: 'warn',
+        pill: 'Entrar',
+        title: 'É preciso entrar para acessar esta leitura',
+        text: 'Conecta-te com uma conta BLMF ativa. Esta página não expõe o PDF por URL pública permanente.'
+      });
+      setStatus('Sessão ausente. Faz login para continuar.', 'warn');
+    }
+
+    function showDeniedState(msg) {
+      setReaderState({
+        pillClass: 'bad',
+        pill: 'Bloqueado',
+        title: 'Leitura indisponível neste momento',
+        text: msg
+      });
+      setStatus(msg, 'bad');
+    }
+
+    function showReadyState(book) {
+      const label = book?.titulo ? `Leitura autorizada para ${book.titulo}.` : 'Leitura autorizada.';
+      setReaderState({
+        pillClass: 'ok',
+        pill: 'Autorizado',
+        title: 'Acesso conferido',
+        text: label + ' Carregando o PDF privado dentro do viewer, via proxy fechado e sem botão de download explícito.',
+        ready: true
+      });
+      setStatus('Acesso conferido. Preparando o carregamento protegido do PDF.', 'ok');
+    }
+
+    async function init() {
+      if (!bibRef) {
+        setChip('chipSession', 'Sessão: —');
+        showDeniedState('Faltou a referência do livro na URL. Usa algo como ler.html?ref=0000124.');
+        return;
+      }
+
+      setReaderState({
+        pillClass: 'warn',
+        pill: 'Verificando',
+        title: 'Checando sessão, conta e recurso',
+        text: 'A página só libera a leitura depois de conferir o estado da sessão, da conta e do recurso restrito.'
+      });
+
+      const [book, sessionRes] = await Promise.all([
+        loadBook(bibRef),
+        supabase.auth.getSession()
+      ]);
+
+      renderBook(book);
+
+      const session = sessionRes?.data?.session || null;
+      if (!session?.user?.id) {
+        showSignedOutState();
+        return;
+      }
+
+      setChip('chipSession', `Sessão: ${session.user.email || 'ativa'}`);
+      $("btnEntrar").classList.add('hidden');
+      $("btnSair").classList.remove('hidden');
+
+      const { data, error } = await supabase.rpc('fn_book_restricted_pdf_state_for_current_user', {
+        p_bib_ref: bibRef
+      });
+
+      if (error) {
+        showDeniedState('Não consegui verificar o estado da leitura restrita.');
+        setStatus('Erro ao consultar o estado da leitura: ' + (error.message || String(error)), 'bad');
+        return;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      updateAccessMeta(row || {});
+
+      if (!row?.book_exists) {
+        showDeniedState('A referência informada não corresponde a um livro conhecido no catálogo.');
+        return;
+      }
+      if (!row?.has_reading_resource) {
+        showDeniedState('Esta notice não está ligada a nenhum recurso de leitura restrita ativo.');
+        return;
+      }
+      if (!row?.file_exists) {
+        showDeniedState('O recurso de leitura existe em base, mas o arquivo privado não foi encontrado no bucket.');
+        return;
+      }
+      if (!row?.user_account_active) {
+        showDeniedState('A tua sessão existe, mas a conta não está ativa para esta leitura restrita.');
+        return;
+      }
+      if (!row?.can_show_read_button) {
+        showDeniedState('O recurso existe, mas as condições de acesso não estão todas reunidas para esta conta.');
+        return;
+      }
+
+      showReadyState(book);
+
+      try {
+        await openRestrictedPdf(bibRef);
+        setStatus('Documento carregado com sucesso no viewer restrito.', 'ok');
+      } catch (err) {
+        console.error('BLMF ler: falha ao abrir PDF restrito', err);
+        showDeniedState(err?.message || 'Falha ao carregar o PDF restrito.');
+        setStatus('Falha ao carregar o PDF restrito: ' + (err?.message || String(err)), 'bad');
+      }
+    }
+
+    wireReaderControls();
+
+    $("btnSair").addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.assign(ROUTES.CATALOGO);
+    });
+
+    init().catch((err) => {
+      console.error('BLMF ler: falha na inicialização', err);
+      showDeniedState('Falha inesperada ao preparar a leitura.');
+      setStatus('Erro inesperado: ' + (err?.message || String(err)), 'bad');
+    });
+  </script>
+</body>
+</html>

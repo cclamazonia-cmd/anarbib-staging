@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BLMF — Livro</title>
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+
+  <style>
+    :root{
+      --panel:rgba(18,18,18,.96);
+      --text:#f2f2f2; --muted:rgba(255,255,255,.72);
+      --red:#b30018; --red2:#e11d2f;
+      --line:rgba(255,255,255,.10);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --ok:#4ade80; --warn:#fbbf24; --bad:#fb7185;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--text);font-family:Inter, Segoe UI, Arial, sans-serif;}
+    body{
+      background-image:
+        linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.78)),
+        url('https://cclamazonia.noblogs.org/files/2024/11/Arte-CCLA-paredao.jpg');
+      background-size:cover;
+      background-position:center;
+      background-attachment:fixed;
+      background-repeat:no-repeat;
+    }
+    a, a:visited{color:inherit;text-decoration:none}
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      height:64px;width:auto;max-width:170px;object-fit:contain;display:block;flex-shrink:0;
+      filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))
+    }
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(18,18,18,.92);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      font-weight:900;
+      font-size:.95rem;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .btn.primary{border:none;background:linear-gradient(135deg,var(--red2),var(--red))}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .btn:disabled{opacity:.58;cursor:default}
+    .btn.mini{padding:7px 10px;font-size:.85rem;border-radius:12px}
+    .btn.disabled, .btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed;pointer-events:none}
+    .card{
+      border:1px solid rgba(255,255,255,.08);
+      background:var(--panel);
+      border-radius:22px;
+      padding:16px;
+      box-shadow:var(--shadow)
+    }
+    .hero{
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
+      border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px;
+    }
+    .hero h1{margin:0 0 6px;font-size:1.5rem}
+    .hero p{margin:0;color:rgba(255,255,255,.92)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);padding:7px 10px;border-radius:999px;font-size:.9rem;color:rgba(255,255,255,.86)
+    }
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .section-title{margin:0 0 12px;font-size:1.05rem}
+    .mini{font-size:.86rem;color:var(--muted)}
+    .subtle{opacity:.92}
+    .hidden{display:none !important}
+    .title{margin:0 0 6px;font-size:1.45rem}
+    .muted{color:var(--muted)}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    @media (max-width:720px){.meta{grid-template-columns:1fr}}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);
+      padding:7px 10px;border-radius:999px;
+      font-size:.9rem;color:var(--muted);
+      flex-wrap:wrap;overflow-wrap:anywhere;
+    }
+    .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
+    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+    .detail{
+      display:grid;
+      grid-template-columns: 260px minmax(0,1fr);
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width:820px){.detail{grid-template-columns:1fr}}
+    .coverbox{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      border-radius:18px;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:320px;
+    }
+    .coverbox.empty{display:none}
+    .coverimg{
+      width:100%;
+      max-width:220px;
+      height:auto;
+      max-height:340px;
+      object-fit:contain;
+      display:block;
+      border-radius:12px;
+      box-shadow:var(--shadow);
+    }
+    .contentbox{min-width:0}
+
+    .author-inline-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .author-name-plain { color: var(--muted); }
+    .author-card-link {
+      display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(140,110,115,.65); background:transparent; color:#f2f2f2; text-decoration:none;
+      font-weight:600; transition:background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .author-card-link:hover { background:rgba(255,255,255,.04); border-color:rgba(170,140,145,.85); transform:translateY(-1px); }
+    .author-separator { color: var(--muted); margin:0 2px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo"
+             src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png"
+             alt="BLMF" />
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="https://cclamazonia.noblogs.org/" rel="noopener">Voltar ao blogue</a>
+        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao catálogo</a>
+        <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
+        <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1 id="title">Carregando…</h1>
+      <p id="heroIntro">Carregando dados do livro…</p>
+      <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
+      <div class="author-inline-wrap" id="authorLine" style="margin-top:10px">—</div>
+      <div class="chips">
+        <div class="chip" id="heroRefChip" style="display:none"></div>
+        <div class="chip" id="heroYearChip" style="display:none"></div>
+        <div class="chip" id="heroPubChip" style="display:none"></div>
+        <div class="chip" id="heroExemplaresChip" style="display:none"></div>
+        <div class="chip" id="heroServiceModeChip" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="detail">
+        <div class="coverbox empty" id="coverBox">
+          <img class="coverimg" id="coverImg" alt="Capa do livro" />
+        </div>
+
+        <div class="contentbox">
+          <h2 class="section-title">Detalhes da edição</h2>
+
+          <div class="meta" style="margin-top:12px">
+            <div class="pill" id="bibRefPill">ref: —</div>
+            <div class="pill" id="tomboPill">tombo: —</div>
+            <div class="pill" id="exemplaresPill" style="display:none"></div>
+            <div class="pill" id="yearPill">ano: —</div>
+            <div class="pill" id="pubPill">editora: —</div>
+            <div class="pill" id="placePill" style="display:none"></div>
+            <div class="pill" id="editionPill" style="display:none"></div>
+            <div class="pill" id="isbnPill" style="display:none"></div>
+            <div class="pill" id="issnPill" style="display:none"></div>
+            <div class="pill" id="langPill" style="display:none"></div>
+            <div class="pill" id="pagesPill" style="display:none"></div>
+            <div class="pill" id="typePill" style="display:none"></div>
+            <div class="pill" id="collectionPill" style="display:none"></div>
+            <div class="pill" id="volumePill" style="display:none"></div>
+            <div class="pill" id="translatorPill" style="display:none"></div>
+            <div class="pill" id="organizerPill" style="display:none"></div>
+            <div class="pill" id="secondaryAuthorsPill" style="display:none"></div>
+            <div class="pill" id="subjectsPill" style="display:none"></div>
+            <div class="pill" id="cddPill">CDD: —</div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="muted" id="desc">—</div>
+
+          <div class="pill" id="serviceModePill" style="display:none;margin-top:12px"></div>
+          <div class="muted" id="serviceMessageLine" style="display:none;margin-top:10px"></div>
+
+          <div class="actions">
+            <button class="btn primary" id="btnReservar" type="button">Reservar este livro</button>
+            <button class="btn" id="btnLer" type="button" style="display:none">Ler</button>
+            <button class="btn" id="btnAbrirPdf" type="button" style="display:none">Abrir PDF</button>
+          </div>
+
+          <div class="status" id="status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const GH_BASE = location.origin;
+    const ROUTES = {
+      BLOG_HOME: "https://cclamazonia.noblogs.org/",
+      CATALOGO: `${GH_BASE}/blmf-catalogo/`,
+      CADASTRO: `${GH_BASE}/blmf-conta/cadastro.html`,
+      CONTA: `${GH_BASE}/blmf-conta/conta.html`,
+      PAINEL: new URL("painel.html", `${GH_BASE}/blmf-conta/conta.html`).href,
+      AUTOR: new URL("autor.html", location.href).toString(),
+      AUTHOR_PAGE_VERSION: '20260313-1',
+    };
+
+    document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
+    document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
+
+    const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    const $ = (id) => document.getElementById(id);
+
+    const DEFAULT_SERVICE_MESSAGES = {
+      em_organizacao: "A biblioteca está em organização. O atendimento ocorre conforme a capacidade operacional atual.",
+      atendimento_eventual: "A biblioteca funciona com atendimento eventual. Consulte os canais do CCLA para informações atualizadas.",
+      atendimento_semanal: "A biblioteca funciona com atendimento semanal em ritmo regular. Consulte os canais do CCLA para os horários e orientações vigentes.",
+      fechado_temporariamente: "A biblioteca está temporariamente fechada para atendimento presencial. Consulte os canais do CCLA para atualizações e orientações."
+    };
+
+    const SERVICE_MODE_LABELS = {
+      em_organizacao: "Em organização",
+      atendimento_eventual: "Atendimento eventual",
+      atendimento_semanal: "Atendimento semanal",
+      fechado_temporariamente: "Fechado temporariamente"
+    };
+
+    let publicServiceState = null;
+
+    function setStatus(msg, cls) {
+      const el = $("status");
+      el.className = "status" + (cls ? " " + cls : "");
+      el.textContent = msg || "";
+    }
+
+    function setPill(id, label, value, showDash = false) {
+      const el = $(id);
+      if (!el) return;
+
+      const txt = String(value ?? "").trim();
+
+      if (!txt) {
+        if (showDash) {
+          el.style.display = "inline-flex";
+          el.textContent = `${label}: —`;
+        } else {
+          el.style.display = "none";
+          el.textContent = "";
+        }
+        return;
+      }
+
+      el.style.display = "inline-flex";
+      el.textContent = `${label}: ${txt}`;
+    }
+
+    function setLine(id, value) {
+      const el = $(id);
+      if (!el) return;
+
+      const txt = String(value ?? "").trim();
+      el.textContent = txt;
+      el.style.display = txt ? "" : "none";
+    }
+
+    function setCover(pathOrUrl) {
+      const box = $("coverBox");
+      const img = $("coverImg");
+      if (!pathOrUrl) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      let src = String(pathOrUrl || "").trim();
+      if (!src) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      if (!/^https?:\/\//i.test(src)) {
+        const { data } = supabase.storage.from("covers").getPublicUrl(src);
+        src = data?.publicUrl || "";
+      }
+
+      if (!src) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      img.src = src;
+      box.classList.remove("empty");
+    }
+
+    function getBibRefFromUrl() {
+      const u = new URL(location.href);
+      return (u.searchParams.get("ref") || u.searchParams.get("bib_ref") || "").trim();
+    }
+
+    function getServiceModeLabel(mode) {
+      return SERVICE_MODE_LABELS[String(mode || "").trim()] || "Funcionamento";
+    }
+
+    function getServiceMessage(state) {
+      const custom = String(state?.public_message || "").trim();
+      if (custom) return custom;
+      return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
+    }
+
+    function buildHeroIntro({ tipoMaterial, editora, ano, tombosCount }) {
+      const parts = [];
+      const tipo = String(tipoMaterial || "").trim();
+      const pub = String(editora || "").trim();
+      const year = String(ano || "").trim();
+
+      if (tipo) parts.push(tipo);
+      if (pub) parts.push(pub);
+      if (year) parts.push(year);
+
+      if (Number.isFinite(Number(tombosCount)) && Number(tombosCount) > 0) {
+        const n = Number(tombosCount);
+        parts.push(n === 1 ? "1 exemplar identificado" : `${n} exemplares identificados`);
+      }
+
+      return parts.join(" · ") || "Livro publicado no catálogo da BLMF.";
+    }
+
+    function applyPublicServiceState() {
+      const state = publicServiceState;
+      const btnReservar = $("btnReservar");
+
+      if (state?.service_mode) {
+        const label = getServiceModeLabel(state.service_mode);
+        setPill("serviceModePill", "funcionamento", label);
+        setPill("heroServiceModeChip", "funcionamento", label);
+      } else {
+        $("serviceModePill").style.display = "none";
+        $("heroServiceModeChip").style.display = "none";
+      }
+
+      setLine("serviceMessageLine", getServiceMessage(state));
+
+      if (state?.allow_reservations === false) {
+        btnReservar.textContent = "Reservas temporariamente fechadas";
+        btnReservar.classList.add("disabled");
+        btnReservar.setAttribute("aria-disabled", "true");
+        btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
+        return;
+      }
+
+      btnReservar.textContent = "Reservar este livro";
+      btnReservar.classList.remove("disabled");
+      btnReservar.setAttribute("aria-disabled", "false");
+      btnReservar.title = "Reservar este livro";
+    }
+
+    async function loadPublicServiceState() {
+      const { data, error } = await supabase
+        .from("v_library_service_public")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("BLMF livro: falha ao carregar v_library_service_public", error);
+        publicServiceState = null;
+        applyPublicServiceState();
+        return;
+      }
+
+      publicServiceState = data ? {
+        service_mode: String(data.service_mode || "").trim(),
+        allow_reservations: data.allow_reservations === false ? false : true,
+        public_message: String(data.public_message || "").trim(),
+        updated_at: data.updated_at || null
+      } : null;
+
+      applyPublicServiceState();
+    }
+
+    function normalizeAuthorName(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    function splitAuthorDisplay(raw) {
+      const txt = String(raw || "").trim();
+      if (!txt) return [];
+      return txt.split(/\s*;\s*/).map(v => String(v || "").trim()).filter(Boolean);
+    }
+
+    function buildAuthorVariants(name) {
+      const out = new Set();
+      const clean = String(name || "").trim();
+      const base = normalizeAuthorName(clean);
+      if (base) out.add(base);
+      if (clean.includes(",")) {
+        const bits = clean.split(",").map(v => v.trim()).filter(Boolean);
+        if (bits.length >= 2) {
+          const swapped = normalizeAuthorName(bits.slice(1).join(" ") + " " + bits[0]);
+          if (swapped) out.add(swapped);
+        }
+      }
+      return Array.from(out);
+    }
+
+    function authorUrl(authorId, authorName = "") {
+      const params = new URLSearchParams();
+      params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
+      params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      if (authorId != null && String(authorId).trim()) {
+        params.set("id", String(authorId).trim());
+        params.set("author_id", String(authorId).trim());
+      }
+      if (authorName && String(authorName).trim()) {
+        params.set("author", String(authorName).trim());
+      }
+      return `${ROUTES.AUTOR}?${params.toString()}`;
+    }
+
+    async function renderBookAuthors(authorText, bookRow) {
+      const host = $("authorLine");
+      if (!host) return;
+
+      const names = splitAuthorDisplay(authorText);
+      const linkedAuthors = [];
+
+      const rawJson = bookRow?.authors_json;
+      if (Array.isArray(rawJson)) {
+        linkedAuthors.push(...rawJson);
+      } else if (typeof rawJson === "string" && rawJson.trim()) {
+        try {
+          const parsed = JSON.parse(rawJson);
+          if (Array.isArray(parsed)) linkedAuthors.push(...parsed);
+        } catch (_) {}
+      }
+
+      if (!linkedAuthors.length && bookRow?.id != null) {
+        try {
+          let rel = await supabase
+            .from("v_book_author_links_public_v2")
+            .select("author_id, display_name, preferred_name, sort_name")
+            .eq("book_id", bookRow.id);
+
+          if (rel.error || !Array.isArray(rel.data) || !rel.data.length) {
+            rel = await supabase
+              .from("v_book_author_links_public")
+              .select("author_id, preferred_name, sort_name")
+              .eq("book_id", bookRow.id);
+          }
+
+          if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
+            linkedAuthors.push(...rel.data.map(row => ({
+              id: row.author_id,
+              display_name: row.display_name,
+              preferred_name: row.preferred_name,
+              sort_name: row.sort_name
+            })));
+          }
+        } catch (_) {}
+      }
+
+      host.innerHTML = "";
+      host.classList.add("author-inline-wrap");
+
+      if (linkedAuthors.length) {
+        linkedAuthors.forEach((row, idx) => {
+          const label = String(row?.display_name || row?.preferred_name || row?.sort_name || names[idx] || "").trim();
+          if (!label) return;
+          const a = document.createElement("a");
+          a.className = "author-card-link";
+          a.href = authorUrl(row?.id ?? row?.author_id ?? null, label);
+          a.textContent = label;
+          host.appendChild(a);
+          if (idx < linkedAuthors.length - 1) {
+            const sep = document.createElement("span");
+            sep.className = "author-separator";
+            sep.textContent = ";";
+            host.appendChild(sep);
+          }
+        });
+        return;
+      }
+
+      if (!names.length) {
+        host.textContent = "—";
+        return;
+      }
+
+      names.forEach((name, idx) => {
+        const span = document.createElement("span");
+        span.className = "author-name-plain";
+        span.textContent = name;
+        host.appendChild(span);
+        if (idx < names.length - 1) {
+          const sep = document.createElement("span");
+          sep.className = "author-separator";
+          sep.textContent = ";";
+          host.appendChild(sep);
+        }
+      });
+    }
+
+    const nk = (s) => String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+    function findCol(keys, wanted) {
+      const map = new Map(keys.map(k => [nk(k), k]));
+      for (const w of wanted) {
+        const hit = map.get(nk(w));
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    async function pickFirstExistingTable(candidates) {
+      for (const t of candidates) {
+        const { error } = await supabase.from(t).select("*").limit(1);
+        if (!error) return t;
+      }
+      return null;
+    }
+
+    async function setupContaButton() {
+      const btnConta = $("btnConta");
+      const btnEntrar = $("btnEntrar");
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
+        let isLibrarian = false;
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("is_librarian")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          isLibrarian = !!data?.is_librarian;
+        } catch (_) {}
+
+        const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
+        btnConta.textContent = isLibrarian ? "Painel" : "Minha conta";
+        btnConta.setAttribute("aria-disabled", "false");
+        btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
+        btnConta.onclick = () => location.assign(targetHref);
+
+        btnEntrar.setAttribute("aria-disabled", "true");
+        btnEntrar.classList.add("disabled");
+        btnEntrar.title = "Você já está logado(a/e).";
+        btnEntrar.removeAttribute("href");
+        btnEntrar.addEventListener("click", (e) => e.preventDefault());
+      } else {
+        btnConta.textContent = "Painel / minha conta";
+        btnConta.setAttribute("aria-disabled", "true");
+        btnConta.title = "Disponível apenas quando logado(a/e).";
+        btnConta.onclick = (e) => e.preventDefault();
+
+        btnEntrar.setAttribute("aria-disabled", "false");
+        btnEntrar.classList.remove("disabled");
+        btnEntrar.title = "Entrar";
+        btnEntrar.href = ROUTES.CADASTRO;
+      }
+    }
+
+    async function reserve(bib_ref) {
+      setStatus("", "");
+
+      if (publicServiceState?.allow_reservations === false) {
+        setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        setStatus("Para reservar, você precisa entrar.", "warn");
+        location.assign(ROUTES.CADASTRO);
+        return;
+      }
+
+      const { error } = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
+        p_user_id: session.user.id,
+        p_bib_refs: [bib_ref],
+        p_expires_at: null,
+        p_notes: "Reserva criada pela página pública do livro."
+      });
+
+      if (error) {
+        setStatus("Não foi possível reservar: " + error.message, "warn");
+        return;
+      }
+
+      setStatus("Reserva registrada.", "ok");
+    }
+
+    async function loadBook() {
+      const bib_ref = getBibRefFromUrl();
+
+      if (!bib_ref) {
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        setStatus("Faltou a referência na URL (ex.: livro.html?ref=0000124).", "warn");
+        return;
+      }
+
+      const booksTable = await pickFirstExistingTable(["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"]);
+      if (!booksTable) {
+        setStatus("Tabela de livros não encontrada.", "bad");
+        return;
+      }
+
+      const peek = await supabase.from(booksTable).select("*").limit(1);
+      if (peek.error) {
+        setStatus("Erro ao inspecionar catálogo: " + peek.error.message, "bad");
+        return;
+      }
+
+      const sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
+      const keys = Object.keys(sample);
+
+      const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
+      const colTit = findCol(keys, ["titulo", "título", "title", "nome"]);
+      const colSub = findCol(keys, ["subtitulo", "subtítulo", "subtitle"]);
+      const colAut = findCol(keys, ["autor_exibicao", "autor_texto_livro", "autor", "author", "autores"]);
+      const colAno = findCol(keys, ["ano", "year"]);
+      const colEdi = findCol(keys, ["editora", "publisher"]);
+      const colLoc = findCol(keys, ["local_publicacao", "local de publicação", "cidade", "place"]);
+      const colEdc = findCol(keys, ["edicao", "edição", "edition"]);
+      const colISBN = findCol(keys, ["isbn"]);
+      const colISSN = findCol(keys, ["issn"]);
+      const colIdi = findCol(keys, ["idioma", "language"]);
+      const colPag = findCol(keys, ["paginas", "páginas", "pages"]);
+      const colTipo = findCol(keys, ["tipo_material", "tipo de material", "material_type"]);
+      const colColecao = findCol(keys, ["colecao", "coleção", "series", "serie", "série", "collection"]);
+      const colVolume = findCol(keys, ["volume", "tomo", "vol"]);
+      const colTradutor = findCol(keys, ["tradutor", "translator"]);
+      const colOrganizador = findCol(keys, ["organizador", "organizadora", "organizer"]);
+      const colAutoresSec = findCol(keys, ["autores_secundarios", "autores secundários", "autores secundarios", "secondary_authors"]);
+      const colAssuntos = findCol(keys, ["assuntos", "subjects", "subject", "palavras_chave", "palavras-chave"]);
+      const colCDD = findCol(keys, ["cdd", "classificacao", "classificação"]);
+      const colRes = findCol(keys, ["resumo", "descricao", "descrição", "description", "obs", "observacao", "observação", "notas", "nota", "notes"]);
+      const colPdf = findCol(keys, ["pdf_url", "url_pdf", "pdf", "arquivo_pdf", "link_pdf", "url"]);
+      const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
+
+      const { data, error } = await supabase
+        .from(booksTable)
+        .select("*")
+        .eq(colRef, bib_ref)
+        .maybeSingle();
+
+      if (error) {
+        setStatus("Erro ao carregar livro: " + error.message, "bad");
+        return;
+      }
+
+      if (!data) {
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        setStatus("Não encontrei esse livro no catálogo.", "warn");
+        return;
+      }
+
+      const titulo = colTit ? (data[colTit] || "") : "";
+      const subtitulo = colSub ? (data[colSub] || "") : "";
+      const autor = colAut ? (data[colAut] || "") : "";
+      const ano = colAno ? (data[colAno] || "") : "";
+      const editora = colEdi ? (data[colEdi] || "") : "";
+      const localPublicacao = colLoc ? (data[colLoc] || "") : "";
+      const edicao = colEdc ? (data[colEdc] || "") : "";
+      const isbn = colISBN ? (data[colISBN] || "") : "";
+      const issn = colISSN ? (data[colISSN] || "") : "";
+      const idioma = colIdi ? (data[colIdi] || "") : "";
+      const paginas = colPag ? (data[colPag] || "") : "";
+      const tipoMaterial = colTipo ? (data[colTipo] || "") : "";
+      let colecao = colColecao ? (data[colColecao] || "") : "";
+      const volume = colVolume ? (data[colVolume] || "") : "";
+      const tradutor = colTradutor ? (data[colTradutor] || "") : "";
+      const organizador = colOrganizador ? (data[colOrganizador] || "") : "";
+      const autoresSecundarios = colAutoresSec ? (data[colAutoresSec] || "") : "";
+      const assuntos = colAssuntos ? (data[colAssuntos] || "") : "";
+      const cdd = colCDD ? (data[colCDD] || "") : "";
+      const resumo = colRes ? (data[colRes] || "") : "";
+      const pdf = colPdf ? (data[colPdf] || "") : "";
+      let cover = colCover ? (data[colCover] || "") : "";
+
+      if (!cover) {
+        const fallback = await supabase
+          .from("books")
+          .select("cover_object_path")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
+
+        if (!fallback.error && fallback.data?.cover_object_path) {
+          cover = fallback.data.cover_object_path;
+        }
+      }
+
+      if (!String(colecao || "").trim()) {
+        const fallbackColecao = await supabase
+          .from("books")
+          .select("colecao")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
+
+        if (!fallbackColecao.error && fallbackColecao.data?.colecao) {
+          colecao = fallbackColecao.data.colecao;
+        }
+      }
+
+      setCover(cover);
+
+      $("title").textContent = titulo || "Sem título";
+      setLine("subtitleLine", subtitulo);
+      await renderBookAuthors(autor, data);
+
+      setPill("bibRefPill", "ref", data[colRef] || "", true);
+      setPill("heroRefChip", "ref", data[colRef] || "");
+      setPill("yearPill", "ano", ano, true);
+      setPill("heroYearChip", "ano", ano);
+      setPill("pubPill", "editora", editora, true);
+      setPill("heroPubChip", "editora", editora);
+      setPill("placePill", "local", localPublicacao);
+      setPill("editionPill", "edição", edicao);
+      setPill("isbnPill", "ISBN", isbn);
+      setPill("issnPill", "ISSN", issn);
+      setPill("langPill", "idioma", idioma);
+      setPill("pagesPill", "páginas", paginas);
+      setPill("typePill", "tipo", tipoMaterial);
+      setPill("collectionPill", "coleção / série", colecao);
+      setPill("volumePill", "volume", volume);
+      setPill("translatorPill", "tradutor", tradutor);
+      setPill("organizerPill", "organizador", organizador);
+      setPill("secondaryAuthorsPill", "autores sec.", autoresSecundarios);
+      setPill("subjectsPill", "assuntos", assuntos);
+      setPill("cddPill", "CDD", cdd, true);
+
+      $("desc").textContent = resumo || "—";
+
+      async function loadTombosForBook(bookRow, bib_ref) {
+        const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+        let tombos = [];
+
+        if (inBook && bookRow?.[inBook] != null) {
+          const raw = bookRow[inBook];
+          if (Array.isArray(raw)) {
+            tombos = raw
+              .flatMap(v => String(v || "").split(/[;,\n]+/))
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
+          } else {
+            tombos = String(raw || "")
+              .split(/[;,\n]+/)
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
+          }
+        }
+
+        if (tombos.length) {
+          return Array.from(new Set(tombos));
+        }
+
+        const candidates = ["v_exemplares_public", "exemplares_public", "v_exemplares", "exemplares"];
+
+        for (const table of candidates) {
+          const peekEx = await supabase.from(table).select("*").limit(1);
+          if (peekEx.error) continue;
+
+          const exKeys = Object.keys((peekEx.data && peekEx.data[0]) ? peekEx.data[0] : {});
+          const exTombo = findCol(exKeys, ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+          const exBibRef = findCol(exKeys, ["bib_ref", "bibref", "ref", "referencia", "referência"]);
+          const exBookId = findCol(exKeys, ["book_id", "livro_id", "id_livro"]);
+
+          if (!exTombo) continue;
+
+          let rows = [];
+
+          if (exBibRef) {
+            const byRef = await supabase.from(table).select("*").eq(exBibRef, bib_ref).limit(100);
+            if (!byRef.error && byRef.data?.length) rows = byRef.data;
+          }
+
+          if (!rows.length && exBookId && bookRow?.id != null) {
+            const byBookId = await supabase.from(table).select("*").eq(exBookId, bookRow.id).limit(100);
+            if (!byBookId.error && byBookId.data?.length) rows = byBookId.data;
+          }
+
+          if (rows.length) {
+            const vals = rows.map(r => String(r?.[exTombo] || "").trim()).filter(Boolean);
+            if (vals.length) return Array.from(new Set(vals));
+          }
+        }
+
+        return [];
+      }
+
+      const tombos = await loadTombosForBook(data, bib_ref);
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
+      setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
+      setPill("exemplaresPill", "exemplares", tombos.length > 1 ? String(tombos.length) : "");
+      setPill("heroExemplaresChip", "exemplares", tombos.length ? String(tombos.length) : "");
+
+      if (pdf) {
+        $("btnAbrirPdf").style.display = "inline-flex";
+        $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user?.id) {
+          const { data: readState, error: readStateError } = await supabase.rpc(
+            "fn_book_restricted_pdf_state_for_current_user",
+            { p_bib_ref: bib_ref }
+          );
+
+          const row = Array.isArray(readState) ? readState[0] : null;
+
+          if (!readStateError && row?.can_show_read_button) {
+            $("btnLer").style.display = "inline-flex";
+            $("btnLer").addEventListener("click", () => {
+              const viewerUrl = new URL("ler.html", location.href);
+              viewerUrl.searchParams.set("ref", bib_ref);
+              location.assign(viewerUrl.toString());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("BLMF livro: falha ao verificar leitura restrita", err);
+      }
+
+      $("btnReservar").addEventListener("click", () => reserve(bib_ref));
+    }
+
+    await setupContaButton();
+    await loadPublicServiceState();
+    await loadBook();
+  </script>
+</body>
+</html>
