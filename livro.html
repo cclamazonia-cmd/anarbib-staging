@@ -862,7 +862,13 @@
             { p_bib_ref: bib_ref }
           );
 
-          const row = Array.isArray(readState) ? readState[0] : null;
+          if (readStateError) {
+            console.warn("BLMF livro: erro na RPC de leitura restrita", readStateError);
+          }
+
+          const row = Array.isArray(readState)
+            ? readState[0]
+            : (readState && typeof readState === "object" ? readState : null);
 
           if (!readStateError && row?.can_show_read_button) {
             $("btnLer").style.display = "inline-flex";
