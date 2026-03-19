@@ -1,1137 +1,906 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AnarBib – leitor pdf</title>
-  <meta name="theme-color" content="#b30018" />
-  <meta name="description" content="Leitor PDF restrito do AnarBib." />
-  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
-  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
-  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AnarBib - Livro</title>
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+
   <style>
-    :root {
-      --bg: #0b0b0b;
-      --panel: rgba(18,18,18,.96);
-      --panel-2: rgba(24,24,24,.94);
-      --line: rgba(255,255,255,.08);
-      --text: #f5f5f5;
-      --muted: #d1d1d1;
-      --red: #b30018;
-      --red-2: #e11d2f;
-      --shadow: 0 18px 40px rgba(0,0,0,.45);
-      --canvas-filter: none;
-      --viewer-bg: #0f0a0b;
+    :root{
+      --panel:rgba(18,18,18,.96);
+      --text:#f2f2f2; --muted:rgba(255,255,255,.72);
+      --red:#b30018; --red2:#e11d2f;
+      --line:rgba(255,255,255,.10);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --ok:#4ade80; --warn:#fbbf24; --bad:#fb7185;
     }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      color: var(--text);
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--text);font-family:Inter, Segoe UI, Arial, sans-serif;}
+    body{
       background-image:
         linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.78)),
         url('https://cclamazonia.noblogs.org/files/2024/11/Arte-CCLA-paredao.jpg');
-      background-size: cover;
-      background-position: center center;
-      background-attachment: fixed;
-      background-repeat: no-repeat;
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
+      background-size:cover;
+      background-position:center;
+      background-attachment:fixed;
+      background-repeat:no-repeat;
     }
-
-    body.fullscreen-mode {
-      overflow: hidden;
-      background-attachment: scroll;
+    a, a:visited{color:inherit;text-decoration:none}
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      height:64px;width:auto;max-width:170px;object-fit:contain;display:block;flex-shrink:0;
+      filter:drop-shadow(0 8px 18px rgba(0,0,0,.35))
     }
-
-    a { color: inherit; }
-
-    .wrap {
-      max-width: 1680px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 18px 24px 28px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .panel {
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(18,18,18,.96);
-      border-radius: 22px;
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(18,18,18,.92);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      cursor:pointer;
       box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .top-nav {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 12px 16px;
-      background: linear-gradient(180deg, #1a1a1a, #121212);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      flex-wrap: wrap;
-    }
-
-    .top-nav-brand {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-
-    .top-nav-mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display:grid;
-      place-items:center;
-      background: linear-gradient(135deg, rgba(225,29,47,.92), rgba(179,0,24,.92));
-      border:1px solid rgba(255,255,255,.12);
-      font-weight: 900;
-      letter-spacing: .02em;
-      box-shadow: var(--shadow);
-      flex: 0 0 42px;
-    }
-
-    .top-nav-copy {
-      min-width:0;
-    }
-
-    .top-nav-copy strong {
-      display:block;
-      font-size: .95rem;
-      line-height: 1.2;
-    }
-
-    .top-nav-copy span {
-      display:block;
-      color: var(--muted);
-      font-size: .82rem;
-      line-height: 1.2;
-      margin-top: 2px;
-    }
-
-    .quick-nav {
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-      justify-content:flex-end;
-    }
-
-    .hero {
-      width: 100%;
-      border: 1px solid rgba(255,255,255,.08);
-      background: linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
-      border-radius: 22px;
-      padding: 18px;
-      box-shadow: var(--shadow);
-      display:grid;
-      gap:14px;
-    }
-
-    .hero-top {
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    .hero-copy {
-      min-width:0;
-      flex: 1 1 420px;
-    }
-
-    .hero h1 {
-      margin:0 0 6px;
-      font-size: clamp(1.65rem, 2.8vw, 2.5rem);
-      line-height:1.05;
-    }
-
-    .hero p {
-      margin:0;
-      color: rgba(255,255,255,.92);
-      font-size: .98rem;
-      line-height: 1.4;
-    }
-
-    .logo-reserve {
-      display:grid;
-      grid-template-columns: repeat(2, minmax(120px, 150px));
-      gap:10px;
-      align-items:stretch;
-      flex: 0 0 auto;
-    }
-
-    .logo-slot {
-      min-height: 70px;
-      border-radius: 16px;
-      border: 1px dashed rgba(255,255,255,.26);
-      background: rgba(18,18,18,.24);
-      display:grid;
-      place-items:center;
-      padding: 10px;
-      text-align:center;
-      color: rgba(255,255,255,.88);
-      font-size: .82rem;
-      line-height: 1.25;
-      font-weight: 700;
-    }
-
-    .hero-meta {
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
-
-    .hero-chip, .meta-chip {
+      font-weight:900;
+      font-size:.95rem;
+      text-decoration:none;
       display:inline-flex;
       align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(18,18,18,.92);
-      color:#fff;
-      font-size:.84rem;
-      line-height:1.2;
-      box-shadow: var(--shadow);
-      white-space: nowrap;
-    }
-
-    .hero-chip strong, .meta-chip strong {
-      color:#ffb3bb;
-      font-weight:700;
-    }
-
-    .button, .action-link, .mini-action, .select, .input {
-      width:auto;
-      min-height:42px;
-      padding:10px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(18,18,18,.92);
-      color:#fff;
-      font-size:.95rem;
-      font-family: inherit;
-      box-shadow: var(--shadow);
-      text-decoration:none;
-      outline:none;
-    }
-
-    .button, .mini-action { cursor:pointer; }
-
-    .button.primary {
-      border:none;
-      background: linear-gradient(135deg, var(--red-2), var(--red));
-      font-weight:900;
-      color:#fff;
-    }
-
-    .button.secondary, .action-link, .mini-action {
-      font-weight:700;
-    }
-
-    .button:hover,
-    .button.secondary:hover,
-    .action-link:hover,
-    .mini-action:hover,
-    .select:hover,
-    .input:hover,
-    .select:focus,
-    .input:focus {
-      border-color: rgba(255,255,255,.22);
-      color: var(--text);
-      transform: translateY(-1px);
-    }
-
-    .reader-shell {
-      display:grid;
-      gap:14px;
-    }
-
-    .toolbar {
-      padding: 14px 16px;
-      display:grid;
-      gap:12px;
-      background: rgba(18,18,18,.96);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-    }
-
-    .toolbar-line {
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-
-    .toolbar-group {
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      gap:10px;
-    }
-
-    .toolbar-label {
-      font-size: .84rem;
-      color: #ffe3e7;
-      font-weight: 800;
-      letter-spacing: .01em;
-    }
-
-    .page-input {
-      width: 88px;
-      text-align: center;
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-
-    .status-row {
-      display:grid;
-      gap:10px;
-    }
-
-    .status-box {
-      margin:0;
-      padding:12px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      color: var(--muted);
-    }
-
-    .status-box.ok { color: #d8ffe2; border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); }
-    .status-box.warn { color: #fff2cc; border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); }
-    .status-box.err { color: #ffd6da; border-color: rgba(225,29,47,.35); background: rgba(225,29,47,.12); }
-
-    .error-box {
-      display:none;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid rgba(225,29,47,.35);
-      background: rgba(225,29,47,.12);
-      color:#ffd6da;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .error-box.show { display:block; }
-
-    .sheet {
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:22px;
-      overflow:hidden;
-      background: rgba(18,18,18,.96);
-      box-shadow: var(--shadow);
-    }
-
-    .sheet-head {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:14px 18px;
-      background: linear-gradient(180deg, #1a1a1a, #121212);
-      border-bottom:1px solid rgba(255,255,255,.06);
-      flex-wrap: wrap;
-    }
-
-    .sheet-title {
-      font-weight: 800;
-      font-size: 1rem;
-    }
-
-    .sheet-sub {
-      font-size: .86rem;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .viewer-shell {
-      padding: 14px;
-      display:grid;
-      gap:14px;
-    }
-
-    .viewer {
-      min-height: 72vh;
-      max-height: 78vh;
-      padding: 16px;
-      border-radius: 16px;
-      background: var(--viewer-bg);
-      border: 1px solid rgba(255,255,255,.08);
-      overflow: auto;
-      position: relative;
-      overscroll-behavior: contain;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
-    }
-
-    .pages {
-      display:grid;
-      gap:16px;
       justify-content:center;
     }
-
-    .page-card {
-      padding:12px;
-      background: #1b1214;
+    .btn.primary{border:none;background:linear-gradient(135deg,var(--red2),var(--red))}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .btn:disabled{opacity:.58;cursor:default}
+    .btn.mini{padding:7px 10px;font-size:.85rem;border-radius:12px}
+    .btn.disabled, .btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed;pointer-events:none}
+    .card{
       border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-      scroll-margin-top: 24px;
+      background:var(--panel);
+      border-radius:22px;
+      padding:16px;
+      box-shadow:var(--shadow)
     }
-
-    .page-card.current {
-      border-color: rgba(212,75,87,.55);
-      box-shadow: 0 0 0 1px rgba(212,75,87,.15), 0 10px 24px rgba(0,0,0,.28);
+    .hero{
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
+      border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px;
     }
-
-    .page-card.hidden-page { display:none; }
-
-    .page-card canvas {
-      display:block;
-      max-width:100%;
+    .hero h1{margin:0 0 6px;font-size:1.5rem}
+    .hero p{margin:0;color:rgba(255,255,255,.92)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);padding:7px 10px;border-radius:999px;font-size:.9rem;color:rgba(255,255,255,.86)
+    }
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .section-title{margin:0 0 12px;font-size:1.05rem}
+    .mini{font-size:.86rem;color:var(--muted)}
+    .subtle{opacity:.92}
+    .hidden{display:none !important}
+    .title{margin:0 0 6px;font-size:1.45rem}
+    .muted{color:var(--muted)}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    @media (max-width:720px){.meta{grid-template-columns:1fr}}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(18,18,18,.65);
+      padding:7px 10px;border-radius:999px;
+      font-size:.9rem;color:var(--muted);
+      flex-wrap:wrap;overflow-wrap:anywhere;
+    }
+    .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
+    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+    .detail{
+      display:grid;
+      grid-template-columns: 260px minmax(0,1fr);
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width:820px){.detail{grid-template-columns:1fr}}
+    .coverbox{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      border-radius:18px;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:320px;
+    }
+    .coverbox.empty{display:none}
+    .coverimg{
+      width:100%;
+      max-width:220px;
       height:auto;
-      border-radius:8px;
-      background: white;
-      filter: var(--canvas-filter);
-      user-select:none;
-      -webkit-user-drag:none;
-      pointer-events:none;
+      max-height:340px;
+      object-fit:contain;
+      display:block;
+      border-radius:12px;
+      box-shadow:var(--shadow);
     }
+    .contentbox{min-width:0}
 
-    .page-label {
-      margin:0 0 8px;
-      font-size:.84rem;
-      color: var(--muted);
+    .author-inline-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .author-name-plain { color: var(--muted); }
+    .author-card-link {
+      display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(140,110,115,.65); background:transparent; color:#f2f2f2; text-decoration:none;
+      font-weight:600; transition:background .15s ease, border-color .15s ease, transform .15s ease;
     }
-
-    .hidden { display:none !important; }
-
-    .no-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
-    .no-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 999px; }
-    .no-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
-
-    body.fullscreen-mode .top-nav,
-    body.fullscreen-mode .hero,
-    body.fullscreen-mode .toolbar,
-    body.fullscreen-mode .status-row,
-    body.fullscreen-mode .sheet-head {
-      display:none !important;
-    }
-
-    body.fullscreen-mode .wrap {
-      max-width: none;
-      padding: 0;
-      gap: 0;
-      width: 100vw;
-    }
-
-    body.fullscreen-mode .sheet,
-    body.fullscreen-mode .reader-shell,
-    body.fullscreen-mode .viewer-shell {
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      background: transparent;
-      gap: 0;
-      padding: 0;
-    }
-
-    body.fullscreen-mode .viewer {
-      min-height: 100vh;
-      max-height: 100vh;
-      height: 100vh;
-      border: none;
-      border-radius: 0;
-      padding: 18px 24px 28px;
-      background: #050607;
-    }
-
-    body.fullscreen-mode .page-card {
-      background: rgba(16,16,16,.92);
-    }
-
-    @media print {
-      body * { display:none !important; }
-      body::before {
-        content: "Impressão desativada neste leitor.";
-        display:block !important;
-        color:#111;
-        padding:24px;
-        font:16px/1.4 system-ui, sans-serif;
-      }
-    }
-
-    @media (max-width: 980px) {
-      .top-nav,
-      .hero-top,
-      .toolbar-line {
-        justify-content:flex-start;
-      }
-
-      .logo-reserve {
-        grid-template-columns: 1fr 1fr;
-        width: 100%;
-      }
-    }
-
-    @media (max-width: 760px) {
-      .wrap { padding: 10px 12px 22px; }
-      .hero { padding: 14px; }
-      .top-nav { padding: 10px 12px; }
-      .toolbar,
-      .viewer-shell { padding: 12px; }
-      .viewer { padding: 10px; min-height: 66vh; max-height: none; }
-      .button,
-      .action-link,
-      .mini-action,
-      .select,
-      .input { width: 100%; }
-      .quick-nav,
-      .toolbar-group { width: 100%; }
-    }
+    .author-card-link:hover { background:rgba(255,255,255,.04); border-color:rgba(170,140,145,.85); transform:translateY(-1px); }
+    .author-separator { color: var(--muted); margin:0 2px; }
   </style>
 </head>
 <body>
-  <main class="wrap" id="pageRoot">
-    <header class="top-nav" id="topNav">
-      <div class="top-nav-brand">
-        <div class="top-nav-mark" aria-hidden="true">A</div>
-        <div class="top-nav-copy">
-          <strong>AnarBib</strong>
-          <span>Leitor PDF · navegação rápida</span>
-        </div>
-      </div>
-      <nav class="quick-nav" aria-label="Navegação rápida">
-        <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogos</a>
-        <a class="button secondary" id="btnNavLivro" href="livro.html">Livro</a>
-        <a class="button secondary" id="btnNavConta" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html">Minha conta</a>
-        <a class="button secondary" id="btnNavPainel" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html">Painel</a>
-      </nav>
-    </header>
-
-    <section class="hero" id="heroPanel">
-      <div class="hero-top">
-        <div class="hero-copy">
-          <h1>Leitor PDF</h1>
-          <p id="subline">Preparando a leitura…</p>
-        </div>
-        <div class="logo-reserve" aria-label="Espaço reservado para logótipos de bibliotecas">
-          <div class="logo-slot">Espaço reservado<br>para logótipo da biblioteca</div>
-          <div class="logo-slot">Espaço reservado<br>para logótipo da rede</div>
-        </div>
-      </div>
-      <div class="hero-meta">
-        <span class="hero-chip" id="chipRef"><strong>Ref.</strong> —</span>
-        <span class="hero-chip" id="chipPages"><strong>Páginas</strong> —</span>
-        <span class="hero-chip" id="chipMode"><strong>Modo</strong> contínuo</span>
-      </div>
-    </section>
-
-    <section class="reader-shell">
-      <section class="toolbar" id="toolbarPanel">
-        <div class="toolbar-line">
-          <div class="toolbar-group">
-            <a class="button secondary" id="btnBackBook" href="livro.html">Voltar ao livro</a>
-            <button class="button secondary" id="btnReload" type="button">Recarregar</button>
-            <a class="button primary hidden" id="btnLogin" href="#">Entrar</a>
-            <button class="button primary" id="btnFullscreen" type="button">Tela cheia</button>
-          </div>
-          <div class="toolbar-group">
-            <button class="mini-action" id="btnPrev" type="button">← Página</button>
-            <input class="input page-input" id="pageInput" type="number" min="1" value="1" />
-            <span class="meta-chip" id="pageCount"><strong>Página</strong> / —</span>
-            <button class="mini-action" id="btnNext" type="button">Página →</button>
-          </div>
-        </div>
-
-        <div class="toolbar-line">
-          <div class="toolbar-group">
-            <button class="mini-action" id="btnZoomOut" type="button">− Zoom</button>
-            <button class="mini-action" id="btnZoomIn" type="button">+ Zoom</button>
-            <button class="mini-action" id="btnFitWidth" type="button">Ajustar à largura</button>
-            <button class="mini-action" id="btnMode" type="button">Modo contínuo</button>
-          </div>
-          <div class="toolbar-group">
-            <label class="toolbar-label" for="themeSelect">Tema</label>
-            <select class="select" id="themeSelect">
-              <option value="dark">Escuro</option>
-              <option value="light">Claro</option>
-              <option value="sepia">Sépia</option>
-              <option value="night">Noite</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <div class="status-row" id="statusRow">
-        <p class="status-box" id="statusBox">A iniciar…</p>
-        <div class="error-box" id="errorBox"></div>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo"
+             src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png"
+             alt="AnarBib" />
       </div>
 
-      <section class="sheet">
-        <div class="sheet-head">
-          <div>
-            <div class="sheet-title">AnarBib · leitura em linha</div>
-            <div class="sheet-sub" id="sheetSub">Use os controlos acima para ajustar a leitura.</div>
-          </div>
-          <div class="meta-chip" id="fullscreenHint"><strong>Dica</strong> ESC sai da tela cheia</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="https://cclamazonia.noblogs.org/" rel="noopener">Voltar ao blogue</a>
+        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao catálogo</a>
+        <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
+        <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1 id="title">Carregando…</h1>
+      <p id="heroIntro">Carregando dados do livro…</p>
+      <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
+      <div class="author-inline-wrap" id="authorLine" style="margin-top:10px">—</div>
+      <div class="chips">
+        <div class="chip" id="heroRefChip" style="display:none"></div>
+        <div class="chip" id="heroYearChip" style="display:none"></div>
+        <div class="chip" id="heroPubChip" style="display:none"></div>
+        <div class="chip" id="heroExemplaresChip" style="display:none"></div>
+        <div class="chip" id="heroServiceModeChip" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="detail">
+        <div class="coverbox empty" id="coverBox">
+          <img class="coverimg" id="coverImg" alt="Capa do livro" />
         </div>
-        <div class="viewer-shell">
-          <div class="viewer no-scrollbar" id="viewer">
-            <div class="pages" id="pages"></div>
+
+        <div class="contentbox">
+          <h2 class="section-title">Detalhes da edição</h2>
+
+          <div class="meta" style="margin-top:12px">
+            <div class="pill" id="bibRefPill">ref: —</div>
+            <div class="pill" id="tomboPill">tombo: —</div>
+            <div class="pill" id="exemplaresPill" style="display:none"></div>
+            <div class="pill" id="yearPill">ano: —</div>
+            <div class="pill" id="pubPill">editora: —</div>
+            <div class="pill" id="placePill" style="display:none"></div>
+            <div class="pill" id="editionPill" style="display:none"></div>
+            <div class="pill" id="isbnPill" style="display:none"></div>
+            <div class="pill" id="issnPill" style="display:none"></div>
+            <div class="pill" id="langPill" style="display:none"></div>
+            <div class="pill" id="pagesPill" style="display:none"></div>
+            <div class="pill" id="typePill" style="display:none"></div>
+            <div class="pill" id="collectionPill" style="display:none"></div>
+            <div class="pill" id="volumePill" style="display:none"></div>
+            <div class="pill" id="translatorPill" style="display:none"></div>
+            <div class="pill" id="organizerPill" style="display:none"></div>
+            <div class="pill" id="secondaryAuthorsPill" style="display:none"></div>
+            <div class="pill" id="subjectsPill" style="display:none"></div>
+            <div class="pill" id="cddPill">CDD: —</div>
           </div>
+
+          <div class="hr"></div>
+
+          <div class="muted" id="desc">—</div>
+
+          <div class="pill" id="serviceModePill" style="display:none;margin-top:12px"></div>
+          <div class="muted" id="serviceMessageLine" style="display:none;margin-top:10px"></div>
+
+          <div class="actions">
+            <button class="btn primary" id="btnReservar" type="button">Reservar este livro</button>
+            <button class="btn" id="btnLer" type="button" style="display:none">Ler</button>
+            <button class="btn" id="btnAbrirPdf" type="button" style="display:none">Abrir PDF</button>
+          </div>
+
+          <div class="status" id="status"></div>
         </div>
-      </section>
-    </section>
-  </main>
+      </div>
+    </div>
+  </div>
 
   <script type="module">
     import { supabase } from "./js/blmf-supabase.js";
 
-    const GH_BASE = "https://cclamazonia-cmd.github.io";
-    const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
-    const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
-    const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
-    const PDFJS_MAIN = "./vendor/pdfjs/build/pdf.mjs";
-    const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
-
-    const params = new URLSearchParams(location.search);
-    const bibRef = (params.get("ref") || "").trim();
-    const storageKey = bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default";
-
-    const state = {
-      scale: 1.15,
-      blobUrl: null,
-      pdfDoc: null,
-      rendering: false,
-      pageElements: [],
-      currentPage: 1,
-      totalPages: 0,
-      mode: "continuous",
-      theme: "dark",
-      observer: null,
-      fitWidth: false,
-      fitWidthLocked: false,
-      fullscreenRestoreMode: null,
+    const GH_BASE = location.origin;
+    const ROUTES = {
+      BLOG_HOME: "https://cclamazonia.noblogs.org/",
+      CATALOGO: `${GH_BASE}/anarbib-staging/`,
+      CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
+      CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
+      PAINEL: `${GH_BASE}/anarbib-conta-staging/painel.html`,
+      AUTOR: new URL("autor.html", location.href).toString(),
+      AUTHOR_PAGE_VERSION: '20260313-1',
     };
+
+    document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
 
     const $ = (id) => document.getElementById(id);
 
-    let statusTimer = null;
-
-    function setStatus(message, kind = "", autoClearMs = 0) {
-      const box = $("statusBox");
-      if (statusTimer) {
-        clearTimeout(statusTimer);
-        statusTimer = null;
-      }
-      box.hidden = !message;
-      box.textContent = message;
-      box.className = `status-box${kind ? ` ${kind}` : ""}`;
-      if (message && autoClearMs > 0) {
-        statusTimer = window.setTimeout(() => {
-          box.hidden = true;
-          box.textContent = "";
-          box.className = "status-box";
-          statusTimer = null;
-        }, autoClearMs);
-      }
-    }
-
-    function showError(message, details = "") {
-      const box = $("errorBox");
-      box.textContent = details ? `${message}\n\n${details}` : message;
-      box.classList.add("show");
-      setStatus(message, "err");
-    }
-
-    function clearError() {
-      const box = $("errorBox");
-      box.textContent = "";
-      box.classList.remove("show");
-    }
-
     function buildCadastroUrl(nextUrl = location.href) {
-      const u = new URL(CADASTRO_URL);
+      const u = new URL(ROUTES.CADASTRO);
       u.searchParams.set("next", nextUrl);
       return u.toString();
     }
 
-    function loadPrefs() {
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (typeof data.scale === "number") state.scale = Math.min(3, Math.max(.6, data.scale));
-        if (typeof data.currentPage === "number") state.currentPage = Math.max(1, Math.floor(data.currentPage));
-        if (["continuous", "single"].includes(data.mode)) state.mode = data.mode;
-        if (["dark", "light", "sepia", "night"].includes(data.theme)) state.theme = data.theme;
-        state.fitWidth = !!data.fitWidth;
-      } catch (err) {
-        console.warn("AnarBib ler v3: prefs ignoradas", err);
-      }
+    document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
+
+    const DEFAULT_SERVICE_MESSAGES = {
+      em_organizacao: "A biblioteca está em organização. O atendimento ocorre conforme a capacidade operacional atual.",
+      atendimento_eventual: "A biblioteca funciona com atendimento eventual. Consulte os canais do CCLA para informações atualizadas.",
+      atendimento_semanal: "A biblioteca funciona com atendimento semanal em ritmo regular. Consulte os canais do CCLA para os horários e orientações vigentes.",
+      fechado_temporariamente: "A biblioteca está temporariamente fechada para atendimento presencial. Consulte os canais do CCLA para atualizações e orientações."
+    };
+
+    const SERVICE_MODE_LABELS = {
+      em_organizacao: "Em organização",
+      atendimento_eventual: "Atendimento eventual",
+      atendimento_semanal: "Atendimento semanal",
+      fechado_temporariamente: "Fechado temporariamente"
+    };
+
+    let publicServiceState = null;
+
+    function setStatus(msg, cls) {
+      const el = $("status");
+      el.className = "status" + (cls ? " " + cls : "");
+      el.textContent = msg || "";
     }
 
-    function savePrefs() {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify({
-          scale: state.scale,
-          currentPage: state.currentPage,
-          mode: state.mode,
-          theme: state.theme,
-          fitWidth: state.fitWidth,
-        }));
-      } catch (err) {
-        console.warn("AnarBib ler v3: prefs não gravadas", err);
-      }
-    }
-
-    function applyTheme() {
-      const root = document.documentElement;
-      if (state.theme === "light") {
-        root.style.setProperty("--viewer-bg", "#f4eeef");
-        root.style.setProperty("--canvas-filter", "none");
-      } else if (state.theme === "sepia") {
-        root.style.setProperty("--viewer-bg", "#2a211c");
-        root.style.setProperty("--canvas-filter", "sepia(.55) saturate(.9) brightness(.98)");
-      } else if (state.theme === "night") {
-        root.style.setProperty("--viewer-bg", "#050607");
-        root.style.setProperty("--canvas-filter", "invert(1) hue-rotate(180deg) contrast(.95) brightness(.9)");
-      } else {
-        root.style.setProperty("--viewer-bg", "#0f0a0b");
-        root.style.setProperty("--canvas-filter", "none");
-      }
-      $("themeSelect").value = state.theme;
-      savePrefs();
-    }
-
-    async function ensureSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        $("btnLogin").classList.remove("hidden");
-        $("btnLogin").href = buildCadastroUrl();
-        throw new Error("Sessão ausente. Entra novamente para abrir esta leitura.");
-      }
-      return session;
-    }
-
-    async function ensureProfile() {
-      try {
-        const { error } = await supabase.rpc("fn_ensure_current_user_profile");
-        if (error) console.warn("AnarBib ler v3: erro ao garantir profile", error);
-      } catch (err) {
-        console.warn("AnarBib ler v3: exceção ao garantir profile", err);
-      }
-    }
-
-    async function loadPdfJs() {
-      try {
-        const pdfjsLib = await import(PDFJS_MAIN);
-        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-        return pdfjsLib;
-      } catch (err) {
-        throw new Error(`PDF.js não foi encontrado em ./vendor/pdfjs/build/. Confere se os ficheiros pdf.mjs e pdf.worker.mjs foram colocados nesse caminho.\n\n${err?.message || err}`);
-      }
-    }
-
-    function normalizeBlob(data) {
-      if (data instanceof Blob) return data;
-      if (data instanceof ArrayBuffer) return new Blob([data], { type: "application/pdf" });
-      if (data instanceof Uint8Array) return new Blob([data], { type: "application/pdf" });
-      if (typeof data === "string") return new Blob([data], { type: "application/pdf" });
-      if (data) return new Blob([data], { type: "application/pdf" });
-      throw new Error("Resposta vazia ao pedir o PDF.");
-    }
-
-    async function downloadPdfBlob(ref) {
-      const session = await ensureSession();
-      await ensureProfile();
-
-      const invokeAttempt = await supabase.functions.invoke("read-pdf", {
-        body: { bib_ref: ref },
-      });
-
-      if (!invokeAttempt.error && invokeAttempt.data) {
-        return normalizeBlob(invokeAttempt.data);
-      }
-
-      const fallbackResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/read-pdf`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ bib_ref: ref }),
-      });
-
-      if (!fallbackResponse.ok) {
-        const details = await fallbackResponse.text().catch(() => "");
-        const invokeMessage = invokeAttempt.error?.message ? `\n\n${invokeAttempt.error.message}` : "";
-        throw new Error(`Falha ao pedir o PDF (${fallbackResponse.status}).${invokeMessage}${details ? `\n\n${details}` : ""}`);
-      }
-
-      return await fallbackResponse.blob();
-    }
-
-    function updatePageUi() {
-      $("pageInput").value = String(state.currentPage || 1);
-      $("pageCount").innerHTML = `<strong>Página</strong> / ${state.totalPages || "—"}`;
-      $("chipPages").innerHTML = `<strong>Páginas</strong> ${state.totalPages || "—"}`;
-      $("chipMode").innerHTML = `<strong>Modo</strong> ${state.mode === "single" ? "uma página" : "contínuo"}`;
-      $("btnMode").textContent = state.mode === "single" ? "Modo uma página" : "Modo contínuo";
-      state.pageElements.forEach((el, index) => {
-        const pageNo = index + 1;
-        el.classList.toggle("current", pageNo === state.currentPage);
-        if (state.mode === "single") {
-          el.classList.toggle("hidden-page", pageNo !== state.currentPage);
-        } else {
-          el.classList.remove("hidden-page");
-        }
-      });
-      savePrefs();
-    }
-
-    function scrollToCurrentPage(behavior = "smooth") {
-      const el = state.pageElements[state.currentPage - 1];
+    function setPill(id, label, value, showDash = false) {
+      const el = $(id);
       if (!el) return;
-      if (state.mode === "single") {
-        $("viewer").scrollTo({ top: 0, behavior });
+
+      const txt = String(value ?? "").trim();
+
+      if (!txt) {
+        if (showDash) {
+          el.style.display = "inline-flex";
+          el.textContent = `${label}: —`;
+        } else {
+          el.style.display = "none";
+          el.textContent = "";
+        }
+        return;
+      }
+
+      el.style.display = "inline-flex";
+      el.textContent = `${label}: ${txt}`;
+    }
+
+    function setLine(id, value) {
+      const el = $(id);
+      if (!el) return;
+
+      const txt = String(value ?? "").trim();
+      el.textContent = txt;
+      el.style.display = txt ? "" : "none";
+    }
+
+    function setCover(pathOrUrl) {
+      const box = $("coverBox");
+      const img = $("coverImg");
+      if (!pathOrUrl) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      let src = String(pathOrUrl || "").trim();
+      if (!src) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      if (!/^https?:\/\//i.test(src)) {
+        const { data } = supabase.storage.from("covers").getPublicUrl(src);
+        src = data?.publicUrl || "";
+      }
+
+      if (!src) {
+        box.classList.add("empty");
+        img.removeAttribute("src");
+        return;
+      }
+
+      img.src = src;
+      box.classList.remove("empty");
+    }
+
+    function getBibRefFromUrl() {
+      const u = new URL(location.href);
+      return (u.searchParams.get("ref") || u.searchParams.get("bib_ref") || "").trim();
+    }
+
+    function getServiceModeLabel(mode) {
+      return SERVICE_MODE_LABELS[String(mode || "").trim()] || "Funcionamento";
+    }
+
+    function getServiceMessage(state) {
+      const custom = String(state?.public_message || "").trim();
+      if (custom) return custom;
+      return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
+    }
+
+    function buildHeroIntro({ tipoMaterial, editora, ano, tombosCount }) {
+      const parts = [];
+      const tipo = String(tipoMaterial || "").trim();
+      const pub = String(editora || "").trim();
+      const year = String(ano || "").trim();
+
+      if (tipo) parts.push(tipo);
+      if (pub) parts.push(pub);
+      if (year) parts.push(year);
+
+      if (Number.isFinite(Number(tombosCount)) && Number(tombosCount) > 0) {
+        const n = Number(tombosCount);
+        parts.push(n === 1 ? "1 exemplar identificado" : `${n} exemplares identificados`);
+      }
+
+      return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
+    }
+
+    function applyPublicServiceState() {
+      const state = publicServiceState;
+      const btnReservar = $("btnReservar");
+
+      if (state?.service_mode) {
+        const label = getServiceModeLabel(state.service_mode);
+        setPill("serviceModePill", "funcionamento", label);
+        setPill("heroServiceModeChip", "funcionamento", label);
       } else {
-        el.scrollIntoView({ behavior, block: "start" });
+        $("serviceModePill").style.display = "none";
+        $("heroServiceModeChip").style.display = "none";
+      }
+
+      setLine("serviceMessageLine", getServiceMessage(state));
+
+      if (state?.allow_reservations === false) {
+        btnReservar.textContent = "Reservas temporariamente fechadas";
+        btnReservar.classList.add("disabled");
+        btnReservar.setAttribute("aria-disabled", "true");
+        btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
+        return;
+      }
+
+      btnReservar.textContent = "Reservar este livro";
+      btnReservar.classList.remove("disabled");
+      btnReservar.setAttribute("aria-disabled", "false");
+      btnReservar.title = "Reservar este livro";
+    }
+
+    async function loadPublicServiceState() {
+      const { data, error } = await supabase
+        .from("v_library_service_public")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("AnarBib livro: falha ao carregar v_library_service_public", error);
+        publicServiceState = null;
+        applyPublicServiceState();
+        return;
+      }
+
+      publicServiceState = data ? {
+        service_mode: String(data.service_mode || "").trim(),
+        allow_reservations: data.allow_reservations === false ? false : true,
+        public_message: String(data.public_message || "").trim(),
+        updated_at: data.updated_at || null
+      } : null;
+
+      applyPublicServiceState();
+    }
+
+    function normalizeAuthorName(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    function splitAuthorDisplay(raw) {
+      const txt = String(raw || "").trim();
+      if (!txt) return [];
+      return txt.split(/\s*;\s*/).map(v => String(v || "").trim()).filter(Boolean);
+    }
+
+    function buildAuthorVariants(name) {
+      const out = new Set();
+      const clean = String(name || "").trim();
+      const base = normalizeAuthorName(clean);
+      if (base) out.add(base);
+      if (clean.includes(",")) {
+        const bits = clean.split(",").map(v => v.trim()).filter(Boolean);
+        if (bits.length >= 2) {
+          const swapped = normalizeAuthorName(bits.slice(1).join(" ") + " " + bits[0]);
+          if (swapped) out.add(swapped);
+        }
+      }
+      return Array.from(out);
+    }
+
+    function authorUrl(authorId, authorName = "") {
+      const params = new URLSearchParams();
+      params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
+      params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      if (authorId != null && String(authorId).trim()) {
+        params.set("id", String(authorId).trim());
+        params.set("author_id", String(authorId).trim());
+      }
+      if (authorName && String(authorName).trim()) {
+        params.set("author", String(authorName).trim());
+      }
+      return `${ROUTES.AUTOR}?${params.toString()}`;
+    }
+
+    async function renderBookAuthors(authorText, bookRow) {
+      const host = $("authorLine");
+      if (!host) return;
+
+      const names = splitAuthorDisplay(authorText);
+      const linkedAuthors = [];
+
+      const rawJson = bookRow?.authors_json;
+      if (Array.isArray(rawJson)) {
+        linkedAuthors.push(...rawJson);
+      } else if (typeof rawJson === "string" && rawJson.trim()) {
+        try {
+          const parsed = JSON.parse(rawJson);
+          if (Array.isArray(parsed)) linkedAuthors.push(...parsed);
+        } catch (_) {}
+      }
+
+      if (!linkedAuthors.length && bookRow?.id != null) {
+        try {
+          let rel = await supabase
+            .from("v_book_author_links_public_v2")
+            .select("author_id, display_name, preferred_name, sort_name")
+            .eq("book_id", bookRow.id);
+
+          if (rel.error || !Array.isArray(rel.data) || !rel.data.length) {
+            rel = await supabase
+              .from("v_book_author_links_public")
+              .select("author_id, preferred_name, sort_name")
+              .eq("book_id", bookRow.id);
+          }
+
+          if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
+            linkedAuthors.push(...rel.data.map(row => ({
+              id: row.author_id,
+              display_name: row.display_name,
+              preferred_name: row.preferred_name,
+              sort_name: row.sort_name
+            })));
+          }
+        } catch (_) {}
+      }
+
+      host.innerHTML = "";
+      host.classList.add("author-inline-wrap");
+
+      if (linkedAuthors.length) {
+        linkedAuthors.forEach((row, idx) => {
+          const label = String(row?.display_name || row?.preferred_name || row?.sort_name || names[idx] || "").trim();
+          if (!label) return;
+          const a = document.createElement("a");
+          a.className = "author-card-link";
+          a.href = authorUrl(row?.id ?? row?.author_id ?? null, label);
+          a.textContent = label;
+          host.appendChild(a);
+          if (idx < linkedAuthors.length - 1) {
+            const sep = document.createElement("span");
+            sep.className = "author-separator";
+            sep.textContent = ";";
+            host.appendChild(sep);
+          }
+        });
+        return;
+      }
+
+      if (!names.length) {
+        host.textContent = "—";
+        return;
+      }
+
+      names.forEach((name, idx) => {
+        const span = document.createElement("span");
+        span.className = "author-name-plain";
+        span.textContent = name;
+        host.appendChild(span);
+        if (idx < names.length - 1) {
+          const sep = document.createElement("span");
+          sep.className = "author-separator";
+          sep.textContent = ";";
+          host.appendChild(sep);
+        }
+      });
+    }
+
+    const nk = (s) => String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+    function findCol(keys, wanted) {
+      const map = new Map(keys.map(k => [nk(k), k]));
+      for (const w of wanted) {
+        const hit = map.get(nk(w));
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    async function pickFirstExistingTable(candidates) {
+      for (const t of candidates) {
+        const { error } = await supabase.from(t).select("*").limit(1);
+        if (!error) return t;
+      }
+      return null;
+    }
+
+    async function setupContaButton() {
+      const btnConta = $("btnConta");
+      const btnEntrar = $("btnEntrar");
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
+        let isLibrarian = false;
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("is_librarian")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          isLibrarian = !!data?.is_librarian;
+        } catch (_) {}
+
+        const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
+        btnConta.textContent = isLibrarian ? "Painel" : "Minha conta";
+        btnConta.setAttribute("aria-disabled", "false");
+        btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
+        btnConta.onclick = () => location.assign(targetHref);
+
+        btnEntrar.setAttribute("aria-disabled", "true");
+        btnEntrar.classList.add("disabled");
+        btnEntrar.title = "Você já está logado(a/e).";
+        btnEntrar.removeAttribute("href");
+        btnEntrar.addEventListener("click", (e) => e.preventDefault());
+      } else {
+        btnConta.textContent = "Painel / minha conta";
+        btnConta.setAttribute("aria-disabled", "true");
+        btnConta.title = "Disponível apenas quando logado(a/e).";
+        btnConta.onclick = (e) => e.preventDefault();
+
+        btnEntrar.setAttribute("aria-disabled", "false");
+        btnEntrar.classList.remove("disabled");
+        btnEntrar.title = "Entrar";
+        btnEntrar.href = buildCadastroUrl(location.href);
       }
     }
 
-    function clampPage(page) {
-      return Math.max(1, Math.min(state.totalPages || 1, Math.floor(page || 1)));
-    }
+    async function reserve(bib_ref) {
+      setStatus("", "");
 
-    function setCurrentPage(page, behavior = "smooth") {
-      state.currentPage = clampPage(page);
-      updatePageUi();
-      scrollToCurrentPage(behavior);
-    }
+      if (publicServiceState?.allow_reservations === false) {
+        setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
+        return;
+      }
 
-    function setupObserver() {
-      if (state.observer) state.observer.disconnect();
-      if (state.mode !== "continuous") return;
+      const { data: { session } } = await supabase.auth.getSession();
 
-      const viewer = $("viewer");
-      state.observer = new IntersectionObserver((entries) => {
-        let best = null;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
-        }
-        if (!best) return;
-        const pageNo = Number(best.target.dataset.pageNo || "1");
-        if (pageNo && pageNo !== state.currentPage) {
-          state.currentPage = pageNo;
-          updatePageUi();
-        }
-      }, {
-        root: viewer,
-        threshold: [0.35, 0.6, 0.85],
+      if (!session) {
+        setStatus("Para reservar, você precisa entrar.", "warn");
+        location.assign(buildCadastroUrl(location.href));
+        return;
+      }
+
+      const { error } = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
+        p_user_id: session.user.id,
+        p_bib_refs: [bib_ref],
+        p_expires_at: null,
+        p_notes: "Reserva criada pela página pública do livro."
       });
 
-      state.pageElements.forEach((el) => state.observer.observe(el));
-    }
-
-    function computeFitWidthScale(page) {
-      const viewer = $("viewer");
-      const horizontalPadding = document.body.classList.contains("fullscreen-mode") ? 52 : 32;
-      const cardPadding = 24;
-      const available = Math.max(260, viewer.clientWidth - horizontalPadding - cardPadding);
-      const unscaledViewport = page.getViewport({ scale: 1 });
-      return Math.max(.6, Math.min(3, +(available / unscaledViewport.width).toFixed(2)));
-    }
-
-    async function renderAllPages(pdfjsLib) {
-      if (!state.pdfDoc || state.rendering) return;
-      state.rendering = true;
-      for (const id of ["btnZoomIn", "btnZoomOut", "btnFitWidth", "btnPrev", "btnNext", "btnMode", "pageInput", "themeSelect"]) {
-        $(id).disabled = true;
-      }
-      const pagesRoot = $("pages");
-      pagesRoot.innerHTML = "";
-      state.pageElements = [];
-
-      try {
-        if (state.fitWidth || state.fitWidthLocked) {
-          const firstPage = await state.pdfDoc.getPage(1);
-          state.scale = computeFitWidthScale(firstPage);
-        }
-
-        for (let num = 1; num <= state.pdfDoc.numPages; num += 1) {
-          setStatus(`A renderizar página ${num} de ${state.pdfDoc.numPages}…`, "warn");
-          const page = await state.pdfDoc.getPage(num);
-          const viewport = page.getViewport({ scale: state.scale });
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d", { alpha: false });
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-          canvas.setAttribute("aria-hidden", "true");
-
-          const wrap = document.createElement("section");
-          wrap.className = "page-card";
-          wrap.dataset.pageNo = String(num);
-          const label = document.createElement("p");
-          label.className = "page-label";
-          label.textContent = `Página ${num}`;
-          wrap.append(label, canvas);
-          pagesRoot.appendChild(wrap);
-          state.pageElements.push(wrap);
-
-          await page.render({ canvasContext: ctx, viewport }).promise;
-        }
-
-        state.totalPages = state.pdfDoc.numPages;
-        state.currentPage = clampPage(state.currentPage);
-        updatePageUi();
-        setupObserver();
-        scrollToCurrentPage("auto");
-        setStatus("PDF carregado com sucesso.", "ok", 2000);
-      } finally {
-        state.rendering = false;
-        for (const id of ["btnZoomIn", "btnZoomOut", "btnFitWidth", "btnPrev", "btnNext", "btnMode", "pageInput", "themeSelect"]) {
-          $(id).disabled = false;
-        }
-      }
-    }
-
-    async function boot() {
-      loadPrefs();
-      applyTheme();
-      document.title = "AnarBib – leitor pdf";
-      $("chipRef").innerHTML = `<strong>Ref.</strong> ${bibRef || "—"}`;
-      $("btnBackBook").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
-      $("btnNavLivro").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
-      $("btnLogin").href = buildCadastroUrl();
-      $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
-      $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
-
-      if (!bibRef) {
-        showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
+      if (error) {
+        setStatus("Não foi possível reservar: " + error.message, "warn");
         return;
       }
 
-      clearError();
-      setStatus("A verificar sessão e permissões…", "warn");
+      setStatus("Reserva registrada.", "ok");
+    }
 
-      try {
-        const pdfjsLib = await loadPdfJs();
-        const blob = await downloadPdfBlob(bibRef);
+    async function loadBook() {
+      const bib_ref = getBibRefFromUrl();
 
-        if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
-
-        state.blobUrl = URL.createObjectURL(blob);
-        setStatus("PDF autorizado. A preparar renderização…", "warn");
-        state.pdfDoc = await pdfjsLib.getDocument({
-          url: state.blobUrl,
-          disableAutoFetch: true,
-          disableStream: true,
-          isEvalSupported: false,
-        }).promise;
-        await renderAllPages(pdfjsLib);
-      } catch (err) {
-        console.error("AnarBib ler v3: falha ao abrir leitura", err);
-        showError("Leitura indisponível neste momento.", err?.message || String(err));
+      if (!bib_ref) {
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        document.title = "AnarBib - Livro";
+        setStatus("Faltou a referência na URL (ex.: livro.html?ref=0000124).", "warn");
+        return;
       }
-    }
 
-    async function rerenderKeepingPosition() {
-      if (!state.pdfDoc) return;
-      const pdfjsLib = await loadPdfJs();
-      await renderAllPages(pdfjsLib);
-    }
+      const candidateTables = ["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"];
 
-    async function enterFullscreen() {
-      const root = $("pageRoot");
-      try {
-        await root.requestFullscreen?.();
-      } catch (err) {
-        console.warn("AnarBib ler v3: fullscreen recusado", err);
-      }
-    }
+      let booksTable = null;
+      let data = null;
+      let keys = [];
+      let sample = {};
 
-    async function exitFullscreen() {
-      try {
-        await document.exitFullscreen?.();
-      } catch (err) {
-        console.warn("AnarBib ler v3: saída de fullscreen recusada", err);
-      }
-    }
+      for (const candidate of candidateTables) {
+        const peek = await supabase.from(candidate).select("*").limit(1);
+        if (peek.error) continue;
 
-    async function toggleFullscreen() {
-      if (!document.fullscreenElement) await enterFullscreen();
-      else await exitFullscreen();
-    }
+        sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
+        keys = Object.keys(sample);
 
-    $("btnReload").addEventListener("click", () => location.reload());
-    $("btnZoomIn").addEventListener("click", async () => {
-      if (!state.pdfDoc) return;
-      state.fitWidth = false;
-      state.fitWidthLocked = false;
-      state.scale = Math.min(3, +(state.scale + 0.15).toFixed(2));
-      savePrefs();
-      await rerenderKeepingPosition();
-    });
+        const candidateRefCol =
+          findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
 
-    $("btnZoomOut").addEventListener("click", async () => {
-      if (!state.pdfDoc) return;
-      state.fitWidth = false;
-      state.fitWidthLocked = false;
-      state.scale = Math.max(0.6, +(state.scale - 0.15).toFixed(2));
-      savePrefs();
-      await rerenderKeepingPosition();
-    });
+        const probe = await supabase
+          .from(candidate)
+          .select("*")
+          .eq(candidateRefCol, bib_ref)
+          .maybeSingle();
 
-    $("btnFitWidth").addEventListener("click", async () => {
-      if (!state.pdfDoc) return;
-      state.fitWidth = true;
-      state.fitWidthLocked = true;
-      savePrefs();
-      await rerenderKeepingPosition();
-    });
-
-    $("btnPrev").addEventListener("click", () => setCurrentPage(state.currentPage - 1));
-    $("btnNext").addEventListener("click", () => setCurrentPage(state.currentPage + 1));
-    $("pageInput").addEventListener("change", () => setCurrentPage(Number($("pageInput").value || 1)));
-    $("pageInput").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        setCurrentPage(Number($("pageInput").value || 1));
-      }
-    });
-
-    $("btnMode").addEventListener("click", () => {
-      state.mode = state.mode === "continuous" ? "single" : "continuous";
-      updatePageUi();
-      setupObserver();
-      scrollToCurrentPage("auto");
-    });
-
-    $("themeSelect").addEventListener("change", (event) => {
-      state.theme = event.target.value;
-      applyTheme();
-    });
-
-    $("btnFullscreen").addEventListener("click", toggleFullscreen);
-
-    document.addEventListener("fullscreenchange", async () => {
-      const isFs = !!document.fullscreenElement;
-      document.body.classList.toggle("fullscreen-mode", isFs);
-      $("btnFullscreen").textContent = isFs ? "Sair da tela cheia" : "Tela cheia";
-      $("fullscreenHint").innerHTML = `<strong>Dica</strong> ${isFs ? "ESC volta ao modo normal" : "ESC sai da tela cheia"}`;
-
-      if (isFs) {
-        state.fullscreenRestoreMode = state.mode;
-        if (state.mode !== "continuous") {
-          state.mode = "continuous";
-          updatePageUi();
-          setupObserver();
-          scrollToCurrentPage("auto");
+        if (probe.error) continue;
+        if (probe.data) {
+          booksTable = candidate;
+          data = probe.data;
+          break;
         }
-      } else if (state.fullscreenRestoreMode && state.mode !== state.fullscreenRestoreMode) {
-        state.mode = state.fullscreenRestoreMode;
-        state.fullscreenRestoreMode = null;
-        updatePageUi();
-        setupObserver();
-        scrollToCurrentPage("auto");
       }
 
-      if (state.pdfDoc && state.fitWidthLocked) {
-        await rerenderKeepingPosition();
-      }
-    });
-
-    document.addEventListener("contextmenu", (event) => {
-      event.preventDefault();
-    });
-
-    document.addEventListener("dragstart", (event) => {
-      event.preventDefault();
-    });
-
-    document.addEventListener("keydown", (event) => {
-      const key = event.key.toLowerCase();
-      const ctrlOrMeta = event.ctrlKey || event.metaKey;
-      const isFullscreen = !!document.fullscreenElement;
-
-      if (ctrlOrMeta && ["p", "s", "u"].includes(key)) {
-        event.preventDefault();
-        event.stopPropagation();
-        setStatus("Este atalho não está disponível neste leitor.", "warn");
+      if (!booksTable) {
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        document.title = "AnarBib - Livro não encontrado";
+        setStatus("Não encontrei esse livro no catálogo.", "warn");
         return;
       }
 
-      if (key === "printscreen") {
-        event.preventDefault();
-        setStatus("Este atalho não está disponível neste leitor.", "warn");
-        return;
+      const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
+      const colTit = findCol(keys, ["titulo", "título", "title", "nome"]);
+      const colSub = findCol(keys, ["subtitulo", "subtítulo", "subtitle"]);
+      const colAut = findCol(keys, ["autor_exibicao", "autor_texto_livro", "autor", "author", "autores"]);
+      const colAno = findCol(keys, ["ano", "year"]);
+      const colEdi = findCol(keys, ["editora", "publisher"]);
+      const colLoc = findCol(keys, ["local_publicacao", "local de publicação", "cidade", "place"]);
+      const colEdc = findCol(keys, ["edicao", "edição", "edition"]);
+      const colISBN = findCol(keys, ["isbn"]);
+      const colISSN = findCol(keys, ["issn"]);
+      const colIdi = findCol(keys, ["idioma", "language"]);
+      const colPag = findCol(keys, ["paginas", "páginas", "pages"]);
+      const colTipo = findCol(keys, ["tipo_material", "tipo de material", "material_type"]);
+      const colColecao = findCol(keys, ["colecao", "coleção", "series", "serie", "série", "collection"]);
+      const colVolume = findCol(keys, ["volume", "tomo", "vol"]);
+      const colTradutor = findCol(keys, ["tradutor", "translator"]);
+      const colOrganizador = findCol(keys, ["organizador", "organizadora", "organizer"]);
+      const colAutoresSec = findCol(keys, ["autores_secundarios", "autores secundários", "autores secundarios", "secondary_authors"]);
+      const colAssuntos = findCol(keys, ["assuntos", "subjects", "subject", "palavras_chave", "palavras-chave"]);
+      const colCDD = findCol(keys, ["cdd", "classificacao", "classificação"]);
+      const colRes = findCol(keys, ["resumo", "descricao", "descrição", "description", "obs", "observacao", "observação", "notas", "nota", "notes"]);
+      const colPdf = findCol(keys, ["pdf_url", "url_pdf", "pdf", "arquivo_pdf", "link_pdf", "url"]);
+      const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
+
+      const titulo = colTit ? (data[colTit] || "") : "";
+      const subtitulo = colSub ? (data[colSub] || "") : "";
+      const autor = colAut ? (data[colAut] || "") : "";
+      const ano = colAno ? (data[colAno] || "") : "";
+      const editora = colEdi ? (data[colEdi] || "") : "";
+      const localPublicacao = colLoc ? (data[colLoc] || "") : "";
+      const edicao = colEdc ? (data[colEdc] || "") : "";
+      const isbn = colISBN ? (data[colISBN] || "") : "";
+      const issn = colISSN ? (data[colISSN] || "") : "";
+      const idioma = colIdi ? (data[colIdi] || "") : "";
+      const paginas = colPag ? (data[colPag] || "") : "";
+      const tipoMaterial = colTipo ? (data[colTipo] || "") : "";
+      let colecao = colColecao ? (data[colColecao] || "") : "";
+      const volume = colVolume ? (data[colVolume] || "") : "";
+      const tradutor = colTradutor ? (data[colTradutor] || "") : "";
+      const organizador = colOrganizador ? (data[colOrganizador] || "") : "";
+      const autoresSecundarios = colAutoresSec ? (data[colAutoresSec] || "") : "";
+      const assuntos = colAssuntos ? (data[colAssuntos] || "") : "";
+      const cdd = colCDD ? (data[colCDD] || "") : "";
+      const resumo = colRes ? (data[colRes] || "") : "";
+      const pdf = colPdf ? (data[colPdf] || "") : "";
+      let cover = colCover ? (data[colCover] || "") : "";
+
+      if (!cover) {
+        const fallback = await supabase
+          .from("books")
+          .select("cover_object_path")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
+
+        if (!fallback.error && fallback.data?.cover_object_path) {
+          cover = fallback.data.cover_object_path;
+        }
       }
 
-      if (isFullscreen) {
-        if (key !== "escape") {
-          if (!["control", "shift", "alt", "meta"].includes(key)) {
-            event.preventDefault();
-            event.stopPropagation();
+      if (!String(colecao || "").trim()) {
+        const fallbackColecao = await supabase
+          .from("books")
+          .select("colecao")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
+
+        if (!fallbackColecao.error && fallbackColecao.data?.colecao) {
+          colecao = fallbackColecao.data.colecao;
+        }
+      }
+
+      setCover(cover);
+
+      $("title").textContent = titulo || "Sem título";
+      setLine("subtitleLine", subtitulo);
+      await renderBookAuthors(autor, data);
+
+      setPill("bibRefPill", "ref", data[colRef] || "", true);
+      setPill("heroRefChip", "ref", data[colRef] || "");
+      setPill("yearPill", "ano", ano, true);
+      setPill("heroYearChip", "ano", ano);
+      setPill("pubPill", "editora", editora, true);
+      setPill("heroPubChip", "editora", editora);
+      setPill("placePill", "local", localPublicacao);
+      setPill("editionPill", "edição", edicao);
+      setPill("isbnPill", "ISBN", isbn);
+      setPill("issnPill", "ISSN", issn);
+      setPill("langPill", "idioma", idioma);
+      setPill("pagesPill", "páginas", paginas);
+      setPill("typePill", "tipo", tipoMaterial);
+      setPill("collectionPill", "coleção / série", colecao);
+      setPill("volumePill", "volume", volume);
+      setPill("translatorPill", "tradutor", tradutor);
+      setPill("organizerPill", "organizador", organizador);
+      setPill("secondaryAuthorsPill", "autores sec.", autoresSecundarios);
+      setPill("subjectsPill", "assuntos", assuntos);
+      setPill("cddPill", "CDD", cdd, true);
+
+      $("desc").textContent = resumo || "—";
+
+      async function loadTombosForBook(bookRow, bib_ref) {
+        const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+        let tombos = [];
+
+        if (inBook && bookRow?.[inBook] != null) {
+          const raw = bookRow[inBook];
+          if (Array.isArray(raw)) {
+            tombos = raw
+              .flatMap(v => String(v || "").split(/[;,\n]+/))
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
+          } else {
+            tombos = String(raw || "")
+              .split(/[;,\n]+/)
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
           }
         }
-        return;
+
+        if (tombos.length) {
+          return Array.from(new Set(tombos));
+        }
+
+        const candidates = ["v_exemplares_public", "exemplares_public", "v_exemplares", "exemplares"];
+
+        for (const table of candidates) {
+          const peekEx = await supabase.from(table).select("*").limit(1);
+          if (peekEx.error) continue;
+
+          const exKeys = Object.keys((peekEx.data && peekEx.data[0]) ? peekEx.data[0] : {});
+          const exTombo = findCol(exKeys, ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+          const exBibRef = findCol(exKeys, ["bib_ref", "bibref", "ref", "referencia", "referência"]);
+          const exBookId = findCol(exKeys, ["book_id", "livro_id", "id_livro"]);
+
+          if (!exTombo) continue;
+
+          let rows = [];
+
+          if (exBibRef) {
+            const byRef = await supabase.from(table).select("*").eq(exBibRef, bib_ref).limit(100);
+            if (!byRef.error && byRef.data?.length) rows = byRef.data;
+          }
+
+          if (!rows.length && exBookId && bookRow?.id != null) {
+            const byBookId = await supabase.from(table).select("*").eq(exBookId, bookRow.id).limit(100);
+            if (!byBookId.error && byBookId.data?.length) rows = byBookId.data;
+          }
+
+          if (rows.length) {
+            const vals = rows.map(r => String(r?.[exTombo] || "").trim()).filter(Boolean);
+            if (vals.length) return Array.from(new Set(vals));
+          }
+        }
+
+        return [];
       }
 
-      if (key === "arrowleft") {
-        event.preventDefault();
-        setCurrentPage(state.currentPage - 1);
-      } else if (key === "arrowright") {
-        event.preventDefault();
-        setCurrentPage(state.currentPage + 1);
-      } else if ((key === "+" || key === "=") && !ctrlOrMeta) {
-        event.preventDefault();
-        $("btnZoomIn").click();
-      } else if ((key === "-" || key === "_") && !ctrlOrMeta) {
-        event.preventDefault();
-        $("btnZoomOut").click();
-      } else if (key === "f") {
-        event.preventDefault();
-        toggleFullscreen();
+      const tombos = await loadTombosForBook(data, bib_ref);
+      document.title = `${titulo || "Livro"} - AnarBib`;
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
+      setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
+      setPill("exemplaresPill", "exemplares", tombos.length > 1 ? String(tombos.length) : "");
+      setPill("heroExemplaresChip", "exemplares", tombos.length ? String(tombos.length) : "");
+
+      if (pdf) {
+        $("btnAbrirPdf").style.display = "inline-flex";
+        $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
-    });
 
-    $("viewer").addEventListener("scroll", () => {
-      if (state.mode !== "continuous") return;
-      savePrefs();
-    }, { passive: true });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-    window.addEventListener("resize", async () => {
-      if (!state.pdfDoc || !state.fitWidthLocked) return;
-      await rerenderKeepingPosition();
-    });
+        if (session?.user?.id) {
+          try {
+            const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
+            if (ensureProfileError) {
+              console.warn("AnarBib livro: erro ao garantir profile do usuário", ensureProfileError);
+            }
+          } catch (ensureProfileException) {
+            console.warn("AnarBib livro: exceção ao garantir profile do usuário", ensureProfileException);
+          }
 
-    window.addEventListener("beforeunload", () => {
-      savePrefs();
-      if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
-    });
+          const { data: readState, error: readStateError } = await supabase.rpc(
+            "fn_book_restricted_pdf_state_for_current_user",
+            { p_bib_ref: bib_ref }
+          );
 
-    boot();
+          if (readStateError) {
+            console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
+          }
+
+          const row = Array.isArray(readState)
+            ? readState[0]
+            : (readState && typeof readState === "object" ? readState : null);
+
+          if (!readStateError && row?.can_show_read_button) {
+            $("btnLer").style.display = "inline-flex";
+            $("btnLer").addEventListener("click", () => {
+              const viewerUrl = new URL("ler.html", location.href);
+              viewerUrl.searchParams.set("ref", bib_ref);
+              location.assign(viewerUrl.toString());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
+      }
+
+      $("btnReservar").addEventListener("click", () => reserve(bib_ref));
+    }
+
+    await setupContaButton();
+    await loadPublicServiceState();
+    await loadBook();
   </script>
 </body>
 </html>
