@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BLMF — Livro</title>
+  <title>AnarBib - Livro</title>
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
@@ -635,6 +635,7 @@
       const bib_ref = getBibRefFromUrl();
 
       if (!bib_ref) {
+        document.title = "AnarBib - Livro";
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
         setLine("subtitleLine", "");
@@ -676,6 +677,7 @@
       }
 
       if (!booksTable) {
+        document.title = "AnarBib - Livro não encontrado";
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
         setLine("subtitleLine", "");
@@ -710,6 +712,7 @@
       const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
 
       const titulo = colTit ? (data[colTit] || "") : "";
+      document.title = titulo ? `${titulo} - AnarBib` : "AnarBib - Livro";
       const subtitulo = colSub ? (data[colSub] || "") : "";
       const autor = colAut ? (data[colAut] || "") : "";
       const ano = colAno ? (data[colAno] || "") : "";
