@@ -4,20 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AnarBib - catálogo(s)</title>
-<meta name="description" content="AnarBib - catálogo(s). Consulte catálogos, referências, autores, títulos, editoras, anos, bibliotecas, CDD e disponibilidade.">
+<meta name="description" content="AnarBib — catálogos públicos de bibliotecas participantes. Consulte referências, autores, títulos, editoras, anos, CDD e disponibilidade.">
 <meta name="theme-color" content="#b30018">
-<link rel="canonical" href="https://cclamazonia-cmd.github.io/blmf-catalogo/">
+<link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AnarBib">
 <meta property="og:title" content="AnarBib - catálogo(s)">
-<meta property="og:description" content="AnarBib - catálogo(s). Catálogo público com busca por autor, título, editora, biblioteca, ano, CDD e disponibilidade.">
-<meta property="og:url" content="https://cclamazonia-cmd.github.io/blmf-catalogo/">
+<meta property="og:description" content="AnarBib — catálogos públicos de bibliotecas participantes com busca por autor, título, editora, ano, CDD e disponibilidade.">
+<meta property="og:url" content="https://cclamazonia-cmd.github.io/anarbib-staging/">
 <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <meta property="og:image:alt" content="Logotipo do AnarBib">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="AnarBib - catálogo(s)">
-<meta name="twitter:description" content="AnarBib - catálogo(s). Catálogo público das bibliotecas participantes.">
+<meta name="twitter:description" content="AnarBib — catálogos públicos de bibliotecas participantes.">
 <meta name="twitter:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
@@ -240,18 +240,6 @@ a { color: inherit; }
   letter-spacing:.01em;
   text-shadow:0 1px 0 rgba(0,0,0,.28);
 }
-.field-help {
-  font-size:.78rem;
-  color: rgba(255,255,255,.72);
-  line-height:1.3;
-}
-.select[multiple] {
-  min-height: 132px;
-  padding: 10px;
-}
-.select[multiple] option {
-  padding: 6px 8px;
-}
 .toolbar-actions {
   display:flex;
   flex-wrap:wrap;
@@ -406,7 +394,7 @@ table {
   width:100%;
   border-collapse:separate;
   border-spacing:0;
-  min-width:2100px;
+  min-width:1860px;
   table-layout:fixed;
 }
 thead th {
@@ -442,7 +430,6 @@ tbody tr:hover td { background: rgba(179,0,24,.08); }
 .col-ano { width: 92px; white-space: nowrap; }
 .col-editora { width: 250px; }
 .col-cdd { width: 120px; }
-.col-biblioteca { width: 240px; }
 .col-status { width: 185px; }
 .col-reserva { width: 175px; white-space: nowrap; }
 .col-acoes { width: 175px; white-space: nowrap; }
@@ -708,9 +695,9 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
     <div class="topbar">
       <div>
         <h1>AnarBib - catálogo(s)</h1>
-        <p>Biblioteca local: Biblioteca Libertária Maxwell Ferreira · CCLA</p>
+        <p>Bibliotecas participantes · rede AnarBib</p>
       </div>
-      <img src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png" alt="Logotipo da Biblioteca Libertária Maxwell Ferreira" class="topbar-logo">
+      <img src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="Logotipo do AnarBib" class="topbar-logo">
     </div>
     <div class="hero-actions">
       <button id="clearBtn" class="button secondary" type="button">Limpar filtros</button>
@@ -735,11 +722,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
       <div class="field">
         <label class="field-label" for="search">Buscar</label>
         <input id="search" class="input" type="search" autocomplete="off" placeholder="Autor, título, editora, referência ou vários termos entre aspas…">
-      </div>
-      <div class="field">
-        <label class="field-label" for="libraryFilter">Biblioteca(s)</label>
-        <select id="libraryFilter" class="select" multiple size="4" aria-describedby="libraryFilterHelp"></select>
-        <div id="libraryFilterHelp" class="field-help">Selecione uma, várias ou nenhuma biblioteca. Sem seleção específica = todas.</div>
       </div>
       <div class="field">
         <label class="field-label" for="authorFilter">Autor(a)</label>
@@ -776,7 +758,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <option value="ano">Ano</option>
           <option value="editora">Editora</option>
           <option value="cdd">CDD</option>
-          <option value="library">Biblioteca</option>
           <option value="status">Disponibilidade</option>
         </select>
       </div>
@@ -815,7 +796,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
             <th class="col-ano" data-key="ano">ano</th>
             <th class="col-editora" data-key="editora">editora</th>
             <th class="col-cdd" data-key="cdd">CDD</th>
-            <th class="col-biblioteca" data-key="library">biblioteca</th>
             <th class="col-status" data-key="status">disponibilidade</th>
             <th class="col-reserva" data-key="reserva">reserva</th>
             <th class="col-acoes" data-key="acoes">ações</th>
@@ -832,16 +812,16 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
 </div>
 
 <script>
-const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_38cFV9vsGhmqMp-Z5gmV4w_HY6ReWSF";
+const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CONTA_URL = `${GH_BASE}/blmf-conta/conta.html`;
-const CADASTRO_URL = `${GH_BASE}/blmf-conta/cadastro.html`;
-const PAINEL_URL = `${GH_BASE}/blmf-conta/painel.html`;
-const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
+const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
+const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
+const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
+const SUPABASE_PROJECT_REF = "uflwmikiyjfnikiphtcp";
 const RAW_SEARCH_VARIANTS = {
   "Bakunin": ["Bakounine", "Bakounin", "Bakunine"],
   "Mikhail Bakunin": ["Mikhail Bakounine", "Mikhail Bakounin", "Miguel Bakunin"],
@@ -865,11 +845,6 @@ const RAW_SEARCH_VARIANTS = {
   "Élisée Reclus": ["Elisee Reclus", "Elisée Reclus"]
 };
 
-const DEFAULT_LIBRARY_CONTEXT = {
-  key: 'blmf-belem',
-  label: 'BLMF – Belém do Pará'
-};
-const LIBRARY_FILTER_ALL = '__all__';
 
 function buildCadastroUrl(nextUrl = location.href) {
   const u = new URL(CADASTRO_URL);
@@ -878,7 +853,6 @@ function buildCadastroUrl(nextUrl = location.href) {
 }
 
 let rows = [];
-let pendingLibrarySelection = [];
 let lastQuery = { tokens: [], phrases: [] };
 let sortKey = 'relevance';
 let sortDir = 'asc';
@@ -888,7 +862,6 @@ let serviceState = null;
 const tbody = document.getElementById('tbody');
 const mobileResults = document.getElementById('mobileResults');
 const search = document.getElementById('search');
-const libraryFilter = document.getElementById('libraryFilter');
 const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
@@ -1032,121 +1005,6 @@ function getAvailabilityLabel(value) {
     default: return 'Todas';
   }
 }
-function slugifyLibraryKey(value) {
-  return normalize(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'biblioteca';
-}
-function normalizeLibraryEntry(entry) {
-  if (!entry) return null;
-  if (typeof entry === 'string') {
-    const label = entry.trim();
-    if (!label) return null;
-    return { key: slugifyLibraryKey(label), label };
-  }
-  const label = String(entry.label || entry.name || entry.library_name || entry.biblioteca || '').trim();
-  if (!label) return null;
-  const key = String(entry.key || entry.slug || entry.library_key || slugifyLibraryKey(label)).trim() || slugifyLibraryKey(label);
-  return { key, label };
-}
-function inferLibrariesForRow(row) {
-  const found = [];
-  const pushLibrary = (entry) => {
-    const normalized = normalizeLibraryEntry(entry);
-    if (!normalized) return;
-    if (!found.some(item => item.key === normalized.key)) found.push(normalized);
-  };
-
-  if (Array.isArray(row.libraries)) row.libraries.forEach(pushLibrary);
-  if (Array.isArray(row.library_list)) row.library_list.forEach(pushLibrary);
-  if (Array.isArray(row.owning_libraries)) row.owning_libraries.forEach(pushLibrary);
-
-  for (const candidate of [row.libraries, row.library_list, row.owning_libraries, row.owning_libraries_json]) {
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim();
-      if (!trimmed) continue;
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) parsed.forEach(pushLibrary);
-        else pushLibrary(parsed);
-        continue;
-      } catch (e) {}
-      trimmed.split(/\s*;\s*/).filter(Boolean).forEach(pushLibrary);
-    }
-  }
-
-  if (row.library_name || row.biblioteca || row.library_label) {
-    pushLibrary({
-      key: row.library_key || row.library_slug,
-      label: row.library_label || row.library_name || row.biblioteca
-    });
-  }
-
-  if (!found.length) pushLibrary(DEFAULT_LIBRARY_CONTEXT);
-  return found;
-}
-function expandRowsByLibrary(baseRows) {
-  return (baseRows || []).flatMap((row) => {
-    const libraries = inferLibrariesForRow(row);
-    return libraries.map((library, index) => ({
-      ...row,
-      library_key: library.key,
-      library_label: library.label,
-      library_instance_index: index
-    }));
-  });
-}
-function populateLibraryFilterOptions() {
-  const options = [];
-  const seen = new Set();
-  for (const row of rows) {
-    const key = String(row.library_key || '').trim();
-    const label = String(row.library_label || '').trim();
-    if (!key || !label || seen.has(key)) continue;
-    seen.add(key);
-    options.push({ key, label });
-  }
-  options.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { numeric: true }));
-
-  libraryFilter.innerHTML = '';
-  const allOption = document.createElement('option');
-  allOption.value = LIBRARY_FILTER_ALL;
-  allOption.textContent = 'Todas as bibliotecas';
-  libraryFilter.appendChild(allOption);
-
-  for (const option of options) {
-    const node = document.createElement('option');
-    node.value = option.key;
-    node.textContent = option.label;
-    libraryFilter.appendChild(node);
-  }
-}
-function setLibraryFilterSelection(values) {
-  const selected = new Set((values || []).map(String));
-  const hasSpecific = selected.size > 0;
-  for (const option of libraryFilter.options) {
-    option.selected = hasSpecific ? selected.has(option.value) : option.value === LIBRARY_FILTER_ALL;
-  }
-}
-function normalizeLibraryFilterSelection() {
-  const values = [...libraryFilter.selectedOptions].map(option => option.value);
-  const specific = values.filter(value => value !== LIBRARY_FILTER_ALL);
-  if (!specific.length) {
-    setLibraryFilterSelection([]);
-    return [];
-  }
-  setLibraryFilterSelection(specific);
-  return specific;
-}
-function getSelectedLibraryKeys() {
-  return normalizeLibraryFilterSelection();
-}
-function getSelectedLibraryLabels() {
-  const keys = getSelectedLibraryKeys();
-  if (!keys.length) return [];
-  return keys.map((key) => {
-    const option = [...libraryFilter.options].find(node => node.value === key);
-    return option ? option.textContent.trim() : key;
-  }).filter(Boolean);
-}
 function getSortLabel(key = sortKey, dir = sortDir) {
   const labels = {
     relevance: 'relevância',
@@ -1156,7 +1014,6 @@ function getSortLabel(key = sortKey, dir = sortDir) {
     ano: 'ano',
     editora: 'editora',
     cdd: 'CDD',
-    library: 'biblioteca',
     status: 'disponibilidade'
   };
   const base = labels[key] || 'relevância';
@@ -1170,7 +1027,6 @@ function getFilterState() {
     publisher: (publisherFilter.value || '').trim(),
     year: (yearFilter.value || '').trim(),
     cdd: (cddFilter.value || '').trim(),
-    libraries: getSelectedLibraryKeys(),
     availability: availabilityFilter.value || 'all',
     sort: sortKey,
     dir: sortDir,
@@ -1185,7 +1041,6 @@ function buildActiveFilterItems() {
   if (state.publisher) items.push({ key: 'publisher', label: 'Editora', value: state.publisher });
   if (state.year) items.push({ key: 'year', label: 'Ano', value: state.year });
   if (state.cdd) items.push({ key: 'cdd', label: 'CDD', value: state.cdd });
-  if (state.libraries.length) items.push({ key: 'libraries', label: 'Bibliotecas', value: getSelectedLibraryLabels().join(' · ') });
   if (state.availability !== 'all') items.push({ key: 'availability', label: 'Disponibilidade', value: getAvailabilityLabel(state.availability) });
   if (state.sort !== 'relevance') items.push({ key: 'sort', label: 'Ordenação', value: getSortLabel(state.sort, state.dir).replace(/^Ordenação:\s*/, '') });
   return items;
@@ -1215,7 +1070,6 @@ function syncStateToUrl() {
   const url = new URL(location.href);
   const defaults = {
     availability: 'all',
-    libraries: '',
     sort: 'relevance',
     dir: 'asc'
   };
@@ -1225,7 +1079,6 @@ function syncStateToUrl() {
     publisher: state.publisher,
     year: state.year,
     cdd: state.cdd,
-    libraries: state.libraries.join(','),
     availability: state.availability,
     sort: state.sort,
     dir: state.dir
@@ -1246,11 +1099,10 @@ function restoreStateFromUrl() {
   publisherFilter.value = url.searchParams.get('publisher') || '';
   yearFilter.value = url.searchParams.get('year') || '';
   cddFilter.value = url.searchParams.get('cdd') || '';
-  pendingLibrarySelection = (url.searchParams.get('libraries') || '').split(',').map(v => v.trim()).filter(Boolean);
   const availabilityFromUrl = url.searchParams.get('availability') || 'all';
   availabilityFilter.value = ['all','available','local','unavailable'].includes(availabilityFromUrl) ? availabilityFromUrl : 'all';
   const sortFromUrl = url.searchParams.get('sort') || 'relevance';
-  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','cdd','library','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
+  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','cdd','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
   sortDir = url.searchParams.get('dir') || 'asc';
   sortSelect.value = sortKey;
   if (!['asc','desc'].includes(sortDir)) sortDir = 'asc';
@@ -1308,7 +1160,6 @@ function clearSingleFilter(key) {
   else if (key === 'year') yearFilter.value = '';
   else if (key === 'cdd') cddFilter.value = '';
   else if (key === 'availability') availabilityFilter.value = 'all';
-  else if (key === 'libraries') setLibraryFilterSelection([]);
   else if (key === 'sort') {
     sortKey = 'relevance';
     sortDir = 'asc';
@@ -1563,11 +1414,10 @@ function prepareRows() {
       ano: normalize(r.ano),
       editora: normalize(r.editora),
       cdd: normalize(r.cdd),
-      library: normalize(r.library_label),
       status: normalize(status.label)
     };
     r._n = data;
-    r._all = [data.bib_ref, data.autor, data.titulo, data.ano, data.editora, data.cdd, data.library, data.status].filter(Boolean).join(' ');
+    r._all = [data.bib_ref, data.autor, data.titulo, data.ano, data.editora, data.cdd, data.status].filter(Boolean).join(' ');
     r._words = r._all ? r._all.split(/\s+/).filter(Boolean) : [];
     r._variantAutor = orthographySkeleton(data.autor);
     r._variantTitulo = orthographySkeleton(data.titulo);
@@ -1578,7 +1428,6 @@ function prepareRows() {
       orthographySkeleton(data.ano),
       orthographySkeleton(data.editora),
       orthographySkeleton(data.cdd),
-      orthographySkeleton(data.library),
       orthographySkeleton(data.status)
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
@@ -1605,7 +1454,7 @@ async function loadRowsFromSupabase() {
       return [];
     }
     const data = text ? JSON.parse(text) : [];
-    const baseRows = (data || []).map(r => {
+    return (data || []).map(r => {
       const authorId = normalizeAuthorIdValue(r.author_id);
       const relationIds = authorRelations.get(String(r.id ?? '')) || [];
       const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
@@ -1625,7 +1474,6 @@ async function loadRowsFromSupabase() {
         created_at: r.created_at ?? null
       };
     });
-    return expandRowsByLibrary(baseRows);
   } catch (e) {
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
@@ -1642,7 +1490,6 @@ function currentRows() {
   const publisher = normalize(publisherFilter.value);
   const year = (yearFilter.value || '').toString().trim();
   const cdd = normalize(cddFilter.value);
-  const selectedLibraries = getSelectedLibraryKeys();
   const availability = availabilityFilter.value;
   const hasQuery = q.tokens.length > 0 || q.phrases.length > 0;
 
@@ -1652,7 +1499,6 @@ function currentRows() {
     if (publisher && !r._n.editora.includes(publisher)) continue;
     if (!matchYearField(r.ano, year)) continue;
     if (cdd && !r._n.cdd.includes(cdd)) continue;
-    if (selectedLibraries.length && !selectedLibraries.includes(r.library_key)) continue;
     if (availability !== 'all' && r._status.key !== availability) continue;
 
     if (!hasQuery) {
@@ -1889,7 +1735,6 @@ function buildRowMarkup(r) {
   const cddHtml = r.cdd
     ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
     : '<span class="muted">—</span>';
-  const libraryHtml = r.library_label ? highlightHTML(r.library_label, terms) : '<span class="muted">—</span>';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
@@ -1908,7 +1753,6 @@ function buildRowMarkup(r) {
       <td class="col-ano">${anoHtml}</td>
       <td class="col-editora">${editoraHtml}</td>
       <td class="col-cdd">${cddHtml}</td>
-      <td class="col-biblioteca">${libraryHtml}</td>
       <td class="col-status"><span class="status-badge ${status.cls}">${status.label}</span></td>
       <td class="col-reserva">${reservaHtml}</td>
       <td class="col-acoes"><button class="btn-inline copyRefBtn" type="button" data-ref="${encodeURIComponent(ref)}">Copiar referência</button></td>
@@ -1940,10 +1784,6 @@ function buildRowMarkup(r) {
           <div class="mobile-meta">
             <span class="mobile-meta-label">Editora</span>
             <div class="mobile-meta-value">${editoraHtml}</div>
-          </div>
-          <div class="mobile-meta">
-            <span class="mobile-meta-label">Biblioteca</span>
-            <div class="mobile-meta-value">${libraryHtml}</div>
           </div>
         </div>
         <div class="mobile-card-actions">
@@ -1981,8 +1821,8 @@ function debounce(fn, ms) {
 }
 const debouncedRender = debounce(render, 120);
 function toCSV(rowsToExport) {
-  const cols = ['bib_ref','autor','titulo','ano','editora','cdd','library','status'];
-  const labels = { bib_ref:'ref', autor:'autor', titulo:'título', ano:'ano', editora:'editora', cdd:'CDD', library:'biblioteca', status:'status' };
+  const cols = ['bib_ref','autor','titulo','ano','editora','cdd','status'];
+  const labels = { bib_ref:'ref', autor:'autor', titulo:'título', ano:'ano', editora:'editora', cdd:'CDD', status:'status' };
   const esc = (v) => {
     const s = (v ?? '').toString().replace(/\r?\n/g, ' ').trim();
     const needs = /[",;]/.test(s);
@@ -1990,7 +1830,7 @@ function toCSV(rowsToExport) {
     return needs ? `"${out}"` : out;
   };
   const header = cols.map(c => labels[c]).join(';');
-  const lines = rowsToExport.map(r => cols.map(c => esc(c === 'status' ? r._status.label : (c === 'library' ? r.library_label : r[c]))).join(';'));
+  const lines = rowsToExport.map(r => cols.map(c => esc(c === 'status' ? r._status.label : r[c])).join(';'));
   return '\ufeff' + [header, ...lines].join('\n');
 }
 function exportCSV() {
@@ -2020,7 +1860,6 @@ function exportPDF() {
       <td>${escapeHTML(r.ano || '—')}</td>
       <td>${escapeHTML(r.editora || '—')}</td>
       <td>${escapeHTML(r.cdd || '—')}</td>
-      <td>${escapeHTML(r.library_label || '—')}</td>
       <td>${escapeHTML(r._status.label)}</td>
     </tr>`).join('');
   const w = window.open('', '_blank');
@@ -2028,7 +1867,7 @@ function exportPDF() {
     alert('O navegador bloqueou a janela de exportação. Autorize pop-ups para exportar em PDF.');
     return;
   }
-  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnarBib - catálogo(s) — PDF</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:28px;color:#111}h1{font-size:18px;margin:0 0 6px}.meta{font-size:12px;color:#444;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px 8px;font-size:12px;vertical-align:top}th{background:#f4f4f4;text-transform:uppercase;letter-spacing:.04em;font-size:11px}@page{size:A4;margin:12mm}</style></head><body><h1>AnarBib - catálogo(s)</h1><div class="meta">Exportado em ${stamp} · ${filtered.length} item(ns)</div><div style="margin:12px 0 16px;"><button onclick="window.print()" style="padding:8px 10px;border:1px solid #aaa;border-radius:8px;background:#fff;cursor:pointer;">Imprimir / Salvar em PDF</button><span style="font-size:12px;color:#444;margin-left:10px;">(Escolha “Salvar como PDF” na janela de impressão)</span></div><table><thead><tr><th>ref</th><th>autor</th><th>título</th><th>ano</th><th>editora</th><th>CDD</th><th>biblioteca</th><th>status</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnarBib - catálogo(s) — PDF</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:28px;color:#111}h1{font-size:18px;margin:0 0 6px}.meta{font-size:12px;color:#444;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px 8px;font-size:12px;vertical-align:top}th{background:#f4f4f4;text-transform:uppercase;letter-spacing:.04em;font-size:11px}@page{size:A4;margin:12mm}</style></head><body><h1>AnarBib - catálogo(s)</h1><div class="meta">Exportado em ${stamp} · ${filtered.length} item(ns)</div><div style="margin:12px 0 16px;"><button onclick="window.print()" style="padding:8px 10px;border:1px solid #aaa;border-radius:8px;background:#fff;cursor:pointer;">Imprimir / Salvar em PDF</button><span style="font-size:12px;color:#444;margin-left:10px;">(Escolha “Salvar como PDF” na janela de impressão)</span></div><table><thead><tr><th>ref</th><th>autor</th><th>título</th><th>ano</th><th>editora</th><th>CDD</th><th>status</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
   w.document.close();
 }
 function clearFilters() {
@@ -2037,7 +1876,6 @@ function clearFilters() {
   publisherFilter.value = '';
   yearFilter.value = '';
   cddFilter.value = '';
-  setLibraryFilterSelection([]);
   availabilityFilter.value = 'all';
   sortKey = 'relevance';
   sortDir = 'asc';
@@ -2091,7 +1929,6 @@ async function handleContaClick() {
   location.assign(state.isLibrarian ? PAINEL_URL : CONTA_URL);
 }
 search.addEventListener('input', debouncedRender);
-libraryFilter.addEventListener('change', render);
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
 yearFilter.addEventListener('input', render);
@@ -2122,7 +1959,7 @@ document.querySelectorAll('thead th[data-key]').forEach(th => {
     } else {
       sortKey = key;
       sortDir = 'asc';
-      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','cdd','library','status'].includes(key) ? key : 'relevance';
+      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','cdd','status'].includes(key) ? key : 'relevance';
     }
     render();
   });
@@ -2205,8 +2042,6 @@ document.addEventListener('keydown', (e) => {
   authState = await getCurrentUserAndRole();
   await loadPublicServiceState();
   rows = await loadRowsFromSupabase();
-  populateLibraryFilterOptions();
-  setLibraryFilterSelection(pendingLibrarySelection);
   prepareRows();
   render();
 })();
