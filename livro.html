@@ -857,6 +857,15 @@
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user?.id) {
+          try {
+            const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
+            if (ensureProfileError) {
+              console.warn("BLMF livro: erro ao garantir profile do usuário", ensureProfileError);
+            }
+          } catch (ensureProfileException) {
+            console.warn("BLMF livro: exceção ao garantir profile do usuário", ensureProfileException);
+          }
+
           const { data: readState, error: readStateError } = await supabase.rpc(
             "fn_book_restricted_pdf_state_for_current_user",
             { p_bib_ref: bib_ref }
