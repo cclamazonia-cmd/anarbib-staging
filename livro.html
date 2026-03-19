@@ -147,7 +147,7 @@
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao catálogo</a>
+        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao(s) catálogo(s)</a>
         <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
         <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
       </div>
@@ -223,7 +223,7 @@
     const GH_BASE = location.origin;
     const ROUTES = {
       BLOG_HOME: "https://cclamazonia.noblogs.org/",
-      CATALOGO: `${GH_BASE}/anarbib-staging/`,
+      CATALOGO: `${GH_BASE}/anarbib-staging/index.html`,
       CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
       CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
       PAINEL: `${GH_BASE}/anarbib-conta-staging/painel.html`,
@@ -243,7 +243,14 @@
 
     document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
 
-     const SERVICE_MODE_LABELS = {
+    const DEFAULT_SERVICE_MESSAGES = {
+      em_organizacao: "A biblioteca está em organização. O atendimento ocorre conforme a capacidade operacional atual.",
+      atendimento_eventual: "A biblioteca funciona com atendimento eventual. Consulte os canais do CCLA para informações atualizadas.",
+      atendimento_semanal: "A biblioteca funciona com atendimento semanal em ritmo regular. Consulte os canais do CCLA para os horários e orientações vigentes.",
+      fechado_temporariamente: "A biblioteca está temporariamente fechada para atendimento presencial. Consulte os canais do CCLA para atualizações e orientações."
+    };
+
+    const SERVICE_MODE_LABELS = {
       em_organizacao: "Em organização",
       atendimento_eventual: "Atendimento eventual",
       atendimento_semanal: "Atendimento semanal",
@@ -322,6 +329,10 @@
     function getBibRefFromUrl() {
       const u = new URL(location.href);
       return (u.searchParams.get("ref") || u.searchParams.get("bib_ref") || "").trim();
+    }
+
+    function getServiceModeLabel(mode) {
+      return SERVICE_MODE_LABELS[String(mode || "").trim()] || "Funcionamento";
     }
 
     function getServiceMessage(state) {
@@ -619,10 +630,86 @@
       setStatus("Reserva registrada.", "ok");
     }
 
-    async function loadBook() {
-      const bib_ref = getBibRefFromUrl();
+    function getBookIdentifiersFromUrl() {
+      const u = new URL(location.href);
+      const pick = (...names) => {
+        for (const name of names) {
+          const value = String(u.searchParams.get(name) || "").trim();
+          if (value) return value;
+        }
+        return "";
+      };
 
-      if (!bib_ref) {
+      return {
+        bib_ref: pick("ref", "bib_ref"),
+        book_id: pick("id", "book_id", "livro_id", "book"),
+        library_hint: pick("library", "biblioteca", "library_name", "biblioteca_name", "library_label", "biblioteca_label")
+      };
+    }
+
+    function pickBestBookRow(rows, libraryHint = "") {
+      const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+      if (!list.length) return null;
+      if (list.length === 1) return list[0];
+
+      const wanted = normalizeAuthorName(libraryHint);
+      if (wanted) {
+        const libraryCols = [
+          "library_display", "library_label", "library_name", "library",
+          "biblioteca_display", "biblioteca_label", "biblioteca_nome", "biblioteca_name", "biblioteca"
+        ];
+        for (const row of list) {
+          for (const col of libraryCols) {
+            if (normalizeAuthorName(row?.[col]) === wanted) return row;
+          }
+        }
+      }
+
+      return [...list].sort((a, b) => Object.keys(b || {}).length - Object.keys(a || {}).length)[0] || list[0];
+    }
+
+    async function fetchBookFromTable(table, identifiers) {
+      const refCols = ["bib_ref", "bibref", "ref", "referencia", "referência"];
+      const idCols = ["id", "book_id", "livro_id", "id_livro"];
+
+      if (identifiers.book_id) {
+        for (const col of idCols) {
+          const probe = await supabase.from(table).select("*").eq(col, identifiers.book_id).limit(20);
+          if (!probe.error && Array.isArray(probe.data) && probe.data.length) {
+            return pickBestBookRow(probe.data, identifiers.library_hint);
+          }
+        }
+      }
+
+      if (identifiers.bib_ref) {
+        for (const col of refCols) {
+          const probe = await supabase.from(table).select("*").eq(col, identifiers.bib_ref).limit(20);
+          if (!probe.error && Array.isArray(probe.data) && probe.data.length) {
+            return pickBestBookRow(probe.data, identifiers.library_hint);
+          }
+        }
+      }
+
+      return null;
+    }
+
+    async function fetchFallbackBookField(bib_ref, field, book_id = "") {
+      if (book_id) {
+        const byId = await supabase.from("books").select(field).eq("id", book_id).limit(1).maybeSingle();
+        if (!byId.error && byId.data && byId.data[field]) return byId.data[field];
+      }
+      if (!bib_ref) return "";
+      const byRef = await supabase.from("books").select(field).eq("bib_ref", bib_ref).limit(20);
+      if (byRef.error || !Array.isArray(byRef.data) || !byRef.data.length) return "";
+      const picked = pickBestBookRow(byRef.data, "");
+      return picked?.[field] || "";
+    }
+
+    async function loadBook() {
+      const identifiers = getBookIdentifiersFromUrl();
+      const bib_ref = identifiers.bib_ref;
+
+      if (!bib_ref && !identifiers.book_id) {
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
         setLine("subtitleLine", "");
@@ -638,33 +725,18 @@
       let booksTable = null;
       let data = null;
       let keys = [];
-      let sample = {};
 
       for (const candidate of candidateTables) {
-        const peek = await supabase.from(candidate).select("*").limit(1);
-        if (peek.error) continue;
-
-        sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
-        keys = Object.keys(sample);
-
-        const candidateRefCol =
-          findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
-
-        const probe = await supabase
-          .from(candidate)
-          .select("*")
-          .eq(candidateRefCol, bib_ref)
-          .maybeSingle();
-
-        if (probe.error) continue;
-        if (probe.data) {
+        const picked = await fetchBookFromTable(candidate, identifiers);
+        if (picked) {
           booksTable = candidate;
-          data = probe.data;
+          data = picked;
+          keys = Object.keys(picked || {});
           break;
         }
       }
 
-      if (!booksTable) {
+      if (!booksTable || !data) {
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
         setLine("subtitleLine", "");
@@ -699,6 +771,7 @@
       const colPdf = findCol(keys, ["pdf_url", "url_pdf", "pdf", "arquivo_pdf", "link_pdf", "url"]);
       const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
 
+      const effectiveBibRef = String((colRef ? data[colRef] : "") || bib_ref || "").trim();
       const titulo = colTit ? (data[colTit] || "") : "";
       const subtitulo = colSub ? (data[colSub] || "") : "";
       const autor = colAut ? (data[colAut] || "") : "";
@@ -723,27 +796,11 @@
       let cover = colCover ? (data[colCover] || "") : "";
 
       if (!cover) {
-        const fallback = await supabase
-          .from("books")
-          .select("cover_object_path")
-          .eq("bib_ref", bib_ref)
-          .maybeSingle();
-
-        if (!fallback.error && fallback.data?.cover_object_path) {
-          cover = fallback.data.cover_object_path;
-        }
+        cover = await fetchFallbackBookField(effectiveBibRef, "cover_object_path", identifiers.book_id);
       }
 
       if (!String(colecao || "").trim()) {
-        const fallbackColecao = await supabase
-          .from("books")
-          .select("colecao")
-          .eq("bib_ref", bib_ref)
-          .maybeSingle();
-
-        if (!fallbackColecao.error && fallbackColecao.data?.colecao) {
-          colecao = fallbackColecao.data.colecao;
-        }
+        colecao = await fetchFallbackBookField(effectiveBibRef, "colecao", identifiers.book_id);
       }
 
       setCover(cover);
@@ -752,8 +809,8 @@
       setLine("subtitleLine", subtitulo);
       await renderBookAuthors(autor, data);
 
-      setPill("bibRefPill", "ref", data[colRef] || "", true);
-      setPill("heroRefChip", "ref", data[colRef] || "");
+      setPill("bibRefPill", "ref", effectiveBibRef, true);
+      setPill("heroRefChip", "ref", effectiveBibRef);
       setPill("yearPill", "ano", ano, true);
       setPill("heroYearChip", "ano", ano);
       setPill("pubPill", "editora", editora, true);
@@ -775,7 +832,7 @@
 
       $("desc").textContent = resumo || "—";
 
-      async function loadTombosForBook(bookRow, bib_ref) {
+      async function loadTombosForBook(bookRow, effectiveRef) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
         let tombos = [];
 
@@ -813,8 +870,8 @@
 
           let rows = [];
 
-          if (exBibRef) {
-            const byRef = await supabase.from(table).select("*").eq(exBibRef, bib_ref).limit(100);
+          if (exBibRef && effectiveRef) {
+            const byRef = await supabase.from(table).select("*").eq(exBibRef, effectiveRef).limit(100);
             if (!byRef.error && byRef.data?.length) rows = byRef.data;
           }
 
@@ -832,7 +889,7 @@
         return [];
       }
 
-      const tombos = await loadTombosForBook(data, bib_ref);
+      const tombos = await loadTombosForBook(data, effectiveBibRef);
       document.title = `${titulo || "Livro"} - AnarBib`;
       $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
       setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
@@ -847,7 +904,7 @@
       try {
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (session?.user?.id) {
+        if (session?.user?.id && effectiveBibRef) {
           try {
             const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
             if (ensureProfileError) {
@@ -859,7 +916,7 @@
 
           const { data: readState, error: readStateError } = await supabase.rpc(
             "fn_book_restricted_pdf_state_for_current_user",
-            { p_bib_ref: bib_ref }
+            { p_bib_ref: effectiveBibRef }
           );
 
           if (readStateError) {
@@ -874,7 +931,7 @@
             $("btnLer").style.display = "inline-flex";
             $("btnLer").addEventListener("click", () => {
               const viewerUrl = new URL("ler.html", location.href);
-              viewerUrl.searchParams.set("ref", bib_ref);
+              viewerUrl.searchParams.set("ref", effectiveBibRef);
               location.assign(viewerUrl.toString());
             });
           }
@@ -883,7 +940,9 @@
         console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
       }
 
-      $("btnReservar").addEventListener("click", () => reserve(bib_ref));
+      if (effectiveBibRef) {
+        $("btnReservar").addEventListener("click", () => reserve(effectiveBibRef));
+      }
     }
 
     await setupContaButton();
