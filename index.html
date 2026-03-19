@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AnarBib - Catálogo</title>
+<title>AnarBib – catálogos</title>
 <meta name="description" content="Catálogo da BLMF — Biblioteca Libertária Maxwell Ferreira. Consulte referências, autores, títulos, editoras, anos, CDD e disponibilidade.">
 <meta name="theme-color" content="#b30018">
 <link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/">
@@ -240,6 +240,79 @@ a { color: inherit; }
   letter-spacing:.01em;
   text-shadow:0 1px 0 rgba(0,0,0,.28);
 }
+.multi-select {
+  position:relative;
+}
+.multi-select-button {
+  width:100%;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(10,10,10,.98);
+  color:#fff;
+  border-radius:14px;
+  padding:14px 14px;
+  font-size:.98rem;
+  outline:none;
+  box-shadow: var(--shadow);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  cursor:pointer;
+  text-align:left;
+}
+.multi-select-button::after {
+  content:'▾';
+  font-size:.9rem;
+  opacity:.82;
+  flex:0 0 auto;
+}
+.multi-select.is-open .multi-select-button,
+.multi-select-button:focus {
+  border-color: rgba(225,29,47,.95);
+  box-shadow: 0 0 0 3px rgba(225,29,47,.24), var(--shadow);
+}
+.multi-select-menu {
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  right:0;
+  z-index:30;
+  padding:8px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(10,10,10,.98);
+  box-shadow: var(--shadow);
+  max-height:260px;
+  overflow:auto;
+}
+.multi-select-option {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:9px 10px;
+  border-radius:10px;
+  color:#fff;
+  cursor:pointer;
+  font-size:.92rem;
+  line-height:1.25;
+}
+.multi-select-option:hover {
+  background: rgba(255,255,255,.06);
+}
+.multi-select-option input {
+  margin-top:2px;
+  flex:0 0 auto;
+}
+.multi-select-divider {
+  height:1px;
+  margin:6px 4px;
+  background: rgba(255,255,255,.12);
+}
+.multi-select-empty {
+  padding:10px;
+  color: var(--muted);
+  font-size:.88rem;
+}
 .toolbar-actions {
   display:flex;
   flex-wrap:wrap;
@@ -394,7 +467,7 @@ table {
   width:100%;
   border-collapse:separate;
   border-spacing:0;
-  min-width:1860px;
+  min-width:2060px;
   table-layout:fixed;
 }
 thead th {
@@ -430,6 +503,7 @@ tbody tr:hover td { background: rgba(179,0,24,.08); }
 .col-ano { width: 92px; white-space: nowrap; }
 .col-editora { width: 250px; }
 .col-cdd { width: 120px; }
+.col-library { width: 220px; }
 .col-status { width: 185px; }
 .col-reserva { width: 175px; white-space: nowrap; }
 .col-acoes { width: 175px; white-space: nowrap; }
@@ -535,7 +609,8 @@ body.compact-view .field-label {
 body.compact-view .input,
 body.compact-view .select,
 body.compact-view .button,
-body.compact-view .mini-action {
+body.compact-view .mini-action,
+body.compact-view .multi-select-button {
   min-height:40px;
   padding:10px 12px;
   font-size:.9rem;
@@ -758,8 +833,23 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <option value="ano">Ano</option>
           <option value="editora">Editora</option>
           <option value="cdd">CDD</option>
+          <option value="library">Biblioteca</option>
           <option value="status">Disponibilidade</option>
         </select>
+      </div>
+      <div class="field">
+        <span class="field-label">Biblioteca</span>
+        <div id="libraryFilter" class="multi-select">
+          <button id="libraryFilterButton" class="multi-select-button" type="button" aria-haspopup="listbox" aria-expanded="false">Todas</button>
+          <div id="libraryFilterMenu" class="multi-select-menu" hidden>
+            <label class="multi-select-option">
+              <input id="libraryFilterAll" type="checkbox" checked>
+              <span>Todas</span>
+            </label>
+            <div class="multi-select-divider" aria-hidden="true"></div>
+            <div id="libraryFilterOptions"></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="toolbar-meta">
@@ -796,6 +886,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
             <th class="col-ano" data-key="ano">ano</th>
             <th class="col-editora" data-key="editora">editora</th>
             <th class="col-cdd" data-key="cdd">CDD</th>
+            <th class="col-library" data-key="library">biblioteca</th>
             <th class="col-status" data-key="status">disponibilidade</th>
             <th class="col-reserva" data-key="reserva">reserva</th>
             <th class="col-acoes" data-key="acoes">ações</th>
@@ -852,12 +943,27 @@ function buildCadastroUrl(nextUrl = location.href) {
   return u.toString();
 }
 
+const DEFAULT_LIBRARY_CODE = 'BLMF';
+const DEFAULT_LIBRARY_CITY = 'Belém do Pará';
+const DEFAULT_LIBRARY_DISPLAY = 'BLMF – Belém do Pará';
+const BOOK_SELECT_BASE = 'id,bib_ref,autor,titulo,ano,editora,cdd,loanable,available_count,created_at,author_id';
+const BOOK_SELECT_VARIANTS = [
+  `${BOOK_SELECT_BASE},library_code,library_name,library_city,library_display`,
+  `${BOOK_SELECT_BASE},biblioteca_sigla,biblioteca_nome,biblioteca_cidade,biblioteca_display`,
+  `${BOOK_SELECT_BASE},acervo_sigla,acervo_nome,acervo_cidade,acervo_display`,
+  `${BOOK_SELECT_BASE},owning_library_code,owning_library_name,owning_library_city,owning_library_display`,
+  BOOK_SELECT_BASE
+];
+
 let rows = [];
 let lastQuery = { tokens: [], phrases: [] };
 let sortKey = 'relevance';
 let sortDir = 'asc';
 let authState = { user: null, isLibrarian: false, accessToken: null };
 let serviceState = null;
+let selectedLibraries = new Set();
+let availableLibraries = [];
+let pendingLibrarySelections = [];
 
 const tbody = document.getElementById('tbody');
 const mobileResults = document.getElementById('mobileResults');
@@ -868,6 +974,11 @@ const yearFilter = document.getElementById('yearFilter');
 const cddFilter = document.getElementById('cddFilter');
 const sortSelect = document.getElementById('sortSelect');
 const availabilityFilter = document.getElementById('availabilityFilter');
+const libraryFilter = document.getElementById('libraryFilter');
+const libraryFilterButton = document.getElementById('libraryFilterButton');
+const libraryFilterMenu = document.getElementById('libraryFilterMenu');
+const libraryFilterAll = document.getElementById('libraryFilterAll');
+const libraryFilterOptions = document.getElementById('libraryFilterOptions');
 const totalPill = document.getElementById('totalPill');
 const visiblePill = document.getElementById('visiblePill');
 const statusPill = document.getElementById('statusPill');
@@ -943,6 +1054,126 @@ function escapeHTML(s) {
 function escapeRegExp(s) {
   return (s || '').replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 }
+function cleanTextValue(value) {
+  const s = (value ?? '').toString().trim();
+  if (!s) return '';
+  const lowered = s.toLowerCase();
+  return (lowered === 'null' || lowered === 'undefined') ? '' : s;
+}
+function deriveLibraryInfo(row = {}) {
+  const rawDisplay = cleanTextValue(
+    row.library_display
+    ?? row.biblioteca_display
+    ?? row.acervo_display
+    ?? row.owning_library_display
+    ?? row.library_label
+    ?? row.biblioteca_label
+  );
+  const rawCode = cleanTextValue(
+    row.library_code
+    ?? row.library_acronym
+    ?? row.biblioteca_sigla
+    ?? row.acervo_sigla
+    ?? row.owning_library_code
+  );
+  const rawName = cleanTextValue(
+    row.library_name
+    ?? row.library
+    ?? row.biblioteca_nome
+    ?? row.biblioteca
+    ?? row.acervo_nome
+    ?? row.owning_library_name
+  );
+  const rawCity = cleanTextValue(
+    row.library_city
+    ?? row.city
+    ?? row.cidade
+    ?? row.biblioteca_cidade
+    ?? row.acervo_cidade
+    ?? row.owning_library_city
+  );
+
+  let display = rawDisplay;
+  if (!display) {
+    if (rawCode && rawCity) display = `${rawCode} – ${rawCity}`;
+    else if (rawCode && rawName && normalize(rawCode) !== normalize(rawName)) display = `${rawCode} – ${rawName}`;
+    else if (rawName && rawCity) display = `${rawName} – ${rawCity}`;
+    else display = rawCode || rawName || DEFAULT_LIBRARY_DISPLAY;
+  }
+
+  return {
+    code: rawCode || DEFAULT_LIBRARY_CODE,
+    name: rawName || (display === DEFAULT_LIBRARY_DISPLAY ? 'Biblioteca Libertária Maxwell Ferreira' : (rawCode || display)),
+    city: rawCity || (display === DEFAULT_LIBRARY_DISPLAY ? DEFAULT_LIBRARY_CITY : ''),
+    display
+  };
+}
+function getSelectedLibraryValues() {
+  if (!availableLibraries.length) return [];
+  if (!selectedLibraries.size || selectedLibraries.size === availableLibraries.length) return [];
+  return availableLibraries.filter(label => selectedLibraries.has(label));
+}
+function updateLibraryFilterButtonLabel() {
+  const selected = getSelectedLibraryValues();
+  if (!selected.length) libraryFilterButton.textContent = 'Todas';
+  else if (selected.length === 1) libraryFilterButton.textContent = selected[0];
+  else libraryFilterButton.textContent = `${selected.length} bibliotecas`;
+  libraryFilterAll.checked = selected.length === 0;
+}
+function closeLibraryFilterMenu() {
+  libraryFilter.classList.remove('is-open');
+  libraryFilterMenu.hidden = true;
+  libraryFilterButton.setAttribute('aria-expanded', 'false');
+}
+function openLibraryFilterMenu() {
+  libraryFilter.classList.add('is-open');
+  libraryFilterMenu.hidden = false;
+  libraryFilterButton.setAttribute('aria-expanded', 'true');
+}
+function syncLibrarySelectionsFromOptions() {
+  if (!availableLibraries.length) {
+    selectedLibraries.clear();
+    updateLibraryFilterButtonLabel();
+    return;
+  }
+  const sanitized = new Set([...selectedLibraries].filter(label => availableLibraries.includes(label)));
+  if (pendingLibrarySelections.length) {
+    const lookup = new Map(availableLibraries.map(label => [normalize(label), label]));
+    const next = pendingLibrarySelections.map(item => lookup.get(normalize(item))).filter(Boolean);
+    if (next.length) sanitized.clear();
+    next.forEach(label => sanitized.add(label));
+    pendingLibrarySelections = [];
+  }
+  if (sanitized.size === availableLibraries.length) sanitized.clear();
+  selectedLibraries = sanitized;
+  updateLibraryFilterButtonLabel();
+}
+function renderLibraryFilterOptions() {
+  availableLibraries = [...new Set(rows.map(r => r.library_display).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  if (!availableLibraries.length) availableLibraries = [DEFAULT_LIBRARY_DISPLAY];
+  syncLibrarySelectionsFromOptions();
+  libraryFilterOptions.innerHTML = '';
+  for (const label of availableLibraries) {
+    const option = document.createElement('label');
+    option.className = 'multi-select-option';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = label;
+    input.checked = selectedLibraries.has(label);
+    input.dataset.libraryDisplay = label;
+    const span = document.createElement('span');
+    span.textContent = label;
+    option.appendChild(input);
+    option.appendChild(span);
+    libraryFilterOptions.appendChild(option);
+  }
+  if (!libraryFilterOptions.childElementCount) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'multi-select-empty';
+    emptyState.textContent = 'Nenhuma biblioteca encontrada.';
+    libraryFilterOptions.appendChild(emptyState);
+  }
+}
 function bigrams(str) {
   const s = str || '';
   const map = new Map();
@@ -1014,6 +1245,7 @@ function getSortLabel(key = sortKey, dir = sortDir) {
     ano: 'ano',
     editora: 'editora',
     cdd: 'CDD',
+    library: 'biblioteca',
     status: 'disponibilidade'
   };
   const base = labels[key] || 'relevância';
@@ -1027,6 +1259,7 @@ function getFilterState() {
     publisher: (publisherFilter.value || '').trim(),
     year: (yearFilter.value || '').trim(),
     cdd: (cddFilter.value || '').trim(),
+    libraries: getSelectedLibraryValues(),
     availability: availabilityFilter.value || 'all',
     sort: sortKey,
     dir: sortDir,
@@ -1041,6 +1274,7 @@ function buildActiveFilterItems() {
   if (state.publisher) items.push({ key: 'publisher', label: 'Editora', value: state.publisher });
   if (state.year) items.push({ key: 'year', label: 'Ano', value: state.year });
   if (state.cdd) items.push({ key: 'cdd', label: 'CDD', value: state.cdd });
+  if (state.libraries.length) items.push({ key: 'libraries', label: 'Biblioteca', value: state.libraries.length <= 2 ? state.libraries.join(' · ') : `${state.libraries.length} bibliotecas` });
   if (state.availability !== 'all') items.push({ key: 'availability', label: 'Disponibilidade', value: getAvailabilityLabel(state.availability) });
   if (state.sort !== 'relevance') items.push({ key: 'sort', label: 'Ordenação', value: getSortLabel(state.sort, state.dir).replace(/^Ordenação:\s*/, '') });
   return items;
@@ -1071,7 +1305,8 @@ function syncStateToUrl() {
   const defaults = {
     availability: 'all',
     sort: 'relevance',
-    dir: 'asc'
+    dir: 'asc',
+    libs: ''
   };
   const mapping = {
     q: state.q,
@@ -1079,6 +1314,7 @@ function syncStateToUrl() {
     publisher: state.publisher,
     year: state.year,
     cdd: state.cdd,
+    libs: state.libraries.join('|'),
     availability: state.availability,
     sort: state.sort,
     dir: state.dir
@@ -1099,10 +1335,11 @@ function restoreStateFromUrl() {
   publisherFilter.value = url.searchParams.get('publisher') || '';
   yearFilter.value = url.searchParams.get('year') || '';
   cddFilter.value = url.searchParams.get('cdd') || '';
+  pendingLibrarySelections = (url.searchParams.get('libs') || '').split('|').map(item => item.trim()).filter(Boolean);
   const availabilityFromUrl = url.searchParams.get('availability') || 'all';
   availabilityFilter.value = ['all','available','local','unavailable'].includes(availabilityFromUrl) ? availabilityFromUrl : 'all';
   const sortFromUrl = url.searchParams.get('sort') || 'relevance';
-  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','cdd','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
+  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','cdd','library','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
   sortDir = url.searchParams.get('dir') || 'asc';
   sortSelect.value = sortKey;
   if (!['asc','desc'].includes(sortDir)) sortDir = 'asc';
@@ -1159,6 +1396,10 @@ function clearSingleFilter(key) {
   else if (key === 'publisher') publisherFilter.value = '';
   else if (key === 'year') yearFilter.value = '';
   else if (key === 'cdd') cddFilter.value = '';
+  else if (key === 'libraries') {
+    selectedLibraries.clear();
+    renderLibraryFilterOptions();
+  }
   else if (key === 'availability') availabilityFilter.value = 'all';
   else if (key === 'sort') {
     sortKey = 'relevance';
@@ -1414,10 +1655,11 @@ function prepareRows() {
       ano: normalize(r.ano),
       editora: normalize(r.editora),
       cdd: normalize(r.cdd),
+      library: normalize(r.library_display),
       status: normalize(status.label)
     };
     r._n = data;
-    r._all = [data.bib_ref, data.autor, data.titulo, data.ano, data.editora, data.cdd, data.status].filter(Boolean).join(' ');
+    r._all = [data.bib_ref, data.autor, data.titulo, data.ano, data.editora, data.cdd, data.library, data.status].filter(Boolean).join(' ');
     r._words = r._all ? r._all.split(/\s+/).filter(Boolean) : [];
     r._variantAutor = orthographySkeleton(data.autor);
     r._variantTitulo = orthographySkeleton(data.titulo);
@@ -1428,6 +1670,7 @@ function prepareRows() {
       orthographySkeleton(data.ano),
       orthographySkeleton(data.editora),
       orthographySkeleton(data.cdd),
+      orthographySkeleton(data.library),
       orthographySkeleton(data.status)
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
@@ -1435,29 +1678,41 @@ function prepareRows() {
 }
 async function loadRowsFromSupabase() {
   try {
-    const select = 'id,bib_ref,autor,titulo,ano,editora,cdd,loanable,available_count,created_at,author_id';
-    const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, authorLookup, res] = await Promise.all([
+    const [authorRelations, authorLookup] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
-      loadAuthorLookupFromSupabase(),
-      fetch(url, {
+      loadAuthorLookupFromSupabase()
+    ]);
+
+    let data = null;
+    let lastError = '';
+
+    for (const select of BOOK_SELECT_VARIANTS) {
+      const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
+      const res = await fetch(url, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           Accept: 'application/json'
         }
-      })
-    ]);
-    const text = await res.text();
-    if (!res.ok) {
-      alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
+      });
+      const text = await res.text();
+      if (res.ok) {
+        data = text ? JSON.parse(text) : [];
+        break;
+      }
+      lastError = `${res.status} — ${text}`;
+    }
+
+    if (!Array.isArray(data)) {
+      alert('Erro ao carregar catálogo: ' + lastError);
       return [];
     }
-    const data = text ? JSON.parse(text) : [];
+
     return (data || []).map(r => {
       const authorId = normalizeAuthorIdValue(r.author_id);
       const relationIds = authorRelations.get(String(r.id ?? '')) || [];
       const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
+      const libraryInfo = deriveLibraryInfo(r);
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
@@ -1466,6 +1721,10 @@ async function loadRowsFromSupabase() {
         ano: r.ano ?? '',
         editora: r.editora ?? '',
         cdd: r.cdd ?? '',
+        library_code: libraryInfo.code,
+        library_name: libraryInfo.name,
+        library_city: libraryInfo.city,
+        library_display: libraryInfo.display,
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
@@ -1490,6 +1749,7 @@ function currentRows() {
   const publisher = normalize(publisherFilter.value);
   const year = (yearFilter.value || '').toString().trim();
   const cdd = normalize(cddFilter.value);
+  const selectedLibraryKeys = new Set(getSelectedLibraryValues().map(value => normalize(value)));
   const availability = availabilityFilter.value;
   const hasQuery = q.tokens.length > 0 || q.phrases.length > 0;
 
@@ -1499,6 +1759,7 @@ function currentRows() {
     if (publisher && !r._n.editora.includes(publisher)) continue;
     if (!matchYearField(r.ano, year)) continue;
     if (cdd && !r._n.cdd.includes(cdd)) continue;
+    if (selectedLibraryKeys.size && !selectedLibraryKeys.has(r._n.library)) continue;
     if (availability !== 'all' && r._status.key !== availability) continue;
 
     if (!hasQuery) {
@@ -1735,6 +1996,7 @@ function buildRowMarkup(r) {
   const cddHtml = r.cdd
     ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
     : '<span class="muted">—</span>';
+  const libraryHtml = r.library_display ? highlightHTML(r.library_display, terms) : '<span class="muted">—</span>';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
@@ -1745,6 +2007,7 @@ function buildRowMarkup(r) {
     anoHtml,
     editoraHtml,
     cddHtml,
+    libraryHtml,
     status,
     rowHtml: `
       <td class="col-ref"><span class="ref-main">${refHtml}</span></td>
@@ -1753,6 +2016,7 @@ function buildRowMarkup(r) {
       <td class="col-ano">${anoHtml}</td>
       <td class="col-editora">${editoraHtml}</td>
       <td class="col-cdd">${cddHtml}</td>
+      <td class="col-library">${libraryHtml}</td>
       <td class="col-status"><span class="status-badge ${status.cls}">${status.label}</span></td>
       <td class="col-reserva">${reservaHtml}</td>
       <td class="col-acoes"><button class="btn-inline copyRefBtn" type="button" data-ref="${encodeURIComponent(ref)}">Copiar referência</button></td>
@@ -1780,6 +2044,10 @@ function buildRowMarkup(r) {
           <div class="mobile-meta">
             <span class="mobile-meta-label">CDD</span>
             <div class="mobile-meta-value">${cddHtml}</div>
+          </div>
+          <div class="mobile-meta">
+            <span class="mobile-meta-label">Biblioteca</span>
+            <div class="mobile-meta-value">${libraryHtml}</div>
           </div>
           <div class="mobile-meta">
             <span class="mobile-meta-label">Editora</span>
@@ -1821,8 +2089,8 @@ function debounce(fn, ms) {
 }
 const debouncedRender = debounce(render, 120);
 function toCSV(rowsToExport) {
-  const cols = ['bib_ref','autor','titulo','ano','editora','cdd','status'];
-  const labels = { bib_ref:'ref', autor:'autor', titulo:'título', ano:'ano', editora:'editora', cdd:'CDD', status:'status' };
+  const cols = ['bib_ref','autor','titulo','ano','editora','cdd','library_display','status'];
+  const labels = { bib_ref:'ref', autor:'autor', titulo:'título', ano:'ano', editora:'editora', cdd:'CDD', library_display:'biblioteca', status:'status' };
   const esc = (v) => {
     const s = (v ?? '').toString().replace(/\r?\n/g, ' ').trim();
     const needs = /[",;]/.test(s);
@@ -1860,6 +2128,7 @@ function exportPDF() {
       <td>${escapeHTML(r.ano || '—')}</td>
       <td>${escapeHTML(r.editora || '—')}</td>
       <td>${escapeHTML(r.cdd || '—')}</td>
+      <td>${escapeHTML(r.library_display || '—')}</td>
       <td>${escapeHTML(r._status.label)}</td>
     </tr>`).join('');
   const w = window.open('', '_blank');
@@ -1867,7 +2136,7 @@ function exportPDF() {
     alert('O navegador bloqueou a janela de exportação. Autorize pop-ups para exportar em PDF.');
     return;
   }
-  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnarBib - Catálogo — PDF</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:28px;color:#111}h1{font-size:18px;margin:0 0 6px}.meta{font-size:12px;color:#444;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px 8px;font-size:12px;vertical-align:top}th{background:#f4f4f4;text-transform:uppercase;letter-spacing:.04em;font-size:11px}@page{size:A4;margin:12mm}</style></head><body><h1>Catálogo da BLMF</h1><div class="meta">Exportado em ${stamp} · ${filtered.length} item(ns)</div><div style="margin:12px 0 16px;"><button onclick="window.print()" style="padding:8px 10px;border:1px solid #aaa;border-radius:8px;background:#fff;cursor:pointer;">Imprimir / Salvar em PDF</button><span style="font-size:12px;color:#444;margin-left:10px;">(Escolha “Salvar como PDF” na janela de impressão)</span></div><table><thead><tr><th>ref</th><th>autor</th><th>título</th><th>ano</th><th>editora</th><th>CDD</th><th>status</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnarBib – catálogos — PDF</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:28px;color:#111}h1{font-size:18px;margin:0 0 6px}.meta{font-size:12px;color:#444;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px 8px;font-size:12px;vertical-align:top}th{background:#f4f4f4;text-transform:uppercase;letter-spacing:.04em;font-size:11px}@page{size:A4;margin:12mm}</style></head><body><h1>Catálogo da BLMF</h1><div class="meta">Exportado em ${stamp} · ${filtered.length} item(ns)</div><div style="margin:12px 0 16px;"><button onclick="window.print()" style="padding:8px 10px;border:1px solid #aaa;border-radius:8px;background:#fff;cursor:pointer;">Imprimir / Salvar em PDF</button><span style="font-size:12px;color:#444;margin-left:10px;">(Escolha “Salvar como PDF” na janela de impressão)</span></div><table><thead><tr><th>ref</th><th>autor</th><th>título</th><th>ano</th><th>editora</th><th>CDD</th><th>biblioteca</th><th>status</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
   w.document.close();
 }
 function clearFilters() {
@@ -1876,10 +2145,12 @@ function clearFilters() {
   publisherFilter.value = '';
   yearFilter.value = '';
   cddFilter.value = '';
+  selectedLibraries.clear();
   availabilityFilter.value = 'all';
   sortKey = 'relevance';
   sortDir = 'asc';
   sortSelect.value = 'relevance';
+  renderLibraryFilterOptions();
   render();
   search.focus();
 }
@@ -1934,6 +2205,24 @@ publisherFilter.addEventListener('input', render);
 yearFilter.addEventListener('input', render);
 cddFilter.addEventListener('input', render);
 availabilityFilter.addEventListener('change', render);
+libraryFilterButton.addEventListener('click', () => {
+  if (libraryFilterMenu.hidden) openLibraryFilterMenu();
+  else closeLibraryFilterMenu();
+});
+libraryFilterAll.addEventListener('change', () => {
+  selectedLibraries.clear();
+  renderLibraryFilterOptions();
+  render();
+});
+libraryFilterOptions.addEventListener('change', (e) => {
+  const input = e.target.closest('input[data-library-display]');
+  if (!input) return;
+  if (input.checked) selectedLibraries.add(input.value);
+  else selectedLibraries.delete(input.value);
+  if (selectedLibraries.size === availableLibraries.length) selectedLibraries.clear();
+  updateLibraryFilterButtonLabel();
+  render();
+});
 sortSelect.addEventListener('change', () => {
   sortKey = sortSelect.value;
   sortDir = sortKey === 'relevance' ? 'asc' : 'asc';
@@ -1959,7 +2248,7 @@ document.querySelectorAll('thead th[data-key]').forEach(th => {
     } else {
       sortKey = key;
       sortDir = 'asc';
-      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','cdd','status'].includes(key) ? key : 'relevance';
+      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','cdd','library','status'].includes(key) ? key : 'relevance';
     }
     render();
   });
@@ -2032,10 +2321,19 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     search.focus();
   }
-  if (e.key === 'Escape' && document.activeElement === search) {
-    search.value = '';
-    debouncedRender();
+  if (e.key === 'Escape') {
+    if (!libraryFilterMenu.hidden) {
+      closeLibraryFilterMenu();
+      return;
+    }
+    if (document.activeElement === search) {
+      search.value = '';
+      debouncedRender();
+    }
   }
+});
+document.addEventListener('click', (e) => {
+  if (!libraryFilter.contains(e.target)) closeLibraryFilterMenu();
 });
 (async function init() {
   restoreStateFromUrl();
@@ -2043,6 +2341,7 @@ document.addEventListener('keydown', (e) => {
   await loadPublicServiceState();
   rows = await loadRowsFromSupabase();
   prepareRows();
+  renderLibraryFilterOptions();
   render();
 })();
 </script>
