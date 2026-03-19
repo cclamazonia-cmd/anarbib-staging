@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-library-slug="default" data-theme-slug="default" data-library-name="AnarBib">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,17 +9,20 @@
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="stylesheet" href="./assets/css/theme-base.css">
+  <script src="./assets/js/library-context.js" defer></script>
+  <script src="./assets/js/theme-loader.js" defer></script>
   <style>
     :root {
-      --bg: #0b0b0b;
-      --panel: rgba(10,10,10,.90);
-      --panel-2: rgba(16,16,16,.86);
-      --line: rgba(255,255,255,.10);
-      --text: #f4f4f4;
-      --muted: #d1d1d1;
-      --red: #7a0b14;
-      --red-2: #bb1e2c;
-      --shadow: 0 16px 38px rgba(0,0,0,.42);
+      --bg: var(--brand-color-secondary, #0b0b0b);
+      --panel: var(--brand-panel-bg, rgba(10,10,10,.90));
+      --panel-2: var(--brand-panel-bg, rgba(16,16,16,.86));
+      --line: var(--brand-panel-border, rgba(255,255,255,.10));
+      --text: var(--brand-text, #f4f4f4);
+      --muted: var(--brand-muted, #d1d1d1);
+      --red: var(--brand-color-primary, #7a0b14);
+      --red-2: var(--brand-color-primary, #bb1e2c);
+      --shadow: var(--brand-shadow, 0 16px 38px rgba(0,0,0,.42));
       --canvas-filter: none;
       --viewer-bg: #0f0a0b;
     }
@@ -31,14 +34,8 @@
       padding: 0;
       min-height: 100%;
       color: var(--text);
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
-      background-image:
-        linear-gradient(rgba(0,0,0,.62), rgba(0,0,0,.62)),
-        url('https://cclamazonia.noblogs.org/files/2026/03/ni-dieu-ni-maitre-une-histoire-de-lanarchisme-episodes-3-et-4-09-15-2022-1024x639-1441403844.png');
-      background-size: cover;
-      background-position: center center;
-      background-attachment: fixed;
-      background-repeat: no-repeat;
+      font-family: var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif);
+      background: transparent;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
@@ -74,8 +71,8 @@
       justify-content:space-between;
       gap:12px;
       padding: 12px 16px;
-      background: linear-gradient(180deg, #1a1a1a, #121212);
-      border: 1px solid rgba(255,255,255,.10);
+      background: var(--panel);
+      border: 1px solid var(--line);
       border-radius: 18px;
       box-shadow: var(--shadow);
       flex-wrap: wrap;
@@ -94,8 +91,8 @@
       border-radius: 12px;
       display:grid;
       place-items:center;
-      background: linear-gradient(135deg, rgba(225,29,47,.92), rgba(179,0,24,.92));
-      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--red-2) 88%, white 12%), var(--red));
+      border:1px solid var(--line);
       font-weight: 900;
       letter-spacing: .02em;
       box-shadow: var(--shadow);
@@ -130,8 +127,8 @@
 
     .hero {
       width: 100%;
-      border: 1px solid rgba(255,255,255,.10);
-      background: linear-gradient(135deg, rgba(122,11,20,.92), rgba(50,7,11,.94));
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--red) 88%, white 12%), color-mix(in srgb, var(--bg) 76%, var(--red) 24%));
       border-radius: 22px;
       padding: 18px;
       box-shadow: var(--shadow);
@@ -201,8 +198,8 @@
       gap:8px;
       padding:8px 10px;
       border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(12,12,12,.84);
+      border:1px solid var(--line);
+      background: var(--panel);
       color:#fff;
       font-size:.84rem;
       line-height:1.2;
@@ -211,7 +208,7 @@
     }
 
     .hero-chip strong, .meta-chip strong {
-      color:#ffb3bb;
+      color: color-mix(in srgb, var(--brand-color-accent, #ffb3bb) 78%, white 22%);
       font-weight:700;
     }
 
@@ -266,7 +263,7 @@
       display:grid;
       gap:12px;
       background: var(--panel);
-      border: 1px solid rgba(255,255,255,.10);
+      border: 1px solid var(--line);
       border-radius: 22px;
       box-shadow: var(--shadow);
     }
@@ -288,7 +285,7 @@
 
     .toolbar-label {
       font-size: .84rem;
-      color: #ffe3e7;
+      color: color-mix(in srgb, var(--brand-color-accent, #ffe3e7) 84%, white 16%);
       font-weight: 800;
       letter-spacing: .01em;
     }
@@ -332,7 +329,7 @@
     .error-box.show { display:block; }
 
     .sheet {
-      border:1px solid rgba(255,255,255,.10);
+      border:1px solid var(--line);
       border-radius:22px;
       overflow:hidden;
       background: var(--panel);
@@ -345,8 +342,8 @@
       justify-content:space-between;
       gap:12px;
       padding:14px 18px;
-      background: linear-gradient(180deg, #1a1a1a, #121212);
-      border-bottom:1px solid rgba(255,255,255,.06);
+      background: color-mix(in srgb, var(--panel) 92%, black 8%);
+      border-bottom:1px solid var(--line);
       flex-wrap: wrap;
     }
 
@@ -388,8 +385,8 @@
 
     .page-card {
       padding:12px;
-      background: #1b1214;
-      border:1px solid rgba(255,255,255,.10);
+      background: color-mix(in srgb, var(--bg) 74%, var(--red) 26%);
+      border:1px solid var(--line);
       border-radius:14px;
       box-shadow: 0 10px 24px rgba(0,0,0,.28);
       scroll-margin-top: 24px;
@@ -463,7 +460,7 @@
     }
 
     body.fullscreen-mode .page-card {
-      background: rgba(16,16,16,.92);
+      background: color-mix(in srgb, var(--panel) 94%, black 6%);
     }
 
     @media print {
@@ -511,7 +508,7 @@
   <main class="wrap" id="pageRoot">
     <header class="top-nav" id="topNav">
       <div class="top-nav-brand">
-        <div class="top-nav-mark" aria-hidden="true"><img src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;" /></div>
+        <div class="top-nav-mark" aria-hidden="true"><img data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;" /></div>
         <div class="top-nav-copy">
           <strong>AnarBib</strong>
           <span>Leitor PDF · navegação rápida</span>
