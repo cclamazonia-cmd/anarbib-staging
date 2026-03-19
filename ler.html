@@ -4,257 +4,395 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AnarBib – leitor pdf</title>
+  <meta name="theme-color" content="#b30018" />
+  <meta name="description" content="Leitor PDF restrito do AnarBib." />
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <style>
     :root {
-      --bg: #120b0c;
-      --panel: #1a1113;
-      --panel-2: #211517;
-      --border: rgba(255,255,255,.12);
-      --text: #f6efef;
-      --muted: #cab9ba;
-      --accent: #d44b57;
-      --accent-2: #f0d6d8;
-      --ok: #8fd1a7;
-      --warn: #f2c572;
-      --err: #ff9ba3;
-      --shadow: 0 18px 40px rgba(0,0,0,.35);
+      --bg: #0b0b0b;
+      --panel: rgba(18,18,18,.96);
+      --panel-2: rgba(24,24,24,.94);
+      --line: rgba(255,255,255,.08);
+      --text: #f5f5f5;
+      --muted: #d1d1d1;
+      --red: #b30018;
+      --red-2: #e11d2f;
+      --shadow: 0 18px 40px rgba(0,0,0,.45);
       --canvas-filter: none;
       --viewer-bg: #0f0a0b;
     }
 
+    * { box-sizing: border-box; }
+
     html, body {
       margin: 0;
+      padding: 0;
       min-height: 100%;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.78)),
+        url('https://cclamazonia.noblogs.org/files/2024/11/Arte-CCLA-paredao.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
     }
 
-    * { box-sizing: border-box; }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top, rgba(212,75,87,.14), transparent 38%),
-        linear-gradient(180deg, #120b0c 0%, #0e090a 100%);
-      color: var(--text);
-      overflow-y: auto;
-    }
-
     body.fullscreen-mode {
       overflow: hidden;
+      background-attachment: scroll;
     }
 
-    .page {
-      width: min(1520px, calc(100% - 24px));
-      margin: 18px auto 32px;
+    a { color: inherit; }
+
+    .wrap {
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 18px 24px 28px;
       display: grid;
       gap: 14px;
     }
 
     .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border: 1px solid var(--border);
-      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(18,18,18,.96);
+      border-radius: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
     }
 
-    .hero {
-      padding: 18px 18px 14px;
-      display: grid;
-      gap: 12px;
-      background: linear-gradient(180deg, rgba(212,75,87,.18), rgba(212,75,87,.06));
-      border: 1px solid rgba(212,75,87,.25);
+    .top-nav {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #1a1a1a, #121212);
+      border: 1px solid rgba(255,255,255,.08);
       border-radius: 18px;
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+    }
+
+    .top-nav-brand {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+
+    .top-nav-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display:grid;
+      place-items:center;
+      background: linear-gradient(135deg, rgba(225,29,47,.92), rgba(179,0,24,.92));
+      border:1px solid rgba(255,255,255,.12);
+      font-weight: 900;
+      letter-spacing: .02em;
+      box-shadow: var(--shadow);
+      flex: 0 0 42px;
+    }
+
+    .top-nav-copy {
+      min-width:0;
+    }
+
+    .top-nav-copy strong {
+      display:block;
+      font-size: .95rem;
+      line-height: 1.2;
+    }
+
+    .top-nav-copy span {
+      display:block;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+
+    .quick-nav {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .hero {
+      max-width: 1160px;
+      width: 100%;
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display:grid;
+      gap:14px;
     }
 
     .hero-top {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
     }
 
-    .title-wrap {
-      min-width: 0;
+    .hero-copy {
+      min-width:0;
+      flex: 1 1 420px;
     }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(1.2rem, 2vw, 1.7rem);
-      line-height: 1.15;
+    .hero h1 {
+      margin:0 0 6px;
+      font-size: clamp(1.65rem, 2.8vw, 2.5rem);
+      line-height:1.05;
     }
 
-    .sub {
-      margin: 4px 0 0;
-      color: var(--accent-2);
-      font-size: .95rem;
+    .hero p {
+      margin:0;
+      color: rgba(255,255,255,.92);
+      font-size: .98rem;
+      line-height: 1.4;
     }
 
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .logo-reserve {
+      display:grid;
+      grid-template-columns: repeat(2, minmax(120px, 150px));
+      gap:10px;
+      align-items:stretch;
+      flex: 0 0 auto;
     }
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      font-size: .86rem;
+    .logo-slot {
+      min-height: 70px;
+      border-radius: 16px;
+      border: 1px dashed rgba(255,255,255,.26);
+      background: rgba(18,18,18,.24);
+      display:grid;
+      place-items:center;
+      padding: 10px;
+      text-align:center;
+      color: rgba(255,255,255,.88);
+      font-size: .82rem;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .hero-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+
+    .hero-chip, .meta-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(18,18,18,.92);
+      color:#fff;
+      font-size:.84rem;
+      line-height:1.2;
+      box-shadow: var(--shadow);
       white-space: nowrap;
     }
 
-    .toolbar {
-      display: grid;
-      gap: 10px;
-      padding: 14px 16px;
-      background: rgba(255,255,255,.03);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
+    .hero-chip strong, .meta-chip strong {
+      color:#ffb3bb;
+      font-weight:700;
     }
 
-    .toolbar-line {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
+    .button, .action-link, .mini-action, .select, .input {
+      width:auto;
+      min-height:42px;
+      padding:10px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(18,18,18,.92);
+      color:#fff;
+      font-size:.95rem;
+      font-family: inherit;
+      box-shadow: var(--shadow);
+      text-decoration:none;
+      outline:none;
     }
 
-    .toolbar-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
+    .button, .mini-action { cursor:pointer; }
+
+    .button.primary {
+      border:none;
+      background: linear-gradient(135deg, var(--red-2), var(--red));
+      font-weight:900;
+      color:#fff;
     }
 
-    .btn,
-    .select,
-    .input {
-      appearance: none;
-      border: 1px solid rgba(255,255,255,.14);
-      background: #23181a;
-      color: var(--text);
-      border-radius: 12px;
-      padding: 10px 14px;
-      font: inherit;
-      transition: transform .08s ease, border-color .12s ease, background .12s ease;
+    .button.secondary, .action-link, .mini-action {
+      font-weight:700;
     }
 
-    .btn {
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn:hover,
+    .button:hover,
+    .button.secondary:hover,
+    .action-link:hover,
+    .mini-action:hover,
     .select:hover,
     .input:hover,
     .select:focus,
     .input:focus {
+      border-color: rgba(255,255,255,.22);
+      color: var(--text);
       transform: translateY(-1px);
-      border-color: rgba(255,255,255,.25);
-      background: #2c1d20;
-      outline: none;
     }
 
-    .btn.primary {
-      background: #7f202a;
-      border-color: rgba(212,75,87,.7);
+    .reader-shell {
+      display:grid;
+      gap:14px;
     }
 
-    .btn.primary:hover {
-      background: #972b36;
+    .toolbar {
+      padding: 14px 16px;
+      display:grid;
+      gap:12px;
+      background: rgba(18,18,18,.96);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
     }
 
-    .btn.ghost {
-      background: transparent;
+    .toolbar-line {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
     }
 
-    .btn[disabled],
-    .select[disabled],
-    .input[disabled] {
-      opacity: .6;
-      cursor: not-allowed;
-      transform: none;
+    .toolbar-group {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:10px;
     }
 
-    .input.page-input {
-      width: 86px;
+    .toolbar-label {
+      font-size: .84rem;
+      color: #ffe3e7;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+
+    .page-input {
+      width: 88px;
       text-align: center;
-      padding-right: 10px;
       padding-left: 10px;
+      padding-right: 10px;
     }
 
-    .status {
-      margin: 0;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.12);
+    .status-row {
+      display:grid;
+      gap:10px;
+    }
+
+    .status-box {
+      margin:0;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.04);
       color: var(--muted);
     }
 
-    .status.ok { color: var(--ok); border-color: rgba(143,209,167,.35); background: rgba(143,209,167,.08); }
-    .status.warn { color: var(--warn); border-color: rgba(242,197,114,.35); background: rgba(242,197,114,.08); }
-    .status.err { color: var(--err); border-color: rgba(255,155,163,.35); background: rgba(255,155,163,.08); }
-
-    .viewer-shell {
-      padding: 14px;
-      display: grid;
-      gap: 14px;
-    }
+    .status-box.ok { color: #d8ffe2; border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); }
+    .status-box.warn { color: #fff2cc; border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); }
+    .status-box.err { color: #ffd6da; border-color: rgba(225,29,47,.35); background: rgba(225,29,47,.12); }
 
     .error-box {
-      display: none;
-      padding: 14px;
-      border: 1px solid rgba(255,155,163,.35);
-      background: rgba(255,155,163,.08);
-      color: var(--err);
-      border-radius: 14px;
+      display:none;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid rgba(225,29,47,.35);
+      background: rgba(225,29,47,.12);
+      color:#ffd6da;
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    .error-box.show { display: block; }
+    .error-box.show { display:block; }
+
+    .sheet {
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      overflow:hidden;
+      background: rgba(18,18,18,.96);
+      box-shadow: var(--shadow);
+    }
+
+    .sheet-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 18px;
+      background: linear-gradient(180deg, #1a1a1a, #121212);
+      border-bottom:1px solid rgba(255,255,255,.06);
+      flex-wrap: wrap;
+    }
+
+    .sheet-title {
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .sheet-sub {
+      font-size: .86rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .viewer-shell {
+      padding: 14px;
+      display:grid;
+      gap:14px;
+    }
 
     .viewer {
-      min-height: 70vh;
+      min-height: 72vh;
       max-height: 78vh;
       padding: 16px;
       border-radius: 16px;
       background: var(--viewer-bg);
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255,255,255,.08);
       overflow: auto;
       position: relative;
       overscroll-behavior: contain;
-    }
-
-    body.fullscreen-mode .viewer {
-      max-height: calc(100vh - 240px);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
     }
 
     .pages {
-      display: grid;
-      gap: 16px;
-      justify-content: center;
+      display:grid;
+      gap:16px;
+      justify-content:center;
     }
 
     .page-card {
-      padding: 12px;
+      padding:12px;
       background: #1b1214;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
       box-shadow: 0 10px 24px rgba(0,0,0,.28);
       scroll-margin-top: 24px;
     }
@@ -264,117 +402,175 @@
       box-shadow: 0 0 0 1px rgba(212,75,87,.15), 0 10px 24px rgba(0,0,0,.28);
     }
 
+    .page-card.hidden-page { display:none; }
+
     .page-card canvas {
-      display: block;
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
+      display:block;
+      max-width:100%;
+      height:auto;
+      border-radius:8px;
       background: white;
       filter: var(--canvas-filter);
-      user-select: none;
-      -webkit-user-drag: none;
-      pointer-events: none;
-    }
-
-    .page-card.hidden-page {
-      display: none;
+      user-select:none;
+      -webkit-user-drag:none;
+      pointer-events:none;
     }
 
     .page-label {
-      margin: 0 0 8px;
-      font-size: .84rem;
+      margin:0 0 8px;
+      font-size:.84rem;
       color: var(--muted);
     }
 
-    .meta {
-      color: var(--muted);
-      font-size: .92rem;
-    }
-
-    .shortcut-note {
-      color: var(--muted);
-      font-size: .84rem;
-    }
-
-    .hidden { display: none !important; }
+    .hidden { display:none !important; }
 
     .no-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
     .no-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 999px; }
     .no-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
 
+    body.fullscreen-mode .top-nav,
+    body.fullscreen-mode .hero,
+    body.fullscreen-mode .toolbar,
+    body.fullscreen-mode .status-row,
+    body.fullscreen-mode .sheet-head {
+      display:none !important;
+    }
+
+    body.fullscreen-mode .wrap {
+      max-width: none;
+      padding: 0;
+      gap: 0;
+      width: 100vw;
+    }
+
+    body.fullscreen-mode .sheet,
+    body.fullscreen-mode .reader-shell,
+    body.fullscreen-mode .viewer-shell {
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      gap: 0;
+      padding: 0;
+    }
+
+    body.fullscreen-mode .viewer {
+      min-height: 100vh;
+      max-height: 100vh;
+      height: 100vh;
+      border: none;
+      border-radius: 0;
+      padding: 18px 24px 28px;
+      background: #050607;
+    }
+
+    body.fullscreen-mode .page-card {
+      background: rgba(16,16,16,.92);
+    }
+
     @media print {
-      body * { display: none !important; }
+      body * { display:none !important; }
       body::before {
         content: "Impressão desativada neste leitor.";
-        display: block !important;
-        color: #111;
-        padding: 24px;
-        font: 16px/1.4 system-ui, sans-serif;
+        display:block !important;
+        color:#111;
+        padding:24px;
+        font:16px/1.4 system-ui, sans-serif;
       }
     }
 
-    @media (max-width: 900px) {
-      .toolbar-line { justify-content: flex-start; }
-      .viewer { max-height: none; min-height: 62vh; }
-      body.fullscreen-mode .viewer { max-height: calc(100vh - 260px); }
-    }
-
-    @media (max-width: 720px) {
-      .page {
-        width: min(100%, calc(100% - 12px));
-        margin: 8px auto 20px;
+    @media (max-width: 980px) {
+      .top-nav,
+      .hero-top,
+      .toolbar-line {
+        justify-content:flex-start;
       }
 
-      .viewer-shell,
+      .logo-reserve {
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .wrap { padding: 10px 12px 22px; }
+      .hero { padding: 14px; }
+      .top-nav { padding: 10px 12px; }
       .toolbar,
-      .hero { padding-left: 12px; padding-right: 12px; }
-
-      .viewer { padding: 10px; }
-      .page-card { padding: 8px; }
+      .viewer-shell { padding: 12px; }
+      .viewer { padding: 10px; min-height: 66vh; max-height: none; }
+      .button,
+      .action-link,
+      .mini-action,
+      .select,
+      .input { width: 100%; }
+      .quick-nav,
+      .toolbar-group { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <main class="page" id="pageRoot">
-    <section class="hero panel">
+  <main class="wrap" id="pageRoot">
+    <header class="top-nav" id="topNav">
+      <div class="top-nav-brand">
+        <div class="top-nav-mark" aria-hidden="true">A</div>
+        <div class="top-nav-copy">
+          <strong>AnarBib</strong>
+          <span>Leitor PDF · navegação rápida</span>
+        </div>
+      </div>
+      <nav class="quick-nav" aria-label="Navegação rápida">
+        <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogos</a>
+        <a class="button secondary" id="btnNavLivro" href="livro.html">Livro</a>
+        <a class="button secondary" id="btnNavConta" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html">Minha conta</a>
+        <a class="button secondary" id="btnNavPainel" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html">Painel</a>
+      </nav>
+    </header>
+
+    <section class="hero" id="heroPanel">
       <div class="hero-top">
-        <div class="title-wrap">
+        <div class="hero-copy">
           <h1>Leitor PDF</h1>
-          <p class="sub" id="subline">Preparando a leitura…</p>
+          <p id="subline">Preparando a leitura…</p>
         </div>
-        <div class="chip-row">
-          <span class="chip" id="chipRef">Ref. —</span>
-          <span class="chip" id="chipPages">Páginas —</span>
-          <span class="chip" id="chipMode">Modo contínuo</span>
+        <div class="logo-reserve" aria-label="Espaço reservado para logótipos de bibliotecas">
+          <div class="logo-slot">Espaço reservado<br>para logótipo da biblioteca</div>
+          <div class="logo-slot">Espaço reservado<br>para logótipo da rede</div>
         </div>
+      </div>
+      <div class="hero-meta">
+        <span class="hero-chip" id="chipRef"><strong>Ref.</strong> —</span>
+        <span class="hero-chip" id="chipPages"><strong>Páginas</strong> —</span>
+        <span class="hero-chip" id="chipMode"><strong>Modo</strong> contínuo</span>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="toolbar">
+    <section class="reader-shell">
+      <section class="toolbar" id="toolbarPanel">
         <div class="toolbar-line">
           <div class="toolbar-group">
-            <a class="btn ghost" id="btnBackBook" href="livro.html">Voltar ao livro</a>
-            <button class="btn" id="btnReload" type="button">Recarregar</button>
-            <a class="btn hidden" id="btnLogin" href="#">Entrar</a>
-            <button class="btn" id="btnFullscreen" type="button">Tela cheia</button>
+            <a class="button secondary" id="btnBackBook" href="livro.html">Voltar ao livro</a>
+            <button class="button secondary" id="btnReload" type="button">Recarregar</button>
+            <a class="button primary hidden" id="btnLogin" href="#">Entrar</a>
+            <button class="button primary" id="btnFullscreen" type="button">Tela cheia</button>
           </div>
           <div class="toolbar-group">
-            <button class="btn" id="btnPrev" type="button">← Página</button>
+            <button class="mini-action" id="btnPrev" type="button">← Página</button>
             <input class="input page-input" id="pageInput" type="number" min="1" value="1" />
-            <span class="meta" id="pageCount">/ —</span>
-            <button class="btn" id="btnNext" type="button">Página →</button>
+            <span class="meta-chip" id="pageCount"><strong>Página</strong> / —</span>
+            <button class="mini-action" id="btnNext" type="button">Página →</button>
           </div>
         </div>
+
         <div class="toolbar-line">
           <div class="toolbar-group">
-            <button class="btn" id="btnZoomOut" type="button">− Zoom</button>
-            <button class="btn" id="btnZoomIn" type="button">+ Zoom</button>
-            <button class="btn" id="btnFitWidth" type="button">Ajustar à largura</button>
-            <button class="btn" id="btnMode" type="button">Modo contínuo</button>
+            <button class="mini-action" id="btnZoomOut" type="button">− Zoom</button>
+            <button class="mini-action" id="btnZoomIn" type="button">+ Zoom</button>
+            <button class="mini-action" id="btnFitWidth" type="button">Ajustar à largura</button>
+            <button class="mini-action" id="btnMode" type="button">Modo contínuo</button>
           </div>
           <div class="toolbar-group">
-            <label class="meta" for="themeSelect">Tema</label>
+            <label class="toolbar-label" for="themeSelect">Tema</label>
             <select class="select" id="themeSelect">
               <option value="dark">Escuro</option>
               <option value="light">Claro</option>
@@ -383,22 +579,37 @@
             </select>
           </div>
         </div>
-        <div class="shortcut-note">Atalhos: ←/→ mudar página · +/− zoom · F tela cheia.</div>
+      </section>
+
+      <div class="status-row" id="statusRow">
+        <p class="status-box" id="statusBox">A iniciar…</p>
+        <div class="error-box" id="errorBox"></div>
       </div>
 
-      <div class="viewer-shell">
-        <p class="status" id="statusBox">A iniciar…</p>
-        <div class="error-box" id="errorBox"></div>
-        <div class="viewer no-scrollbar" id="viewer">
-          <div class="pages" id="pages"></div>
+      <section class="sheet">
+        <div class="sheet-head">
+          <div>
+            <div class="sheet-title">AnarBib · leitura em linha</div>
+            <div class="sheet-sub" id="sheetSub">Use os controlos acima para ajustar a leitura.</div>
+          </div>
+          <div class="meta-chip" id="fullscreenHint"><strong>Dica</strong> ESC sai da tela cheia</div>
         </div>
-      </div>
+        <div class="viewer-shell">
+          <div class="viewer no-scrollbar" id="viewer">
+            <div class="pages" id="pages"></div>
+          </div>
+        </div>
+      </section>
     </section>
   </main>
 
   <script type="module">
     import { supabase } from "./js/blmf-supabase.js";
 
+    const GH_BASE = "https://cclamazonia-cmd.github.io";
+    const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
+    const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
+    const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
     const PDFJS_MAIN = "./vendor/pdfjs/build/pdf.mjs";
     const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
@@ -420,6 +631,7 @@
       observer: null,
       fitWidth: false,
       fitWidthLocked: false,
+      fullscreenRestoreMode: null,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -427,7 +639,7 @@
     function setStatus(message, kind = "") {
       const box = $("statusBox");
       box.textContent = message;
-      box.className = `status${kind ? ` ${kind}` : ""}`;
+      box.className = `status-box${kind ? ` ${kind}` : ""}`;
     }
 
     function showError(message, details = "") {
@@ -443,10 +655,10 @@
       box.classList.remove("show");
     }
 
-    function buildLoginUrl() {
-      const url = new URL("https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html");
-      url.searchParams.set("next", location.href);
-      return url.toString();
+    function buildCadastroUrl(nextUrl = location.href) {
+      const u = new URL(CADASTRO_URL);
+      u.searchParams.set("next", nextUrl);
+      return u.toString();
     }
 
     function loadPrefs() {
@@ -460,7 +672,7 @@
         if (["dark", "light", "sepia", "night"].includes(data.theme)) state.theme = data.theme;
         state.fitWidth = !!data.fitWidth;
       } catch (err) {
-        console.warn("BLMF ler v2: prefs ignoradas", err);
+        console.warn("AnarBib ler v3: prefs ignoradas", err);
       }
     }
 
@@ -474,7 +686,7 @@
           fitWidth: state.fitWidth,
         }));
       } catch (err) {
-        console.warn("BLMF ler v2: prefs não gravadas", err);
+        console.warn("AnarBib ler v3: prefs não gravadas", err);
       }
     }
 
@@ -501,7 +713,7 @@
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         $("btnLogin").classList.remove("hidden");
-        $("btnLogin").href = buildLoginUrl();
+        $("btnLogin").href = buildCadastroUrl();
         throw new Error("Sessão ausente. Entra novamente para abrir esta leitura.");
       }
       return session;
@@ -510,11 +722,9 @@
     async function ensureProfile() {
       try {
         const { error } = await supabase.rpc("fn_ensure_current_user_profile");
-        if (error) {
-          console.warn("BLMF ler v2: erro ao garantir profile", error);
-        }
+        if (error) console.warn("AnarBib ler v3: erro ao garantir profile", error);
       } catch (err) {
-        console.warn("BLMF ler v2: exceção ao garantir profile", err);
+        console.warn("AnarBib ler v3: exceção ao garantir profile", err);
       }
     }
 
@@ -524,9 +734,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
         return pdfjsLib;
       } catch (err) {
-        throw new Error(
-          `PDF.js não foi encontrado em ./vendor/pdfjs/build/. Confere se os ficheiros pdf.mjs e pdf.worker.mjs foram colocados nesse caminho.\n\n${err?.message || err}`
-        );
+        throw new Error(`PDF.js não foi encontrado em ./vendor/pdfjs/build/. Confere se os ficheiros pdf.mjs e pdf.worker.mjs foram colocados nesse caminho.\n\n${err?.message || err}`);
       }
     }
 
@@ -572,8 +780,10 @@
 
     function updatePageUi() {
       $("pageInput").value = String(state.currentPage || 1);
-      $("pageCount").textContent = `/ ${state.totalPages || "—"}`;
-      $("chipPages").textContent = `Páginas ${state.totalPages || "—"}`;
+      $("pageCount").innerHTML = `<strong>Página</strong> / ${state.totalPages || "—"}`;
+      $("chipPages").innerHTML = `<strong>Páginas</strong> ${state.totalPages || "—"}`;
+      $("chipMode").innerHTML = `<strong>Modo</strong> ${state.mode === "single" ? "uma página" : "contínuo"}`;
+      $("btnMode").textContent = state.mode === "single" ? "Modo uma página" : "Modo contínuo";
       state.pageElements.forEach((el, index) => {
         const pageNo = index + 1;
         el.classList.toggle("current", pageNo === state.currentPage);
@@ -583,8 +793,6 @@
           el.classList.remove("hidden-page");
         }
       });
-      $("chipMode").textContent = state.mode === "single" ? "Modo uma página" : "Modo contínuo";
-      $("btnMode").textContent = state.mode === "single" ? "Modo uma página" : "Modo contínuo";
       savePrefs();
     }
 
@@ -609,9 +817,7 @@
     }
 
     function setupObserver() {
-      if (state.observer) {
-        state.observer.disconnect();
-      }
+      if (state.observer) state.observer.disconnect();
       if (state.mode !== "continuous") return;
 
       const viewer = $("viewer");
@@ -619,9 +825,7 @@
         let best = null;
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          if (!best || entry.intersectionRatio > best.intersectionRatio) {
-            best = entry;
-          }
+          if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
         }
         if (!best) return;
         const pageNo = Number(best.target.dataset.pageNo || "1");
@@ -639,7 +843,7 @@
 
     function computeFitWidthScale(page) {
       const viewer = $("viewer");
-      const horizontalPadding = 32;
+      const horizontalPadding = document.body.classList.contains("fullscreen-mode") ? 52 : 32;
       const cardPadding = 24;
       const available = Math.max(260, viewer.clientWidth - horizontalPadding - cardPadding);
       const unscaledViewport = page.getViewport({ scale: 1 });
@@ -703,12 +907,12 @@
       loadPrefs();
       applyTheme();
       document.title = "AnarBib – leitor pdf";
-      $("chipRef").textContent = `Ref. ${bibRef || "—"}`;
+      $("chipRef").innerHTML = `<strong>Ref.</strong> ${bibRef || "—"}`;
       $("btnBackBook").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
-      $("btnLogin").href = buildLoginUrl();
-      $("subline").textContent = bibRef
-        ? `Abrindo ${bibRef}.`
-        : "Falta a referência do livro.";
+      $("btnNavLivro").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
+      $("btnLogin").href = buildCadastroUrl();
+      $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
+      $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
 
       if (!bibRef) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
@@ -722,9 +926,7 @@
         const pdfjsLib = await loadPdfJs();
         const blob = await downloadPdfBlob(bibRef);
 
-        if (state.blobUrl) {
-          URL.revokeObjectURL(state.blobUrl);
-        }
+        if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
 
         state.blobUrl = URL.createObjectURL(blob);
         setStatus("PDF autorizado. A preparar renderização…", "warn");
@@ -736,7 +938,7 @@
         }).promise;
         await renderAllPages(pdfjsLib);
       } catch (err) {
-        console.error("BLMF ler v2: falha ao abrir leitura", err);
+        console.error("AnarBib ler v3: falha ao abrir leitura", err);
         showError("Leitura indisponível neste momento.", err?.message || String(err));
       }
     }
@@ -747,15 +949,26 @@
       await renderAllPages(pdfjsLib);
     }
 
-    function toggleFullscreen() {
+    async function enterFullscreen() {
       const root = $("pageRoot");
-      if (!document.fullscreenElement) {
-        root.requestFullscreen?.().catch((err) => {
-          console.warn("BLMF ler v2: fullscreen recusado", err);
-        });
-      } else {
-        document.exitFullscreen?.().catch(() => {});
+      try {
+        await root.requestFullscreen?.();
+      } catch (err) {
+        console.warn("AnarBib ler v3: fullscreen recusado", err);
       }
+    }
+
+    async function exitFullscreen() {
+      try {
+        await document.exitFullscreen?.();
+      } catch (err) {
+        console.warn("AnarBib ler v3: saída de fullscreen recusada", err);
+      }
+    }
+
+    async function toggleFullscreen() {
+      if (!document.fullscreenElement) await enterFullscreen();
+      else await exitFullscreen();
     }
 
     $("btnReload").addEventListener("click", () => location.reload());
@@ -809,9 +1022,31 @@
 
     $("btnFullscreen").addEventListener("click", toggleFullscreen);
 
-    document.addEventListener("fullscreenchange", () => {
-      document.body.classList.toggle("fullscreen-mode", !!document.fullscreenElement);
-      $("btnFullscreen").textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
+    document.addEventListener("fullscreenchange", async () => {
+      const isFs = !!document.fullscreenElement;
+      document.body.classList.toggle("fullscreen-mode", isFs);
+      $("btnFullscreen").textContent = isFs ? "Sair da tela cheia" : "Tela cheia";
+      $("fullscreenHint").innerHTML = `<strong>Dica</strong> ${isFs ? "ESC volta ao modo normal" : "ESC sai da tela cheia"}`;
+
+      if (isFs) {
+        state.fullscreenRestoreMode = state.mode;
+        if (state.mode !== "continuous") {
+          state.mode = "continuous";
+          updatePageUi();
+          setupObserver();
+          scrollToCurrentPage("auto");
+        }
+      } else if (state.fullscreenRestoreMode && state.mode !== state.fullscreenRestoreMode) {
+        state.mode = state.fullscreenRestoreMode;
+        state.fullscreenRestoreMode = null;
+        updatePageUi();
+        setupObserver();
+        scrollToCurrentPage("auto");
+      }
+
+      if (state.pdfDoc && state.fitWidthLocked) {
+        await rerenderKeepingPosition();
+      }
     });
 
     document.addEventListener("contextmenu", (event) => {
@@ -825,6 +1060,7 @@
     document.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
       const ctrlOrMeta = event.ctrlKey || event.metaKey;
+      const isFullscreen = !!document.fullscreenElement;
 
       if (ctrlOrMeta && ["p", "s", "u"].includes(key)) {
         event.preventDefault();
@@ -836,6 +1072,16 @@
       if (key === "printscreen") {
         event.preventDefault();
         setStatus("Este atalho não está disponível neste leitor.", "warn");
+        return;
+      }
+
+      if (isFullscreen) {
+        if (key !== "escape") {
+          if (!["control", "shift", "alt", "meta"].includes(key)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
         return;
       }
 
@@ -869,9 +1115,7 @@
 
     window.addEventListener("beforeunload", () => {
       savePrefs();
-      if (state.blobUrl) {
-        URL.revokeObjectURL(state.blobUrl);
-      }
+      if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
     });
 
     boot();
