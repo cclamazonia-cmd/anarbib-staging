@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-library-slug="default" data-theme-slug="default" data-library-name="AnarBib">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -9,32 +9,28 @@
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 
+  <link rel="stylesheet" href="./assets/css/theme-base.css">
+  <script src="./assets/js/library-context.js" defer></script>
+  <script src="./assets/js/theme-loader.js" defer></script>
+
   <style>
     :root{
-      --panel:rgba(10,10,10,.90);
-      --text:#f4f4f4;
-      --muted:rgba(255,255,255,.78);
-      --red:#7a0b14;
-      --red2:#bb1e2c;
-      --line:rgba(255,255,255,.12);
-      --shadow:0 16px 38px rgba(0,0,0,.42);
+      --panel:var(--brand-panel-bg, rgba(17,17,17,.84));
+      --text:var(--brand-text, #f2eee6);
+      --muted:var(--brand-muted, rgba(242,238,230,.82));
+      --red:var(--brand-color-primary, #a31414);
+      --red2:color-mix(in srgb, var(--brand-color-primary, #a31414) 78%, white 22%);
+      --line:var(--brand-panel-border, rgba(242,238,230,.16));
+      --shadow:var(--brand-shadow, 0 10px 30px rgba(0,0,0,.32));
       --ok:#4ade80;
       --warn:#fbbf24;
       --bad:#fb7185;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
-    body{
-      background-image:
-        linear-gradient(rgba(0,0,0,.62), rgba(0,0,0,.62)),
-        url('https://cclamazonia.noblogs.org/files/2026/03/ni-dieu-ni-maitre-une-histoire-de-lanarchisme-episodes-3-et-4-09-15-2022-1024x639-1441403844.png');
-      background-size:cover;
-      background-position:center center;
-      background-attachment:fixed;
-      background-repeat:no-repeat;
-    }
+    html,body{margin:0;padding:0;color:var(--text);font-family:var(--brand-font-body, Inter,Segoe UI,Arial,sans-serif)}
+    body{background:transparent}
     a,a:visited{color:inherit;text-decoration:none}
-    .wrap{max-width:1680px;margin:0 auto;padding:24px}
+    .wrap{max-width:var(--brand-page-max-width, 1680px);margin:0 auto;padding:24px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
     .brand{display:flex;align-items:center;gap:12px}
     .logo{
@@ -43,7 +39,7 @@
     }
     .btn{
       border:1px solid var(--line);
-      background:rgba(12,12,12,.84);
+      background:var(--panel);
       color:var(--text);
       border-radius:14px;
       padding:10px 12px;
@@ -60,14 +56,14 @@
     .btn:hover{border-color:rgba(255,255,255,.22)}
     .btn:disabled,.btn.disabled,.btn[aria-disabled="true"]{opacity:.58;cursor:default;pointer-events:none}
     .hero{
-      border:1px solid rgba(255,255,255,.10);
-      background:linear-gradient(135deg, rgba(122,11,20,.92), rgba(50,7,11,.94));
-      border-radius:22px;
+      border:1px solid var(--line);
+      background:linear-gradient(135deg, color-mix(in srgb, var(--red2) 88%, black 12%), color-mix(in srgb, var(--red) 62%, black 38%));
+      border-radius:var(--brand-radius, 22px);
       padding:18px;
       box-shadow:var(--shadow);
       margin-bottom:16px;
     }
-    .hero h1{margin:0 0 6px;font-size:1.5rem}
+    .hero h1{margin:0 0 6px;font-size:1.5rem;font-family:var(--brand-font-heading, inherit)}
     .hero p{margin:0;color:rgba(255,255,255,.92)}
     .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .chip{
@@ -87,7 +83,7 @@
     .card{
       border:1px solid rgba(255,255,255,.10);
       background:var(--panel);
-      border-radius:22px;
+      border-radius:var(--brand-radius, 22px);
       padding:16px;
       box-shadow:var(--shadow);
     }
@@ -120,7 +116,7 @@
       box-shadow:var(--shadow);
     }
     .contentbox{min-width:0}
-    .section-title{margin:0 0 12px;font-size:1.15rem;color:#fff}
+    .section-title{margin:0 0 12px;font-size:1.15rem;color:#fff;font-family:var(--brand-font-heading, inherit)}
     .mini{font-size:.86rem;color:var(--muted)}
     .subtle{opacity:.92}
     .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
@@ -179,7 +175,7 @@
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <img class="logo"
+        <img data-brand-logo class="logo"
              src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png"
              alt="AnarBib" />
       </div>
@@ -253,9 +249,21 @@
     });
 
     const AUTHOR_BUILD = "20260313-1";
+    const EXTERNAL_AUTHOR_PHOTOS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/authors";
     document.documentElement.setAttribute("data-author-build", AUTHOR_BUILD);
 
     const $ = (id) => document.getElementById(id);
+
+    function buildExternalAuthorPhotoUrl(pathOrUrl) {
+      const raw = String(pathOrUrl || "").trim();
+      if (!raw) return "";
+      if (/^https?:\/\//i.test(raw)) return raw;
+      const clean = raw
+        .replace(/^\/+/, "")
+        .replace(/^authors\/+?/i, "")
+        .replace(/^autor\/+?/i, "");
+      return clean ? `${EXTERNAL_AUTHOR_PHOTOS_BASE_URL}/${clean}` : "";
+    }
 
     function setStatus(msg, cls) {
       const el = $("status");
@@ -368,14 +376,10 @@
       if (!raw) return [];
       if (/^https?:\/\//i.test(raw)) return [raw];
       const stripped = raw.replace(/^\/+/, "");
-      const withoutPrefix = stripped.replace(/^(autor|authors|covers)\//i, "");
+      const withoutPrefix = stripped.replace(/^(authors|autor)\//i, "");
       const candidates = [
-        supabase.storage.from("authors").getPublicUrl(stripped)?.data?.publicUrl || "",
-        supabase.storage.from("autor").getPublicUrl(stripped)?.data?.publicUrl || "",
-        supabase.storage.from("covers").getPublicUrl(stripped)?.data?.publicUrl || "",
-        supabase.storage.from("authors").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
-        supabase.storage.from("autor").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
-        supabase.storage.from("covers").getPublicUrl(withoutPrefix)?.data?.publicUrl || "",
+        buildExternalAuthorPhotoUrl(stripped),
+        buildExternalAuthorPhotoUrl(withoutPrefix),
       ];
       return uniqueStrings(candidates);
     }
