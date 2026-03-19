@@ -2078,50 +2078,113 @@ function clearFilters() {
   render();
   search.focus();
 }
-async function getCurrentUserAndRole() {
-  const tokenKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
-  let tokenRaw = null;
+const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
-  try { tokenRaw = sessionStorage.getItem(tokenKey); } catch (e) {}
-  if (!tokenRaw) {
-    try { tokenRaw = localStorage.getItem(tokenKey); } catch (e) {}
+function readBooleanHint(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (['true', 't', '1', 'yes', 'y', 'sim'].includes(v)) return true;
+    if (['false', 'f', '0', 'no', 'n', 'nao', 'não'].includes(v)) return false;
   }
-  if (!tokenRaw) return { user: null, isLibrarian: false, accessToken: null };
-
-  let session = null;
+  return null;
+}
+function readLibrarianHintFromObject(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const candidates = [
+    obj.is_librarian,
+    obj.isLibrarian,
+    obj.role === 'librarian' ? true : null,
+    obj.user_role === 'librarian' ? true : null,
+    obj.userType === 'librarian' ? true : null,
+    obj.account_type === 'librarian' ? true : null
+  ];
+  for (const candidate of candidates) {
+    const parsed = readBooleanHint(candidate);
+    if (parsed !== null) return parsed;
+    if (candidate === true) return true;
+  }
+  return null;
+}
+function parseStoredSession(tokenRaw) {
+  if (!tokenRaw) return null;
   try {
     const parsed = JSON.parse(tokenRaw);
-    session = parsed?.access_token ? parsed : (parsed?.currentSession || parsed?.data?.session || null);
+    if (parsed?.access_token) return parsed;
+    if (parsed?.currentSession?.access_token) return parsed.currentSession;
+    if (parsed?.data?.session?.access_token) return parsed.data.session;
+    if (Array.isArray(parsed) && parsed[0]?.access_token) return parsed[0];
   } catch (e) {}
-  if (!session?.access_token) return { user: null, isLibrarian: false, accessToken: null };
+  return null;
+}
+function persistSessionForNextPage(tokenRaw, session) {
+  const raw = tokenRaw || (session ? JSON.stringify(session) : '');
+  if (!raw) return;
+  try { sessionStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (e) {}
+  try { localStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (e) {}
+}
+async function getCurrentUserAndRole() {
+  let tokenRaw = null;
+
+  try { tokenRaw = sessionStorage.getItem(AUTH_STORAGE_KEY); } catch (e) {}
+  if (!tokenRaw) {
+    try { tokenRaw = localStorage.getItem(AUTH_STORAGE_KEY); } catch (e) {}
+  }
+  if (!tokenRaw) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+
+  const session = parseStoredSession(tokenRaw);
+  if (!session?.access_token) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+
+  persistSessionForNextPage(tokenRaw, session);
+
   try {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` }
     });
-    if (!userRes.ok) return { user: null, isLibrarian: false, accessToken: null };
+    if (!userRes.ok) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
     const user = await userRes.json();
     let isLibrarian = false;
+
+    const sessionHints = [
+      readLibrarianHintFromObject(session),
+      readLibrarianHintFromObject(session?.user),
+      readLibrarianHintFromObject(session?.user?.app_metadata),
+      readLibrarianHintFromObject(session?.user?.user_metadata),
+      readLibrarianHintFromObject(user),
+      readLibrarianHintFromObject(user?.app_metadata),
+      readLibrarianHintFromObject(user?.user_metadata)
+    ].filter(v => v !== null);
+    if (sessionHints.length) isLibrarian = sessionHints.includes(true);
+
     try {
       const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=is_librarian&id=eq.${encodeURIComponent(user.id)}`, {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` }
       });
       if (profileRes.ok) {
         const arr = await profileRes.json();
-        isLibrarian = !!(Array.isArray(arr) && arr[0] && arr[0].is_librarian);
+        if (Array.isArray(arr) && arr[0]) isLibrarian = !!arr[0].is_librarian;
       }
     } catch (e) {}
-    return { user, isLibrarian, accessToken: session.access_token };
+
+    return { user, isLibrarian, accessToken: session.access_token, tokenRaw };
   } catch (e) {
-    return { user: null, isLibrarian: false, accessToken: null };
+    return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
   }
 }
 async function handleContaClick() {
-  const state = await getCurrentUserAndRole();
-  if (!state.user) {
-    location.assign(buildCadastroUrl(location.href));
-    return;
+  contaBtn.disabled = true;
+  try {
+    const state = await getCurrentUserAndRole();
+    if (!state.user) {
+      location.assign(buildCadastroUrl(location.href));
+      return;
+    }
+    persistSessionForNextPage(state.tokenRaw, null);
+    location.assign(state.isLibrarian ? PAINEL_URL : CONTA_URL);
+  } finally {
+    contaBtn.disabled = false;
   }
-  location.assign(state.isLibrarian ? PAINEL_URL : CONTA_URL);
 }
 search.addEventListener('input', debouncedRender);
 authorFilter.addEventListener('input', render);
