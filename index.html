@@ -930,6 +930,7 @@ let sortDir = 'asc';
 let authState = { user: null, isLibrarian: false, accessToken: null };
 let serviceState = null;
 let selectedLibraryKeys = new Set();
+let libraryAllExplicitlySelected = false;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1121,7 +1122,7 @@ function getSelectedLibraryLabels() {
 }
 function updateLibraryFilterSummary() {
   const labels = getSelectedLibraryLabels();
-  if (!labels.length) {
+  if (libraryAllExplicitlySelected || !labels.length) {
     libraryFilterToggle.textContent = 'Todas as bibliotecas';
     return;
   }
@@ -1134,7 +1135,7 @@ function updateLibraryFilterSummary() {
 function renderLibraryFilterOptions() {
   const options = getLibraryLabelsFromRows();
   const html = [
-    `<label class="multi-select-option"><input type="checkbox" value="${LIBRARY_FILTER_ALL_VALUE}"> <span>todas</span></label>`,
+    `<label class="multi-select-option"><input type="checkbox" value="${LIBRARY_FILTER_ALL_VALUE}" ${libraryAllExplicitlySelected ? 'checked' : ''}> <span>todas</span></label>`,
     ...options.map(item => `<label class="multi-select-option"><input type="checkbox" value="${escapeHTML(item.key)}" ${selectedLibraryKeys.has(item.key) ? 'checked' : ''}> <span>${escapeHTML(item.label)}</span></label>`)
   ].join('');
   libraryFilterMenu.innerHTML = html;
@@ -1142,6 +1143,7 @@ function renderLibraryFilterOptions() {
 }
 function setSelectedLibrariesFromParam(rawValue) {
   selectedLibraryKeys = new Set();
+  libraryAllExplicitlySelected = false;
   const values = String(rawValue || '').split('|').map(v => normalize(decodeURIComponent(v))).filter(Boolean);
   if (!values.length) return;
   const options = getLibraryLabelsFromRows();
@@ -1149,6 +1151,7 @@ function setSelectedLibrariesFromParam(rawValue) {
   for (const value of values) {
     if (value === normalize(LIBRARY_FILTER_ALL_VALUE)) {
       selectedLibraryKeys.clear();
+      libraryAllExplicitlySelected = true;
       return;
     }
     for (const key of optionKeys) {
@@ -1157,6 +1160,7 @@ function setSelectedLibrariesFromParam(rawValue) {
   }
 }
 function serializeSelectedLibraries() {
+  if (libraryAllExplicitlySelected) return encodeURIComponent(LIBRARY_FILTER_ALL_VALUE);
   return [...selectedLibraryKeys].map(key => encodeURIComponent(key)).join('|');
 }
 async function loadBookLibrarySupplementMap() {
@@ -1248,7 +1252,8 @@ function buildActiveFilterItems() {
   if (state.year) items.push({ key: 'year', label: 'Ano', value: state.year });
   if (state.cdd) items.push({ key: 'cdd', label: 'CDD', value: state.cdd });
   if (state.availability !== 'all') items.push({ key: 'availability', label: 'Disponibilidade', value: getAvailabilityLabel(state.availability) });
-  if (selectedLibraryKeys.size) items.push({ key: 'libraries', label: 'Bibliotecas', value: getSelectedLibraryLabels().join(', ') });
+  if (libraryAllExplicitlySelected) items.push({ key: 'libraries', label: 'Bibliotecas', value: 'todas' });
+  else if (selectedLibraryKeys.size) items.push({ key: 'libraries', label: 'Bibliotecas', value: getSelectedLibraryLabels().join(', ') });
   if (state.sort !== 'relevance') items.push({ key: 'sort', label: 'Ordenação', value: getSortLabel(state.sort, state.dir).replace(/^Ordenação:\s*/, '') });
   return items;
 }
@@ -2066,6 +2071,7 @@ function clearFilters() {
   cddFilter.value = '';
   availabilityFilter.value = 'all';
   selectedLibraryKeys.clear();
+  libraryAllExplicitlySelected = false;
   sortKey = 'relevance';
   sortDir = 'asc';
   sortSelect.value = 'relevance';
@@ -2128,8 +2134,10 @@ libraryFilterMenu.addEventListener('change', (e) => {
   if (!input) return;
   const value = normalize(input.value || '');
   if (value === normalize(LIBRARY_FILTER_ALL_VALUE)) {
-    selectedLibraryKeys.clear();
+    libraryAllExplicitlySelected = input.checked;
+    if (input.checked) selectedLibraryKeys.clear();
   } else if (input.checked) {
+    libraryAllExplicitlySelected = false;
     selectedLibraryKeys.add(value);
   } else {
     selectedLibraryKeys.delete(value);
