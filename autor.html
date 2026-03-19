@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BLMF — Autor</title>
+  <title>AnarBib - Autor</title>
   <!-- build: 20260312-3 -->
-  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
-  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
-  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 
   <style>
     :root{
@@ -180,8 +180,8 @@
     <div class="topbar">
       <div class="brand">
         <img class="logo"
-             src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png"
-             alt="BLMF" />
+             src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png"
+             alt="AnarBib" />
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -236,18 +236,18 @@
     const GH_BASE = location.origin;
     const ROUTES = {
       BLOG_HOME: "https://cclamazonia.noblogs.org/",
-      CATALOGO: `${GH_BASE}/blmf-catalogo/`,
-      CADASTRO: `${GH_BASE}/blmf-conta/cadastro.html`,
-      CONTA: `${GH_BASE}/blmf-conta/conta.html`,
-      LIVRO: `${GH_BASE}/blmf-catalogo/livro.html`,
-      PAINEL: new URL("painel.html", `${GH_BASE}/blmf-conta/conta.html`).href,
+      CATALOGO: `${GH_BASE}/anarbib-staging/`,
+      CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
+      CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
+      LIVRO: `${GH_BASE}/anarbib-staging/livro.html`,
+      PAINEL: new URL("painel.html", `${GH_BASE}/anarbib-conta-staging/conta.html`).href,
     };
 
     document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
     document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
 
-    const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0";
+    const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
@@ -357,7 +357,7 @@
       }
       const sourceLabel = [author?.source_kind || "", author?.source_label || ""].filter(Boolean).join(" · ");
       if (sourceLabel) parts.push(sourceLabel);
-      return parts.join(" · ") || "Página pública de autor/a do catálogo BLMF.";
+      return parts.join(" · ") || "Página pública de autor/a do catálogo AnarBib.";
     }
 
     function uniqueStrings(values) {
@@ -705,6 +705,7 @@
         $("heroIntro").textContent = "Faltou um id válido ou um nome de autor na URL.";
         $("bioLine").textContent = "Abra esta página a partir de um nome de autor clicável no catálogo.";
         setPhoto("");
+        document.title = "AnarBib - Autor";
         setStatus("Abra esta página a partir de um nome de autor clicável no catálogo.", "warn");
         $("booksEmpty").style.display = "";
         return;
@@ -725,6 +726,7 @@
         $("heroIntro").textContent = "Não encontrei este autor nas vistas públicas.";
         $("bioLine").textContent = "Confira o link de origem ou volte ao catálogo para tentar de novo.";
         setPhoto("");
+        document.title = "AnarBib - Autor não encontrado";
         setStatus("Autor não encontrado.", "warn");
         $("booksEmpty").style.display = "";
         return;
@@ -754,7 +756,7 @@
       setPhoto(author.photo_object_path || "");
       renderBooks(books || []);
       setStatus("", "");
-      document.title = `BLMF — ${author.display_name || author.preferred_name || author.sort_name || "Autor"}`;
+      document.title = `${author.display_name || author.preferred_name || author.sort_name || "Autor"} - AnarBib`;
     }
 
     await setupContaButton();
