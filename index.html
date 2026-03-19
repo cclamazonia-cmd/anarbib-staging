@@ -245,31 +245,37 @@ a { color: inherit; }
   color: rgba(255,255,255,.72);
   line-height:1.3;
 }
-.checkbox-dropdown {
+.checklist-dropdown {
   position: relative;
 }
-.checkbox-dropdown-trigger {
+.checklist-dropdown[open] {
+  z-index: 20;
+}
+.checklist-dropdown-summary {
+  list-style: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  text-align: left;
+  gap: 12px;
 }
-.checkbox-dropdown-trigger::after {
+.checklist-dropdown-summary::-webkit-details-marker {
+  display: none;
+}
+.checklist-dropdown-summary::after {
   content: "▾";
   flex: 0 0 auto;
   font-size: .9rem;
   opacity: .9;
 }
-.checkbox-dropdown-trigger[aria-expanded="true"]::after {
+.checklist-dropdown[open] .checklist-dropdown-summary::after {
   content: "▴";
 }
-.checkbox-dropdown-menu {
+.checklist-dropdown-menu {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  z-index: 20;
   display: grid;
   gap: 6px;
   padding: 10px;
@@ -278,7 +284,7 @@ a { color: inherit; }
   background: rgba(10,10,10,.98);
   box-shadow: var(--shadow);
 }
-.checkbox-dropdown-option {
+.checklist-dropdown-option {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -288,10 +294,10 @@ a { color: inherit; }
   color: #fff;
   cursor: pointer;
 }
-.checkbox-dropdown-option:hover {
+.checklist-dropdown-option:hover {
   background: rgba(255,255,255,.06);
 }
-.checkbox-dropdown-option input {
+.checklist-dropdown-option input {
   width: 16px;
   height: 16px;
   margin: 0;
@@ -832,11 +838,11 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         </select>
       </div>
       <div class="field">
-        <label class="field-label" for="libraryDropdownBtn">Biblioteca(s)</label>
-        <div class="checkbox-dropdown" id="libraryDropdown">
-          <button id="libraryDropdownBtn" class="select checkbox-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="libraryDropdownMenu">Todas</button>
-          <div id="libraryDropdownMenu" class="checkbox-dropdown-menu" hidden></div>
-        </div>
+        <label class="field-label" for="libraryDropdownSummary">Biblioteca(s)</label>
+        <details id="libraryDropdown" class="checklist-dropdown">
+          <summary id="libraryDropdownSummary" class="select checklist-dropdown-summary">Todas</summary>
+          <div id="libraryDropdownOptions" class="checklist-dropdown-menu"></div>
+        </details>
         <select id="libraryFilter" class="select library-native-select" multiple size="4" aria-describedby="libraryFilterHelp"></select>
         <div id="libraryFilterHelp" class="field-help">Selecione uma ou várias bibliotecas. Sem seleção específica = todas.</div>
       </div>
@@ -954,8 +960,8 @@ const mobileResults = document.getElementById('mobileResults');
 const search = document.getElementById('search');
 const libraryFilter = document.getElementById('libraryFilter');
 const libraryDropdown = document.getElementById('libraryDropdown');
-const libraryDropdownBtn = document.getElementById('libraryDropdownBtn');
-const libraryDropdownMenu = document.getElementById('libraryDropdownMenu');
+const libraryDropdownSummary = document.getElementById('libraryDropdownSummary');
+const libraryDropdownOptions = document.getElementById('libraryDropdownOptions');
 const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
@@ -1167,19 +1173,11 @@ function buildLibraryDropdownLabel() {
   if (selectedLabels.length === 1) return selectedLabels[0];
   return `${selectedLabels.length} bibliotecas selecionadas`;
 }
-function closeLibraryDropdown() {
-  libraryDropdownMenu.hidden = true;
-  libraryDropdownBtn.setAttribute('aria-expanded', 'false');
-}
-function openLibraryDropdown() {
-  libraryDropdownMenu.hidden = false;
-  libraryDropdownBtn.setAttribute('aria-expanded', 'true');
-}
 function renderLibraryDropdownOptions() {
-  libraryDropdownMenu.innerHTML = '';
+  libraryDropdownOptions.innerHTML = '';
   [...libraryFilter.options].forEach((option) => {
     const label = document.createElement('label');
-    label.className = 'checkbox-dropdown-option';
+    label.className = 'checklist-dropdown-option';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -1206,12 +1204,12 @@ function renderLibraryDropdownOptions() {
 
     label.appendChild(checkbox);
     label.appendChild(textNode);
-    libraryDropdownMenu.appendChild(label);
+    libraryDropdownOptions.appendChild(label);
   });
 }
 function updateLibraryDropdownUI() {
   renderLibraryDropdownOptions();
-  libraryDropdownBtn.textContent = buildLibraryDropdownLabel();
+  libraryDropdownSummary.textContent = buildLibraryDropdownLabel();
 }
 function populateLibraryFilterOptions() {
   const merged = new Map();
@@ -2224,15 +2222,11 @@ async function handleContaClick() {
 }
 search.addEventListener('input', debouncedRender);
 libraryFilter.addEventListener('change', render);
-libraryDropdownBtn.addEventListener('click', () => {
-  if (libraryDropdownMenu.hidden) openLibraryDropdown();
-  else closeLibraryDropdown();
-});
 document.addEventListener('click', (e) => {
-  if (!libraryDropdown.contains(e.target)) closeLibraryDropdown();
+  if (libraryDropdown.open && !libraryDropdown.contains(e.target)) libraryDropdown.open = false;
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !libraryDropdownMenu.hidden) closeLibraryDropdown();
+  if (e.key === 'Escape' && libraryDropdown.open) libraryDropdown.open = false;
 });
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
