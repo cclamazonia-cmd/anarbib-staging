@@ -6,13 +6,13 @@
 <title>AnarBib - catálogo(s)</title>
 <meta name="description" content="AnarBib - catálogo(s). Consulte catálogos, referências, autores, títulos, editoras, anos, bibliotecas, CDD e disponibilidade.">
 <meta name="theme-color" content="#b30018">
-<link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/">
+<link rel="canonical" href="https://cclamazonia-cmd.github.io/blmf-catalogo/">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AnarBib">
 <meta property="og:title" content="AnarBib - catálogo(s)">
 <meta property="og:description" content="AnarBib - catálogo(s). Catálogo público com busca por autor, título, editora, biblioteca, ano, CDD e disponibilidade.">
-<meta property="og:url" content="https://cclamazonia-cmd.github.io/anarbib-staging/">
+<meta property="og:url" content="https://cclamazonia-cmd.github.io/blmf-catalogo/">
 <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <meta property="og:image:alt" content="Logotipo do AnarBib">
 <meta name="twitter:card" content="summary">
@@ -245,33 +245,41 @@ a { color: inherit; }
   color: rgba(255,255,255,.72);
   line-height:1.3;
 }
-.checklist-dropdown {
+.select[multiple] {
+  min-height: 132px;
+  padding: 10px;
+}
+.select[multiple] option {
+  padding: 6px 8px;
+}
+.multi-select {
   position: relative;
 }
-.checklist-dropdown[open] {
-  z-index: 20;
+.multi-select[open] {
+  z-index: 30;
 }
-.checklist-dropdown-summary {
+.multi-select-summary {
   list-style: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  min-height: 52px;
 }
-.checklist-dropdown-summary::-webkit-details-marker {
+.multi-select-summary::-webkit-details-marker {
   display: none;
 }
-.checklist-dropdown-summary::after {
+.multi-select-summary::after {
   content: "▾";
+  font-size: 0.95rem;
+  color: rgba(255,255,255,.82);
   flex: 0 0 auto;
-  font-size: .9rem;
-  opacity: .9;
 }
-.checklist-dropdown[open] .checklist-dropdown-summary::after {
+.multi-select[open] .multi-select-summary::after {
   content: "▴";
 }
-.checklist-dropdown-menu {
+.multi-select-panel {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
@@ -279,40 +287,29 @@ a { color: inherit; }
   display: grid;
   gap: 6px;
   padding: 10px;
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.16);
   background: rgba(10,10,10,.98);
   box-shadow: var(--shadow);
 }
-.checklist-dropdown-option {
+.multi-select-option {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
   padding: 8px 10px;
-  border-radius: 12px;
-  color: #fff;
+  border-radius: 10px;
   cursor: pointer;
+  color: #fff;
 }
-.checklist-dropdown-option:hover {
+.multi-select-option:hover {
   background: rgba(255,255,255,.06);
 }
-.checklist-dropdown-option input {
-  width: 16px;
-  height: 16px;
+.multi-select-option input {
   margin: 0;
   accent-color: var(--red-2);
 }
-.library-native-select {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+.multi-select-option span {
+  line-height: 1.25;
 }
 .toolbar-actions {
   display:flex;
@@ -799,6 +796,20 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <input id="search" class="input" type="search" autocomplete="off" placeholder="Autor, título, editora, referência ou vários termos entre aspas…">
       </div>
       <div class="field">
+        <label class="field-label" for="libraryFilterDropdown">Biblioteca(s)</label>
+        <details id="libraryFilterDropdown" class="multi-select" aria-describedby="libraryFilterHelp">
+          <summary id="libraryFilterSummary" class="select multi-select-summary">Todas as bibliotecas</summary>
+          <div id="libraryFilterChecklist" class="multi-select-panel">
+            <label class="multi-select-option">
+              <input id="libraryAllOption" type="checkbox" value="__all__">
+              <span>Todas</span>
+            </label>
+          </div>
+        </details>
+        <select id="libraryFilter" class="select" multiple size="4" aria-describedby="libraryFilterHelp" hidden></select>
+        <div id="libraryFilterHelp" class="field-help">Marque uma ou várias bibliotecas. Sem marcação específica = todas.</div>
+      </div>
+      <div class="field">
         <label class="field-label" for="authorFilter">Autor(a)</label>
         <input id="authorFilter" class="input" type="search" autocomplete="off" placeholder="Digite parte do nome para filtrar por autor(a)">
       </div>
@@ -836,15 +847,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <option value="library">Biblioteca</option>
           <option value="status">Disponibilidade</option>
         </select>
-      </div>
-      <div class="field">
-        <label class="field-label" for="libraryDropdownSummary">Biblioteca(s)</label>
-        <details id="libraryDropdown" class="checklist-dropdown">
-          <summary id="libraryDropdownSummary" class="select checklist-dropdown-summary">Todas</summary>
-          <div id="libraryDropdownOptions" class="checklist-dropdown-menu"></div>
-        </details>
-        <select id="libraryFilter" class="select library-native-select" multiple size="4" aria-describedby="libraryFilterHelp"></select>
-        <div id="libraryFilterHelp" class="field-help">Selecione uma ou várias bibliotecas. Sem seleção específica = todas.</div>
       </div>
     </div>
     <div class="toolbar-meta">
@@ -898,16 +900,16 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
 </div>
 
 <script>
-const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
+const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_38cFV9vsGhmqMp-Z5gmV4w_HY6ReWSF";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
-const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
-const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
-const SUPABASE_PROJECT_REF = "uflwmikiyjfnikiphtcp";
+const CONTA_URL = `${GH_BASE}/blmf-conta/conta.html`;
+const CADASTRO_URL = `${GH_BASE}/blmf-conta/cadastro.html`;
+const PAINEL_URL = `${GH_BASE}/blmf-conta/painel.html`;
+const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
 const RAW_SEARCH_VARIANTS = {
   "Bakunin": ["Bakounine", "Bakounin", "Bakunine"],
   "Mikhail Bakunin": ["Mikhail Bakounine", "Mikhail Bakounin", "Miguel Bakunin"],
@@ -936,7 +938,7 @@ const DEFAULT_LIBRARY_CONTEXT = {
   label: 'BLMF – Belém do Pará'
 };
 const LIBRARY_FILTER_ALL = '__all__';
-const LIBRARY_FILTER_PRESET_OPTIONS = [
+const FIXED_LIBRARY_OPTIONS = [
   { key: 'blmf-belem', label: 'BLMF – Belém do Pará' },
   { key: 'btl-sao-paulo', label: 'BTL – São Paulo' }
 ];
@@ -958,10 +960,11 @@ let serviceState = null;
 const tbody = document.getElementById('tbody');
 const mobileResults = document.getElementById('mobileResults');
 const search = document.getElementById('search');
+const libraryFilterDropdown = document.getElementById('libraryFilterDropdown');
+const libraryFilterSummary = document.getElementById('libraryFilterSummary');
+const libraryFilterChecklist = document.getElementById('libraryFilterChecklist');
+const libraryAllOption = document.getElementById('libraryAllOption');
 const libraryFilter = document.getElementById('libraryFilter');
-const libraryDropdown = document.getElementById('libraryDropdown');
-const libraryDropdownSummary = document.getElementById('libraryDropdownSummary');
-const libraryDropdownOptions = document.getElementById('libraryDropdownOptions');
 const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
@@ -1167,64 +1170,37 @@ function expandRowsByLibrary(baseRows) {
     }));
   });
 }
-function buildLibraryDropdownLabel() {
-  const selectedLabels = getSelectedLibraryLabels();
-  if (!selectedLabels.length) return 'Todas';
-  if (selectedLabels.length === 1) return selectedLabels[0];
-  return `${selectedLabels.length} bibliotecas selecionadas`;
-}
-function renderLibraryDropdownOptions() {
-  libraryDropdownOptions.innerHTML = '';
-  [...libraryFilter.options].forEach((option) => {
-    const label = document.createElement('label');
-    label.className = 'checklist-dropdown-option';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = option.value;
-    checkbox.checked = option.selected;
-
-    checkbox.addEventListener('change', () => {
-      const isAll = option.value === LIBRARY_FILTER_ALL;
-      if (isAll) {
-        [...libraryFilter.options].forEach((node) => {
-          node.selected = node.value === LIBRARY_FILTER_ALL ? checkbox.checked : false;
-        });
-      } else {
-        option.selected = checkbox.checked;
-        const allOption = [...libraryFilter.options].find((node) => node.value === LIBRARY_FILTER_ALL);
-        if (allOption) allOption.selected = false;
-      }
-      updateLibraryDropdownUI();
-      render();
-    });
-
-    const textNode = document.createElement('span');
-    textNode.textContent = option.textContent;
-
-    label.appendChild(checkbox);
-    label.appendChild(textNode);
-    libraryDropdownOptions.appendChild(label);
-  });
-}
-function updateLibraryDropdownUI() {
-  renderLibraryDropdownOptions();
-  libraryDropdownSummary.textContent = buildLibraryDropdownLabel();
-}
 function populateLibraryFilterOptions() {
-  const merged = new Map();
-  LIBRARY_FILTER_PRESET_OPTIONS.forEach((option) => {
-    merged.set(option.key, { key: option.key, label: option.label });
-  });
+  const options = [];
+  const seen = new Set();
+
+  for (const option of FIXED_LIBRARY_OPTIONS) {
+    if (!option?.key || !option?.label || seen.has(option.key)) continue;
+    seen.add(option.key);
+    options.push({ key: option.key, label: option.label });
+  }
+
   for (const row of rows) {
     const key = String(row.library_key || '').trim();
     const label = String(row.library_label || '').trim();
-    if (!key || !label) continue;
-    if (!merged.has(key)) merged.set(key, { key, label });
+    if (!key || !label || seen.has(key)) continue;
+    seen.add(key);
+    options.push({ key, label });
   }
-  const options = [...merged.values()].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { numeric: true }));
+
+  options.sort((a, b) => {
+    const aFixed = FIXED_LIBRARY_OPTIONS.findIndex(item => item.key === a.key);
+    const bFixed = FIXED_LIBRARY_OPTIONS.findIndex(item => item.key === b.key);
+    if (aFixed !== -1 || bFixed !== -1) {
+      if (aFixed === -1) return 1;
+      if (bFixed === -1) return -1;
+      return aFixed - bFixed;
+    }
+    return a.label.localeCompare(b.label, 'pt-BR', { numeric: true });
+  });
 
   libraryFilter.innerHTML = '';
+
   const allOption = document.createElement('option');
   allOption.value = LIBRARY_FILTER_ALL;
   allOption.textContent = 'Todas';
@@ -1236,42 +1212,101 @@ function populateLibraryFilterOptions() {
     node.textContent = option.label;
     libraryFilter.appendChild(node);
   }
-  updateLibraryDropdownUI();
+
+  rebuildLibraryChecklist();
+}
+function rebuildLibraryChecklist() {
+  libraryFilterChecklist.innerHTML = '';
+
+  const allLabel = document.createElement('label');
+  allLabel.className = 'multi-select-option';
+  allLabel.innerHTML = `<input id="libraryAllOption" type="checkbox" value="${LIBRARY_FILTER_ALL}"><span>Todas</span>`;
+  libraryFilterChecklist.appendChild(allLabel);
+
+  for (const option of [...libraryFilter.options].filter(node => node.value !== LIBRARY_FILTER_ALL)) {
+    const label = document.createElement('label');
+    label.className = 'multi-select-option';
+    label.innerHTML = `<input class="library-filter-option" type="checkbox" value="${escapeHTML(option.value)}"><span>${escapeHTML(option.textContent || option.value)}</span>`;
+    libraryFilterChecklist.appendChild(label);
+  }
+
+  syncLibraryChecklistFromSelect();
+}
+function syncLibraryChecklistFromSelect() {
+  const selectedValues = new Set(
+    [...libraryFilter.options]
+      .filter(option => option.selected && option.value !== LIBRARY_FILTER_ALL)
+      .map(option => option.value)
+  );
+
+  const allCheckbox = libraryFilterChecklist.querySelector(`#libraryAllOption`);
+  if (allCheckbox) allCheckbox.checked = false;
+
+  libraryFilterChecklist.querySelectorAll('.library-filter-option').forEach((checkbox) => {
+    checkbox.checked = selectedValues.has(checkbox.value);
+  });
+
+  updateLibraryFilterSummary();
+}
+function syncSelectFromLibraryChecklist() {
+  const allCheckbox = libraryFilterChecklist.querySelector(`#libraryAllOption`);
+  const selectedValues = new Set(
+    [...libraryFilterChecklist.querySelectorAll('.library-filter-option:checked')].map(node => node.value)
+  );
+
+  if (allCheckbox?.checked) selectedValues.clear();
+
+  for (const option of libraryFilter.options) {
+    if (option.value === LIBRARY_FILTER_ALL) {
+      option.selected = selectedValues.size === 0;
+    } else {
+      option.selected = selectedValues.has(option.value);
+    }
+  }
+
+  updateLibraryFilterSummary();
+}
+function updateLibraryFilterSummary() {
+  const labels = getSelectedLibraryLabels();
+  libraryFilterSummary.textContent = labels.length ? labels.join(' · ') : 'Todas as bibliotecas';
 }
 function setLibraryFilterSelection(values) {
-  const selected = new Set((values || []).map(String));
-  const hasSpecific = [...selected].some((value) => value !== LIBRARY_FILTER_ALL);
+  const selected = new Set((values || []).map(String).filter(Boolean));
+  const hasSpecific = selected.size > 0;
+
   for (const option of libraryFilter.options) {
-    if (hasSpecific) option.selected = option.value !== LIBRARY_FILTER_ALL && selected.has(option.value);
-    else option.selected = selected.has(option.value) && option.value === LIBRARY_FILTER_ALL;
+    if (option.value === LIBRARY_FILTER_ALL) {
+      option.selected = !hasSpecific;
+    } else {
+      option.selected = selected.has(option.value);
+    }
   }
-  updateLibraryDropdownUI();
+
+  syncLibraryChecklistFromSelect();
 }
 function normalizeLibraryFilterSelection() {
-  const values = [...libraryFilter.selectedOptions].map(option => option.value);
-  const specific = values.filter(value => value !== LIBRARY_FILTER_ALL);
-  if (specific.length) {
-    const allOption = [...libraryFilter.options].find((option) => option.value === LIBRARY_FILTER_ALL);
-    if (allOption) allOption.selected = false;
-    updateLibraryDropdownUI();
-    return specific;
-  }
-  if (values.includes(LIBRARY_FILTER_ALL)) {
-    [...libraryFilter.options].forEach((option) => {
-      option.selected = option.value === LIBRARY_FILTER_ALL;
-    });
-    updateLibraryDropdownUI();
+  const specific = [...libraryFilter.options]
+    .filter(option => option.value !== LIBRARY_FILTER_ALL && option.selected)
+    .map(option => option.value);
+
+  if (!specific.length) {
+    setLibraryFilterSelection([]);
     return [];
   }
-  updateLibraryDropdownUI();
-  return [];
+
+  setLibraryFilterSelection(specific);
+  return specific;
 }
 function getSelectedLibraryKeys() {
   return normalizeLibraryFilterSelection();
 }
 function getSelectedLibraryLabels() {
-  const keys = getSelectedLibraryKeys();
+  const keys = [...libraryFilter.options]
+    .filter(option => option.value !== LIBRARY_FILTER_ALL && option.selected)
+    .map(option => option.value);
+
   if (!keys.length) return [];
+
   return keys.map((key) => {
     const option = [...libraryFilter.options].find(node => node.value === key);
     return option ? option.textContent.trim() : key;
@@ -2221,12 +2256,21 @@ async function handleContaClick() {
   location.assign(state.isLibrarian ? PAINEL_URL : CONTA_URL);
 }
 search.addEventListener('input', debouncedRender);
-libraryFilter.addEventListener('change', render);
-document.addEventListener('click', (e) => {
-  if (libraryDropdown.open && !libraryDropdown.contains(e.target)) libraryDropdown.open = false;
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && libraryDropdown.open) libraryDropdown.open = false;
+libraryFilterChecklist.addEventListener('change', (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLInputElement)) return;
+
+  if (target.id === 'libraryAllOption' && target.checked) {
+    libraryFilterChecklist.querySelectorAll('.library-filter-option').forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+  } else if (target.classList.contains('library-filter-option') && target.checked) {
+    const allCheckbox = libraryFilterChecklist.querySelector('#libraryAllOption');
+    if (allCheckbox) allCheckbox.checked = false;
+  }
+
+  syncSelectFromLibraryChecklist();
+  render();
 });
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
@@ -2326,6 +2370,11 @@ async function handleResultActions(e) {
 }
 tbody.addEventListener('click', handleResultActions);
 mobileResults.addEventListener('click', handleResultActions);
+document.addEventListener('click', (e) => {
+  if (!libraryFilterDropdown.contains(e.target)) {
+    libraryFilterDropdown.removeAttribute('open');
+  }
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === '/' && document.activeElement !== search && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
