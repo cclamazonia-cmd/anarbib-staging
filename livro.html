@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AnarBib - Livro</title>
-  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
-  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
-  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png">
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 
   <style>
     :root{
@@ -142,8 +142,8 @@
     <div class="topbar">
       <div class="brand">
         <img class="logo"
-             src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png"
-             alt="BLMF" />
+             src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png"
+             alt="AnarBib" />
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -357,7 +357,7 @@
         parts.push(n === 1 ? "1 exemplar identificado" : `${n} exemplares identificados`);
       }
 
-      return parts.join(" · ") || "Livro publicado no catálogo da BLMF.";
+      return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
     }
 
     function applyPublicServiceState() {
@@ -397,7 +397,7 @@
         .maybeSingle();
 
       if (error) {
-        console.warn("BLMF livro: falha ao carregar v_library_service_public", error);
+        console.warn("AnarBib livro: falha ao carregar v_library_service_public", error);
         publicServiceState = null;
         applyPublicServiceState();
         return;
@@ -635,12 +635,12 @@
       const bib_ref = getBibRefFromUrl();
 
       if (!bib_ref) {
-        document.title = "AnarBib - Livro";
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
+        document.title = "AnarBib - Livro";
         setStatus("Faltou a referência na URL (ex.: livro.html?ref=0000124).", "warn");
         return;
       }
@@ -677,12 +677,12 @@
       }
 
       if (!booksTable) {
-        document.title = "AnarBib - Livro não encontrado";
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
+        document.title = "AnarBib - Livro não encontrado";
         setStatus("Não encontrei esse livro no catálogo.", "warn");
         return;
       }
@@ -712,7 +712,6 @@
       const colCover = findCol(keys, ["cover_object_path", "cover_url", "capa_url", "capa", "image_url", "imagem_url"]);
 
       const titulo = colTit ? (data[colTit] || "") : "";
-      document.title = titulo ? `${titulo} - AnarBib` : "AnarBib - Livro";
       const subtitulo = colSub ? (data[colSub] || "") : "";
       const autor = colAut ? (data[colAut] || "") : "";
       const ano = colAno ? (data[colAno] || "") : "";
@@ -846,6 +845,7 @@
       }
 
       const tombos = await loadTombosForBook(data, bib_ref);
+      document.title = `${titulo || "Livro"} - AnarBib`;
       $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
       setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
       setPill("exemplaresPill", "exemplares", tombos.length > 1 ? String(tombos.length) : "");
@@ -863,10 +863,10 @@
           try {
             const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
             if (ensureProfileError) {
-              console.warn("BLMF livro: erro ao garantir profile do usuário", ensureProfileError);
+              console.warn("AnarBib livro: erro ao garantir profile do usuário", ensureProfileError);
             }
           } catch (ensureProfileException) {
-            console.warn("BLMF livro: exceção ao garantir profile do usuário", ensureProfileException);
+            console.warn("AnarBib livro: exceção ao garantir profile do usuário", ensureProfileException);
           }
 
           const { data: readState, error: readStateError } = await supabase.rpc(
@@ -875,7 +875,7 @@
           );
 
           if (readStateError) {
-            console.warn("BLMF livro: erro na RPC de leitura restrita", readStateError);
+            console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
           }
 
           const row = Array.isArray(readState)
@@ -892,7 +892,7 @@
           }
         }
       } catch (err) {
-        console.warn("BLMF livro: falha ao verificar leitura restrita", err);
+        console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
       }
 
       $("btnReservar").addEventListener("click", () => reserve(bib_ref));
