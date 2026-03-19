@@ -245,12 +245,68 @@ a { color: inherit; }
   color: rgba(255,255,255,.72);
   line-height:1.3;
 }
-.select[multiple] {
-  min-height: 132px;
-  padding: 10px;
+.checkbox-dropdown {
+  position: relative;
 }
-.select[multiple] option {
-  padding: 6px 8px;
+.checkbox-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+.checkbox-dropdown-trigger::after {
+  content: "▾";
+  flex: 0 0 auto;
+  font-size: .9rem;
+  opacity: .9;
+}
+.checkbox-dropdown-trigger[aria-expanded="true"]::after {
+  content: "▴";
+}
+.checkbox-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 16px;
+  background: rgba(10,10,10,.98);
+  box-shadow: var(--shadow);
+}
+.checkbox-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+}
+.checkbox-dropdown-option:hover {
+  background: rgba(255,255,255,.06);
+}
+.checkbox-dropdown-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--red-2);
+}
+.library-native-select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 .toolbar-actions {
   display:flex;
@@ -737,11 +793,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <input id="search" class="input" type="search" autocomplete="off" placeholder="Autor, título, editora, referência ou vários termos entre aspas…">
       </div>
       <div class="field">
-        <label class="field-label" for="libraryFilter">Biblioteca(s)</label>
-        <select id="libraryFilter" class="select" multiple size="4" aria-describedby="libraryFilterHelp"></select>
-        <div id="libraryFilterHelp" class="field-help">Selecione uma, várias ou nenhuma biblioteca. Sem seleção específica = todas.</div>
-      </div>
-      <div class="field">
         <label class="field-label" for="authorFilter">Autor(a)</label>
         <input id="authorFilter" class="input" type="search" autocomplete="off" placeholder="Digite parte do nome para filtrar por autor(a)">
       </div>
@@ -779,6 +830,15 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <option value="library">Biblioteca</option>
           <option value="status">Disponibilidade</option>
         </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="libraryDropdownBtn">Biblioteca(s)</label>
+        <div class="checkbox-dropdown" id="libraryDropdown">
+          <button id="libraryDropdownBtn" class="select checkbox-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="libraryDropdownMenu">Todas</button>
+          <div id="libraryDropdownMenu" class="checkbox-dropdown-menu" hidden></div>
+        </div>
+        <select id="libraryFilter" class="select library-native-select" multiple size="4" aria-describedby="libraryFilterHelp"></select>
+        <div id="libraryFilterHelp" class="field-help">Selecione uma ou várias bibliotecas. Sem seleção específica = todas.</div>
       </div>
     </div>
     <div class="toolbar-meta">
@@ -870,6 +930,10 @@ const DEFAULT_LIBRARY_CONTEXT = {
   label: 'BLMF – Belém do Pará'
 };
 const LIBRARY_FILTER_ALL = '__all__';
+const LIBRARY_FILTER_PRESET_OPTIONS = [
+  { key: 'blmf-belem', label: 'BLMF – Belém do Pará' },
+  { key: 'btl-sao-paulo', label: 'BTL – São Paulo' }
+];
 
 function buildCadastroUrl(nextUrl = location.href) {
   const u = new URL(CADASTRO_URL);
@@ -889,6 +953,9 @@ const tbody = document.getElementById('tbody');
 const mobileResults = document.getElementById('mobileResults');
 const search = document.getElementById('search');
 const libraryFilter = document.getElementById('libraryFilter');
+const libraryDropdown = document.getElementById('libraryDropdown');
+const libraryDropdownBtn = document.getElementById('libraryDropdownBtn');
+const libraryDropdownMenu = document.getElementById('libraryDropdownMenu');
 const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
@@ -1094,22 +1161,75 @@ function expandRowsByLibrary(baseRows) {
     }));
   });
 }
+function buildLibraryDropdownLabel() {
+  const selectedLabels = getSelectedLibraryLabels();
+  if (!selectedLabels.length) return 'Todas';
+  if (selectedLabels.length === 1) return selectedLabels[0];
+  return `${selectedLabels.length} bibliotecas selecionadas`;
+}
+function closeLibraryDropdown() {
+  libraryDropdownMenu.hidden = true;
+  libraryDropdownBtn.setAttribute('aria-expanded', 'false');
+}
+function openLibraryDropdown() {
+  libraryDropdownMenu.hidden = false;
+  libraryDropdownBtn.setAttribute('aria-expanded', 'true');
+}
+function renderLibraryDropdownOptions() {
+  libraryDropdownMenu.innerHTML = '';
+  [...libraryFilter.options].forEach((option) => {
+    const label = document.createElement('label');
+    label.className = 'checkbox-dropdown-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = option.value;
+    checkbox.checked = option.selected;
+
+    checkbox.addEventListener('change', () => {
+      const isAll = option.value === LIBRARY_FILTER_ALL;
+      if (isAll) {
+        [...libraryFilter.options].forEach((node) => {
+          node.selected = node.value === LIBRARY_FILTER_ALL ? checkbox.checked : false;
+        });
+      } else {
+        option.selected = checkbox.checked;
+        const allOption = [...libraryFilter.options].find((node) => node.value === LIBRARY_FILTER_ALL);
+        if (allOption) allOption.selected = false;
+      }
+      updateLibraryDropdownUI();
+      render();
+    });
+
+    const textNode = document.createElement('span');
+    textNode.textContent = option.textContent;
+
+    label.appendChild(checkbox);
+    label.appendChild(textNode);
+    libraryDropdownMenu.appendChild(label);
+  });
+}
+function updateLibraryDropdownUI() {
+  renderLibraryDropdownOptions();
+  libraryDropdownBtn.textContent = buildLibraryDropdownLabel();
+}
 function populateLibraryFilterOptions() {
-  const options = [];
-  const seen = new Set();
+  const merged = new Map();
+  LIBRARY_FILTER_PRESET_OPTIONS.forEach((option) => {
+    merged.set(option.key, { key: option.key, label: option.label });
+  });
   for (const row of rows) {
     const key = String(row.library_key || '').trim();
     const label = String(row.library_label || '').trim();
-    if (!key || !label || seen.has(key)) continue;
-    seen.add(key);
-    options.push({ key, label });
+    if (!key || !label) continue;
+    if (!merged.has(key)) merged.set(key, { key, label });
   }
-  options.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { numeric: true }));
+  const options = [...merged.values()].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { numeric: true }));
 
   libraryFilter.innerHTML = '';
   const allOption = document.createElement('option');
   allOption.value = LIBRARY_FILTER_ALL;
-  allOption.textContent = 'Todas as bibliotecas';
+  allOption.textContent = 'Todas';
   libraryFilter.appendChild(allOption);
 
   for (const option of options) {
@@ -1118,23 +1238,35 @@ function populateLibraryFilterOptions() {
     node.textContent = option.label;
     libraryFilter.appendChild(node);
   }
+  updateLibraryDropdownUI();
 }
 function setLibraryFilterSelection(values) {
   const selected = new Set((values || []).map(String));
-  const hasSpecific = selected.size > 0;
+  const hasSpecific = [...selected].some((value) => value !== LIBRARY_FILTER_ALL);
   for (const option of libraryFilter.options) {
-    option.selected = hasSpecific ? selected.has(option.value) : option.value === LIBRARY_FILTER_ALL;
+    if (hasSpecific) option.selected = option.value !== LIBRARY_FILTER_ALL && selected.has(option.value);
+    else option.selected = selected.has(option.value) && option.value === LIBRARY_FILTER_ALL;
   }
+  updateLibraryDropdownUI();
 }
 function normalizeLibraryFilterSelection() {
   const values = [...libraryFilter.selectedOptions].map(option => option.value);
   const specific = values.filter(value => value !== LIBRARY_FILTER_ALL);
-  if (!specific.length) {
-    setLibraryFilterSelection([]);
+  if (specific.length) {
+    const allOption = [...libraryFilter.options].find((option) => option.value === LIBRARY_FILTER_ALL);
+    if (allOption) allOption.selected = false;
+    updateLibraryDropdownUI();
+    return specific;
+  }
+  if (values.includes(LIBRARY_FILTER_ALL)) {
+    [...libraryFilter.options].forEach((option) => {
+      option.selected = option.value === LIBRARY_FILTER_ALL;
+    });
+    updateLibraryDropdownUI();
     return [];
   }
-  setLibraryFilterSelection(specific);
-  return specific;
+  updateLibraryDropdownUI();
+  return [];
 }
 function getSelectedLibraryKeys() {
   return normalizeLibraryFilterSelection();
@@ -2092,6 +2224,16 @@ async function handleContaClick() {
 }
 search.addEventListener('input', debouncedRender);
 libraryFilter.addEventListener('change', render);
+libraryDropdownBtn.addEventListener('click', () => {
+  if (libraryDropdownMenu.hidden) openLibraryDropdown();
+  else closeLibraryDropdown();
+});
+document.addEventListener('click', (e) => {
+  if (!libraryDropdown.contains(e.target)) closeLibraryDropdown();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !libraryDropdownMenu.hidden) closeLibraryDropdown();
+});
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
 yearFilter.addEventListener('input', render);
