@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AnarBib – livro</title>
+  <title>AnarBib - Livro</title>
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
@@ -217,21 +217,22 @@
   </div>
 
   <script type="module">
-
     import { supabase } from "./js/blmf-supabase.js";
 
+    const GH_BASE = location.origin;
     const ROUTES = {
-      CATALOGO: "https://cclamazonia-cmd.github.io/anarbib-staging/index.html",
-      CADASTRO: "https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html",
-      CONTA: "https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html",
-      PAINEL: "https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html",
+      BLOG_HOME: "https://cclamazonia.noblogs.org/",
+      CATALOGO: `${GH_BASE}/anarbib-staging/index.html`,
+      CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
+      CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
+      PAINEL: `${GH_BASE}/anarbib-conta-staging/painel.html`,
       AUTOR: new URL("autor.html", location.href).toString(),
-      AUTHOR_PAGE_VERSION: "20260319-1",
+      AUTHOR_PAGE_VERSION: '20260313-1',
     };
 
-    const $ = (id) => document.getElementById(id);
-    document.title = "AnarBib – livro";
     document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
+
+    const $ = (id) => document.getElementById(id);
 
     function buildCadastroUrl(nextUrl = location.href) {
       const u = new URL(ROUTES.CADASTRO);
@@ -245,7 +246,6 @@
       em_organizacao: "A biblioteca está em organização. O atendimento ocorre conforme a capacidade operacional atual.",
       atendimento_eventual: "A biblioteca funciona com atendimento eventual. Consulte os canais do CCLA para informações atualizadas.",
       atendimento_semanal: "A biblioteca funciona com atendimento semanal em ritmo regular. Consulte os canais do CCLA para os horários e orientações vigentes.",
-      funcionamento_normal: "A biblioteca está funcionando normalmente no momento.",
       fechado_temporariamente: "A biblioteca está temporariamente fechada para atendimento presencial. Consulte os canais do CCLA para atualizações e orientações."
     };
 
@@ -253,13 +253,9 @@
       em_organizacao: "Em organização",
       atendimento_eventual: "Atendimento eventual",
       atendimento_semanal: "Atendimento semanal",
-      funcionamento_normal: "Funcionamento normal",
       fechado_temporariamente: "Fechado temporariamente"
     };
 
-    let currentBook = null;
-    let currentProfile = null;
-    let currentLibraryContext = null;
     let publicServiceState = null;
 
     function setStatus(msg, cls) {
@@ -268,19 +264,10 @@
       el.textContent = msg || "";
     }
 
-    function escapeHtml(v) {
-      return String(v ?? "").replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      }[c]));
-    }
-
     function setPill(id, label, value, showDash = false) {
       const el = $(id);
       if (!el) return;
+
       const txt = String(value ?? "").trim();
 
       if (!txt) {
@@ -301,6 +288,7 @@
     function setLine(id, value) {
       const el = $(id);
       if (!el) return;
+
       const txt = String(value ?? "").trim();
       el.textContent = txt;
       el.style.display = txt ? "" : "none";
@@ -352,7 +340,7 @@
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
     }
 
-    function buildHeroIntro({ tipoMaterial, editora, ano, holdingsCount }) {
+    function buildHeroIntro({ tipoMaterial, editora, ano, tombosCount }) {
       const parts = [];
       const tipo = String(tipoMaterial || "").trim();
       const pub = String(editora || "").trim();
@@ -362,34 +350,16 @@
       if (pub) parts.push(pub);
       if (year) parts.push(year);
 
-      if (Number.isFinite(Number(holdingsCount)) && Number(holdingsCount) > 0) {
-        const n = Number(holdingsCount);
-        parts.push(n === 1 ? "1 biblioteca com exemplar" : `${n} bibliotecas com exemplar`);
+      if (Number.isFinite(Number(tombosCount)) && Number(tombosCount) > 0) {
+        const n = Number(tombosCount);
+        parts.push(n === 1 ? "1 exemplar identificado" : `${n} exemplares identificados`);
       }
 
       return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
     }
 
-    function normalizeServiceRow(row) {
-      if (!row || typeof row !== "object") return null;
-      if ("allows_new_reservations" in row) {
-        return {
-          service_mode: String(row.service_mode || "").trim(),
-          public_message: String(row.public_message || "").trim(),
-          allows_new_reservations: row.allows_new_reservations === true,
-          allows_new_loans: row.allows_new_loans === true
-        };
-      }
-      return {
-        service_mode: String(row.service_mode || "").trim(),
-        public_message: String(row.public_message || "").trim(),
-        allows_new_reservations: row.allows_new_reservations === true || row.allow_reservations === true,
-        allows_new_loans: row.allows_new_loans === true || row.allow_loans === true
-      };
-    }
-
-    function applyServiceState() {
-      const state = currentLibraryContext ? normalizeServiceRow(currentLibraryContext) : normalizeServiceRow(publicServiceState);
+    function applyPublicServiceState() {
+      const state = publicServiceState;
       const btnReservar = $("btnReservar");
       const serviceModePill = $("serviceModePill");
 
@@ -405,12 +375,11 @@
 
       if (!btnReservar) return;
 
-      if (state?.allows_new_reservations === false) {
+      if (state?.allow_reservations === false) {
         btnReservar.textContent = "Reservas temporariamente fechadas";
         btnReservar.classList.add("disabled");
         btnReservar.setAttribute("aria-disabled", "true");
         btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
-        btnReservar.disabled = true;
         return;
       }
 
@@ -418,101 +387,61 @@
       btnReservar.classList.remove("disabled");
       btnReservar.setAttribute("aria-disabled", "false");
       btnReservar.title = "Reservar este livro";
-      btnReservar.disabled = false;
     }
 
-    async function fetchApiSingle(viewName, columns = "*", filters = null) {
-      let query = supabase.schema("api").from(viewName).select(columns);
-      if (Array.isArray(filters)) {
-        for (const filter of filters) {
-          if (!filter || !filter.col || !filter.op) continue;
-          if (filter.op === "eq") query = query.eq(filter.col, filter.val);
-          if (filter.op === "in") query = query.in(filter.col, filter.val);
-        }
-      }
-      const { data, error } = await query.limit(1).maybeSingle();
-      if (error) throw error;
-      return data || null;
-    }
+    async function loadPublicServiceState() {
+      const { data, error } = await supabase
+        .from("v_library_service_public")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
 
-    async function fetchApiMany(viewName, columns = "*", filters = null, orderBy = null, ascending = false) {
-      let query = supabase.schema("api").from(viewName).select(columns);
-      if (Array.isArray(filters)) {
-        for (const filter of filters) {
-          if (!filter || !filter.col || !filter.op) continue;
-          if (filter.op === "eq") query = query.eq(filter.col, filter.val);
-          if (filter.op === "in") query = query.in(filter.col, filter.val);
-        }
-      }
-      if (orderBy) query = query.order(orderBy, { ascending });
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    }
-
-    async function fetchProfileCompat() {
-      try {
-        const profile = await fetchApiSingle("my_profile");
-        if (profile) {
-          return {
-            ...profile,
-            can_access_painel: profile.can_access_painel === true || profile.is_librarian === true
-          };
-        }
-      } catch (_) {}
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) return null;
-
-      const attempts = [
-        () => supabase.from("profiles").select("id, email, is_librarian, is_restricted").eq("id", session.user.id).maybeSingle(),
-        () => supabase.schema("api").from("profiles").select("id, email, is_librarian, is_restricted").eq("id", session.user.id).maybeSingle()
-      ];
-
-      for (const run of attempts) {
-        try {
-          const res = await run();
-          if (!res?.error && res?.data) {
-            return {
-              id: session.user.id,
-              email: res.data.email || session.user.email || "",
-              is_authenticated: true,
-              is_librarian: res.data.is_librarian === true,
-              is_restricted: res.data.is_restricted === true,
-              can_access_painel: res.data.is_librarian === true
-            };
-          }
-        } catch (_) {}
+      if (error) {
+        console.warn("AnarBib livro: falha ao carregar v_library_service_public", error);
+        publicServiceState = null;
+        applyPublicServiceState();
+        return;
       }
 
-      return {
-        id: session.user.id,
-        email: session.user.email || "",
-        is_authenticated: true,
-        is_librarian: false,
-        is_restricted: false,
-        can_access_painel: false
-      };
+      publicServiceState = data ? {
+        service_mode: String(data.service_mode || "").trim(),
+        allow_reservations: data.allow_reservations === false ? false : true,
+        public_message: String(data.public_message || "").trim(),
+        updated_at: data.updated_at || null
+      } : null;
+
+      applyPublicServiceState();
     }
 
-    function parseRpcError(err) {
-      const msg = String(err?.message || "");
-      if (msg.includes("AUTH_REQUIRED")) return "Para reservar, você precisa entrar na conta.";
-      if (msg.includes("PROFILE_REQUIRED")) return "Sua ficha de perfil ainda não está pronta para reservas.";
-      if (msg.includes("ACCOUNT_RESTRICTED")) return "Esta conta está com acesso restrito.";
-      if (msg.includes("DEFAULT_LIBRARY_REQUIRED")) return "Não foi possível identificar sua biblioteca padrão.";
-      if (msg.includes("REMOTE_LIBRARY_NOT_ENABLED")) return "Por enquanto, a reserva só pode ser feita na sua biblioteca padrão.";
-      if (msg.includes("RESERVATIONS_DISABLED")) return "As reservas estão temporariamente fechadas nesta biblioteca.";
-      if (msg.includes("BOOK_NOT_HELD_BY_LIBRARY")) return "Este livro não está disponível para reserva na sua biblioteca.";
-      if (msg.includes("BOOK_NOT_LOANABLE")) return "Este item não pode ser reservado para empréstimo.";
-      if (msg.includes("ACTIVE_RESERVATION_ALREADY_EXISTS")) return "Você já tem uma reserva ativa para este livro.";
-      return msg || "Não foi possível concluir a ação agora.";
+    function normalizeAuthorName(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
     }
 
     function splitAuthorDisplay(raw) {
       const txt = String(raw || "").trim();
       if (!txt) return [];
       return txt.split(/\s*;\s*/).map(v => String(v || "").trim()).filter(Boolean);
+    }
+
+    function buildAuthorVariants(name) {
+      const out = new Set();
+      const clean = String(name || "").trim();
+      const base = normalizeAuthorName(clean);
+      if (base) out.add(base);
+      if (clean.includes(",")) {
+        const bits = clean.split(",").map(v => v.trim()).filter(Boolean);
+        if (bits.length >= 2) {
+          const swapped = normalizeAuthorName(bits.slice(1).join(" ") + " " + bits[0]);
+          if (swapped) out.add(swapped);
+        }
+      }
+      return Array.from(out);
     }
 
     function authorUrl(authorId, authorName = "") {
@@ -529,24 +458,72 @@
       return `${ROUTES.AUTOR}?${params.toString()}`;
     }
 
-    function renderBookAuthors(mainAuthorText, bookRow) {
+    async function renderBookAuthors(authorText, bookRow) {
       const host = $("authorLine");
       if (!host) return;
+
+      const names = splitAuthorDisplay(authorText);
+      const linkedAuthors = [];
+
+      const rawJson = bookRow?.authors_json;
+      if (Array.isArray(rawJson)) {
+        linkedAuthors.push(...rawJson);
+      } else if (typeof rawJson === "string" && rawJson.trim()) {
+        try {
+          const parsed = JSON.parse(rawJson);
+          if (Array.isArray(parsed)) linkedAuthors.push(...parsed);
+        } catch (_) {}
+      }
+
+      if (!linkedAuthors.length && bookRow?.id != null) {
+        try {
+          let rel = await supabase
+            .from("v_book_author_links_public_v2")
+            .select("author_id, display_name, preferred_name, sort_name")
+            .eq("book_id", bookRow.id);
+
+          if (rel.error || !Array.isArray(rel.data) || !rel.data.length) {
+            rel = await supabase
+              .from("v_book_author_links_public")
+              .select("author_id, preferred_name, sort_name")
+              .eq("book_id", bookRow.id);
+          }
+
+          if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
+            linkedAuthors.push(...rel.data.map(row => ({
+              id: row.author_id,
+              display_name: row.display_name,
+              preferred_name: row.preferred_name,
+              sort_name: row.sort_name
+            })));
+          }
+        } catch (_) {}
+      }
+
       host.innerHTML = "";
       host.classList.add("author-inline-wrap");
 
-      const names = splitAuthorDisplay(mainAuthorText);
-      if (!names.length) {
-        host.textContent = "—";
+      if (linkedAuthors.length) {
+        linkedAuthors.forEach((row, idx) => {
+          const label = String(row?.display_name || row?.preferred_name || row?.sort_name || names[idx] || "").trim();
+          if (!label) return;
+          const a = document.createElement("a");
+          a.className = "author-card-link";
+          a.href = authorUrl(row?.id ?? row?.author_id ?? null, label);
+          a.textContent = label;
+          host.appendChild(a);
+          if (idx < linkedAuthors.length - 1) {
+            const sep = document.createElement("span");
+            sep.className = "author-separator";
+            sep.textContent = ";";
+            host.appendChild(sep);
+          }
+        });
         return;
       }
 
-      if (bookRow?.author_id && names.length === 1) {
-        const a = document.createElement("a");
-        a.className = "author-card-link";
-        a.href = authorUrl(bookRow.author_id, names[0]);
-        a.textContent = names[0];
-        host.appendChild(a);
+      if (!names.length) {
+        host.textContent = "—";
         return;
       }
 
@@ -564,24 +541,45 @@
       });
     }
 
+    const nk = (s) => String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+    function findCol(keys, wanted) {
+      const map = new Map(keys.map(k => [nk(k), k]));
+      for (const w of wanted) {
+        const hit = map.get(nk(w));
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    async function pickFirstExistingTable(candidates) {
+      for (const t of candidates) {
+        const { error } = await supabase.from(t).select("*").limit(1);
+        if (!error) return t;
+      }
+      return null;
+    }
+
     async function setupContaButton() {
       const btnConta = $("btnConta");
       const btnEntrar = $("btnEntrar");
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user?.id) {
+        let isLibrarian = false;
         try {
-          currentProfile = await fetchProfileCompat();
-        } catch (_) {
-          currentProfile = null;
-        }
+          const { data } = await supabase
+            .from("profiles")
+            .select("is_librarian")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          isLibrarian = !!data?.is_librarian;
+        } catch (_) {}
 
-        const canPainel = !!currentProfile?.can_access_painel;
-        const targetHref = canPainel ? ROUTES.PAINEL : ROUTES.CONTA;
-        btnConta.textContent = canPainel ? "Painel" : "Minha conta";
+        const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
+        btnConta.textContent = isLibrarian ? "Painel" : "Minha conta";
         btnConta.setAttribute("aria-disabled", "false");
-        btnConta.title = canPainel ? "Abrir painel" : "Abrir minha conta";
-        btnConta.disabled = false;
+        btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
         btnConta.onclick = () => location.assign(targetHref);
 
         btnEntrar.setAttribute("aria-disabled", "true");
@@ -589,166 +587,79 @@
         btnEntrar.title = "Você já está logado(a/e).";
         btnEntrar.removeAttribute("href");
         btnEntrar.addEventListener("click", (e) => e.preventDefault());
-        return;
+      } else {
+        btnConta.textContent = "Painel / minha conta";
+        btnConta.setAttribute("aria-disabled", "true");
+        btnConta.title = "Disponível apenas quando logado(a/e).";
+        btnConta.onclick = (e) => e.preventDefault();
+
+        btnEntrar.setAttribute("aria-disabled", "false");
+        btnEntrar.classList.remove("disabled");
+        btnEntrar.title = "Entrar";
+        btnEntrar.href = buildCadastroUrl(location.href);
       }
-
-      btnConta.textContent = "Painel / minha conta";
-      btnConta.setAttribute("aria-disabled", "true");
-      btnConta.title = "Disponível apenas quando logado(a/e).";
-      btnConta.disabled = true;
-      btnConta.onclick = (e) => e.preventDefault();
-
-      btnEntrar.setAttribute("aria-disabled", "false");
-      btnEntrar.classList.remove("disabled");
-      btnEntrar.title = "Entrar";
-      btnEntrar.href = buildCadastroUrl(location.href);
     }
 
-    async function loadServiceState() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) {
-          currentLibraryContext = await fetchApiSingle("my_library_context");
-        }
-      } catch (_) {
-        currentLibraryContext = null;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("v_library_service_public")
-          .select("*")
-          .limit(1)
-          .maybeSingle();
-
-        if (!error) {
-          publicServiceState = normalizeServiceRow(data);
-        }
-      } catch (_) {
-        publicServiceState = null;
-      }
-
-      applyServiceState();
-    }
-
-    async function updateReserveButtonState() {
-      const btnReservar = $("btnReservar");
-      if (!btnReservar || !currentBook) return;
-
-      applyServiceState();
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) {
-        btnReservar.disabled = false;
-        btnReservar.textContent = "Reservar este livro";
-        return;
-      }
-
-      try {
-        currentProfile = await fetchProfileCompat();
-        currentLibraryContext = await fetchApiSingle("my_library_context");
-      } catch (_) {}
-
-      if (currentProfile?.is_restricted) {
-        btnReservar.disabled = true;
-        btnReservar.textContent = "Conta com restrição";
-        btnReservar.title = "Esta conta está com acesso restrito.";
-        return;
-      }
-
-      if (currentLibraryContext?.allows_new_reservations === false) {
-        btnReservar.disabled = true;
-        btnReservar.textContent = "Reservas temporariamente fechadas";
-        btnReservar.title = "As reservas estão temporariamente fechadas nesta biblioteca.";
-        return;
-      }
-
-      if (currentLibraryContext?.library_id) {
-        try {
-          const activeRows = await fetchApiMany("my_reservations_active", "id, book_id, library_id", [
-            { col: "book_id", op: "eq", val: currentBook.id },
-            { col: "library_id", op: "eq", val: currentLibraryContext.library_id }
-          ]);
-          if (activeRows.length) {
-            btnReservar.disabled = true;
-            btnReservar.textContent = "Reserva já ativa";
-            btnReservar.title = "Você já tem uma reserva ativa para este livro.";
-            return;
-          }
-        } catch (_) {}
-      }
-
-      btnReservar.disabled = false;
-      btnReservar.textContent = "Reservar este livro";
-      btnReservar.title = "Reservar este livro";
-    }
-
-    
-    async function reserveCurrentBook() {
+    async function reserve(bib_ref) {
       setStatus("", "");
 
+      if (publicServiceState?.allow_reservations === false) {
+        setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) {
+
+      if (!session) {
         setStatus("Para reservar, você precisa entrar.", "warn");
         location.assign(buildCadastroUrl(location.href));
         return;
       }
 
       try {
-        currentProfile = currentProfile || await fetchProfileCompat();
-        currentLibraryContext = currentLibraryContext || await fetchApiSingle("my_library_context");
+        let defaultLibraryId = null;
+        try {
+          const prof = await supabase.schema("api").from("my_profile").select("default_library_id").limit(1).maybeSingle();
+          if (!prof.error && prof.data?.default_library_id) defaultLibraryId = prof.data.default_library_id;
+        } catch (_) {}
+
+        let lookup = supabase
+          .schema("api")
+          .from("catalog_books_public")
+          .select("book_id, library_id")
+          .eq("bib_ref", bib_ref);
+
+        if (defaultLibraryId) lookup = lookup.eq("library_id", defaultLibraryId);
+
+        const looked = await lookup.limit(1).maybeSingle();
+        if (!looked.error && looked.data?.book_id) {
+          const modern = await supabase.rpc("create_my_reservation", {
+            p_book_id: looked.data.book_id,
+            p_library_id: looked.data.library_id || null,
+            p_notes: "Reserva criada pela página pública do livro."
+          });
+          if (!modern.error) {
+            setStatus("Reserva registrada.", "ok");
+            return;
+          }
+        }
       } catch (_) {}
 
-      if (currentProfile?.is_restricted) {
-        setStatus("Esta conta está com acesso restrito.", "warn");
+      const { error } = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
+        p_user_id: session.user.id,
+        p_bib_refs: [bib_ref],
+        p_expires_at: null,
+        p_notes: "Reserva criada pela página pública do livro."
+      });
+
+      if (error) {
+        setStatus("Não foi possível reservar: " + error.message, "warn");
         return;
       }
 
-      if (!currentBook?.id) {
-        setStatus("Não foi possível identificar este livro para reserva.", "warn");
-        return;
-      }
-
-      const btn = $("btnReservar");
-      btn.disabled = true;
-
-      try {
-        const { error } = await supabase.rpc("create_my_reservation", {
-          p_book_id: currentBook.id,
-          p_library_id: null,
-          p_notes: "Reserva criada pela página pública do livro."
-        });
-
-        if (!error) {
-          setStatus("Reserva registrada com sucesso.", "ok");
-          btn.disabled = true;
-          btn.textContent = "Reserva já ativa";
-          return;
-        }
-
-        const fallback = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
-          p_user_id: session.user.id,
-          p_bib_refs: [currentBook.bib_ref || getBibRefFromUrl()],
-          p_expires_at: null,
-          p_notes: "Reserva criada pela página pública do livro."
-        });
-
-        if (fallback.error) {
-          setStatus(parseRpcError(error), "warn");
-          await updateReserveButtonState();
-          return;
-        }
-
-        setStatus("Reserva registrada com sucesso.", "ok");
-        btn.disabled = true;
-        btn.textContent = "Reserva já ativa";
-      } catch (error) {
-        setStatus(parseRpcError(error), "warn");
-        await updateReserveButtonState();
-      }
+      setStatus("Reserva registrada.", "ok");
     }
 
-    
     async function loadBook() {
       const bib_ref = getBibRefFromUrl();
 
@@ -758,92 +669,8 @@
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
-        document.title = "AnarBib – livro";
+        document.title = "AnarBib - Livro";
         setStatus("Faltou a referência na URL (ex.: livro.html?ref=0000124).", "warn");
-        return;
-      }
-
-      let row = null;
-      try {
-        row = await fetchApiSingle("catalog_book_detail_public", "*", [
-          { col: "bib_ref", op: "eq", val: bib_ref }
-        ]);
-      } catch (error) {
-        console.warn("catalog_book_detail_public indisponível, usando fallback legacy.", error);
-      }
-
-      if (row) {
-        currentBook = row;
-
-        const titulo = row.titulo || "";
-        const subtitulo = row.subtitulo || "";
-        const autor = row.autor || "";
-        const ano = row.ano || "";
-        const editora = row.editora || "";
-        const localPublicacao = row.local_publicacao || "";
-        const edicao = row.edicao || "";
-        const isbn = row.isbn || "";
-        const issn = row.issn || "";
-        const idioma = row.idioma || "";
-        const paginas = row.paginas || "";
-        const tipoMaterial = row.tipo_material || "";
-        const colecao = row.colecao || "";
-        const volume = row.volume || "";
-        const tradutor = row.tradutor || "";
-        const organizador = row.organizador || "";
-        const autoresSecundarios = row.autores_secundarios || "";
-        const assuntos = row.assuntos || "";
-        const cdd = row.cdd || "";
-        const resumo = row.notas || "";
-        const cover = row.cover_object_path || "";
-        const holdings = Array.isArray(row.holding_libraries_json) ? row.holding_libraries_json : [];
-        const holdingsCount = holdings.length || (Number(row.api_exemplares_total || 0) > 0 ? 1 : 0);
-
-        setCover(cover);
-        $("title").textContent = titulo || "Sem título";
-        setLine("subtitleLine", subtitulo);
-        renderBookAuthors(autor, row);
-
-        setPill("bibRefPill", "ref", row.bib_ref || "", true);
-        setPill("heroRefChip", "ref", row.bib_ref || "");
-        setPill("yearPill", "ano", ano, true);
-        setPill("heroYearChip", "ano", ano);
-        setPill("pubPill", "editora", editora, true);
-        setPill("heroPubChip", "editora", editora);
-        setPill("placePill", "local", localPublicacao);
-        setPill("editionPill", "edição", edicao);
-        setPill("isbnPill", "ISBN", isbn);
-        setPill("issnPill", "ISSN", issn);
-        setPill("langPill", "idioma", idioma);
-        setPill("pagesPill", "páginas", paginas);
-        setPill("typePill", "material", tipoMaterial);
-        setPill("collectionPill", "coleção", colecao);
-        setPill("volumePill", "volume", volume);
-        setPill("translatorPill", "tradutor(a)", tradutor);
-        setPill("organizerPill", "organização", organizador);
-        setPill("secondaryAuthorsPill", "outras responsabilidades", autoresSecundarios);
-        setPill("subjectsPill", "assuntos", assuntos);
-        setPill("cddPill", "CDD", cdd);
-
-        setLine("resumoLine", resumo);
-        setLine("holdingsLine", holdingsCount ? holdings.map((h) => {
-          const total = Number(h?.exemplares_total || 0);
-          return total > 0 ? `${h.library_name || h.library_slug || "Biblioteca"} (${total})` : `${h.library_name || h.library_slug || "Biblioteca"}`;
-        }).join(" • ") : "—");
-
-        $("heroIntro").textContent = holdingsCount
-          ? `Livro localizado em ${holdingsCount} biblioteca(s) cadastrada(s).`
-          : "Detalhes bibliográficos do livro.";
-
-        document.title = titulo ? `AnarBib – ${titulo}` : "AnarBib – livro";
-
-        const bibEl = $("bibRefValue");
-        if (bibEl) bibEl.textContent = row.bib_ref || "—";
-
-        const reserveBtn = $("btnReservar");
-        if (reserveBtn) reserveBtn.addEventListener("click", () => reserveCurrentBook(), { once: false });
-
-        await updateReserveButtonState();
         return;
       }
 
@@ -884,7 +711,7 @@
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
-        document.title = "AnarBib – livro";
+        document.title = "AnarBib - Livro não encontrado";
         setStatus("Não encontrei esse livro no catálogo.", "warn");
         return;
       }
@@ -960,15 +787,14 @@
         }
       }
 
-      currentBook = { id: data.id || data.book_id || null, bib_ref, loanable: data.loanable ?? true, author_id: data.author_id || null };
-
       setCover(cover);
+
       $("title").textContent = titulo || "Sem título";
       setLine("subtitleLine", subtitulo);
-      renderBookAuthors(autor, currentBook);
+      await renderBookAuthors(autor, data);
 
-      setPill("bibRefPill", "ref", bib_ref, true);
-      setPill("heroRefChip", "ref", bib_ref);
+      setPill("bibRefPill", "ref", data[colRef] || "", true);
+      setPill("heroRefChip", "ref", data[colRef] || "");
       setPill("yearPill", "ano", ano, true);
       setPill("heroYearChip", "ano", ano);
       setPill("pubPill", "editora", editora, true);
@@ -979,28 +805,131 @@
       setPill("issnPill", "ISSN", issn);
       setPill("langPill", "idioma", idioma);
       setPill("pagesPill", "páginas", paginas);
-      setPill("typePill", "material", tipoMaterial);
-      setPill("collectionPill", "coleção", colecao);
+      setPill("typePill", "tipo", tipoMaterial);
+      setPill("collectionPill", "coleção / série", colecao);
       setPill("volumePill", "volume", volume);
-      setPill("translatorPill", "tradutor(a)", tradutor);
-      setPill("organizerPill", "organização", organizador);
-      setPill("secondaryAuthorsPill", "outras responsabilidades", autoresSecundarios);
+      setPill("translatorPill", "tradutor", tradutor);
+      setPill("organizerPill", "organizador", organizador);
+      setPill("secondaryAuthorsPill", "autores sec.", autoresSecundarios);
       setPill("subjectsPill", "assuntos", assuntos);
-      setPill("cddPill", "CDD", cdd);
+      setPill("cddPill", "CDD", cdd, true);
 
-      setLine("resumoLine", resumo);
-      document.title = titulo ? `AnarBib – ${titulo}` : "AnarBib – livro";
+      $("desc").textContent = resumo || "—";
 
-      if ($("btnReservar")) {
-        $("btnReservar").addEventListener("click", () => reserveCurrentBook(), { once: false });
+      async function loadTombosForBook(bookRow, bib_ref) {
+        const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+        let tombos = [];
+
+        if (inBook && bookRow?.[inBook] != null) {
+          const raw = bookRow[inBook];
+          if (Array.isArray(raw)) {
+            tombos = raw
+              .flatMap(v => String(v || "").split(/[;,\n]+/))
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
+          } else {
+            tombos = String(raw || "")
+              .split(/[;,\n]+/)
+              .map(v => String(v || "").trim())
+              .filter(Boolean);
+          }
+        }
+
+        if (tombos.length) {
+          return Array.from(new Set(tombos));
+        }
+
+        const candidates = ["v_exemplares_public", "exemplares_public", "v_exemplares", "exemplares"];
+
+        for (const table of candidates) {
+          const peekEx = await supabase.from(table).select("*").limit(1);
+          if (peekEx.error) continue;
+
+          const exKeys = Object.keys((peekEx.data && peekEx.data[0]) ? peekEx.data[0] : {});
+          const exTombo = findCol(exKeys, ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+          const exBibRef = findCol(exKeys, ["bib_ref", "bibref", "ref", "referencia", "referência"]);
+          const exBookId = findCol(exKeys, ["book_id", "livro_id", "id_livro"]);
+
+          if (!exTombo) continue;
+
+          let rows = [];
+
+          if (exBibRef) {
+            const byRef = await supabase.from(table).select("*").eq(exBibRef, bib_ref).limit(100);
+            if (!byRef.error && byRef.data?.length) rows = byRef.data;
+          }
+
+          if (!rows.length && exBookId && bookRow?.id != null) {
+            const byBookId = await supabase.from(table).select("*").eq(exBookId, bookRow.id).limit(100);
+            if (!byBookId.error && byBookId.data?.length) rows = byBookId.data;
+          }
+
+          if (rows.length) {
+            const vals = rows.map(r => String(r?.[exTombo] || "").trim()).filter(Boolean);
+            if (vals.length) return Array.from(new Set(vals));
+          }
+        }
+
+        return [];
       }
-      await updateReserveButtonState();
+
+      const tombos = await loadTombosForBook(data, bib_ref);
+      document.title = `${titulo || "Livro"} - AnarBib`;
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
+      setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
+      setPill("exemplaresPill", "exemplares", tombos.length > 1 ? String(tombos.length) : "");
+      setPill("heroExemplaresChip", "exemplares", tombos.length ? String(tombos.length) : "");
+
+      if (pdf) {
+        $("btnAbrirPdf").style.display = "inline-flex";
+        $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user?.id) {
+          try {
+            const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
+            if (ensureProfileError) {
+              console.warn("AnarBib livro: erro ao garantir profile do usuário", ensureProfileError);
+            }
+          } catch (ensureProfileException) {
+            console.warn("AnarBib livro: exceção ao garantir profile do usuário", ensureProfileException);
+          }
+
+          const { data: readState, error: readStateError } = await supabase.rpc(
+            "fn_book_restricted_pdf_state_for_current_user",
+            { p_bib_ref: bib_ref }
+          );
+
+          if (readStateError) {
+            console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
+          }
+
+          const row = Array.isArray(readState)
+            ? readState[0]
+            : (readState && typeof readState === "object" ? readState : null);
+
+          if (!readStateError && row?.can_show_read_button) {
+            $("btnLer").style.display = "inline-flex";
+            $("btnLer").addEventListener("click", () => {
+              const viewerUrl = new URL("ler.html", location.href);
+              viewerUrl.searchParams.set("ref", bib_ref);
+              location.assign(viewerUrl.toString());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
+      }
+
+      $("btnReservar").addEventListener("click", () => reserve(bib_ref));
     }
 
     await setupContaButton();
-    await loadServiceState();
+    await loadPublicServiceState();
     await loadBook();
-
   </script>
 </body>
 </html>
