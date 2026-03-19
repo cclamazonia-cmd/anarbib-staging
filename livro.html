@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" data-library-slug="default" data-theme-slug="default" data-library-name="AnarBib">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -7,28 +7,29 @@
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
-  <link rel="stylesheet" href="./assets/css/theme-base.css">
-  <script src="./assets/js/library-context.js" defer></script>
-  <script src="./assets/js/theme-loader.js" defer></script>
 
   <style>
     :root{
-      --panel:var(--brand-panel-bg, rgba(10,10,10,.90));
-      --text:var(--brand-text, #f4f4f4);
-      --muted:var(--brand-muted, rgba(255,255,255,.78));
-      --red:color-mix(in srgb, var(--brand-color-primary, #bb1e2c) 68%, black 32%);
-      --red2:color-mix(in srgb, var(--brand-color-primary, #bb1e2c) 88%, white 12%);
-      --line:var(--brand-panel-border, rgba(255,255,255,.12));
-      --shadow: var(--brand-shadow, 0 16px 38px rgba(0,0,0,.42));
+      --panel:rgba(10,10,10,.90);
+      --text:#f4f4f4; --muted:rgba(255,255,255,.78);
+      --red:#7a0b14; --red2:#bb1e2c;
+      --line:rgba(255,255,255,.12);
+      --shadow: 0 16px 38px rgba(0,0,0,.42);
       --ok:#4ade80; --warn:#fbbf24; --bad:#fb7185;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;color:var(--text);font-family:var(--brand-font-body, Inter, Segoe UI, Arial, sans-serif);}
+    html,body{margin:0;padding:0;color:var(--text);font-family:Inter, Segoe UI, Arial, sans-serif;}
     body{
-      background-color:var(--brand-color-secondary, #080808);
+      background-image:
+        linear-gradient(rgba(0,0,0,.62), rgba(0,0,0,.62)),
+        url('https://cclamazonia.noblogs.org/files/2026/03/ni-dieu-ni-maitre-une-histoire-de-lanarchisme-episodes-3-et-4-09-15-2022-1024x639-1441403844.png');
+      background-size:cover;
+      background-position:center center;
+      background-attachment:fixed;
+      background-repeat:no-repeat;
     }
     a, a:visited{color:inherit;text-decoration:none}
-    .wrap{max-width:var(--brand-container-max-width, 1680px);margin:0 auto;padding:24px}
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
     .brand{display:flex;align-items:center;gap:12px}
     .logo{
@@ -64,10 +65,10 @@
     }
     .hero{
       border:1px solid rgba(255,255,255,.10);
-      background:linear-gradient(135deg, var(--red2), var(--red));
+      background:linear-gradient(135deg, rgba(122,11,20,.92), rgba(50,7,11,.94));
       border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px;
     }
-    .hero h1{margin:0 0 6px;font-size:1.5rem;font-family:var(--brand-font-heading, inherit)}
+    .hero h1{margin:0 0 6px;font-size:1.5rem}
     .hero p{margin:0;color:rgba(255,255,255,.92)}
     .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .chip{
@@ -129,18 +130,18 @@
     .author-name-plain { color: var(--muted); }
     .author-card-link {
       display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px;
-      border:1px solid var(--line); background:transparent; color:var(--brand-text, #f4f4f4); text-decoration:none;
+      border:1px solid rgba(140,110,115,.65); background:transparent; color:#f4f4f4; text-decoration:none;
       font-weight:600; transition:background .15s ease, border-color .15s ease, transform .15s ease;
     }
-    .author-card-link:hover { background:rgba(255,255,255,.04); border-color:var(--brand-text, rgba(170,140,145,.85)); transform:translateY(-1px); }
+    .author-card-link:hover { background:rgba(255,255,255,.04); border-color:rgba(170,140,145,.85); transform:translateY(-1px); }
     .author-separator { color: var(--muted); margin:0 2px; }
   </style>
 </head>
 <body>
-  <div class="wrap" data-layout="page">
+  <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <img class="logo" data-brand-logo
+        <img class="logo"
              src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png"
              alt="AnarBib" />
       </div>
@@ -152,10 +153,10 @@
       </div>
     </div>
 
-    <div class="hero" data-layout="hero">
+    <div class="hero">
       <h1 id="title">Carregando…</h1>
-      <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
       <p id="heroIntro">Carregando dados do livro…</p>
+      <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
       <div class="author-inline-wrap" id="authorLine" style="margin-top:10px">—</div>
       <div class="chips">
         <div class="chip" id="heroRefChip" style="display:none"></div>
@@ -231,7 +232,20 @@
 
     document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
 
+    const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
+
+    function buildExternalBookCoverUrl(pathOrUrl) {
+      const raw = String(pathOrUrl || "").trim();
+      if (!raw) return "";
+      if (/^https?:\/\//i.test(raw)) return raw;
+      const clean = raw
+        .replace(/^\/+/, "")
+        .replace(/^covers\/+?books\/+?/i, "")
+        .replace(/^covers\/+?/i, "")
+        .replace(/^books\/+?/i, "");
+      return clean ? `${EXTERNAL_BOOK_COVERS_BASE_URL}/${clean}` : "";
+    }
 
     function buildCadastroUrl(nextUrl = location.href) {
       const u = new URL(ROUTES.CADASTRO);
@@ -302,18 +316,7 @@
         return;
       }
 
-      let src = String(pathOrUrl || "").trim();
-      if (!src) {
-        box.classList.add("empty");
-        img.removeAttribute("src");
-        return;
-      }
-
-      if (!/^https?:\/\//i.test(src)) {
-        const { data } = supabase.storage.from("covers").getPublicUrl(src);
-        src = data?.publicUrl || "";
-      }
-
+      const src = buildExternalBookCoverUrl(pathOrUrl);
       if (!src) {
         box.classList.add("empty");
         img.removeAttribute("src");
@@ -614,35 +617,6 @@
         location.assign(buildCadastroUrl(location.href));
         return;
       }
-
-      try {
-        let defaultLibraryId = null;
-        try {
-          const prof = await supabase.schema("api").from("my_profile").select("default_library_id").limit(1).maybeSingle();
-          if (!prof.error && prof.data?.default_library_id) defaultLibraryId = prof.data.default_library_id;
-        } catch (_) {}
-
-        let lookup = supabase
-          .schema("api")
-          .from("catalog_books_public")
-          .select("book_id, library_id")
-          .eq("bib_ref", bib_ref);
-
-        if (defaultLibraryId) lookup = lookup.eq("library_id", defaultLibraryId);
-
-        const looked = await lookup.limit(1).maybeSingle();
-        if (!looked.error && looked.data?.book_id) {
-          const modern = await supabase.rpc("create_my_reservation", {
-            p_book_id: looked.data.book_id,
-            p_library_id: looked.data.library_id || null,
-            p_notes: "Reserva criada pela página pública do livro."
-          });
-          if (!modern.error) {
-            setStatus("Reserva registrada.", "ok");
-            return;
-          }
-        }
-      } catch (_) {}
 
       const { error } = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
         p_user_id: session.user.id,
