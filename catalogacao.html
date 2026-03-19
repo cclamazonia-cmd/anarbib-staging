@@ -2147,6 +2147,8 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
+    const AUTH_STORAGE_KEY = 'sb-asptfmokzykwzlshsncw-auth-token';
+    const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
     const ROUTES = {
       PAINEL: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html',
@@ -4774,11 +4776,90 @@
       }
     }
 
-    async function requireSession() {
-      const { data, error } = await supabase.auth.getSession();
+    function readBooleanHints(source) {
+      if (!source || typeof source !== 'object') return null;
+      const candidates = [
+        source.is_librarian,
+        source.isLibrarian,
+        source.bibliotecario,
+        source.role === 'librarian' ? true : undefined,
+        Array.isArray(source.roles) && source.roles.includes('librarian') ? true : undefined,
+      ];
+      for (const value of candidates) {
+        if (value === true || value === false) return value;
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+      }
+      return null;
+    }
+
+    function readLibrarianHintFromSession(session = null) {
+      const sessionUser = session?.user || null;
+      const hint =
+        readBooleanHints(sessionUser?.app_metadata) ??
+        readBooleanHints(sessionUser?.user_metadata) ??
+        readBooleanHints(session);
+      return hint;
+    }
+
+    function persistSessionToBrowserStorages(session, isLib = null) {
+      if (!session) return;
+      const serialized = JSON.stringify(session);
+      try { window.localStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('localStorage auth persist failed:', e); }
+      try { window.sessionStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('sessionStorage auth persist failed:', e); }
+      if (isLib === true || isLib === false) {
+        try { window.localStorage.setItem(LIBRARIAN_HINT_KEY, String(isLib)); } catch {}
+        try { window.sessionStorage.setItem(LIBRARIAN_HINT_KEY, String(isLib)); } catch {}
+      }
+    }
+
+    function readStoredSessionCandidate() {
+      let raw = null;
+      try { raw = window.sessionStorage.getItem(AUTH_STORAGE_KEY); } catch {}
+      if (!raw) {
+        try { raw = window.localStorage.getItem(AUTH_STORAGE_KEY); } catch {}
+      }
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        console.warn('Stored session parse failed:', error);
+        return null;
+      }
+    }
+
+    async function ensureSharedSession() {
+      let { data, error } = await supabase.auth.getSession();
       if (error) throw error;
-      state.session = data.session;
-      if (!state.session) {
+      if (data?.session?.user?.id) {
+        persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
+        return data.session;
+      }
+
+      const storedSession = readStoredSessionCandidate();
+      if (storedSession?.access_token && storedSession?.refresh_token) {
+        try {
+          const restored = await supabase.auth.setSession({
+            access_token: storedSession.access_token,
+            refresh_token: storedSession.refresh_token,
+          });
+          if (restored.error) throw restored.error;
+          if (restored.data?.session?.user?.id) {
+            persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
+            return restored.data.session;
+          }
+        } catch (restoreError) {
+          console.warn('Session restore failed:', restoreError);
+        }
+      }
+
+      return storedSession || null;
+    }
+
+    async function requireSession() {
+      const session = await ensureSharedSession();
+      state.session = session;
+      if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
@@ -4790,25 +4871,57 @@
       updateLoginButton();
     }
 
+    async function fetchProfileRecord(userId) {
+      try {
+        const apiRead = await supabase.schema('api').from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle();
+        if (!apiRead.error && apiRead.data) return apiRead.data;
+        if (apiRead.error) console.warn('api.profiles read failed:', apiRead.error);
+      } catch (error) {
+        console.warn('api.profiles read exception:', error);
+      }
+
+      try {
+        const publicRead = await supabase.from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle();
+        if (!publicRead.error && publicRead.data) return publicRead.data;
+        if (publicRead.error) console.warn('public.profiles read failed:', publicRead.error);
+      } catch (error) {
+        console.warn('public.profiles read exception:', error);
+      }
+
+      return null;
+    }
+
     async function loadProfile() {
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
-      const { data, error } = await supabase.from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).single();
-      if (error) throw error;
-      state.profile = data;
-      state.isLibrarian = !!data?.is_librarian;
+
+      const data = await fetchProfileRecord(userId);
+      const hint = readLibrarianHintFromSession(state.session);
+      let hintedValue = hint;
+      if (hintedValue === null) {
+        try {
+          const storedHint = window.sessionStorage.getItem(LIBRARIAN_HINT_KEY) ?? window.localStorage.getItem(LIBRARIAN_HINT_KEY);
+          if (storedHint === 'true') hintedValue = true;
+          if (storedHint === 'false') hintedValue = false;
+        } catch {}
+      }
+
+      state.profile = data || { id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
+      persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
       if (state.isLibrarian) {
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
-      } else {
-        refs.rolePill.textContent = 'Acesso restrito';
-        refs.rolePill.className = 'pill danger';
-        showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
-        throw new Error('Usuário sem permissão bibliotecária.');
+        return;
       }
+
+      refs.rolePill.textContent = 'Acesso restrito';
+      refs.rolePill.className = 'pill danger';
+      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+      throw new Error('Usuário sem permissão bibliotecária.');
     }
 
     async function loadBatches() {
@@ -4914,6 +5027,16 @@
       } catch (error) {
         updateLoginButton();
         console.error(error);
+        if (!state.session?.user?.id) {
+          refs.rolePill.textContent = 'Faça login para usar a catalogação';
+          refs.rolePill.className = 'pill danger';
+        } else if (!state.isLibrarian) {
+          refs.rolePill.textContent = 'Acesso restrito';
+          refs.rolePill.className = 'pill danger';
+        } else {
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+          refs.rolePill.className = 'pill danger';
+        }
         if (state.session?.user?.id && error?.message) {
           showMessage(refs.globalMessage, error.message, 'error');
         }
@@ -7327,8 +7450,18 @@
       state.session = session;
       if (session) {
         refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
+        persistSessionToBrowserStorages(session, readLibrarianHintFromSession(session));
+        try {
+          await loadProfile();
+        } catch (error) {
+          console.warn('Auth state profile refresh failed:', error);
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+          refs.rolePill.className = 'pill danger';
+        }
       } else {
         refs.userEmail.textContent = 'Sem sessão';
+        refs.rolePill.textContent = 'Faça login para usar a catalogação';
+        refs.rolePill.className = 'pill danger';
       }
       updateLoginButton();
     });
