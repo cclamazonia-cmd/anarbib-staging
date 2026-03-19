@@ -129,9 +129,7 @@
     }
 
     .hero {
-      max-width: 1160px;
       width: 100%;
-      margin: 0 auto;
       border: 1px solid rgba(255,255,255,.08);
       background: linear-gradient(135deg, rgba(179,0,24,.95), rgba(90,0,12,.96));
       border-radius: 22px;
@@ -636,10 +634,25 @@
 
     const $ = (id) => document.getElementById(id);
 
-    function setStatus(message, kind = "") {
+    let statusTimer = null;
+
+    function setStatus(message, kind = "", autoClearMs = 0) {
       const box = $("statusBox");
+      if (statusTimer) {
+        clearTimeout(statusTimer);
+        statusTimer = null;
+      }
+      box.hidden = !message;
       box.textContent = message;
       box.className = `status-box${kind ? ` ${kind}` : ""}`;
+      if (message && autoClearMs > 0) {
+        statusTimer = window.setTimeout(() => {
+          box.hidden = true;
+          box.textContent = "";
+          box.className = "status-box";
+          statusTimer = null;
+        }, autoClearMs);
+      }
     }
 
     function showError(message, details = "") {
@@ -894,7 +907,7 @@
         updatePageUi();
         setupObserver();
         scrollToCurrentPage("auto");
-        setStatus("PDF carregado com sucesso.", "ok");
+        setStatus("PDF carregado com sucesso.", "ok", 2000);
       } finally {
         state.rendering = false;
         for (const id of ["btnZoomIn", "btnZoomOut", "btnFitWidth", "btnPrev", "btnNext", "btnMode", "pageInput", "themeSelect"]) {
