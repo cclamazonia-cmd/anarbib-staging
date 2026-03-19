@@ -14,12 +14,12 @@
 <meta property="og:description" content="Biblioteca Libertária Maxwell Ferreira — catálogo público com busca por autor, título, editora, ano, CDD e disponibilidade.">
 <meta property="og:url" content="https://cclamazonia-cmd.github.io/anarbib-staging/">
 <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
-<meta property="og:image:alt" content="Logotipo da Biblioteca Libertária Maxwell Ferreira">
+<meta property="og:image:alt" content="Logotipo do AnarBib">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Catálogo da BLMF">
 <meta name="twitter:description" content="Biblioteca Libertária Maxwell Ferreira — catálogo público da BLMF.">
 <meta name="twitter:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
-<link rel="icon" type="image/png"https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
+<link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <style>
@@ -771,7 +771,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <h1>Catálogo da BLMF</h1>
         <p>Biblioteca Libertária Maxwell Ferreira · CCLA</p>
       </div>
-      <img src="https://cclamazonia.noblogs.org/files/2026/03/logo_detoure_BLMF.png" alt="Logotipo da Biblioteca Libertária Maxwell Ferreira" class="topbar-logo">
+      <img src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="Logotipo do AnarBib" class="topbar-logo">
     </div>
     <div class="hero-actions">
       <button id="clearBtn" class="button secondary" type="button">Limpar filtros</button>
@@ -1144,16 +1144,24 @@ function getSelectedLibraryLabels() {
   }).filter(Boolean);
 }
 function syncLibraryDropdownUI() {
-  const selected = new Set(getSelectedLibraryKeys());
+  const selected = new Set([...libraryFilter.selectedOptions].map(option => option.value));
+  const specificSelected = [...selected].filter(value => value !== LIBRARY_FILTER_ALL);
+  const allSpecificSelected = LIBRARY_OPTIONS.length > 0 && specificSelected.length === LIBRARY_OPTIONS.length;
   for (const input of libraryFilterPanel.querySelectorAll('input[type="checkbox"]')) {
     if (input.value === LIBRARY_FILTER_ALL) {
-      input.checked = false;
+      input.checked = allSpecificSelected;
     } else {
       input.checked = selected.has(input.value);
     }
   }
-  const labels = getSelectedLibraryLabels();
-  libraryFilterSummary.textContent = labels.length ? labels.join(' · ') : 'Todas';
+  libraryFilterSummary.textContent = allSpecificSelected
+    ? 'Todas'
+    : (specificSelected.length
+        ? specificSelected.map((key) => {
+            const option = [...libraryFilter.options].find(node => node.value === key);
+            return option ? option.textContent.trim() : key;
+          }).filter(Boolean).join(' · ')
+        : 'Todas');
 }
 function getSortLabel(key = sortKey, dir = sortDir) {
   const labels = {
@@ -2103,14 +2111,20 @@ sortSelect.addEventListener('change', () => {
 libraryFilterPanel.addEventListener('change', (e) => {
   const input = e.target.closest('input[type="checkbox"]');
   if (!input) return;
+
   if (input.value === LIBRARY_FILTER_ALL) {
-    setLibraryFilterSelection([]);
+    if (input.checked) {
+      setLibraryFilterSelection(LIBRARY_OPTIONS.map(option => option.key));
+    } else {
+      setLibraryFilterSelection([]);
+    }
   } else {
     const selected = [...libraryFilterPanel.querySelectorAll('input[type="checkbox"]')]
       .filter(node => node.value !== LIBRARY_FILTER_ALL && node.checked)
       .map(node => node.value);
     setLibraryFilterSelection(selected);
   }
+
   syncLibraryDropdownUI();
   render();
 });
