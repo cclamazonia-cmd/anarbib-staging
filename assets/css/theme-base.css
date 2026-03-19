@@ -1,0 +1,117 @@
+:root {
+  --brand-bg-image: none;
+  --brand-bg-overlay: rgba(0, 0, 0, 0.58);
+
+  --brand-color-primary: #b32025;
+  --brand-color-secondary: #101010;
+  --brand-color-accent: #f1ece3;
+
+  --brand-panel-bg: rgba(18, 18, 18, 0.82);
+  --brand-panel-border: rgba(255, 255, 255, 0.14);
+  --brand-text: #f5f2ea;
+  --brand-muted: #d4cec3;
+  --brand-link: #ffffff;
+  --brand-button-text: #f8f8f8;
+
+  --brand-font-heading: system-ui, sans-serif;
+  --brand-font-body: system-ui, sans-serif;
+  --brand-font-accent: system-ui, sans-serif;
+
+  --brand-radius: 20px;
+  --brand-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --brand-hero-max-width: 1680px;
+  --brand-container-max-width: 1680px;
+}
+
+html,
+body {
+  color: var(--brand-text);
+  font-family: var(--brand-font-body);
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  background-color: #080808;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: var(--brand-bg-image);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--brand-bg-overlay);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand-title,
+.hero-title,
+[data-brand-title] {
+  font-family: var(--brand-font-heading);
+}
+
+.brand-accent,
+[data-brand-accent] {
+  font-family: var(--brand-font-accent);
+}
+
+a,
+.btn-link,
+[data-variant='link'] {
+  color: var(--brand-link);
+}
+
+.hero,
+.toolbar,
+.sidebar,
+.panel,
+.card,
+.drawer,
+.modal,
+.tabs,
+.form-panel,
+.section-shell,
+[data-surface='panel'] {
+  background: var(--brand-panel-bg);
+  border: 1px solid var(--brand-panel-border);
+  border-radius: var(--brand-radius);
+  box-shadow: var(--brand-shadow);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+button,
+.btn,
+[data-role='button'] {
+  color: var(--brand-button-text);
+}
+
+.page-shell,
+.main-shell,
+.container,
+.page-container,
+[data-layout='page'] {
+  max-width: var(--brand-container-max-width);
+}
+
+.hero,
+[data-layout='hero'] {
+  max-width: var(--brand-hero-max-width);
+}
