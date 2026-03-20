@@ -635,6 +635,18 @@
               .eq("book_id", bookRow.id);
           }
 
+      if (!linkedAuthors.length && bookRow?.author_id != null) {
+        const fallbackLabel = String(authorText || bookRow?.autor || "").trim();
+        if (fallbackLabel) {
+          linkedAuthors.push({
+            id: bookRow.author_id,
+            display_name: fallbackLabel,
+            preferred_name: fallbackLabel,
+            sort_name: fallbackLabel
+          });
+        }
+      }
+
           if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
             linkedAuthors.push(...rel.data.map(row => ({
               id: row.author_id,
@@ -968,25 +980,21 @@
 
       async function loadTombosForBook(bookRow, bib_ref) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
-        let tombos = [];
+        let fallbackTombos = [];
 
         if (inBook && bookRow?.[inBook] != null) {
           const raw = bookRow[inBook];
           if (Array.isArray(raw)) {
-            tombos = raw
+            fallbackTombos = raw
               .flatMap(v => String(v || "").split(/[;,\n]+/))
               .map(v => String(v || "").trim())
               .filter(Boolean);
           } else {
-            tombos = String(raw || "")
+            fallbackTombos = String(raw || "")
               .split(/[;,\n]+/)
               .map(v => String(v || "").trim())
               .filter(Boolean);
           }
-        }
-
-        if (tombos.length) {
-          return Array.from(new Set(tombos));
         }
 
         const candidates = ["v_exemplares_public", "exemplares_public", "v_exemplares", "exemplares"];
@@ -1020,7 +1028,7 @@
           }
         }
 
-        return [];
+        return Array.from(new Set(fallbackTombos));
       }
 
       const tombos = await loadTombosForBook(data, bib_ref);
