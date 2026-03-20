@@ -36,6 +36,25 @@
   --red: var(--brand-color-primary, #7a0b14);
   --red-2: var(--brand-color-primary, #bb1e2c);
   --shadow: var(--brand-shadow, 0 16px 38px rgba(0,0,0,.42));
+  --ui-page-padding: 24px;
+  --ui-page-padding-mobile: 14px;
+  --ui-hero-margin-bottom: 16px;
+  --ui-hero-padding: 18px;
+  --ui-hero-radius: 22px;
+  --ui-hero-bg: linear-gradient(135deg, var(--red-2), var(--bg));
+  --ui-topbar-gap: 12px;
+  --ui-topbar-margin-bottom: 14px;
+  --ui-brand-logo-height: 64px;
+  --ui-brand-logo-max-width: 170px;
+  --ui-brand-logo-mobile-height: 56px;
+  --ui-brand-logo-mobile-max-width: 148px;
+  --ui-field-gap: 8px;
+  --ui-field-padding: 10px 12px 12px;
+  --ui-field-radius: 18px;
+  --ui-field-bg: linear-gradient(180deg, rgba(179,0,24,.14), rgba(255,255,255,.03));
+  --ui-field-border: 1px solid rgba(255,255,255,.12);
+  --ui-field-label-color: #ffe3e7;
+  --ui-field-label-shadow: 0 1px 0 rgba(0,0,0,.28);
 }
 * { box-sizing: border-box; }
 html, body {
@@ -43,54 +62,15 @@ html, body {
   padding: 0;
   color: var(--text);
   font-family: var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif);
-  background: radial-gradient(circle at top, rgba(179,0,24,.10), rgba(8,8,8,0) 34%), var(--bg);
-}
-body {
-  min-height: 100vh;
+  background: var(--bg);
 }
 a { color: inherit; }
-.wrap { max-width: 1680px; width: 100%; margin: 0 auto; padding: 24px; }
-.hero {
-  border: 1px solid var(--line);
-  background: linear-gradient(135deg, var(--red-2), var(--bg));
-  border-radius: 22px;
-  padding: 18px;
-  box-shadow: var(--shadow);
-  margin-bottom: 16px;
-}
-.topbar {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-}
-.topbar > div {
-  flex: 1 1 420px;
-  min-width: 0;
-}
-.hero h1 { margin:0 0 6px; font-size: clamp(1.8rem, 3vw, 3rem); line-height:1.05; }
-.hero p { margin:0; color: rgba(255,255,255,.92); font-size:1rem; }
-.topbar-logo {
-  height: 64px;
-  width: auto;
-  max-width: 170px;
-  object-fit: contain;
-  display: block;
-  flex-shrink: 0;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
-}
 .hero-actions {
   margin-top: 10px;
   display:flex;
   flex-wrap:wrap;
   gap:10px;
   align-items:center;
-  justify-content:flex-start;
-}
-#csvAdvancedLink {
-  margin-left:auto;
 }
 .hero-actions .button,
 .hero-actions .action-link {
@@ -144,7 +124,7 @@ a { color: inherit; }
   margin-bottom:18px;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:12px;
 }
 .toolbar-meta {
   display:flex;
@@ -230,23 +210,6 @@ a { color: inherit; }
   grid-template-columns: minmax(340px,1.45fr) minmax(250px,1.05fr) minmax(250px,1.05fr) minmax(230px,.9fr);
   gap:12px;
   align-items:end;
-}
-.field {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  min-width:0;
-  padding:10px 12px 12px;
-  border-radius:18px;
-  background: linear-gradient(180deg, rgba(179,0,24,.14), rgba(255,255,255,.03));
-  border:1px solid rgba(255,255,255,.12);
-}
-.field-label {
-  font-size:.93rem;
-  color:#ffe3e7;
-  font-weight:800;
-  letter-spacing:.01em;
-  text-shadow:0 1px 0 rgba(0,0,0,.28);
 }
 .toolbar-actions {
   display:flex;
@@ -667,8 +630,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   }
   .toolbar-actions { justify-content:flex-start; }
   .hero-actions { justify-content:flex-start; }
-  #csvAdvancedLink { margin-left: 0; }
-  .topbar-logo { height: 56px; max-width: 148px; }
 }
 
 .mobile-results { display:none; }
@@ -724,11 +685,9 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   gap:8px;
 }
 @media (max-width: 640px) {
-  .wrap { padding: 14px; }
   .filters-grid { grid-template-columns: 1fr; }
   .toolbar-actions { justify-content:flex-start; }
   .hero-actions { justify-content:flex-start; }
-  #csvAdvancedLink { margin-left: 0; }
   .hero-actions .button,
   .hero-actions .action-link,
   .mini-action,
@@ -1058,9 +1017,27 @@ function diceCoefficient(a, b) {
   }
   return (2 * overlap) / ((a.length - 1) + (b.length - 1));
 }
+function getLocalAvailableCount(r) {
+  const localAvailable = Number(r?.exemplares_available);
+  if (Number.isFinite(localAvailable) && localAvailable >= 0) return localAvailable;
+  return Number(r?.available_count || 0) || 0;
+}
+function getLocalTotalCount(r) {
+  const localTotal = Number(r?.exemplares_total);
+  if (Number.isFinite(localTotal) && localTotal >= 0) return localTotal;
+  return Math.max(getLocalAvailableCount(r), 0);
+}
+function formatHoldingSummary(r) {
+  const available = getLocalAvailableCount(r);
+  const total = Math.max(getLocalTotalCount(r), available);
+  if (total <= 0 && available <= 0) return '';
+  const availableLabel = `${available} ${available === 1 ? 'disponível' : 'disponíveis'}`;
+  const totalLabel = `${total} ${total === 1 ? 'exemplar' : 'exemplares'}`;
+  return `${availableLabel} · ${totalLabel}`;
+}
 function getStatusInfo(r) {
   if (r.loanable === false) return { key: 'local', label: 'Somente consulta local', cls: 'status-local' };
-  if (Number(r.available_count || 0) > 0) {
+  if (getLocalAvailableCount(r) > 0) {
     if (serviceState?.allow_reservations === false) {
       return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
     }
@@ -1207,7 +1184,7 @@ async function loadBookLibrarySupplementMap() {
   return map;
 }
 function resolveLibraryLabel(row, librarySupplementMap) {
-  const supplement = librarySupplementMap.get(`id:${row?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
+  const supplement = librarySupplementMap?.get(`id:${row?.id ?? ''}`) || librarySupplementMap?.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
   return canonicalizeLibraryLabel(firstNonEmptyString(
     row?.biblioteca,
     row?.library_label,
@@ -1738,17 +1715,17 @@ function prepareRows() {
 }
 async function loadRowsFromSupabase() {
   try {
-    const select = '*';
-    const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, authorLookup, librarySupplementMap, res] = await Promise.all([
+    const select = 'book_id,bib_ref,titulo,autor,ano,editora,cdd,library_id,library_slug,library_name,biblioteca,exemplares_total,exemplares_available,loanable,available_count,created_at';
+    const url = `${SUPABASE_URL}/rest/v1/catalog_books_public?select=${encodeURIComponent(select)}&order=titulo.asc,bib_ref.asc,biblioteca.asc`;
+    const [authorRelations, authorLookup, res] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
       loadAuthorLookupFromSupabase(),
-      loadBookLibrarySupplementMap(),
       fetch(url, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Accept: 'application/json'
+          Accept: 'application/json',
+          'Accept-Profile': 'api'
         }
       })
     ]);
@@ -1759,23 +1736,29 @@ async function loadRowsFromSupabase() {
     }
     const data = text ? JSON.parse(text) : [];
     return (data || []).map(r => {
+      const rowId = r.book_id ?? r.id ?? null;
       const authorId = normalizeAuthorIdValue(r.author_id);
-      const relationIds = authorRelations.get(String(r.id ?? '')) || [];
+      const relationIds = authorRelations.get(String(rowId ?? '')) || [];
       const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
       return {
-        id: r.id ?? null,
+        id: rowId,
         bib_ref: r.bib_ref ?? '',
         autor: r.autor ?? '',
         titulo: r.titulo ?? '',
         ano: r.ano ?? '',
         editora: r.editora ?? '',
         cdd: r.cdd ?? '',
-        biblioteca: resolveLibraryLabel(r, librarySupplementMap),
+        biblioteca: resolveLibraryLabel(r),
+        library_id: r.library_id ?? null,
+        library_slug: r.library_slug ?? '',
+        library_name: r.library_name ?? '',
+        exemplares_total: Number(r.exemplares_total ?? 0) || 0,
+        exemplares_available: Number(r.exemplares_available ?? 0) || 0,
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
-        available_count: Number(r.available_count ?? 0) || 0,
+        available_count: Number(r.available_count ?? r.exemplares_available ?? 0) || 0,
         created_at: r.created_at ?? null
       };
     });
@@ -2005,7 +1988,11 @@ function buildRowMarkup(r) {
   const cddHtml = r.cdd
     ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
     : '<span class="muted">—</span>';
-  const bibliotecaHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
+  const bibliotecaLabelHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
+  const holdingSummary = formatHoldingSummary(r);
+  const bibliotecaHtml = holdingSummary
+    ? `${bibliotecaLabelHtml}<div class="small" style="margin-top:6px;">${escapeHTML(holdingSummary)}</div>`
+    : bibliotecaLabelHtml;
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
