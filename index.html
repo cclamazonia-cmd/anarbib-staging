@@ -1082,20 +1082,33 @@ function canonicalizeLibraryLabel(rawValue, bibRef = '') {
   const n = normalize(raw);
   const ref = normalize(bibRef);
 
-  if (n.includes('btl') || n.includes('sao paulo') || n.includes('são paulo') || ref.startsWith('btl')) {
+  if (
+    n.includes('btl')
+    || n.includes('terra livre')
+    || n.includes('sao paulo')
+    || n.includes('são paulo')
+    || ref.startsWith('btl')
+  ) {
     return 'BTL - São Paulo';
   }
+
   if (
     n.includes('blmf')
     || n.includes('maxwell')
+    || n.includes('maxwell ferreira')
     || n.includes('belem')
     || n.includes('belém')
     || n.includes('para')
+    || n.includes('pará')
     || ref.startsWith('blmf')
-    || /^\d+$/.test(String(bibRef || '').trim())
   ) {
     return 'BLMF - Belém do Pará';
   }
+
+  if (!raw && /^\d+$/.test(String(bibRef || '').trim())) {
+    return 'BLMF - Belém do Pará';
+  }
+
   return raw || 'BLMF - Belém do Pará';
 }
 function getLibraryKey(label) {
@@ -1183,24 +1196,27 @@ async function loadBookLibrarySupplementMap() {
 function resolveLibraryLabel(row, librarySupplementMap) {
   const supplement = librarySupplementMap.get(`id:${row?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
   return canonicalizeLibraryLabel(firstNonEmptyString(
-    supplement?.library_display,
-    supplement?.library_label,
-    supplement?.library_name,
-    supplement?.library,
-    supplement?.biblioteca_display,
-    supplement?.biblioteca_label,
-    supplement?.biblioteca_nome,
-    supplement?.biblioteca_name,
-    supplement?.biblioteca,
-    row?.library_display,
+    row?.biblioteca,
     row?.library_label,
+    row?.library_display,
     row?.library_name,
+    row?.library_slug,
     row?.library,
     row?.biblioteca_display,
     row?.biblioteca_label,
     row?.biblioteca_nome,
     row?.biblioteca_name,
-    row?.biblioteca
+
+    supplement?.biblioteca,
+    supplement?.library_label,
+    supplement?.library_display,
+    supplement?.library_name,
+    supplement?.library_slug,
+    supplement?.library,
+    supplement?.biblioteca_display,
+    supplement?.biblioteca_label,
+    supplement?.biblioteca_nome,
+    supplement?.biblioteca_name
   ), row?.bib_ref || '');
 }
 function getAvailabilityLabel(value) {
@@ -1479,6 +1495,39 @@ function splitAuthorNames(value) {
     .map(part => part.trim())
     .filter(Boolean);
 }
+function buildAuthorNameVariants(value) {
+  const raw = String(value || '').trim();
+  const variants = new Set();
+  const base = normalize(raw);
+  if (base) variants.add(base);
+  if (raw.includes(',')) {
+    const parts = raw.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const swapped = normalize(`${parts.slice(1).join(' ')} ${parts[0]}`);
+      if (swapped) variants.add(swapped);
+    }
+  }
+  return [...variants];
+}
+function findUniqueAuthorNameMatchIndex(names, relationNames, resolved) {
+  const targetVariants = new Set();
+  for (const relationName of relationNames || []) {
+    for (const variant of buildAuthorNameVariants(relationName)) targetVariants.add(variant);
+  }
+  if (!targetVariants.size) return -1;
+
+  const matches = [];
+  names.forEach((name, index) => {
+    if (resolved[index]) return;
+    for (const variant of buildAuthorNameVariants(name)) {
+      if (targetVariants.has(variant)) {
+        matches.push(index);
+        break;
+      }
+    }
+  });
+  return matches.length === 1 ? matches[0] : -1;
+}
 function splitAuthorIds(value) {
   if (Array.isArray(value)) return value.map(part => normalizeAuthorIdValue(part));
   if (value === null || value === undefined) return [];
@@ -1564,11 +1613,20 @@ async function loadAuthorLookupFromSupabase() {
   return map;
 }
 async function loadAuthorRelationsFromSupabase() {
-  const [apiRows, publicRows] = await Promise.all([
-    fetchRestRows(`author_books_public?select=${encodeURIComponent('book_id,author_id,role,ord')}&order=book_id.asc,ord.asc,author_id.asc`, 'api'),
-    fetchRestRows(`author_books_public?select=${encodeURIComponent('book_id,author_id,role,ord')}&order=book_id.asc,ord.asc,author_id.asc`, 'public')
-  ]);
-  const data = chooseLargestDataset(apiRows, publicRows);
+  const selectCandidates = [
+    'book_id,author_id,role,ord,display_name,preferred_name,sort_name',
+    'book_id,author_id,role,ord,preferred_name,sort_name',
+    'book_id,author_id,role,ord'
+  ];
+  const datasets = [];
+  for (const select of selectCandidates) {
+    const [apiRows, publicRows] = await Promise.all([
+      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'api'),
+      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public')
+    ]);
+    datasets.push(chooseLargestDataset(apiRows, publicRows));
+  }
+  const data = chooseLargestDataset(...datasets);
   const map = new Map();
   for (const row of (data || [])) {
     const bookId = row?.book_id;
@@ -1578,7 +1636,10 @@ async function loadAuthorRelationsFromSupabase() {
     if (!map.has(key)) map.set(key, []);
     map.get(key).push({
       authorId,
-      ord: Number.isFinite(Number(row?.ord)) ? Number(row.ord) : null
+      ord: Number.isFinite(Number(row?.ord)) ? Number(row.ord) : null,
+      display_name: firstNonEmptyString(row?.display_name, row?.preferred_name, row?.sort_name),
+      preferred_name: firstNonEmptyString(row?.preferred_name),
+      sort_name: firstNonEmptyString(row?.sort_name)
     });
   }
   return map;
@@ -1593,10 +1654,20 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
     relationEntries.forEach((entry, index) => {
       const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry);
       if (!authorId) return;
-      const ordNumber = Number(entry?.ord);
-      const position = Number.isInteger(ordNumber) && ordNumber >= 1 && ordNumber <= names.length
-        ? ordNumber - 1
-        : (index < names.length ? index : -1);
+
+      const relationNames = [entry?.display_name, entry?.preferred_name, entry?.sort_name].filter(Boolean);
+      let position = findUniqueAuthorNameMatchIndex(names, relationNames, resolved);
+
+      if (position < 0) {
+        const ordNumber = Number(entry?.ord);
+        const fallbackPosition = Number.isInteger(ordNumber) && ordNumber >= 1 && ordNumber <= names.length
+          ? ordNumber - 1
+          : (index < names.length ? index : -1);
+        if (fallbackPosition >= 0 && fallbackPosition < names.length && !resolved[fallbackPosition]) {
+          position = fallbackPosition;
+        }
+      }
+
       if (position >= 0 && position < names.length && !resolved[position]) {
         resolved[position] = authorId;
       }
@@ -1605,9 +1676,14 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
 
   names.forEach((name, index) => {
     if (resolved[index]) return;
-    const matches = authorLookup.get(normalize(name));
-    if (!matches || matches.size !== 1) return;
-    resolved[index] = normalizeAuthorIdValue([...matches][0]);
+    const matchedIds = new Set();
+    for (const variant of buildAuthorNameVariants(name)) {
+      const matches = authorLookup.get(variant);
+      if (!matches) continue;
+      for (const match of matches) matchedIds.add(match);
+    }
+    if (matchedIds.size !== 1) return;
+    resolved[index] = normalizeAuthorIdValue([...matchedIds][0]);
   });
 
   if (names.length === 1 && !resolved[0] && fallbackAuthorId) {
