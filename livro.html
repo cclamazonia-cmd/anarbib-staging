@@ -247,6 +247,21 @@
     const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
 
+    function apiFrom(schema, relation) {
+      if (typeof supabase?.schema === "function") {
+        return supabase.schema(schema).from(relation);
+      }
+      return supabase.from(`${schema}.${relation}`);
+    }
+
+    function firstNonEmptyString(...values) {
+      for (const value of values) {
+        const txt = String(value ?? "").trim();
+        if (txt) return txt;
+      }
+      return "";
+    }
+
     function buildExternalBookCoverUrl(pathOrUrl) {
       const raw = String(pathOrUrl || "").trim();
       if (!raw) return "";
@@ -331,6 +346,25 @@
       btnLer.style.display = yes ? "inline-flex" : "none";
     }
 
+    function extractHoldingLibraryNames(raw) {
+      const rows = Array.isArray(raw)
+        ? raw
+        : (typeof raw === "string" && raw.trim()
+            ? (() => {
+                try { return JSON.parse(raw); } catch (_) { return []; }
+              })()
+            : []);
+
+      const names = [];
+      for (const row of rows) {
+        const label = firstNonEmptyString(row?.library_name, row?.biblioteca, row?.name)
+          .split(" - ")[0]
+          .trim();
+        if (label && !names.includes(label)) names.push(label);
+      }
+      return names;
+    }
+
     async function getDigitalAvailabilityForBibRef(bib_ref) {
       try {
         const { data, error } = await supabase
@@ -349,6 +383,42 @@
     }
 
     async function getLibraryLineForBibRef(bib_ref) {
+      try {
+        const { data, error } = await apiFrom("api", "catalog_book_detail_public")
+          .select("holding_libraries_json")
+          .eq("bib_ref", bib_ref)
+          .limit(1)
+          .maybeSingle();
+
+        if (!error) {
+          const names = extractHoldingLibraryNames(data?.holding_libraries_json);
+          if (names.length) return names.join(" / ");
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar bibliotecas na api.catalog_book_detail_public", err);
+      }
+
+      try {
+        const { data, error } = await apiFrom("api", "catalog_books_public")
+          .select("library_name,biblioteca")
+          .eq("bib_ref", bib_ref)
+          .limit(50);
+
+        if (!error && Array.isArray(data) && data.length) {
+          const names = [];
+          for (const row of data) {
+            const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
+            const cleaned = String(preferred || "")
+              .split(" - ")[0]
+              .trim();
+            if (cleaned && !names.includes(cleaned)) names.push(cleaned);
+          }
+          if (names.length) return names.join(" / ");
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar bibliotecas na api.catalog_books_public", err);
+      }
+
       try {
         const { data, error } = await supabase
           .from("v_books_public")
