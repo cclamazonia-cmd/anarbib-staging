@@ -348,6 +348,31 @@
       return false;
     }
 
+    async function getLibraryLineForBibRef(bib_ref) {
+      try {
+        const { data, error } = await supabase
+          .from("v_books_public")
+          .select("library_name,biblioteca")
+          .eq("bib_ref", bib_ref)
+          .limit(50);
+
+        if (!error && Array.isArray(data) && data.length) {
+          const names = [];
+          for (const row of data) {
+            const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
+            const cleaned = String(preferred || "")
+              .split(" - ")[0]
+              .trim();
+            if (cleaned && !names.includes(cleaned)) names.push(cleaned);
+          }
+          if (names.length) return names.join(" / ");
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar bibliotecas na v_books_public", err);
+      }
+      return "";
+    }
+
     function buildLerUrl(bib_ref) {
       const viewerUrl = new URL("ler.html", location.href);
       viewerUrl.searchParams.set("ref", bib_ref);
@@ -389,14 +414,16 @@
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
     }
 
-    function buildHeroIntro({ tipoMaterial, editora, ano, tombosCount }) {
+    function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount }) {
       const parts = [];
       const tipo = String(tipoMaterial || "").trim();
-      const pub = String(editora || "").trim();
+      const libraries = String(libraryLine || "").trim();
+      const fallbackPub = String(editora || "").trim();
       const year = String(ano || "").trim();
 
       if (tipo) parts.push(tipo);
-      if (pub) parts.push(pub);
+      if (libraries) parts.push(libraries);
+      else if (fallbackPub) parts.push(fallbackPub);
       if (year) parts.push(year);
 
       if (Number.isFinite(Number(tombosCount)) && Number(tombosCount) > 0) {
@@ -928,7 +955,8 @@
 
       const tombos = await loadTombosForBook(data, bib_ref);
       document.title = `${titulo || "Livro"} - AnarBib`;
-      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, editora, ano, tombosCount: tombos.length });
+      const libraryLine = await getLibraryLineForBibRef(bib_ref);
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: tombos.length });
       setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
       setPill("exemplaresPill", "exemplares", tombos.length > 1 ? String(tombos.length) : "");
       setPill("heroExemplaresChip", "exemplares", tombos.length ? String(tombos.length) : "");
