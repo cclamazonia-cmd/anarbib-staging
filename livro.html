@@ -92,6 +92,11 @@
       font-size:.9rem;color:var(--muted);
       flex-wrap:wrap;overflow-wrap:anywhere;
     }
+    .digital-access{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}
+    .digital-access-label{font-size:.92rem;color:var(--muted);font-weight:700}
+    .digital-chip{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);font-size:.88rem;font-weight:800;line-height:1.2}
+    .digital-chip.yes{background:rgba(34,197,94,.18);color:#d8ffe2;border-color:rgba(34,197,94,.35)}
+    .digital-chip.no{background:rgba(251,191,36,.18);color:#fff2cc;border-color:rgba(251,191,36,.35)}
     .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
     .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -127,12 +132,14 @@
     .contentbox{min-width:0}
 
     .author-inline-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-    .author-name-plain { color: var(--muted); }
-    .author-card-link {
+    .author-card-link,
+    .author-card-static {
       display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px;
-      border:1px solid rgba(140,110,115,.65); background:transparent; color:#f4f4f4; text-decoration:none;
+      border:1px solid rgba(140,110,115,.65); background:transparent; text-decoration:none;
       font-weight:600; transition:background .15s ease, border-color .15s ease, transform .15s ease;
     }
+    .author-card-link { color:#f4f4f4; }
+    .author-card-static { color: var(--muted); cursor:default; }
     .author-card-link:hover { background:rgba(255,255,255,.04); border-color:rgba(170,140,145,.85); transform:translateY(-1px); }
     .author-separator { color: var(--muted); margin:0 2px; }
   </style>
@@ -204,9 +211,14 @@
           <div class="pill" id="serviceModePill" style="display:none;margin-top:12px"></div>
           <div class="muted" id="serviceMessageLine" style="display:none;margin-top:10px"></div>
 
+          <div class="digital-access">
+            <span class="digital-access-label">Exemplar digital disponível:</span>
+            <span class="digital-chip no" id="digitalChip">NÃO</span>
+            <button class="btn primary" id="btnLer" type="button" style="display:none">Ler</button>
+          </div>
+
           <div class="actions">
             <button class="btn primary" id="btnReservar" type="button">Reservar este livro</button>
-            <button class="btn" id="btnLer" type="button" style="display:none">Ler</button>
             <button class="btn" id="btnAbrirPdf" type="button" style="display:none">Abrir PDF</button>
           </div>
 
@@ -305,6 +317,41 @@
       const txt = String(value ?? "").trim();
       el.textContent = txt;
       el.style.display = txt ? "" : "none";
+    }
+
+    function setDigitalAvailability(canReadOnline) {
+      const chip = $("digitalChip");
+      const btnLer = $("btnLer");
+      if (!chip || !btnLer) return;
+
+      const yes = !!canReadOnline;
+      chip.textContent = yes ? "SIM" : "NÃO";
+      chip.classList.toggle("yes", yes);
+      chip.classList.toggle("no", !yes);
+      btnLer.style.display = yes ? "inline-flex" : "none";
+    }
+
+    async function getDigitalAvailabilityForBibRef(bib_ref) {
+      try {
+        const { data, error } = await supabase
+          .from("v_books_public")
+          .select("has_online_reading")
+          .eq("bib_ref", bib_ref)
+          .limit(1);
+
+        if (!error && Array.isArray(data) && data.length) {
+          return !!data[0]?.has_online_reading;
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar exemplar digital na v_books_public", err);
+      }
+      return false;
+    }
+
+    function buildLerUrl(bib_ref) {
+      const viewerUrl = new URL("ler.html", location.href);
+      viewerUrl.searchParams.set("ref", bib_ref);
+      return viewerUrl.toString();
     }
 
     function setCover(pathOrUrl) {
@@ -505,36 +552,69 @@
       host.innerHTML = "";
       host.classList.add("author-inline-wrap");
 
-      if (linkedAuthors.length) {
-        linkedAuthors.forEach((row, idx) => {
-          const label = String(row?.display_name || row?.preferred_name || row?.sort_name || names[idx] || "").trim();
-          if (!label) return;
-          const a = document.createElement("a");
-          a.className = "author-card-link";
-          a.href = authorUrl(row?.id ?? row?.author_id ?? null, label);
-          a.textContent = label;
-          host.appendChild(a);
-          if (idx < linkedAuthors.length - 1) {
-            const sep = document.createElement("span");
-            sep.className = "author-separator";
-            sep.textContent = ";";
-            host.appendChild(sep);
+      const entries = names.map(name => ({ label: name, authorId: null }));
+      const matchedLinkedAuthors = new Set();
+
+      const findMatchingEntryIndex = (row) => {
+        const targetVariants = new Set();
+        [row?.display_name, row?.preferred_name, row?.sort_name, row?.name]
+          .filter(Boolean)
+          .forEach(value => buildAuthorVariants(value).forEach(variant => targetVariants.add(variant)));
+        if (!targetVariants.size) return -1;
+
+        const matches = [];
+        entries.forEach((entry, index) => {
+          if (entry.authorId) return;
+          for (const variant of buildAuthorVariants(entry.label)) {
+            if (targetVariants.has(variant)) {
+              matches.push(index);
+              break;
+            }
           }
         });
-        return;
-      }
+        return matches.length === 1 ? matches[0] : -1;
+      };
 
-      if (!names.length) {
+      linkedAuthors.forEach((row, linkedIndex) => {
+        const authorId = row?.id ?? row?.author_id ?? null;
+        if (!authorId) return;
+        const matchIndex = findMatchingEntryIndex(row);
+        if (matchIndex < 0) return;
+        entries[matchIndex].authorId = authorId;
+        matchedLinkedAuthors.add(linkedIndex);
+      });
+
+      linkedAuthors.forEach((row, linkedIndex) => {
+        if (matchedLinkedAuthors.has(linkedIndex)) return;
+        const label = String(row?.display_name || row?.preferred_name || row?.sort_name || row?.name || "").trim();
+        const authorId = row?.id ?? row?.author_id ?? null;
+        if (!label) return;
+        entries.push({ label, authorId });
+      });
+
+      if (!entries.length) {
         host.textContent = "—";
         return;
       }
 
-      names.forEach((name, idx) => {
-        const span = document.createElement("span");
-        span.className = "author-name-plain";
-        span.textContent = name;
-        host.appendChild(span);
-        if (idx < names.length - 1) {
+      entries.forEach((entry, idx) => {
+        const label = String(entry.label || "").trim();
+        if (!label) return;
+
+        if (entry.authorId) {
+          const a = document.createElement("a");
+          a.className = "author-card-link";
+          a.href = authorUrl(entry.authorId, label);
+          a.textContent = label;
+          host.appendChild(a);
+        } else {
+          const span = document.createElement("span");
+          span.className = "author-card-static";
+          span.textContent = label;
+          host.appendChild(span);
+        }
+
+        if (idx < entries.length - 1) {
           const sep = document.createElement("span");
           sep.className = "author-separator";
           sep.textContent = ";";
@@ -668,12 +748,12 @@
           .from(candidate)
           .select("*")
           .eq(candidateRefCol, bib_ref)
-          .maybeSingle();
+          .limit(1);
 
         if (probe.error) continue;
-        if (probe.data) {
+        if (Array.isArray(probe.data) && probe.data.length) {
           booksTable = candidate;
-          data = probe.data;
+          data = probe.data[0];
           break;
         }
       }
@@ -858,10 +938,21 @@
         $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref);
+      setDigitalAvailability(hasDigitalAvailability);
 
-        if (session?.user?.id) {
+      $("btnLer").addEventListener("click", async () => {
+        const targetLerUrl = buildLerUrl(bib_ref);
+        if (!hasDigitalAvailability) return;
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+
+          if (!session?.user?.id) {
+            location.assign(buildCadastroUrl(targetLerUrl));
+            return;
+          }
+
           try {
             const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
             if (ensureProfileError) {
@@ -878,24 +969,25 @@
 
           if (readStateError) {
             console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
+            setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
+            return;
           }
 
           const row = Array.isArray(readState)
             ? readState[0]
             : (readState && typeof readState === "object" ? readState : null);
 
-          if (!readStateError && row?.can_show_read_button) {
-            $("btnLer").style.display = "inline-flex";
-            $("btnLer").addEventListener("click", () => {
-              const viewerUrl = new URL("ler.html", location.href);
-              viewerUrl.searchParams.set("ref", bib_ref);
-              location.assign(viewerUrl.toString());
-            });
+          if (row?.can_show_read_button) {
+            location.assign(targetLerUrl);
+            return;
           }
+
+          setStatus("O exemplar digital existe, mas a leitura está reservada a contas ativas com acesso autorizado.", "warn");
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
+          setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
         }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
-      }
+      });
 
       $("btnReservar").addEventListener("click", () => reserve(bib_ref));
     }
