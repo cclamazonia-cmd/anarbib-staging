@@ -383,65 +383,29 @@
     }
 
     async function getLibraryLineForBibRef(bib_ref) {
-      try {
-        const { data, error } = await apiFrom("api", "catalog_book_detail_public")
-          .select("holding_libraries_json")
-          .eq("bib_ref", bib_ref)
-          .limit(1)
-          .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("v_books_public")
+      .select("library_name,biblioteca")
+      .eq("bib_ref", bib_ref)
+      .limit(50);
 
-        if (!error) {
-          const names = extractHoldingLibraryNames(data?.holding_libraries_json);
-          if (names.length) return names.join(" / ");
-        }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar bibliotecas na api.catalog_book_detail_public", err);
+    if (!error && Array.isArray(data) && data.length) {
+      const names = [];
+      for (const row of data) {
+        const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
+        const cleaned = String(preferred || "")
+          .split(" - ")[0]
+          .trim();
+        if (cleaned && !names.includes(cleaned)) names.push(cleaned);
       }
-
-      try {
-        const { data, error } = await apiFrom("api", "catalog_books_public")
-          .select("library_name,biblioteca")
-          .eq("bib_ref", bib_ref)
-          .limit(50);
-
-        if (!error && Array.isArray(data) && data.length) {
-          const names = [];
-          for (const row of data) {
-            const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
-            const cleaned = String(preferred || "")
-              .split(" - ")[0]
-              .trim();
-            if (cleaned && !names.includes(cleaned)) names.push(cleaned);
-          }
-          if (names.length) return names.join(" / ");
-        }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar bibliotecas na api.catalog_books_public", err);
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("v_books_public")
-          .select("library_name,biblioteca")
-          .eq("bib_ref", bib_ref)
-          .limit(50);
-
-        if (!error && Array.isArray(data) && data.length) {
-          const names = [];
-          for (const row of data) {
-            const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
-            const cleaned = String(preferred || "")
-              .split(" - ")[0]
-              .trim();
-            if (cleaned && !names.includes(cleaned)) names.push(cleaned);
-          }
-          if (names.length) return names.join(" / ");
-        }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar bibliotecas na v_books_public", err);
-      }
-      return "";
+      if (names.length) return names.join(" / ");
     }
+  } catch (err) {
+    console.warn("AnarBib livro: falha ao consultar bibliotecas na v_books_public", err);
+  }
+  return "";
+}
 
     function buildLerUrl(bib_ref) {
       const viewerUrl = new URL("ler.html", location.href);
@@ -634,18 +598,6 @@
               .select("author_id, preferred_name, sort_name")
               .eq("book_id", bookRow.id);
           }
-
-      if (!linkedAuthors.length && bookRow?.author_id != null) {
-        const fallbackLabel = String(authorText || bookRow?.autor || "").trim();
-        if (fallbackLabel) {
-          linkedAuthors.push({
-            id: bookRow.author_id,
-            display_name: fallbackLabel,
-            preferred_name: fallbackLabel,
-            sort_name: fallbackLabel
-          });
-        }
-      }
 
           if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
             linkedAuthors.push(...rel.data.map(row => ({
@@ -980,21 +932,25 @@
 
       async function loadTombosForBook(bookRow, bib_ref) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
-        let fallbackTombos = [];
+        let tombos = [];
 
         if (inBook && bookRow?.[inBook] != null) {
           const raw = bookRow[inBook];
           if (Array.isArray(raw)) {
-            fallbackTombos = raw
+            tombos = raw
               .flatMap(v => String(v || "").split(/[;,\n]+/))
               .map(v => String(v || "").trim())
               .filter(Boolean);
           } else {
-            fallbackTombos = String(raw || "")
+            tombos = String(raw || "")
               .split(/[;,\n]+/)
               .map(v => String(v || "").trim())
               .filter(Boolean);
           }
+        }
+
+        if (tombos.length) {
+          return Array.from(new Set(tombos));
         }
 
         const candidates = ["v_exemplares_public", "exemplares_public", "v_exemplares", "exemplares"];
@@ -1028,7 +984,7 @@
           }
         }
 
-        return Array.from(new Set(fallbackTombos));
+        return [];
       }
 
       const tombos = await loadTombosForBook(data, bib_ref);
