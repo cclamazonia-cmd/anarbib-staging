@@ -821,6 +821,49 @@
       });
     }
 
+
+    async function findAuthorIdForNavigation(authorName) {
+      const raw = String(authorName || '').trim();
+      if (!raw) return null;
+      for (const table of ['authors', 'v_authors_public', 'authors_public']) {
+        for (const field of ['sort_name', 'preferred_name']) {
+          try {
+            const { data, error } = await supabase
+              .from(table)
+              .select('id')
+              .eq(field, raw)
+              .limit(2);
+            if (!error && Array.isArray(data) && data.length === 1) {
+              const id = String(data[0]?.id || '').trim();
+              if (id) return id;
+            }
+          } catch (_) {}
+        }
+      }
+      return await findUniqueAuthorLookup(raw);
+    }
+
+    function setupAuthorNavigationFallback() {
+      const host = $("authorLine");
+      if (!host || host.dataset.authorNavBound === "1") return;
+      host.dataset.authorNavBound = "1";
+      host.addEventListener("click", async (e) => {
+        const link = e.target.closest("a.author-card-link");
+        if (!link) return;
+        e.preventDefault();
+        let authorId = String(link.dataset.authorId || "").trim();
+        const authorName = String(link.dataset.author || link.textContent || "").trim();
+        if (!authorId && authorName) {
+          const resolvedId = await findAuthorIdForNavigation(authorName);
+          if (resolvedId) {
+            authorId = String(resolvedId).trim();
+            link.dataset.authorId = authorId;
+          }
+        }
+        location.assign(authorUrl(authorId, authorId ? '' : authorName));
+      });
+    }
+
     const nk = (s) => String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
     function findCol(keys, wanted) {
@@ -1072,6 +1115,7 @@
       $("title").textContent = titulo || "Sem título";
       setLine("subtitleLine", subtitulo);
       await renderBookAuthors(autor, data);
+      setupAuthorNavigationFallback();
 
       setPill("bibRefPill", "ref", data[colRef] || "", true);
       setPill("heroRefChip", "ref", data[colRef] || "");

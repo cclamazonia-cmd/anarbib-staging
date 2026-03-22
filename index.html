@@ -1575,6 +1575,31 @@ function buildAuthorHref(authorId, authorName) {
   }
   return `${AUTOR_URL}?${params.toString()}`;
 }
+
+async function findAuthorIdForNavigation(authorName) {
+  const raw = String(authorName || '').trim();
+  if (!raw) return null;
+  const exactTables = ['authors', 'v_authors_public', 'authors_public'];
+  for (const table of exactTables) {
+    for (const field of ['sort_name', 'preferred_name']) {
+      try {
+        const path = `${table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
+        const data = await fetchRestRows(path, 'public');
+        if (Array.isArray(data) && data.length === 1) {
+          const id = normalizeAuthorIdValue(data[0]?.id);
+          if (id) return id;
+        }
+      } catch (e) {}
+    }
+  }
+  const normalized = normalize(raw);
+  if (!normalized) return null;
+  const lookup = await loadAuthorLookupFromSupabase();
+  const matches = lookup.get(normalized);
+  if (matches && matches.size === 1) return normalizeAuthorIdValue([...matches][0]);
+  return null;
+}
+
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
@@ -2457,21 +2482,26 @@ async function handleResultActions(e) {
   }
   const authorBtn = e.target.closest('.author-chip');
   if (authorBtn) {
-    const href = authorBtn.getAttribute('href');
-    if (href) {
-      location.assign(href);
-      return;
-    }
-    const authorId = (authorBtn.dataset.authorId || '').trim();
+    e.preventDefault();
+    let authorId = (authorBtn.dataset.authorId || '').trim();
     const authorName = (authorBtn.dataset.author || '').trim();
-    if (authorId || authorName) {
-      const params = new URLSearchParams();
-      if (authorId) params.set('id', authorId);
-      if (authorName) params.set('author', authorName);
-      params.set('v', AUTHOR_PAGE_VERSION);
-      params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      location.assign(`${AUTOR_URL}?${params.toString()}`);
+    if (!authorId && authorName) {
+      const resolvedId = await findAuthorIdForNavigation(authorName);
+      if (resolvedId) {
+        authorId = String(resolvedId);
+        authorBtn.dataset.authorId = authorId;
+      }
     }
+    const params = new URLSearchParams();
+    params.set('v', AUTHOR_PAGE_VERSION);
+    params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    if (authorId) {
+      params.set('id', authorId);
+      params.set('author_id', authorId);
+    } else if (authorName) {
+      params.set('author', authorName);
+    }
+    location.assign(`${AUTOR_URL}?${params.toString()}`);
     return;
   }
   const cddBtn = e.target.closest('.cdd-chip');
