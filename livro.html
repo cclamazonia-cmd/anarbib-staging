@@ -662,11 +662,11 @@
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
       params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      if (authorId != null && String(authorId).trim()) {
-        params.set("id", String(authorId).trim());
-        params.set("author_id", String(authorId).trim());
-      }
-      if (authorName && String(authorName).trim()) {
+      const normalizedAuthorId = authorId != null && String(authorId).trim() ? String(authorId).trim() : "";
+      if (normalizedAuthorId) {
+        params.set("id", normalizedAuthorId);
+        params.set("author_id", normalizedAuthorId);
+      } else if (authorName && String(authorName).trim()) {
         params.set("author", String(authorName).trim());
       }
       return `${ROUTES.AUTOR}?${params.toString()}`;
@@ -794,7 +794,13 @@
       host.innerHTML = "";
       host.classList.add("author-inline-wrap");
 
-      const entries = names.map(name => ({ label: name, authorId: null }));
+      const fallbackBookAuthorId = bookRow?.author_id != null && String(bookRow.author_id).trim()
+        ? String(bookRow.author_id).trim()
+        : null;
+      const entries = names.map((name, index) => ({
+        label: name,
+        authorId: names.length === 1 && index === 0 && fallbackBookAuthorId ? fallbackBookAuthorId : null
+      }));
       const matchedLinkedAuthors = new Set();
 
       const findMatchingEntryIndex = (row) => {
