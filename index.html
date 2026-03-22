@@ -1567,11 +1567,13 @@ function buildAuthorHref(authorId, authorName) {
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
   params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-  if (authorId) {
-    params.set('id', String(authorId));
-    params.set('author_id', String(authorId));
+  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+  if (normalizedAuthorId) {
+    params.set('id', String(normalizedAuthorId));
+    params.set('author_id', String(normalizedAuthorId));
+  } else if (authorName) {
+    params.set('author', String(authorName));
   }
-  if (authorName) params.set('author', String(authorName));
   return `${AUTOR_URL}?${params.toString()}`;
 }
 function buildLivroHref(row) {
@@ -2052,7 +2054,10 @@ function buildRowMarkup(r) {
   const ref = r.bib_ref || '';
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
-  const autorHtml = buildAuthorMarkup(r.autor, r.author_ids_list ?? r.author_ids ?? r.author_id, terms);
+  const authorIdsSource = Array.isArray(r.author_ids_list) && r.author_ids_list.length
+    ? r.author_ids_list
+    : (r.author_ids || r.author_id || '');
+  const autorHtml = buildAuthorMarkup(r.autor, authorIdsSource, terms);
   const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700;">${tituloHtml}</a>` : tituloHtml;
