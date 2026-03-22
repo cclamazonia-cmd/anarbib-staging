@@ -1567,10 +1567,9 @@ function buildAuthorHref(authorId, authorName) {
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
   params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
-  if (normalizedAuthorId) {
-    params.set('id', String(normalizedAuthorId));
-    params.set('author_id', String(normalizedAuthorId));
+  if (authorId) {
+    params.set('id', String(authorId));
+    params.set('author_id', String(authorId));
   } else if (authorName) {
     params.set('author', String(authorName));
   }
@@ -1617,6 +1616,21 @@ async function fetchRestRows(path, schemaName) {
   } catch (e) {
     return [];
   }
+}
+async function findAuthorIdForNavigation(authorName) {
+  const variants = buildAuthorNameVariants(authorName).filter(Boolean);
+  if (!variants.length) return null;
+  const tables = ['authors', 'v_authors_public', 'authors_public'];
+  for (const table of tables) {
+    for (const field of ['sort_name', 'preferred_name']) {
+      for (const variant of variants) {
+        const rows = await fetchRestRows(`${table}?select=${encodeURIComponent('id,preferred_name,sort_name')}&${field}=eq.${encodeURIComponent(variant)}&limit=2`, 'public');
+        const ids = Array.from(new Set((rows || []).map(row => normalizeAuthorIdValue(row?.id)).filter(Boolean)));
+        if (ids.length === 1) return ids[0];
+      }
+    }
+  }
+  return null;
 }
 function chooseLargestDataset(...datasets) {
   let chosen = [];
@@ -2054,10 +2068,7 @@ function buildRowMarkup(r) {
   const ref = r.bib_ref || '';
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
-  const authorIdsSource = Array.isArray(r.author_ids_list) && r.author_ids_list.length
-    ? r.author_ids_list
-    : (r.author_ids || r.author_id || '');
-  const autorHtml = buildAuthorMarkup(r.autor, authorIdsSource, terms);
+  const autorHtml = buildAuthorMarkup(r.autor, r.author_ids_list ?? r.author_ids ?? r.author_id, terms);
   const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700;">${tituloHtml}</a>` : tituloHtml;
@@ -2462,21 +2473,15 @@ async function handleResultActions(e) {
   }
   const authorBtn = e.target.closest('.author-chip');
   if (authorBtn) {
-    const href = authorBtn.getAttribute('href');
-    if (href) {
-      location.assign(href);
-      return;
-    }
-    const authorId = (authorBtn.dataset.authorId || '').trim();
+    e.preventDefault();
+    let authorId = (authorBtn.dataset.authorId || '').trim();
     const authorName = (authorBtn.dataset.author || '').trim();
-    if (authorId || authorName) {
-      const params = new URLSearchParams();
-      if (authorId) params.set('id', authorId);
-      if (authorName) params.set('author', authorName);
-      params.set('v', AUTHOR_PAGE_VERSION);
-      params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      location.assign(`${AUTOR_URL}?${params.toString()}`);
+    if (!authorId && authorName) {
+      authorId = await findAuthorIdForNavigation(authorName) || '';
+      if (authorId) authorBtn.dataset.authorId = authorId;
     }
+    const href = buildAuthorHref(authorId, authorName);
+    location.assign(href);
     return;
   }
   const cddBtn = e.target.closest('.cdd-chip');

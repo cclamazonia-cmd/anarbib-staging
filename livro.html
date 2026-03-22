@@ -662,10 +662,9 @@
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
       params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      const normalizedAuthorId = authorId != null && String(authorId).trim() ? String(authorId).trim() : "";
-      if (normalizedAuthorId) {
-        params.set("id", normalizedAuthorId);
-        params.set("author_id", normalizedAuthorId);
+      if (authorId != null && String(authorId).trim()) {
+        params.set("id", String(authorId).trim());
+        params.set("author_id", String(authorId).trim());
       } else if (authorName && String(authorName).trim()) {
         params.set("author", String(authorName).trim());
       }
@@ -794,13 +793,7 @@
       host.innerHTML = "";
       host.classList.add("author-inline-wrap");
 
-      const fallbackBookAuthorId = bookRow?.author_id != null && String(bookRow.author_id).trim()
-        ? String(bookRow.author_id).trim()
-        : null;
-      const entries = names.map((name, index) => ({
-        label: name,
-        authorId: names.length === 1 && index === 0 && fallbackBookAuthorId ? fallbackBookAuthorId : null
-      }));
+      const entries = names.map(name => ({ label: name, authorId: null }));
       const matchedLinkedAuthors = new Set();
 
       const findMatchingEntryIndex = (row) => {
@@ -874,6 +867,28 @@
         }
       });
     }
+
+    function setupAuthorNavigationFallback() {
+      const host = $("authorLine");
+      if (!host || host.dataset.authorNavBound === "1") return;
+      host.dataset.authorNavBound = "1";
+      host.addEventListener("click", async (event) => {
+        const link = event.target.closest(".author-card-link");
+        if (!link) return;
+        let authorId = String(link.dataset.authorId || "").trim();
+        const authorName = String(link.dataset.author || link.textContent || "").trim();
+        if (!authorId && authorName) {
+          event.preventDefault();
+          authorId = await findExactAuthorIdByName(authorName) || await findUniqueAuthorLookup(authorName) || "";
+          if (authorId) {
+            link.dataset.authorId = authorId;
+            link.href = authorUrl(authorId, authorName);
+          }
+          location.assign(authorUrl(authorId, authorName));
+        }
+      });
+    }
+    setupAuthorNavigationFallback();
 
     const nk = (s) => String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
