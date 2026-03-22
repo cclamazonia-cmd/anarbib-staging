@@ -1580,7 +1580,6 @@ function buildLivroHref(row) {
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
   if (row?.library_id) url.searchParams.set('library_id', String(row.library_id));
   if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
-  if (row?.library_name) url.searchParams.set('library_name', String(row.library_name));
   return url.toString();
 }
 function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
@@ -1616,21 +1615,6 @@ async function fetchRestRows(path, schemaName) {
   } catch (e) {
     return [];
   }
-}
-async function findAuthorIdForNavigation(authorName) {
-  const variants = buildAuthorNameVariants(authorName).filter(Boolean);
-  if (!variants.length) return null;
-  const tables = ['authors', 'v_authors_public', 'authors_public'];
-  for (const table of tables) {
-    for (const field of ['sort_name', 'preferred_name']) {
-      for (const variant of variants) {
-        const rows = await fetchRestRows(`${table}?select=${encodeURIComponent('id,preferred_name,sort_name')}&${field}=eq.${encodeURIComponent(variant)}&limit=2`, 'public');
-        const ids = Array.from(new Set((rows || []).map(row => normalizeAuthorIdValue(row?.id)).filter(Boolean)));
-        if (ids.length === 1) return ids[0];
-      }
-    }
-  }
-  return null;
 }
 function chooseLargestDataset(...datasets) {
   let chosen = [];
@@ -1768,10 +1752,9 @@ function getAuthorRelationEntriesForRow(row, authorRelations) {
 }
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
-  if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
-  if (row?.library_id) url.searchParams.set('library_id', String(row.library_id));
-  if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
-  if (row?.library_name) url.searchParams.set('library_name', String(row.library_name));
+  if (row?.bib_ref) url.searchParams.set('ref', row.bib_ref);
+  if (row?.library_id) url.searchParams.set('library_id', row.library_id);
+  if (row?.library_slug) url.searchParams.set('library_slug', row.library_slug);
   return url.toString();
 }
 function prepareRows() {
@@ -2473,15 +2456,21 @@ async function handleResultActions(e) {
   }
   const authorBtn = e.target.closest('.author-chip');
   if (authorBtn) {
-    e.preventDefault();
-    let authorId = (authorBtn.dataset.authorId || '').trim();
-    const authorName = (authorBtn.dataset.author || '').trim();
-    if (!authorId && authorName) {
-      authorId = await findAuthorIdForNavigation(authorName) || '';
-      if (authorId) authorBtn.dataset.authorId = authorId;
+    const href = authorBtn.getAttribute('href');
+    if (href) {
+      location.assign(href);
+      return;
     }
-    const href = buildAuthorHref(authorId, authorName);
-    location.assign(href);
+    const authorId = (authorBtn.dataset.authorId || '').trim();
+    const authorName = (authorBtn.dataset.author || '').trim();
+    if (authorId || authorName) {
+      const params = new URLSearchParams();
+      if (authorId) params.set('id', authorId);
+      if (authorName) params.set('author', authorName);
+      params.set('v', AUTHOR_PAGE_VERSION);
+      params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      location.assign(`${AUTOR_URL}?${params.toString()}`);
+    }
     return;
   }
   const cddBtn = e.target.closest('.cdd-chip');
