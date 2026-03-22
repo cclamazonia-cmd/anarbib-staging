@@ -434,8 +434,10 @@
       viewerUrl.searchParams.set("ref", bib_ref);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
       const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
+      const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
       if (libraryId) viewerUrl.searchParams.set("library_id", libraryId);
       if (librarySlug) viewerUrl.searchParams.set("library_slug", librarySlug);
+      if (libraryName) viewerUrl.searchParams.set("library_name", libraryName);
       return viewerUrl.toString();
     }
 
@@ -469,7 +471,7 @@
       return {
         libraryId: (u.searchParams.get("library_id") || "").trim(),
         librarySlug: (u.searchParams.get("library_slug") || "").trim(),
-        libraryName: ""
+        libraryName: (u.searchParams.get("library_name") || "").trim()
       };
     }
 
@@ -1030,6 +1032,19 @@
         document.title = "AnarBib - Livro não encontrado";
         setStatus("Não encontrei esse livro no catálogo.", "warn");
         return;
+      }
+
+      if (data?.author_id == null || String(data.author_id || '').trim() === '') {
+        try {
+          const fallbackAuthor = await supabase
+            .from("books")
+            .select("author_id")
+            .eq("bib_ref", bib_ref)
+            .maybeSingle();
+          if (!fallbackAuthor.error && fallbackAuthor.data?.author_id != null) {
+            data.author_id = fallbackAuthor.data.author_id;
+          }
+        } catch (_) {}
       }
 
       const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";

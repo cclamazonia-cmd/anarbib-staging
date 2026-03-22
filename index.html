@@ -1203,9 +1203,9 @@ function serializeSelectedLibraries() {
 }
 async function loadBookLibrarySupplementMap() {
   const selectCandidates = [
-    'id,bib_ref,library_display,library_label,library_name,library,biblioteca_display,biblioteca_label,biblioteca_nome,biblioteca_name,biblioteca',
-    'id,bib_ref,library_name,library,biblioteca_name,biblioteca',
-    'id,bib_ref,biblioteca'
+    'id,bib_ref,author_id,library_display,library_label,library_name,library,biblioteca_display,biblioteca_label,biblioteca_nome,biblioteca_name,biblioteca',
+    'id,bib_ref,author_id,library_name,library,biblioteca_name,biblioteca',
+    'id,bib_ref,author_id,biblioteca'
   ];
   const datasets = [];
   for (const select of selectCandidates) {
@@ -1780,6 +1780,7 @@ function buildLivroHref(row) {
   if (row?.bib_ref) url.searchParams.set('ref', row.bib_ref);
   if (row?.library_id) url.searchParams.set('library_id', row.library_id);
   if (row?.library_slug) url.searchParams.set('library_slug', row.library_slug);
+  if (row?.library_name) url.searchParams.set('library_name', row.library_name);
   return url.toString();
 }
 function prepareRows() {
@@ -1836,7 +1837,8 @@ async function loadRowsFromSupabase() {
     }
     const data = text ? JSON.parse(text) : [];
     return (data || []).map(r => {
-      const authorId = normalizeAuthorIdValue(r.author_id);
+      const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
+      const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
       const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
       const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
       return {
