@@ -495,6 +495,32 @@
       return out;
     }
 
+    async function fetchRowsByField(tableName, fieldName, fieldValue, { exact = false, limit = 20 } = {}) {
+      const value = String(fieldValue || "").trim();
+      if (!tableName || !fieldName || !value) return [];
+
+      try {
+        let query = supabase.from(tableName).select("*").limit(limit);
+        query = exact ? query.eq(fieldName, value) : query.ilike(fieldName, `%${value}%`);
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length) return data;
+      } catch (_) {}
+
+      const op = exact ? 'eq' : 'ilike';
+      const encoded = encodeURIComponent(exact ? value : `%${value}%`);
+      return await fetchRest(`${tableName}?select=*&${fieldName}=${op}.${encoded}&limit=${encodeURIComponent(limit)}`);
+    }
+
+    function rankAuthorRows(rows, wanted) {
+      const ranked = (rows || []).map(row => {
+        const p = normalizeText(row?.preferred_name);
+        const s = normalizeText(row?.sort_name);
+        const exact = wanted.has(p) || wanted.has(s);
+        return { row, exact };
+      }).sort((a, b) => Number(b.exact) - Number(a.exact));
+      return ranked[0]?.row || null;
+    }
+
     async function fetchAuthorById(authorId) {
       if (!authorId) return null;
 
@@ -511,20 +537,11 @@
         if (!error && data) return data;
       } catch (_) {}
 
+      const authorRows = await fetchRest(`authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
+      if (authorRows[0]) return authorRows[0];
+
       const rows = await fetchRest(`v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
       return rows[0] || null;
-    }
-
-    async function findExactAuthorInTable(tableName, variant) {
-      try {
-        const bySort = await supabase.from(tableName).select("*").eq("sort_name", variant).limit(1).maybeSingle();
-        if (!bySort.error && bySort.data) return bySort.data;
-      } catch (_) {}
-      try {
-        const byPref = await supabase.from(tableName).select("*").eq("preferred_name", variant).limit(1).maybeSingle();
-        if (!byPref.error && byPref.data) return byPref.data;
-      } catch (_) {}
-      return null;
     }
 
     async function fetchAuthorByName(authorName) {
@@ -532,43 +549,31 @@
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
+      const exactTargets = [
+        ["v_authors_public", "preferred_name"],
+        ["v_authors_public", "sort_name"],
+        ["authors", "preferred_name"],
+        ["authors", "sort_name"]
+      ];
       for (const variant of variants) {
-        const exactView = await findExactAuthorInTable("v_authors_public", variant);
-        if (exactView) return exactView;
-        const exactPublic = await findExactAuthorInTable("authors", variant);
-        if (exactPublic) return exactPublic;
+        for (const [tableName, fieldName] of exactTargets) {
+          const rows = await fetchRowsByField(tableName, fieldName, variant, { exact: true, limit: 20 });
+          const match = rankAuthorRows(rows, wanted);
+          if (match) return match;
+        }
       }
 
+      const broadTargets = [
+        ["v_authors_public", "preferred_name"],
+        ["v_authors_public", "sort_name"],
+        ["authors", "preferred_name"],
+        ["authors", "sort_name"]
+      ];
       for (const variant of variants) {
-        try {
-          const { data, error } = await supabase
-            .from("v_authors_public")
-            .select("*")
-            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
-            .limit(20);
-
-          if (!error && Array.isArray(data) && data.length) {
-            const ranked = data.map(row => {
-              const p = normalizeText(row?.preferred_name);
-              const s = normalizeText(row?.sort_name);
-              const exact = wanted.has(p) || wanted.has(s);
-              return { row, exact };
-            }).sort((a, b) => Number(b.exact) - Number(a.exact));
-            if (ranked[0]?.row) return ranked[0].row;
-          }
-        } catch (_) {}
-
-        const rows = await fetchRest(
-          `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
-        );
-        if (Array.isArray(rows) && rows.length) {
-          const ranked = rows.map(row => {
-            const p = normalizeText(row?.preferred_name);
-            const s = normalizeText(row?.sort_name);
-            const exact = wanted.has(p) || wanted.has(s);
-            return { row, exact };
-          }).sort((a, b) => Number(b.exact) - Number(a.exact));
-          if (ranked[0]?.row) return ranked[0].row;
+        for (const [tableName, fieldName] of broadTargets) {
+          const rows = await fetchRowsByField(tableName, fieldName, variant, { exact: false, limit: 20 });
+          const match = rankAuthorRows(rows, wanted);
+          if (match) return match;
         }
       }
 
