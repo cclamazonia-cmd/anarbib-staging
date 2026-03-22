@@ -520,6 +520,17 @@
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
+      const pickBestAuthorRow = (rows) => {
+        if (!Array.isArray(rows) || !rows.length) return null;
+        const ranked = rows.map(row => {
+          const p = normalizeText(row?.preferred_name);
+          const s = normalizeText(row?.sort_name);
+          const exact = wanted.has(p) || wanted.has(s);
+          return { row, exact };
+        }).sort((a, b) => Number(b.exact) - Number(a.exact));
+        return ranked[0]?.row || null;
+      };
+
       for (const variant of variants) {
         try {
           const { data, error } = await supabase
@@ -528,29 +539,34 @@
             .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
             .limit(20);
 
-          if (!error && Array.isArray(data) && data.length) {
-            const ranked = data.map(row => {
-              const p = normalizeText(row?.preferred_name);
-              const s = normalizeText(row?.sort_name);
-              const exact = wanted.has(p) || wanted.has(s);
-              return { row, exact };
-            }).sort((a, b) => Number(b.exact) - Number(a.exact));
-            if (ranked[0]?.row) return ranked[0].row;
-          }
+          const best = !error ? pickBestAuthorRow(data) : null;
+          if (best) return best;
         } catch (_) {}
 
         const rows = await fetchRest(
           `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
         );
-        if (Array.isArray(rows) && rows.length) {
-          const ranked = rows.map(row => {
-            const p = normalizeText(row?.preferred_name);
-            const s = normalizeText(row?.sort_name);
-            const exact = wanted.has(p) || wanted.has(s);
-            return { row, exact };
-          }).sort((a, b) => Number(b.exact) - Number(a.exact));
-          if (ranked[0]?.row) return ranked[0].row;
-        }
+        const bestFromView = pickBestAuthorRow(rows);
+        if (bestFromView) return bestFromView;
+      }
+
+      for (const variant of variants) {
+        try {
+          const { data, error } = await supabase
+            .from("authors")
+            .select("*")
+            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
+            .limit(20);
+
+          const best = !error ? pickBestAuthorRow(data) : null;
+          if (best) return best;
+        } catch (_) {}
+
+        const rows = await fetchRest(
+          `authors?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
+        );
+        const bestFromAuthors = pickBestAuthorRow(rows);
+        if (bestFromAuthors) return bestFromAuthors;
       }
 
       for (const variant of variants) {
