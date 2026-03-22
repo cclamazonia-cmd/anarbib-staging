@@ -531,6 +531,37 @@
         return ranked[0]?.row || null;
       };
 
+      const tryExactFromTable = async (tableName, variant) => {
+        const checks = [
+          ["preferred_name", variant],
+          ["sort_name", variant],
+        ];
+        for (const [col, value] of checks) {
+          try {
+            const { data, error } = await supabase
+              .from(tableName)
+              .select("*")
+              .eq(col, value)
+              .limit(1)
+              .maybeSingle();
+            if (!error && data) return data;
+          } catch (_) {}
+
+          const rows = await fetchRest(
+            `${tableName}?select=*&${encodeURIComponent(col)}=eq.${encodeURIComponent(value)}&limit=1`
+          );
+          if (Array.isArray(rows) && rows[0]) return rows[0];
+        }
+        return null;
+      };
+
+      for (const tableName of ["v_authors_public", "authors"]) {
+        for (const variant of variants) {
+          const exact = await tryExactFromTable(tableName, variant);
+          if (exact) return exact;
+        }
+      }
+
       for (const variant of variants) {
         try {
           const { data, error } = await supabase
