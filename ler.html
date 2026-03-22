@@ -606,11 +606,17 @@
     const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
     const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
+    const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
+    const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
     const PDFJS_MAIN = "./vendor/pdfjs/build/pdf.mjs";
     const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
 
     const params = new URLSearchParams(location.search);
     const bibRef = (params.get("ref") || "").trim();
+    const libraryContext = {
+      libraryId: (params.get("library_id") || "").trim(),
+      librarySlug: (params.get("library_slug") || "").trim()
+    };
     const storageKey = bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default";
 
     const state = {
@@ -671,6 +677,94 @@
       return u.toString();
     }
 
+    function buildBookUrl() {
+      const url = new URL("livro.html", location.href);
+      if (bibRef) url.searchParams.set("ref", bibRef);
+      if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);
+      if (libraryContext.librarySlug) url.searchParams.set("library_slug", libraryContext.librarySlug);
+      return url.toString();
+    }
+
+    function parseStoredSession(tokenRaw) {
+      if (!tokenRaw) return null;
+      try {
+        const parsed = JSON.parse(tokenRaw);
+        if (parsed?.access_token) return parsed;
+        if (parsed?.currentSession?.access_token) return parsed.currentSession;
+        if (parsed?.data?.session?.access_token) return parsed.data.session;
+        if (Array.isArray(parsed) && parsed[0]?.access_token) return parsed[0];
+      } catch (_) {}
+      return null;
+    }
+
+    function readStoredSession() {
+      let tokenRaw = "";
+      try { tokenRaw = sessionStorage.getItem(AUTH_STORAGE_KEY) || ""; } catch (_) {}
+      if (!tokenRaw) {
+        try { tokenRaw = localStorage.getItem(AUTH_STORAGE_KEY) || ""; } catch (_) {}
+      }
+      return { tokenRaw, session: parseStoredSession(tokenRaw) };
+    }
+
+    function persistSessionForNextPage(tokenRaw, session) {
+      const raw = tokenRaw || (session ? JSON.stringify(session) : "");
+      if (!raw) return;
+      try { sessionStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
+      try { localStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
+    }
+
+    async function getSessionWithFallback() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        persistSessionForNextPage("", session);
+        return session;
+      }
+
+      const stored = readStoredSession();
+      if (!stored.session?.access_token) return null;
+
+      if (stored.session?.refresh_token && typeof supabase?.auth?.setSession === "function") {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: stored.session.access_token,
+            refresh_token: stored.session.refresh_token
+          });
+          if (!error && data?.session?.access_token) {
+            persistSessionForNextPage(stored.tokenRaw, data.session);
+            return data.session;
+          }
+        } catch (_) {}
+      }
+
+      persistSessionForNextPage(stored.tokenRaw, stored.session);
+      return stored.session;
+    }
+
+    async function setupNavButtons() {
+      const session = await getSessionWithFallback();
+      const loginBtn = $("btnLogin");
+      const contaBtn = $("btnNavConta");
+      const painelBtn = $("btnNavPainel");
+
+      if (!session?.user?.id) {
+        loginBtn.classList.remove("hidden");
+        loginBtn.href = buildCadastroUrl(location.href);
+        contaBtn.href = buildCadastroUrl(CONTA_URL);
+        painelBtn.href = buildCadastroUrl(PAINEL_URL);
+        return;
+      }
+
+      loginBtn.classList.add("hidden");
+      let isLibrarian = false;
+      try {
+        const { data } = await supabase.from("profiles").select("is_librarian").eq("id", session.user.id).maybeSingle();
+        isLibrarian = !!data?.is_librarian;
+      } catch (_) {}
+      contaBtn.href = isLibrarian ? PAINEL_URL : CONTA_URL;
+      painelBtn.href = PAINEL_URL;
+      contaBtn.textContent = isLibrarian ? "Painel" : "Minha conta";
+    }
+
     function loadPrefs() {
       try {
         const raw = localStorage.getItem(storageKey);
@@ -720,10 +814,10 @@
     }
 
     async function ensureSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSessionWithFallback();
       if (!session?.access_token) {
         $("btnLogin").classList.remove("hidden");
-        $("btnLogin").href = buildCadastroUrl();
+        $("btnLogin").href = buildCadastroUrl(location.href);
         throw new Error("Sessão ausente. Entra novamente para abrir esta leitura.");
       }
       return session;
@@ -918,9 +1012,9 @@
       applyTheme();
       document.title = "AnarBib – leitor pdf";
       $("chipRef").innerHTML = `<strong>Ref.</strong> ${bibRef || "—"}`;
-      $("btnBackBook").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
-      $("btnNavLivro").href = bibRef ? `livro.html?ref=${encodeURIComponent(bibRef)}` : "livro.html";
-      $("btnLogin").href = buildCadastroUrl();
+      $("btnBackBook").href = buildBookUrl();
+      $("btnNavLivro").href = buildBookUrl();
+      $("btnLogin").href = buildCadastroUrl(location.href);
       $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
       $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
 
@@ -930,6 +1024,7 @@
       }
 
       clearError();
+      await setupNavButtons();
       setStatus("A verificar sessão e permissões…", "warn");
 
       try {
