@@ -495,32 +495,6 @@
       return out;
     }
 
-    async function fetchRowsByField(tableName, fieldName, fieldValue, { exact = false, limit = 20 } = {}) {
-      const value = String(fieldValue || "").trim();
-      if (!tableName || !fieldName || !value) return [];
-
-      try {
-        let query = supabase.from(tableName).select("*").limit(limit);
-        query = exact ? query.eq(fieldName, value) : query.ilike(fieldName, `%${value}%`);
-        const { data, error } = await query;
-        if (!error && Array.isArray(data) && data.length) return data;
-      } catch (_) {}
-
-      const op = exact ? 'eq' : 'ilike';
-      const encoded = encodeURIComponent(exact ? value : `%${value}%`);
-      return await fetchRest(`${tableName}?select=*&${fieldName}=${op}.${encoded}&limit=${encodeURIComponent(limit)}`);
-    }
-
-    function rankAuthorRows(rows, wanted) {
-      const ranked = (rows || []).map(row => {
-        const p = normalizeText(row?.preferred_name);
-        const s = normalizeText(row?.sort_name);
-        const exact = wanted.has(p) || wanted.has(s);
-        return { row, exact };
-      }).sort((a, b) => Number(b.exact) - Number(a.exact));
-      return ranked[0]?.row || null;
-    }
-
     async function fetchAuthorById(authorId) {
       if (!authorId) return null;
 
@@ -537,9 +511,6 @@
         if (!error && data) return data;
       } catch (_) {}
 
-      const authorRows = await fetchRest(`authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
-      if (authorRows[0]) return authorRows[0];
-
       const rows = await fetchRest(`v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
       return rows[0] || null;
     }
@@ -549,54 +520,75 @@
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
-      const exactTargets = [
-        ["v_authors_public", "preferred_name"],
-        ["v_authors_public", "sort_name"],
-        ["authors", "preferred_name"],
-        ["authors", "sort_name"]
-      ];
       for (const variant of variants) {
-        for (const [tableName, fieldName] of exactTargets) {
-          const rows = await fetchRowsByField(tableName, fieldName, variant, { exact: true, limit: 20 });
-          const match = rankAuthorRows(rows, wanted);
-          if (match) return match;
-        }
-      }
+        try {
+          const { data, error } = await supabase
+            .from("v_authors_public")
+            .select("*")
+            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
+            .limit(20);
 
-      const broadTargets = [
-        ["v_authors_public", "preferred_name"],
-        ["v_authors_public", "sort_name"],
-        ["authors", "preferred_name"],
-        ["authors", "sort_name"]
-      ];
-      for (const variant of variants) {
-        for (const [tableName, fieldName] of broadTargets) {
-          const rows = await fetchRowsByField(tableName, fieldName, variant, { exact: false, limit: 20 });
-          const match = rankAuthorRows(rows, wanted);
-          if (match) return match;
+          if (!error && Array.isArray(data) && data.length) {
+            const ranked = data.map(row => {
+              const p = normalizeText(row?.preferred_name);
+              const s = normalizeText(row?.sort_name);
+              const exact = wanted.has(p) || wanted.has(s);
+              return { row, exact };
+            }).sort((a, b) => Number(b.exact) - Number(a.exact));
+            if (ranked[0]?.row) return ranked[0].row;
+          }
+        } catch (_) {}
+
+        const rows = await fetchRest(
+          `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
+        );
+        if (Array.isArray(rows) && rows.length) {
+          const ranked = rows.map(row => {
+            const p = normalizeText(row?.preferred_name);
+            const s = normalizeText(row?.sort_name);
+            const exact = wanted.has(p) || wanted.has(s);
+            return { row, exact };
+          }).sort((a, b) => Number(b.exact) - Number(a.exact));
+          if (ranked[0]?.row) return ranked[0].row;
         }
       }
 
       for (const variant of variants) {
         try {
           const { data, error } = await supabase
-            .from("author_books_public")
-            .select("author_id,author_name")
-            .ilike("author_name", `%${variant}%`)
+            .from("authors")
+            .select("id,preferred_name,sort_name")
+            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
             .limit(20);
-          const bridge = !error && Array.isArray(data) ? data.find(r => r?.author_id) : null;
-          if (bridge?.author_id) {
-            const author = await fetchAuthorById(bridge.author_id);
+          const ranked = !error && Array.isArray(data)
+            ? data.map(row => {
+                const p = normalizeText(row?.preferred_name);
+                const s = normalizeText(row?.sort_name);
+                const exact = wanted.has(p) || wanted.has(s);
+                return { row, exact };
+              }).sort((a, b) => Number(b.exact) - Number(a.exact))
+            : [];
+          const bridge = ranked[0]?.row;
+          if (bridge?.id) {
+            const author = await fetchAuthorById(bridge.id);
             if (author) return author;
           }
         } catch (_) {}
 
         const bridgeRows = await fetchRest(
-          `author_books_public?select=author_id,author_name&author_name=ilike.${encodeURIComponent(`%${variant}%`)}&limit=20`
+          `authors?select=id,preferred_name,sort_name&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
         );
-        const bridge = Array.isArray(bridgeRows) ? bridgeRows.find(r => r?.author_id) : null;
-        if (bridge?.author_id) {
-          const author = await fetchAuthorById(bridge.author_id);
+        const ranked = Array.isArray(bridgeRows)
+          ? bridgeRows.map(row => {
+              const p = normalizeText(row?.preferred_name);
+              const s = normalizeText(row?.sort_name);
+              const exact = wanted.has(p) || wanted.has(s);
+              return { row, exact };
+            }).sort((a, b) => Number(b.exact) - Number(a.exact))
+          : [];
+        const bridge = ranked[0]?.row;
+        if (bridge?.id) {
+          const author = await fetchAuthorById(bridge.id);
           if (author) return author;
         }
       }
@@ -613,10 +605,10 @@
       if (authorId) {
         rows = await fetchViewManyByAuthorId("v_author_books_public_compat_v2", authorId);
         if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public_compat", authorId);
-        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId);
+        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public", authorId);
         if (!rows.length) rows = await fetchRest(`v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
         if (!rows.length) rows = await fetchRest(`v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
-        if (!rows.length) rows = await fetchRest(`author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
+        if (!rows.length) rows = await fetchRest(`v_author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
       }
       if (Array.isArray(rows) && rows.length) return rows;
 
