@@ -634,10 +634,10 @@
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
       params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      const normalizedId = normalizeAuthorId(authorId);
-      if (normalizedId) {
-        params.set("id", normalizedId);
-        params.set("author_id", normalizedId);
+      if (authorId != null && String(authorId).trim()) {
+        const id = String(authorId).trim();
+        params.set("id", id);
+        params.set("author_id", id);
       } else if (authorName && String(authorName).trim()) {
         params.set("author", String(authorName).trim());
       }
