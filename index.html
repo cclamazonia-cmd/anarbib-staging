@@ -1733,9 +1733,18 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
   return resolved.some(Boolean) ? resolved : [];
 }
 function getAuthorRelationEntriesForRow(row, authorRelations) {
-  return authorRelations.get(`book:${String(row?.id ?? '')}`)
-    || authorRelations.get(`bib_ref:${String(row?.bib_ref ?? '')}`)
-    || [];
+  const byBookId = authorRelations?.byBookId;
+  const byBibRef = authorRelations?.byBibRef;
+  const bookKey = String(row?.id ?? '').trim();
+  const bibKey = String(row?.bib_ref ?? '').trim();
+
+  if (byBookId instanceof Map && bookKey && byBookId.has(bookKey)) {
+    return byBookId.get(bookKey) || [];
+  }
+  if (byBibRef instanceof Map && bibKey && byBibRef.has(bibKey)) {
+    return byBibRef.get(bibKey) || [];
+  }
+  return [];
 }
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
