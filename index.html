@@ -1045,27 +1045,9 @@ function diceCoefficient(a, b) {
   }
   return (2 * overlap) / ((a.length - 1) + (b.length - 1));
 }
-function getLocalAvailableCount(r) {
-  const localAvailable = Number(r?.exemplares_available);
-  if (Number.isFinite(localAvailable) && localAvailable >= 0) return localAvailable;
-  return Number(r?.available_count || 0) || 0;
-}
-function getLocalTotalCount(r) {
-  const localTotal = Number(r?.exemplares_total);
-  if (Number.isFinite(localTotal) && localTotal >= 0) return localTotal;
-  return Math.max(getLocalAvailableCount(r), 0);
-}
-function formatHoldingSummary(r) {
-  const available = getLocalAvailableCount(r);
-  const total = Math.max(getLocalTotalCount(r), available);
-  if (total <= 0 && available <= 0) return '';
-  const availableLabel = `${available} ${available === 1 ? 'disponível' : 'disponíveis'}`;
-  const totalLabel = `${total} ${total === 1 ? 'exemplar' : 'exemplares'}`;
-  return `${availableLabel} · ${totalLabel}`;
-}
 function getStatusInfo(r) {
   if (r.loanable === false) return { key: 'local', label: 'Somente consulta local', cls: 'status-local' };
-  if (getLocalAvailableCount(r) > 0) {
+  if (Number(r.available_count || 0) > 0) {
     if (serviceState?.allow_reservations === false) {
       return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
     }
@@ -1212,7 +1194,7 @@ async function loadBookLibrarySupplementMap() {
   return map;
 }
 function resolveLibraryLabel(row, librarySupplementMap) {
-  const supplement = librarySupplementMap?.get(`id:${row?.id ?? ''}`) || librarySupplementMap?.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
+  const supplement = librarySupplementMap.get(`id:${row?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
   return canonicalizeLibraryLabel(firstNonEmptyString(
     row?.biblioteca,
     row?.library_label,
@@ -1557,10 +1539,7 @@ function buildAuthorHref(authorId, authorName) {
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
   params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-  if (authorId) {
-    params.set('id', String(authorId));
-    params.set('author_id', String(authorId));
-  }
+  if (authorId) params.set('id', String(authorId));
   if (authorName) params.set('author', String(authorName));
   return `${AUTOR_URL}?${params.toString()}`;
 }
@@ -1573,11 +1552,12 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const parts = names.map((name, idx) => {
     const authorId = ids[idx] ?? singleId ?? null;
     const label = highlightHTML(name, terms);
-    if (!name) return '';
-    const href = buildAuthorHref(authorId, name);
-    const authorIdAttr = authorId ? ` data-author-id="${authorId}"` : '';
-    return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}"${authorIdAttr}>${label}</a>`;
-  }).filter(Boolean);
+    if (authorId) {
+      const href = buildAuthorHref(authorId, name);
+      return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}" data-author-id="${authorId}">${label}</a>`;
+    }
+    return `<span class="tag-link author-chip-static" title="Sem ficha de autor publicada para este nome.">${label}</span>`;
+  });
 
   return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
 }
@@ -1614,12 +1594,12 @@ function isAuthorRole(roleValue) {
     || roleNorm.startsWith('co-author');
 }
 async function loadAuthorLookupFromSupabase() {
-  const [vAuthorsPublic, authorsPublicApi, authorsPublicPublic] = await Promise.all([
+  const [vAuthorsPublic, authorsPublicPublic, authorsBase] = await Promise.all([
     fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'api'),
-    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
+    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
+    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
   ]);
-  const data = chooseLargestDataset(vAuthorsPublic, authorsPublicApi, authorsPublicPublic);
+  const data = chooseLargestDataset(vAuthorsPublic, authorsPublicPublic, authorsBase);
   const map = new Map();
   for (const row of (data || [])) {
     const authorId = normalizeAuthorIdValue(row?.id);
@@ -1634,17 +1614,15 @@ async function loadAuthorLookupFromSupabase() {
 }
 async function loadAuthorRelationsFromSupabase() {
   const selectCandidates = [
-    'book_id,author_id,role,ord,display_name,preferred_name,sort_name',
-    'book_id,author_id,role,ord,preferred_name,sort_name',
+    'book_id,bib_ref,author_id,role,ord,autor',
+    'book_id,bib_ref,author_id,role,ord',
     'book_id,author_id,role,ord'
   ];
   const datasets = [];
   for (const select of selectCandidates) {
-    const [apiRows, publicRows] = await Promise.all([
-      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'api'),
-      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public')
-    ]);
-    datasets.push(chooseLargestDataset(apiRows, publicRows));
+    datasets.push(
+      await fetchRestRows(`v_author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public')
+    );
   }
   const data = chooseLargestDataset(...datasets);
   const map = new Map();
@@ -1657,9 +1635,9 @@ async function loadAuthorRelationsFromSupabase() {
     map.get(key).push({
       authorId,
       ord: Number.isFinite(Number(row?.ord)) ? Number(row.ord) : null,
-      display_name: firstNonEmptyString(row?.display_name, row?.preferred_name, row?.sort_name),
-      preferred_name: firstNonEmptyString(row?.preferred_name),
-      sort_name: firstNonEmptyString(row?.sort_name)
+      display_name: firstNonEmptyString(row?.autor),
+      preferred_name: '',
+      sort_name: ''
     });
   }
   return map;
@@ -1712,6 +1690,18 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
 
   return resolved.some(Boolean) ? resolved : [];
 }
+function getAuthorRelationEntriesForRow(row, authorRelations) {
+  return authorRelations.get(`book:${String(row?.id ?? '')}`)
+    || authorRelations.get(`bib_ref:${String(row?.bib_ref ?? '')}`)
+    || [];
+}
+function buildLivroHref(row) {
+  const url = new URL(LIVRO_URL);
+  if (row?.bib_ref) url.searchParams.set('ref', row.bib_ref);
+  if (row?.library_id) url.searchParams.set('library_id', row.library_id);
+  if (row?.library_slug) url.searchParams.set('library_slug', row.library_slug);
+  return url.toString();
+}
 function prepareRows() {
   for (const r of rows) {
     const status = getStatusInfo(r);
@@ -1743,55 +1733,76 @@ function prepareRows() {
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
 }
-async function loadRowsFromSupabase() {
-  try {
-    const select = 'book_id,bib_ref,titulo,autor,ano,editora,cdd,library_id,library_slug,library_name,biblioteca,exemplares_total,exemplares_available,loanable,available_count,created_at';
-    const url = `${SUPABASE_URL}/rest/v1/catalog_books_public?select=${encodeURIComponent(select)}&order=titulo.asc,bib_ref.asc,biblioteca.asc`;
-    const [authorRelations, authorLookup, res] = await Promise.all([
-      loadAuthorRelationsFromSupabase(),
-      loadAuthorLookupFromSupabase(),
-      fetch(url, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Accept: 'application/json',
-          'Accept-Profile': 'api'
-        }
-      })
-    ]);
-    const text = await res.text();
-    if (!res.ok) {
-      alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
-      return [];
-    }
-    const data = text ? JSON.parse(text) : [];
-    return (data || []).map(r => {
-      const rowId = r.book_id ?? r.id ?? null;
-      const authorId = normalizeAuthorIdValue(r.author_id);
+function aggregateCatalogRowsFromPublicView(rawRows, authorRelations, authorLookup) {
+  const grouped = new Map();
+
+  (rawRows || []).forEach((r, idx) => {
+    const rowId = r?.id ?? r?.book_id ?? null;
+    const bibRef = r?.bib_ref ?? '';
+    const libraryId = r?.library_id ?? null;
+    const librarySlug = firstNonEmptyString(r?.library_slug);
+    const biblioteca = resolveLibraryLabel(r);
+    const groupKey = [rowId ?? '', bibRef, libraryId ?? '', librarySlug, biblioteca].join('||');
+
+    let item = grouped.get(groupKey);
+    if (!item) {
+      const authorId = normalizeAuthorIdValue(r?.author_id);
       const relationIds = authorRelations.get(String(rowId ?? '')) || [];
-      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
-      return {
+      const authorIdsList = resolveAuthorIdsForRow(r?.autor ?? '', relationIds, authorLookup, authorId);
+
+      item = {
         id: rowId,
-        bib_ref: r.bib_ref ?? '',
-        autor: r.autor ?? '',
-        titulo: r.titulo ?? '',
-        ano: r.ano ?? '',
-        editora: r.editora ?? '',
-        cdd: r.cdd ?? '',
-        biblioteca: resolveLibraryLabel(r),
-        library_id: r.library_id ?? null,
-        library_slug: r.library_slug ?? '',
-        library_name: r.library_name ?? '',
-        exemplares_total: Number(r.exemplares_total ?? 0) || 0,
-        exemplares_available: Number(r.exemplares_available ?? 0) || 0,
+        bib_ref: bibRef,
+        autor: r?.autor ?? '',
+        titulo: r?.titulo ?? '',
+        ano: r?.ano ?? '',
+        editora: r?.editora ?? '',
+        cdd: r?.cdd ?? '',
+        biblioteca,
+        library_id: libraryId,
+        library_slug: librarySlug,
+        library_name: firstNonEmptyString(r?.library_name, r?.library),
+        exemplares_total: 0,
+        exemplares_available: 0,
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
-        loanable: r.loanable === false ? false : true,
-        available_count: Number(r.available_count ?? r.exemplares_available ?? 0) || 0,
-        created_at: r.created_at ?? null
+        loanable: r?.loanable === false ? false : true,
+        available_count: Number(r?.available_count ?? 0) || 0,
+        created_at: r?.created_at ?? null,
+        _exemplarKeys: new Set()
       };
-    });
+      grouped.set(groupKey, item);
+    }
+
+    const exemplarKey = firstNonEmptyString(
+      r?.exemplar_id !== null && r?.exemplar_id !== undefined ? String(r.exemplar_id) : '',
+      r?.tombo,
+      `row:${idx}`
+    );
+    item._exemplarKeys.add(exemplarKey);
+  });
+
+  return [...grouped.values()].map(item => {
+    const total = item._exemplarKeys.size || Math.max(item.available_count, 0);
+    const available = Math.max(0, Math.min(total || item.available_count, item.available_count || total));
+    return {
+      ...item,
+      exemplares_total: total,
+      exemplares_available: available
+    };
+  });
+}
+async function loadRowsFromSupabase() {
+  try {
+    const select = 'id,bib_ref,autor,titulo,ano,editora,cdd,loanable,available_count,created_at,author_id,exemplar_id,tombo,library_id,library_slug,library_name,biblioteca';
+    const path = `v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc,bib_ref.asc,biblioteca.asc`;
+    const [authorRelations, authorLookup, rawRows] = await Promise.all([
+      loadAuthorRelationsFromSupabase(),
+      loadAuthorLookupFromSupabase(),
+      fetchRestRows(path, 'public')
+    ]);
+    return aggregateCatalogRowsFromPublicView(rawRows, authorRelations, authorLookup);
   } catch (e) {
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
@@ -2010,7 +2021,7 @@ function buildRowMarkup(r) {
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
   const autorHtml = buildAuthorMarkup(r.autor, r.author_ids_list ?? r.author_ids ?? r.author_id, terms);
-  const livroUrl = ref ? `${LIVRO_URL}?ref=${encodeURIComponent(ref)}` : '#';
+  const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700;">${tituloHtml}</a>` : tituloHtml;
   const anoHtml = r.ano ? highlightHTML(r.ano, terms) : '<span class="muted">—</span>';
@@ -2018,11 +2029,7 @@ function buildRowMarkup(r) {
   const cddHtml = r.cdd
     ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
     : '<span class="muted">—</span>';
-  const bibliotecaLabelHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
-  const holdingSummary = formatHoldingSummary(r);
-  const bibliotecaHtml = holdingSummary
-    ? `${bibliotecaLabelHtml}<div class="small" style="margin-top:6px;">${escapeHTML(holdingSummary)}</div>`
-    : bibliotecaLabelHtml;
+  const bibliotecaHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
