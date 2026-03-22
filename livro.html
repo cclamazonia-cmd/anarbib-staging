@@ -247,6 +247,56 @@
     const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
 
+    function apiFrom(schema, relation) {
+      if (typeof supabase?.schema === "function") {
+        return supabase.schema(schema).from(relation);
+      }
+      return supabase.from(`${schema}.${relation}`);
+    }
+
+    function firstNonEmptyString(...values) {
+      for (const value of values) {
+        const txt = String(value ?? "").trim();
+        if (txt) return txt;
+      }
+      return "";
+    }
+
+    const LOCAL_LIBRARY_NAME_BY_SLUG = {
+      blmf: "Biblioteca Libertária Maxwell Ferreira",
+      btl: "Biblioteca Terra Livre"
+    };
+    const LOCAL_LIBRARY_NAME_BY_ID = {
+      "1234825f-a0f9-4fbd-a875-6551c30ea4ca": "Biblioteca Libertária Maxwell Ferreira",
+      "b7c0e4a7-9d6e-4db7-b8a7-3b11f65b4e2a": "Biblioteca Terra Livre"
+    };
+
+    function cleanSingleLibraryLabel(value) {
+      const txt = String(value || "").trim();
+      if (!txt) return "";
+      if (txt.includes(" / ")) return "";
+      return txt.split(" - ")[0].trim();
+    }
+
+    function inferLocalLibraryName(libraryContext = {}, bookRow = null) {
+      const explicit = cleanSingleLibraryLabel(libraryContext?.libraryName);
+      if (explicit) return explicit;
+
+      const fromRowName = cleanSingleLibraryLabel(bookRow?.library_name);
+      if (fromRowName) return fromRowName;
+
+      const fromRowBib = cleanSingleLibraryLabel(bookRow?.biblioteca);
+      if (fromRowBib) return fromRowBib;
+
+      const slugKey = String(libraryContext?.librarySlug || bookRow?.library_slug || "").trim().toLowerCase();
+      if (slugKey && LOCAL_LIBRARY_NAME_BY_SLUG[slugKey]) return LOCAL_LIBRARY_NAME_BY_SLUG[slugKey];
+
+      const idKey = String(libraryContext?.libraryId || bookRow?.library_id || "").trim();
+      if (idKey && LOCAL_LIBRARY_NAME_BY_ID[idKey]) return LOCAL_LIBRARY_NAME_BY_ID[idKey];
+
+      return "";
+    }
+
     function buildExternalBookCoverUrl(pathOrUrl) {
       const raw = String(pathOrUrl || "").trim();
       if (!raw) return "";
@@ -331,6 +381,25 @@
       btnLer.style.display = yes ? "inline-flex" : "none";
     }
 
+    function extractHoldingLibraryNames(raw) {
+      const rows = Array.isArray(raw)
+        ? raw
+        : (typeof raw === "string" && raw.trim()
+            ? (() => {
+                try { return JSON.parse(raw); } catch (_) { return []; }
+              })()
+            : []);
+
+      const names = [];
+      for (const row of rows) {
+        const label = firstNonEmptyString(row?.library_name, row?.biblioteca, row?.name)
+          .split(" - ")[0]
+          .trim();
+        if (label && !names.includes(label)) names.push(label);
+      }
+      return names;
+    }
+
     async function getDigitalAvailabilityForBibRef(bib_ref) {
       try {
         const { data, error } = await supabase
@@ -348,16 +417,10 @@
       return false;
     }
 
-    async function getLibraryLineForBibRef(bib_ref, preferredRow = null, libraryContext = null) {
+    async function getLibraryLineForBibRef(bib_ref, bookRow = null, libraryContext = {}) {
       const localContextRequested = !!(libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName);
-      const directLabel = firstNonEmptyString(
-        libraryContext?.libraryName,
-        preferredRow?.library_name,
-        preferredRow?.biblioteca
-      );
-      if (localContextRequested && directLabel) {
-        return String(directLabel).split(" - ")[0].trim();
-      }
+      const preferredLocal = inferLocalLibraryName(libraryContext, bookRow);
+      if (localContextRequested && preferredLocal) return preferredLocal;
 
       try {
         let query = supabase
@@ -375,16 +438,13 @@
 
         if (!error && Array.isArray(data) && data.length) {
           if (localContextRequested) {
-            const label = firstNonEmptyString(data[0]?.library_name, data[0]?.biblioteca, directLabel);
-            if (label) return String(label).split(" - ")[0].trim();
+            const localName = inferLocalLibraryName(libraryContext, data[0]);
+            if (localName) return localName;
           }
 
           const names = [];
           for (const row of data) {
-            const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
-            const cleaned = String(preferred || "")
-              .split(" - ")[0]
-              .trim();
+            const cleaned = inferLocalLibraryName({}, row);
             if (cleaned && !names.includes(cleaned)) names.push(cleaned);
           }
           if (names.length) return names.join(" / ");
@@ -392,15 +452,15 @@
       } catch (err) {
         console.warn("AnarBib livro: falha ao consultar bibliotecas na v_books_public", err);
       }
-      return directLabel ? String(directLabel).split(" - ")[0].trim() : "";
+      return preferredLocal;
     }
 
-    function buildLerUrl(bib_ref, preferredRow = null, libraryContext = null) {
+    function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}) {
       const viewerUrl = new URL("ler.html", location.href);
       viewerUrl.searchParams.set("ref", bib_ref);
-      const libraryId = firstNonEmptyString(libraryContext?.libraryId, preferredRow?.library_id);
-      const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, preferredRow?.library_slug);
-      const libraryName = firstNonEmptyString(libraryContext?.libraryName, preferredRow?.library_name, preferredRow?.biblioteca);
+      const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
+      const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
+      const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name);
       if (libraryId) viewerUrl.searchParams.set("library_id", libraryId);
       if (librarySlug) viewerUrl.searchParams.set("library_slug", librarySlug);
       if (libraryName) viewerUrl.searchParams.set("library_name", libraryName);
@@ -557,6 +617,47 @@
       return Array.from(out);
     }
 
+    async function loadAuthorLookupMap() {
+      const candidates = [
+        ["authors", "id,preferred_name,sort_name"],
+        ["v_authors_public", "id,preferred_name,sort_name"],
+        ["authors_public", "id,preferred_name,sort_name"]
+      ];
+      for (const [table, select] of candidates) {
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select(select)
+            .limit(5000);
+          if (error || !Array.isArray(data) || !data.length) continue;
+          const map = new Map();
+          data.forEach(row => {
+            const authorId = row?.id ?? null;
+            if (!authorId) return;
+            [row?.sort_name, row?.preferred_name].forEach(value => {
+              for (const variant of buildAuthorVariants(value)) {
+                if (!map.has(variant)) map.set(variant, new Set());
+                map.get(variant).add(authorId);
+              }
+            });
+          });
+          return map;
+        } catch (_) {}
+      }
+      return new Map();
+    }
+
+    function resolveUniqueAuthorIdFromLookup(authorLookupMap, label) {
+      if (!(authorLookupMap instanceof Map)) return null;
+      const matches = new Set();
+      for (const variant of buildAuthorVariants(label)) {
+        const bucket = authorLookupMap.get(variant);
+        if (!bucket) continue;
+        for (const authorId of bucket) matches.add(authorId);
+      }
+      return matches.size === 1 ? Array.from(matches)[0] : null;
+    }
+
     function authorUrl(authorId, authorName = "") {
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
@@ -569,6 +670,50 @@
         params.set("author", String(authorName).trim());
       }
       return `${ROUTES.AUTOR}?${params.toString()}`;
+    }
+
+    async function findExactAuthorIdByName(name) {
+      const clean = String(name || "").trim();
+      const variants = buildAuthorVariants(clean);
+      if (!variants.length) return null;
+      for (const table of ["authors", "v_authors_public", "authors_public"]) {
+        for (const variant of variants) {
+          try {
+            let query = supabase.from(table).select("id,preferred_name,sort_name");
+            const exactSort = await query.eq("sort_name", variant).limit(1).maybeSingle();
+            if (!exactSort.error && exactSort.data?.id != null) return String(exactSort.data.id).trim();
+          } catch (_) {}
+          try {
+            const exactPref = await supabase.from(table).select("id,preferred_name,sort_name").eq("preferred_name", variant).limit(1).maybeSingle();
+            if (!exactPref.error && exactPref.data?.id != null) return String(exactPref.data.id).trim();
+          } catch (_) {}
+        }
+      }
+      return null;
+    }
+
+    async function findUniqueAuthorLookup(name) {
+      const variants = buildAuthorVariants(name);
+      if (!variants.length) return null;
+      const datasets = [];
+      for (const table of ["authors", "v_authors_public", "authors_public"]) {
+        try {
+          const { data, error } = await supabase.from(table).select("id,preferred_name,sort_name").limit(5000);
+          if (!error && Array.isArray(data) && data.length) datasets.push(data);
+        } catch (_) {}
+      }
+      const all = datasets.flat();
+      const matched = [];
+      for (const row of all) {
+        const rowVariants = new Set();
+        [row?.preferred_name, row?.sort_name].filter(Boolean).forEach(value => buildAuthorVariants(value).forEach(v => rowVariants.add(v)));
+        if (!rowVariants.size) continue;
+        if (variants.some(v => rowVariants.has(v))) {
+          matched.push(row);
+        }
+      }
+      const ids = Array.from(new Set(matched.map(row => String(row?.id || '').trim()).filter(Boolean)));
+      return ids.length === 1 ? ids[0] : null;
     }
 
     async function renderBookAuthors(authorText, bookRow) {
@@ -608,6 +753,39 @@
               display_name: row.display_name,
               preferred_name: row.preferred_name,
               sort_name: row.sort_name
+            })));
+          }
+        } catch (_) {}
+      }
+
+      if (!linkedAuthors.length) {
+        try {
+          let rel = null;
+          if (bookRow?.id != null) {
+            const byBookId = await supabase
+              .from("v_author_books_public")
+              .select("author_id,autor,book_id,bib_ref,role,ord")
+              .eq("book_id", bookRow.id)
+              .order("ord", { ascending: true })
+              .limit(20);
+            if (!byBookId.error && Array.isArray(byBookId.data) && byBookId.data.length) rel = byBookId;
+          }
+          if ((!rel || !rel.data?.length) && bookRow?.bib_ref) {
+            const byBibRef = await supabase
+              .from("v_author_books_public")
+              .select("author_id,autor,book_id,bib_ref,role,ord")
+              .eq("bib_ref", bookRow.bib_ref)
+              .order("ord", { ascending: true })
+              .limit(20);
+            if (!byBibRef.error && Array.isArray(byBibRef.data) && byBibRef.data.length) rel = byBibRef;
+          }
+          if (rel && Array.isArray(rel.data) && rel.data.length) {
+            linkedAuthors.push(...rel.data.map(row => ({
+              id: row.author_id,
+              display_name: row.autor,
+              preferred_name: row.autor,
+              sort_name: row.autor,
+              ord: row.ord
             })));
           }
         } catch (_) {}
@@ -656,6 +834,15 @@
         entries.push({ label, authorId });
       });
 
+      if (entries.length === 1 && !entries[0].authorId && bookRow?.author_id != null) {
+        entries[0].authorId = String(bookRow.author_id).trim();
+      }
+
+      for (const entry of entries) {
+        if (entry.authorId) continue;
+        entry.authorId = await findExactAuthorIdByName(entry.label) || await findUniqueAuthorLookup(entry.label);
+      }
+
       if (!entries.length) {
         host.textContent = "—";
         return;
@@ -665,18 +852,13 @@
         const label = String(entry.label || "").trim();
         if (!label) return;
 
-        if (entry.authorId) {
-          const a = document.createElement("a");
-          a.className = "author-card-link";
-          a.href = authorUrl(entry.authorId, label);
-          a.textContent = label;
-          host.appendChild(a);
-        } else {
-          const span = document.createElement("span");
-          span.className = "author-card-static";
-          span.textContent = label;
-          host.appendChild(span);
-        }
+        const a = document.createElement("a");
+        a.className = "author-card-link";
+        a.href = authorUrl(entry.authorId, label);
+        if (entry.authorId) a.dataset.authorId = String(entry.authorId);
+        a.dataset.author = label;
+        a.textContent = label;
+        host.appendChild(a);
 
         if (idx < entries.length - 1) {
           const sep = document.createElement("span");
@@ -792,7 +974,7 @@
         return;
       }
 
-      const candidateTables = (libraryContext.libraryId || libraryContext.librarySlug || libraryContext.libraryName)
+      const candidateTables = libraryContext.libraryId || libraryContext.librarySlug
         ? ["v_books_public", "v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "books"]
         : ["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"];
 
@@ -812,22 +994,29 @@
           findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
         const candidateLibraryIdCol = findCol(keys, ["library_id"]);
         const candidateLibrarySlugCol = findCol(keys, ["library_slug"]);
-        const candidateLibraryNameCol = findCol(keys, ["library_name", "biblioteca"]);
 
-        let probeQuery = supabase
-          .from(candidate)
-          .select("*")
-          .eq(candidateRefCol, bib_ref);
-
-        if (libraryContext.libraryId && candidateLibraryIdCol) {
-          probeQuery = probeQuery.eq(candidateLibraryIdCol, libraryContext.libraryId);
-        } else if (libraryContext.librarySlug && candidateLibrarySlugCol) {
-          probeQuery = probeQuery.eq(candidateLibrarySlugCol, libraryContext.librarySlug);
-        } else if (libraryContext.libraryName && candidateLibraryNameCol) {
-          probeQuery = probeQuery.eq(candidateLibraryNameCol, libraryContext.libraryName);
+        let probe = null;
+        if ((libraryContext.libraryId || libraryContext.librarySlug) && (candidateLibraryIdCol || candidateLibrarySlugCol)) {
+          let query = supabase
+            .from(candidate)
+            .select("*")
+            .eq(candidateRefCol, bib_ref);
+          if (libraryContext.libraryId && candidateLibraryIdCol) {
+            query = query.eq(candidateLibraryIdCol, libraryContext.libraryId);
+          }
+          if (libraryContext.librarySlug && candidateLibrarySlugCol) {
+            query = query.eq(candidateLibrarySlugCol, libraryContext.librarySlug);
+          }
+          probe = await query.limit(1);
         }
 
-        const probe = await probeQuery.limit(1);
+        if (!probe || probe.error || !Array.isArray(probe.data) || !probe.data.length) {
+          probe = await supabase
+            .from(candidate)
+            .select("*")
+            .eq(candidateRefCol, bib_ref)
+            .limit(1);
+        }
 
         if (probe.error) continue;
         if (Array.isArray(probe.data) && probe.data.length) {
@@ -896,10 +1085,12 @@
       const cdd = colCDD ? (data[colCDD] || "") : "";
       const resumo = colRes ? (data[colRes] || "") : "";
       const pdf = colPdf ? (data[colPdf] || "") : "";
-      let cover = colCover ? (data[colCover] || "") : "";
+      const localLibraryName = colLibraryName ? firstNonEmptyString(data[colLibraryName]) : "";
       if (!libraryContext.libraryId && colLibraryId && data[colLibraryId] != null) libraryContext.libraryId = String(data[colLibraryId]).trim();
       if (!libraryContext.librarySlug && colLibrarySlug && data[colLibrarySlug] != null) libraryContext.librarySlug = String(data[colLibrarySlug]).trim();
-      if (!libraryContext.libraryName && colLibraryName && data[colLibraryName] != null) libraryContext.libraryName = String(data[colLibraryName]).trim();
+      if (cleanSingleLibraryLabel(localLibraryName)) libraryContext.libraryName = cleanSingleLibraryLabel(localLibraryName);
+      if (!libraryContext.libraryName) libraryContext.libraryName = inferLocalLibraryName(libraryContext, data);
+      let cover = colCover ? (data[colCover] || "") : "";
 
       if (!cover) {
         const fallback = await supabase
@@ -954,7 +1145,7 @@
 
       $("desc").textContent = resumo || "—";
 
-      async function loadTombosForBook(bookRow, bib_ref, libraryContext = null) {
+      async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
         let tombos = [];
 
@@ -997,7 +1188,7 @@
           if (exBibRef) {
             let byRefQuery = supabase.from(table).select("*").eq(exBibRef, bib_ref);
             if (libraryContext?.libraryId && exLibraryId) byRefQuery = byRefQuery.eq(exLibraryId, libraryContext.libraryId);
-            else if (libraryContext?.librarySlug && exLibrarySlug) byRefQuery = byRefQuery.eq(exLibrarySlug, libraryContext.librarySlug);
+            if (libraryContext?.librarySlug && exLibrarySlug) byRefQuery = byRefQuery.eq(exLibrarySlug, libraryContext.librarySlug);
             const byRef = await byRefQuery.limit(100);
             if (!byRef.error && byRef.data?.length) rows = byRef.data;
           }
@@ -1005,7 +1196,7 @@
           if (!rows.length && exBookId && bookRow?.id != null) {
             let byBookIdQuery = supabase.from(table).select("*").eq(exBookId, bookRow.id);
             if (libraryContext?.libraryId && exLibraryId) byBookIdQuery = byBookIdQuery.eq(exLibraryId, libraryContext.libraryId);
-            else if (libraryContext?.librarySlug && exLibrarySlug) byBookIdQuery = byBookIdQuery.eq(exLibrarySlug, libraryContext.librarySlug);
+            if (libraryContext?.librarySlug && exLibrarySlug) byBookIdQuery = byBookIdQuery.eq(exLibrarySlug, libraryContext.librarySlug);
             const byBookId = await byBookIdQuery.limit(100);
             if (!byBookId.error && byBookId.data?.length) rows = byBookId.data;
           }
