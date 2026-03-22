@@ -452,6 +452,27 @@ a { color: inherit; }
 .sheet-head .title { font-weight:700; }
 .small { font-size:.86rem; color: var(--muted); }
 .table-wrap { overflow:auto; max-height:72vh; }
+.floating-x-scroll {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(10,10,10,.92);
+  border-top: 1px solid rgba(255,255,255,.12);
+  z-index: 30;
+}
+.floating-x-scroll[hidden] {
+  display: none !important;
+}
+.floating-x-scroll-inner {
+  height: 1px;
+}
+body.has-floating-x-scroll .footer {
+  padding-bottom: 26px;
+}
 table {
   --col-ref-w: 136px;
   --col-autor-w: 270px;
@@ -731,6 +752,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   #csvAdvancedLink { margin-left: 0; }
 }
 @media (max-width: 760px) {
+  .floating-x-scroll { display:none !important; }
   .table-wrap {
     overflow:visible;
     max-height:none;
@@ -876,6 +898,8 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
     </div>
   </section>
 
+  <div id="floatingXScroll" class="floating-x-scroll" hidden aria-hidden="true"><div id="floatingXScrollInner" class="floating-x-scroll-inner"></div></div>
+
   <p class="footer"></p>
 </div>
 
@@ -956,6 +980,10 @@ const copySearchBtn = document.getElementById('copySearchBtn');
 const compactToggleBtn = document.getElementById('compactToggleBtn');
 const contextPill = document.getElementById('contextPill');
 const sortPill = document.getElementById('sortPill');
+const tableWrap = document.querySelector('.table-wrap');
+const catalogTable = tableWrap?.querySelector('table');
+const floatingXScroll = document.getElementById('floatingXScroll');
+const floatingXScrollInner = document.getElementById('floatingXScrollInner');
 
 function normalize(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -1546,6 +1574,14 @@ function buildAuthorHref(authorId, authorName) {
   if (authorName) params.set('author', String(authorName));
   return `${AUTOR_URL}?${params.toString()}`;
 }
+function buildLivroHref(row) {
+  const url = new URL(LIVRO_URL);
+  if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
+  if (row?.library_id) url.searchParams.set('library_id', String(row.library_id));
+  if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
+  if (row?.library_name) url.searchParams.set('library_name', String(row.library_name));
+  return url.toString();
+}
 function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const names = splitAuthorNames(authorValue);
   if (!names.length) return '<span class="muted">—</span>';
@@ -1555,11 +1591,11 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const parts = names.map((name, idx) => {
     const authorId = ids[idx] ?? singleId ?? null;
     const label = highlightHTML(name, terms);
+    const href = buildAuthorHref(authorId, name);
     if (authorId) {
-      const href = buildAuthorHref(authorId, name);
       return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}" data-author-id="${authorId}">${label}</a>`;
     }
-    return `<span class="tag-link author-chip-static" title="Sem ficha de autor publicada para este nome.">${label}</span>`;
+    return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}">${label}</a>`;
   });
 
   return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
@@ -1597,12 +1633,12 @@ function isAuthorRole(roleValue) {
     || roleNorm.startsWith('co-author');
 }
 async function loadAuthorLookupFromSupabase() {
-  const [vAuthorsPublic, authorsPublicApi, authorsPublicPublic] = await Promise.all([
+  const datasets = await Promise.all([
     fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
     fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
+    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
   ]);
-  const data = chooseLargestDataset(vAuthorsPublic, authorsPublicApi, authorsPublicPublic);
+  const data = chooseLargestDataset(...datasets);
   const map = new Map();
   for (const row of (data || [])) {
     const authorId = normalizeAuthorIdValue(row?.id);
@@ -1617,35 +1653,40 @@ async function loadAuthorLookupFromSupabase() {
 }
 async function loadAuthorRelationsFromSupabase() {
   const selectCandidates = [
-    'book_id,author_id,role,ord,display_name,preferred_name,sort_name',
-    'book_id,author_id,role,ord,preferred_name,sort_name',
-    'book_id,author_id,role,ord'
+    'author_id,book_id,bib_ref,autor,role,ord',
+    'author_id,book_id,bib_ref,autor,role',
+    'author_id,book_id,bib_ref,autor'
   ];
   const datasets = [];
   for (const select of selectCandidates) {
-    const [apiRows, publicRows] = await Promise.all([
-      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'api'),
-      fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public')
-    ]);
-    datasets.push(chooseLargestDataset(apiRows, publicRows));
+    datasets.push(await fetchRestRows(`v_author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public'));
   }
   const data = chooseLargestDataset(...datasets);
-  const map = new Map();
+  const byBookId = new Map();
+  const byBibRef = new Map();
   for (const row of (data || [])) {
-    const bookId = row?.book_id;
     const authorId = normalizeAuthorIdValue(row?.author_id);
-    if (!bookId || !authorId || !isAuthorRole(row?.role)) continue;
-    const key = String(bookId);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push({
+    if (!authorId || !isAuthorRole(row?.role)) continue;
+    const entry = {
       authorId,
       ord: Number.isFinite(Number(row?.ord)) ? Number(row.ord) : null,
-      display_name: firstNonEmptyString(row?.display_name, row?.preferred_name, row?.sort_name),
+      display_name: firstNonEmptyString(row?.display_name, row?.preferred_name, row?.sort_name, row?.autor),
       preferred_name: firstNonEmptyString(row?.preferred_name),
-      sort_name: firstNonEmptyString(row?.sort_name)
-    });
+      sort_name: firstNonEmptyString(row?.sort_name),
+      bib_ref: firstNonEmptyString(row?.bib_ref)
+    };
+    const bookKey = String(row?.book_id || '').trim();
+    const bibKey = String(row?.bib_ref || '').trim();
+    if (bookKey) {
+      if (!byBookId.has(bookKey)) byBookId.set(bookKey, []);
+      byBookId.get(bookKey).push(entry);
+    }
+    if (bibKey) {
+      if (!byBibRef.has(bibKey)) byBibRef.set(bibKey, []);
+      byBibRef.get(bibKey).push(entry);
+    }
   }
-  return map;
+  return { byBookId, byBibRef };
 }
 function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fallbackAuthorId) {
   const names = splitAuthorNames(authorValue);
@@ -1694,6 +1735,28 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
   }
 
   return resolved.some(Boolean) ? resolved : [];
+}
+function getAuthorRelationEntriesForRow(row, authorRelations) {
+  const byBookId = authorRelations?.byBookId;
+  const byBibRef = authorRelations?.byBibRef;
+  const bookKey = String(row?.id ?? '').trim();
+  const bibKey = String(row?.bib_ref ?? '').trim();
+
+  if (byBookId instanceof Map && bookKey && byBookId.has(bookKey)) {
+    return byBookId.get(bookKey) || [];
+  }
+  if (byBibRef instanceof Map && bibKey && byBibRef.has(bibKey)) {
+    return byBibRef.get(bibKey) || [];
+  }
+  return [];
+}
+function buildLivroHref(row) {
+  const url = new URL(LIVRO_URL);
+  if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
+  if (row?.library_id) url.searchParams.set('library_id', String(row.library_id));
+  if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
+  if (row?.library_name) url.searchParams.set('library_name', String(row.library_name));
+  return url.toString();
 }
 function prepareRows() {
   for (const r of rows) {
@@ -1750,7 +1813,7 @@ async function loadRowsFromSupabase() {
     const data = text ? JSON.parse(text) : [];
     return (data || []).map(r => {
       const authorId = normalizeAuthorIdValue(r.author_id);
-      const relationIds = authorRelations.get(String(r.id ?? '')) || [];
+      const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
       const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
       return {
         id: r.id ?? null,
@@ -1761,6 +1824,9 @@ async function loadRowsFromSupabase() {
         editora: r.editora ?? '',
         cdd: r.cdd ?? '',
         biblioteca: resolveLibraryLabel(r, librarySupplementMap),
+        library_id: r.library_id ?? null,
+        library_slug: r.library_slug ?? '',
+        library_name: r.library_name ?? '',
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
@@ -1986,9 +2052,8 @@ function buildRowMarkup(r) {
   const ref = r.bib_ref || '';
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
-  const authorIdsSource = (Array.isArray(r.author_ids_list) && r.author_ids_list.length) ? r.author_ids_list : (r.author_ids || r.author_id || null);
-  const autorHtml = buildAuthorMarkup(r.autor, authorIdsSource, terms);
-  const livroUrl = ref ? `${LIVRO_URL}?ref=${encodeURIComponent(ref)}` : '#';
+  const autorHtml = buildAuthorMarkup(r.autor, r.author_ids_list ?? r.author_ids ?? r.author_id, terms);
+  const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700;">${tituloHtml}</a>` : tituloHtml;
   const anoHtml = r.ano ? highlightHTML(r.ano, terms) : '<span class="muted">—</span>';
@@ -2080,6 +2145,38 @@ function render() {
     tbody.appendChild(tr);
     mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
   }
+  requestAnimationFrame(syncFloatingXScroll);
+}
+let syncingFloatingXScroll = false;
+function syncFloatingXScroll() {
+  if (!tableWrap || !catalogTable || !floatingXScroll || !floatingXScrollInner) return;
+  const mobileMode = window.matchMedia('(max-width: 760px)').matches;
+  const hasOverflow = catalogTable.scrollWidth > tableWrap.clientWidth + 1;
+  if (mobileMode || !hasOverflow) {
+    floatingXScroll.hidden = true;
+    document.body.classList.remove('has-floating-x-scroll');
+    return;
+  }
+  floatingXScroll.hidden = false;
+  document.body.classList.add('has-floating-x-scroll');
+  floatingXScrollInner.style.width = `${catalogTable.scrollWidth}px`;
+  if (!syncingFloatingXScroll) floatingXScroll.scrollLeft = tableWrap.scrollLeft;
+}
+function bindFloatingXScroll() {
+  if (!tableWrap || !catalogTable || !floatingXScroll) return;
+  tableWrap.addEventListener('scroll', () => {
+    if (syncingFloatingXScroll || floatingXScroll.hidden) return;
+    syncingFloatingXScroll = true;
+    floatingXScroll.scrollLeft = tableWrap.scrollLeft;
+    requestAnimationFrame(() => { syncingFloatingXScroll = false; });
+  }, { passive: true });
+  floatingXScroll.addEventListener('scroll', () => {
+    if (syncingFloatingXScroll || floatingXScroll.hidden) return;
+    syncingFloatingXScroll = true;
+    tableWrap.scrollLeft = floatingXScroll.scrollLeft;
+    requestAnimationFrame(() => { syncingFloatingXScroll = false; });
+  }, { passive: true });
+  window.addEventListener('resize', syncFloatingXScroll, { passive: true });
 }
 function debounce(fn, ms) {
   let t;
@@ -2397,6 +2494,7 @@ document.addEventListener('keydown', (e) => {
 });
 (async function init() {
   restoreStateFromUrl();
+  bindFloatingXScroll();
   authState = await getCurrentUserAndRole();
   await loadPublicServiceState();
   rows = await loadRowsFromSupabase();
