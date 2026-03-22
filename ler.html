@@ -606,8 +606,6 @@
     const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
     const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
-    const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
-    const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
     const PDFJS_MAIN = "./vendor/pdfjs/build/pdf.mjs";
     const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
 
@@ -617,6 +615,8 @@
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim()
     };
+    const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
+    const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
     const storageKey = bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default";
 
     const state = {
@@ -1014,7 +1014,7 @@
       $("chipRef").innerHTML = `<strong>Ref.</strong> ${bibRef || "—"}`;
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
-      $("btnLogin").href = buildCadastroUrl(location.href);
+      $("btnLogin").href = buildCadastroUrl();
       $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
       $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
 
@@ -1024,7 +1024,6 @@
       }
 
       clearError();
-      await setupNavButtons();
       setStatus("A verificar sessão e permissões…", "warn");
 
       try {
