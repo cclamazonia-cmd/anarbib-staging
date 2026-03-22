@@ -520,7 +520,7 @@
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
-      const pickBestAuthorRow = (rows) => {
+      const rankMatches = (rows) => {
         if (!Array.isArray(rows) || !rows.length) return null;
         const ranked = rows.map(row => {
           const p = normalizeText(row?.preferred_name);
@@ -538,16 +538,15 @@
             .select("*")
             .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
             .limit(20);
-
-          const best = !error ? pickBestAuthorRow(data) : null;
-          if (best) return best;
+          const winner = !error ? rankMatches(data) : null;
+          if (winner) return winner;
         } catch (_) {}
 
         const rows = await fetchRest(
           `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
         );
-        const bestFromView = pickBestAuthorRow(rows);
-        if (bestFromView) return bestFromView;
+        const winner = rankMatches(rows);
+        if (winner) return winner;
       }
 
       for (const variant of variants) {
@@ -557,16 +556,15 @@
             .select("*")
             .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
             .limit(20);
-
-          const best = !error ? pickBestAuthorRow(data) : null;
-          if (best) return best;
+          const winner = !error ? rankMatches(data) : null;
+          if (winner) return winner;
         } catch (_) {}
 
         const rows = await fetchRest(
           `authors?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
         );
-        const bestFromAuthors = pickBestAuthorRow(rows);
-        if (bestFromAuthors) return bestFromAuthors;
+        const winner = rankMatches(rows);
+        if (winner) return winner;
       }
 
       for (const variant of variants) {
