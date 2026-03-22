@@ -515,54 +515,60 @@
       return rows[0] || null;
     }
 
+    async function findExactAuthorInTable(tableName, variant) {
+      try {
+        const bySort = await supabase.from(tableName).select("*").eq("sort_name", variant).limit(1).maybeSingle();
+        if (!bySort.error && bySort.data) return bySort.data;
+      } catch (_) {}
+      try {
+        const byPref = await supabase.from(tableName).select("*").eq("preferred_name", variant).limit(1).maybeSingle();
+        if (!byPref.error && byPref.data) return byPref.data;
+      } catch (_) {}
+      return null;
+    }
+
     async function fetchAuthorByName(authorName) {
       const variants = buildNameVariants(authorName);
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
-      function rankAuthorRows(rows) {
-        if (!Array.isArray(rows) || !rows.length) return null;
-        const ranked = rows.map(row => {
-          const p = normalizeText(row?.preferred_name);
-          const s = normalizeText(row?.sort_name);
-          const exact = wanted.has(p) || wanted.has(s);
-          return { row, exact };
-        }).sort((a, b) => Number(b.exact) - Number(a.exact));
-        return ranked[0]?.row || null;
+      for (const variant of variants) {
+        const exactView = await findExactAuthorInTable("v_authors_public", variant);
+        if (exactView) return exactView;
+        const exactPublic = await findExactAuthorInTable("authors", variant);
+        if (exactPublic) return exactPublic;
       }
 
-      async function queryAuthorField(tableName, fieldName, mode, value, limit = 20) {
+      for (const variant of variants) {
         try {
-          let query = supabase.from(tableName).select("*").limit(limit);
-          query = mode === "eq" ? query.eq(fieldName, value) : query.ilike(fieldName, `%${value}%`);
-          const { data, error } = await query;
-          if (!error && Array.isArray(data) && data.length) return data;
+          const { data, error } = await supabase
+            .from("v_authors_public")
+            .select("*")
+            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
+            .limit(20);
+
+          if (!error && Array.isArray(data) && data.length) {
+            const ranked = data.map(row => {
+              const p = normalizeText(row?.preferred_name);
+              const s = normalizeText(row?.sort_name);
+              const exact = wanted.has(p) || wanted.has(s);
+              return { row, exact };
+            }).sort((a, b) => Number(b.exact) - Number(a.exact));
+            if (ranked[0]?.row) return ranked[0].row;
+          }
         } catch (_) {}
 
-        const filter = mode === "eq"
-          ? `${fieldName}=eq.${encodeURIComponent(value)}`
-          : `${fieldName}=ilike.${encodeURIComponent(`%${value}%`)}`;
-        const rows = await fetchRest(`${tableName}?select=*&${filter}&limit=${limit}`);
-        return Array.isArray(rows) ? rows : [];
-      }
-
-      for (const variant of variants) {
-        for (const tableName of ["v_authors_public", "authors"]) {
-          for (const fieldName of ["preferred_name", "sort_name"]) {
-            const exactRows = await queryAuthorField(tableName, fieldName, "eq", variant, 5);
-            const exactMatch = rankAuthorRows(exactRows);
-            if (exactMatch) return exactMatch;
-          }
-        }
-      }
-
-      for (const variant of variants) {
-        for (const tableName of ["v_authors_public", "authors"]) {
-          for (const fieldName of ["preferred_name", "sort_name"]) {
-            const broadRows = await queryAuthorField(tableName, fieldName, "ilike", variant, 20);
-            const broadMatch = rankAuthorRows(broadRows);
-            if (broadMatch) return broadMatch;
-          }
+        const rows = await fetchRest(
+          `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
+        );
+        if (Array.isArray(rows) && rows.length) {
+          const ranked = rows.map(row => {
+            const p = normalizeText(row?.preferred_name);
+            const s = normalizeText(row?.sort_name);
+            const exact = wanted.has(p) || wanted.has(s);
+            return { row, exact };
+          }).sort((a, b) => Number(b.exact) - Number(a.exact));
+          if (ranked[0]?.row) return ranked[0].row;
         }
       }
 
