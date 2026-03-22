@@ -516,7 +516,7 @@
     }
 
     async function fetchAuthorByName(authorName) {
-      const variants = uniqueStrings(buildNameVariants(authorName));
+      const variants = buildNameVariants(authorName);
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
 
@@ -526,34 +526,32 @@
           const p = normalizeText(row?.preferred_name);
           const s = normalizeText(row?.sort_name);
           const exact = wanted.has(p) || wanted.has(s);
-          const contains = [...wanted].some(w => p.includes(w) || s.includes(w));
-          return { row, exact, contains };
-        }).sort((a, b) => Number(b.exact) - Number(a.exact) || Number(b.contains) - Number(a.contains));
+          return { row, exact };
+        }).sort((a, b) => Number(b.exact) - Number(a.exact));
         return ranked[0]?.row || null;
       }
 
-      async function tryField(tableName, fieldName, operator, value, limit = 20) {
+      async function queryAuthorField(tableName, fieldName, mode, value, limit = 20) {
         try {
-          const query = supabase.from(tableName).select("*").limit(limit);
-          const { data, error } = operator === 'eq'
-            ? await query.eq(fieldName, value)
-            : await query.ilike(fieldName, value);
-          if (!error) {
-            const hit = rankAuthorRows(data || []);
-            if (hit) return hit;
-          }
+          let query = supabase.from(tableName).select("*").limit(limit);
+          query = mode === "eq" ? query.eq(fieldName, value) : query.ilike(fieldName, `%${value}%`);
+          const { data, error } = await query;
+          if (!error && Array.isArray(data) && data.length) return data;
         } catch (_) {}
 
-        const restPath = `${tableName}?select=*&${fieldName}=${operator}.${encodeURIComponent(value)}&limit=${limit}`;
-        const rows = await fetchRest(restPath);
-        return rankAuthorRows(rows || []);
+        const filter = mode === "eq"
+          ? `${fieldName}=eq.${encodeURIComponent(value)}`
+          : `${fieldName}=ilike.${encodeURIComponent(`%${value}%`)}`;
+        const rows = await fetchRest(`${tableName}?select=*&${filter}&limit=${limit}`);
+        return Array.isArray(rows) ? rows : [];
       }
 
       for (const variant of variants) {
         for (const tableName of ["v_authors_public", "authors"]) {
           for (const fieldName of ["preferred_name", "sort_name"]) {
-            const exact = await tryField(tableName, fieldName, 'eq', variant, 5);
-            if (exact) return exact;
+            const exactRows = await queryAuthorField(tableName, fieldName, "eq", variant, 5);
+            const exactMatch = rankAuthorRows(exactRows);
+            if (exactMatch) return exactMatch;
           }
         }
       }
@@ -561,8 +559,9 @@
       for (const variant of variants) {
         for (const tableName of ["v_authors_public", "authors"]) {
           for (const fieldName of ["preferred_name", "sort_name"]) {
-            const broad = await tryField(tableName, fieldName, 'ilike', `%${variant}%`, 20);
-            if (broad) return broad;
+            const broadRows = await queryAuthorField(tableName, fieldName, "ilike", variant, 20);
+            const broadMatch = rankAuthorRows(broadRows);
+            if (broadMatch) return broadMatch;
           }
         }
       }
