@@ -451,7 +451,16 @@ a { color: inherit; }
 }
 .sheet-head .title { font-weight:700; }
 .small { font-size:.86rem; color: var(--muted); }
-.table-wrap { overflow:auto; max-height:72vh; }
+.table-wrap { overflow-y:auto; overflow-x:hidden; max-height:72vh; }
+.table-scroll-x {
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.table-scroll-x::-webkit-scrollbar {
+  height:0;
+}
 .floating-x-scroll {
   position: fixed;
   left: 0;
@@ -757,7 +766,10 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
     overflow:visible;
     max-height:none;
   }
-  .table-wrap > table {
+  .table-scroll-x {
+    overflow:visible;
+  }
+  .table-scroll-x > table {
     display:none;
   }
   .mobile-results {
@@ -876,6 +888,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
       </div>
     </div>
     <div class="table-wrap">
+      <div id="tableScrollX" class="table-scroll-x">
       <table>
         <thead>
           <tr>
@@ -893,6 +906,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+      </div>
       <div id="mobileResults" class="mobile-results" aria-live="polite"></div>
       <div id="empty" class="empty" hidden>Nenhum resultado para os filtros atuais.</div>
     </div>
@@ -981,7 +995,8 @@ const compactToggleBtn = document.getElementById('compactToggleBtn');
 const contextPill = document.getElementById('contextPill');
 const sortPill = document.getElementById('sortPill');
 const tableWrap = document.querySelector('.table-wrap');
-const catalogTable = tableWrap?.querySelector('table');
+const tableScrollX = document.getElementById('tableScrollX');
+const catalogTable = tableScrollX?.querySelector('table');
 const floatingXScroll = document.getElementById('floatingXScroll');
 const floatingXScrollInner = document.getElementById('floatingXScrollInner');
 
@@ -2124,9 +2139,9 @@ function render() {
 }
 let syncingFloatingXScroll = false;
 function syncFloatingXScroll() {
-  if (!tableWrap || !catalogTable || !floatingXScroll || !floatingXScrollInner) return;
+  if (!tableScrollX || !catalogTable || !floatingXScroll || !floatingXScrollInner) return;
   const mobileMode = window.matchMedia('(max-width: 760px)').matches;
-  const hasOverflow = catalogTable.scrollWidth > tableWrap.clientWidth + 1;
+  const hasOverflow = catalogTable.scrollWidth > tableScrollX.clientWidth + 1;
   if (mobileMode || !hasOverflow) {
     floatingXScroll.hidden = true;
     document.body.classList.remove('has-floating-x-scroll');
@@ -2135,20 +2150,20 @@ function syncFloatingXScroll() {
   floatingXScroll.hidden = false;
   document.body.classList.add('has-floating-x-scroll');
   floatingXScrollInner.style.width = `${catalogTable.scrollWidth}px`;
-  if (!syncingFloatingXScroll) floatingXScroll.scrollLeft = tableWrap.scrollLeft;
+  if (!syncingFloatingXScroll) floatingXScroll.scrollLeft = tableScrollX.scrollLeft;
 }
 function bindFloatingXScroll() {
-  if (!tableWrap || !catalogTable || !floatingXScroll) return;
-  tableWrap.addEventListener('scroll', () => {
+  if (!tableScrollX || !catalogTable || !floatingXScroll) return;
+  tableScrollX.addEventListener('scroll', () => {
     if (syncingFloatingXScroll || floatingXScroll.hidden) return;
     syncingFloatingXScroll = true;
-    floatingXScroll.scrollLeft = tableWrap.scrollLeft;
+    floatingXScroll.scrollLeft = tableScrollX.scrollLeft;
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   floatingXScroll.addEventListener('scroll', () => {
     if (syncingFloatingXScroll || floatingXScroll.hidden) return;
     syncingFloatingXScroll = true;
-    tableWrap.scrollLeft = floatingXScroll.scrollLeft;
+    tableScrollX.scrollLeft = floatingXScroll.scrollLeft;
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   window.addEventListener('resize', syncFloatingXScroll, { passive: true });
