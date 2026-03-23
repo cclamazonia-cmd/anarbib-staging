@@ -1577,18 +1577,12 @@ function buildAuthorHref(authorId) {
 async function findAuthorIdForNavigation(authorName) {
   const raw = String(authorName || '').trim();
   if (!raw) return null;
-  const exactSources = [
-    { table: 'authors', schema: 'public' },
-    { table: 'v_authors_public', schema: 'public' },
-    { table: 'authors_public', schema: 'public' },
-    { table: 'authors_public', schema: 'api' },
-    { table: 'author_detail_public', schema: 'api' }
-  ];
-  for (const source of exactSources) {
+  const exactTables = ['authors', 'v_authors_public', 'authors_public'];
+  for (const table of exactTables) {
     for (const field of ['sort_name', 'preferred_name']) {
       try {
-        const path = `${source.table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
-        const data = await fetchRestRows(path, source.schema);
+        const path = `${table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
+        const data = await fetchRestRows(path, 'public');
         if (Array.isArray(data) && data.length === 1) {
           const id = normalizeAuthorIdValue(data[0]?.id);
           if (id) return id;
@@ -1620,11 +1614,11 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const parts = names.map((name, idx) => {
     const authorId = ids[idx] ?? singleId ?? null;
     const label = highlightHTML(name, terms);
+    const href = buildAuthorHref(authorId);
     if (authorId) {
-      const href = buildAuthorHref(authorId);
       return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}" data-author-id="${authorId}">${label}</a>`;
     }
-    return `<span class="tag-link author-chip-static" title="Sem ficha de autor publicada para este nome.">${label}</span>`;
+    return `<span class="tag-link author-chip author-chip-static" data-author="${escapeHTML(name)}" aria-disabled="true">${label}</span>`;
   });
 
   return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
@@ -1665,9 +1659,7 @@ async function loadAuthorLookupFromSupabase() {
   const datasets = await Promise.all([
     fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
     fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'api'),
-    fetchRestRows(`author_detail_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'api')
+    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
   ]);
   const data = chooseLargestDataset(...datasets);
   const map = new Map();
@@ -1688,16 +1680,9 @@ async function loadAuthorRelationsFromSupabase() {
     'author_id,book_id,bib_ref,autor,role',
     'author_id,book_id,bib_ref,autor'
   ];
-  const relationSources = [
-    { table: 'v_author_books_public', schema: 'public' },
-    { table: 'author_books_public', schema: 'public' },
-    { table: 'author_books_public', schema: 'api' }
-  ];
   const datasets = [];
   for (const select of selectCandidates) {
-    for (const source of relationSources) {
-      datasets.push(await fetchRestRows(`${source.table}?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, source.schema));
-    }
+    datasets.push(await fetchRestRows(`v_author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public'));
   }
   const data = chooseLargestDataset(...datasets);
   const byBookId = new Map();

@@ -247,31 +247,6 @@
     const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
 
-    async function fetchRestRows(path, schemaName = "public") {
-      try {
-        const headers = {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Accept: "application/json"
-        };
-        if (schemaName && schemaName !== "public") headers["Accept-Profile"] = schemaName;
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers, cache: "no-store" });
-        if (!res.ok) return [];
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      } catch (_) {
-        return [];
-      }
-    }
-
-    function chooseLargestDataset(...datasets) {
-      let chosen = [];
-      for (const dataset of datasets) {
-        if (Array.isArray(dataset) && dataset.length > chosen.length) chosen = dataset;
-      }
-      return chosen;
-    }
-
     function apiFrom(schema, relation) {
       if (typeof supabase?.schema === "function") {
         return supabase.schema(schema).from(relation);
@@ -617,26 +592,33 @@
     }
 
     async function loadAuthorLookupMap() {
-      const datasets = await Promise.all([
-        fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "api"),
-        fetchRestRows(`author_detail_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "api")
-      ]);
-      const data = chooseLargestDataset(...datasets);
-      const map = new Map();
-      data.forEach(row => {
-        const authorId = row?.id ?? null;
-        if (!authorId) return;
-        [row?.sort_name, row?.preferred_name].forEach(value => {
-          for (const variant of buildAuthorVariants(value)) {
-            if (!map.has(variant)) map.set(variant, new Set());
-            map.get(variant).add(authorId);
-          }
-        });
-      });
-      return map;
+      const candidates = [
+        ["authors", "id,preferred_name,sort_name"],
+        ["v_authors_public", "id,preferred_name,sort_name"],
+        ["authors_public", "id,preferred_name,sort_name"]
+      ];
+      for (const [table, select] of candidates) {
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select(select)
+            .limit(5000);
+          if (error || !Array.isArray(data) || !data.length) continue;
+          const map = new Map();
+          data.forEach(row => {
+            const authorId = row?.id ?? null;
+            if (!authorId) return;
+            [row?.sort_name, row?.preferred_name].forEach(value => {
+              for (const variant of buildAuthorVariants(value)) {
+                if (!map.has(variant)) map.set(variant, new Set());
+                map.get(variant).add(authorId);
+              }
+            });
+          });
+          return map;
+        } catch (_) {}
+      }
+      return new Map();
     }
 
     function resolveUniqueAuthorIdFromLookup(authorLookupMap, label) {
@@ -665,14 +647,14 @@
     async function findUniqueAuthorLookup(name) {
       const variants = buildAuthorVariants(name);
       if (!variants.length) return null;
-      const datasets = await Promise.all([
-        fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "public"),
-        fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "api"),
-        fetchRestRows(`author_detail_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, "api")
-      ]);
-      const all = chooseLargestDataset(...datasets);
+      const datasets = [];
+      for (const table of ["authors", "v_authors_public", "authors_public"]) {
+        try {
+          const { data, error } = await supabase.from(table).select("id,preferred_name,sort_name").limit(5000);
+          if (!error && Array.isArray(data) && data.length) datasets.push(data);
+        } catch (_) {}
+      }
+      const all = datasets.flat();
       const matched = [];
       for (const row of all) {
         const rowVariants = new Set();
@@ -813,28 +795,45 @@
         entry.authorId = await findUniqueAuthorLookup(entry.label);
       }
 
-      if (!entries.length) {
+      const dedupedEntries = [];
+      const seenEntries = new Set();
+      entries.forEach((entry) => {
+        const label = String(entry?.label || "").trim();
+        if (!label) return;
+        const key = entry?.authorId != null && String(entry.authorId).trim()
+          ? `id:${String(entry.authorId).trim()}`
+          : `label:${normalizeAuthorName(label)}`;
+        if (seenEntries.has(key)) return;
+        seenEntries.add(key);
+        dedupedEntries.push({ label, authorId: entry?.authorId != null ? String(entry.authorId).trim() : "" });
+      });
+
+      if (!dedupedEntries.length) {
         host.textContent = "—";
         return;
       }
 
-      entries.forEach((entry, idx) => {
+      dedupedEntries.forEach((entry, idx) => {
         const label = String(entry.label || "").trim();
         if (!label) return;
 
-        const a = document.createElement(entry.authorId ? "a" : "span");
-        a.className = "author-card-link";
         if (entry.authorId) {
+          const a = document.createElement("a");
+          a.className = "author-card-link";
           a.href = authorUrl(entry.authorId);
           a.dataset.authorId = String(entry.authorId);
           a.dataset.author = label;
+          a.textContent = label;
+          host.appendChild(a);
         } else {
-          a.title = "Sem ficha de autor publicada para este nome.";
+          const span = document.createElement("span");
+          span.className = "author-card-link";
+          span.textContent = label;
+          span.setAttribute("aria-disabled", "true");
+          host.appendChild(span);
         }
-        a.textContent = label;
-        host.appendChild(a);
 
-        if (idx < entries.length - 1) {
+        if (idx < dedupedEntries.length - 1) {
           const sep = document.createElement("span");
           sep.className = "author-separator";
           sep.textContent = ";";
@@ -847,20 +846,19 @@
     async function findAuthorIdForNavigation(authorName) {
       const raw = String(authorName || '').trim();
       if (!raw) return null;
-      const exactSources = [
-        { table: 'authors', schema: 'public' },
-        { table: 'v_authors_public', schema: 'public' },
-        { table: 'authors_public', schema: 'public' },
-        { table: 'authors_public', schema: 'api' },
-        { table: 'author_detail_public', schema: 'api' }
-      ];
-      for (const source of exactSources) {
+      for (const table of ['authors', 'v_authors_public', 'authors_public']) {
         for (const field of ['sort_name', 'preferred_name']) {
-          const rows = await fetchRestRows(`${source.table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`, source.schema);
-          if (Array.isArray(rows) && rows.length === 1) {
-            const id = String(rows[0]?.id || '').trim();
-            if (id) return id;
-          }
+          try {
+            const { data, error } = await supabase
+              .from(table)
+              .select('id')
+              .eq(field, raw)
+              .limit(2);
+            if (!error && Array.isArray(data) && data.length === 1) {
+              const id = String(data[0]?.id || '').trim();
+              if (id) return id;
+            }
+          } catch (_) {}
         }
       }
       return await findUniqueAuthorLookup(raw);

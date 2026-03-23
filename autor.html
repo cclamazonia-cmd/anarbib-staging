@@ -254,6 +254,13 @@
 
     const $ = (id) => document.getElementById(id);
 
+    function apiFrom(schema, relation) {
+      if (typeof supabase?.schema === "function") {
+        return supabase.schema(schema).from(relation);
+      }
+      return supabase.from(`${schema}.${relation}`);
+    }
+
     function buildExternalAuthorPhotoUrl(pathOrUrl) {
       const raw = String(pathOrUrl || "").trim();
       if (!raw) return "";
@@ -432,26 +439,10 @@
       }
     }
 
-    async function fetchRestFirst(candidates) {
-      for (const candidate of (candidates || [])) {
-        const rows = await fetchRest(candidate.path, candidate.schema || "public");
-        if (Array.isArray(rows) && rows[0]) return rows[0];
-      }
-      return null;
-    }
-
-    async function fetchRestManyFirst(candidates) {
-      for (const candidate of (candidates || [])) {
-        const rows = await fetchRest(candidate.path, candidate.schema || "public");
-        if (Array.isArray(rows) && rows.length) return rows;
-      }
-      return [];
-    }
-
-    async function fetchViewOneById(viewName, idValue) {
+    async function fetchViewOneById(viewName, idValue, schemaName = "public") {
       try {
-        const { data, error } = await supabase
-          .from(viewName)
+        const source = schemaName && schemaName !== "public" ? apiFrom(schemaName, viewName) : supabase.from(viewName);
+        const { data, error } = await source
           .select("*")
           .eq("id", idValue)
           .limit(1)
@@ -461,10 +452,10 @@
       return null;
     }
 
-    async function fetchViewManyByAuthorId(viewName, idValue) {
+    async function fetchViewManyByAuthorId(viewName, idValue, schemaName = "public") {
       try {
-        const { data, error } = await supabase
-          .from(viewName)
+        const source = schemaName && schemaName !== "public" ? apiFrom(schemaName, viewName) : supabase.from(viewName);
+        const { data, error } = await source
           .select("*")
           .eq("author_id", idValue)
           .order("ord", { ascending: true })
@@ -474,27 +465,43 @@
       return [];
     }
 
+    function normalizePositiveId(value) {
+      const raw = String(value ?? "").trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isInteger(n) && n > 0 ? n : null;
+    }
+
+    function materializeAuthorId(row, fallbackId = null) {
+      if (!row || typeof row !== "object") return row;
+      const id = normalizePositiveId(row.id) || normalizePositiveId(row.author_id) || normalizePositiveId(fallbackId);
+      return id ? { ...row, id, author_id: id } : row;
+    }
+
     async function fetchAuthorPageById(authorId) {
       if (!authorId) return null;
 
-      let data = await fetchViewOneById("v_author_page_public_v2", authorId);
-      if (data) return data;
+      const candidates = [
+        ["public", "v_author_page_public_v2"],
+        ["public", "v_author_page_public"],
+        ["api", "author_detail_public"],
+        ["public", "author_detail_public"],
+        ["api", "authors_public"],
+        ["public", "authors_public"],
+        ["public", "v_authors_public"]
+      ];
 
-      data = await fetchViewOneById("v_author_page_public", authorId);
-      if (data) return data;
+      for (const [schemaName, relation] of candidates) {
+        const data = await fetchViewOneById(relation, authorId, schemaName);
+        if (data) return materializeAuthorId(data, authorId);
+      }
 
-      data = await fetchViewOneById("v_authors_public", authorId);
-      if (data) return data;
+      for (const [schemaName, relation] of candidates) {
+        const rows = await fetchRest(`${relation}?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schemaName);
+        if (rows[0]) return materializeAuthorId(rows[0], authorId);
+      }
 
-      return await fetchRestFirst([
-        { path: `v_author_page_public_v2?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `v_author_page_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" },
-        { path: `author_detail_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" }
-      ]);
+      return null;
     }
 
     async function fetchBooksByAuthorName(bookName) {
@@ -523,8 +530,18 @@
     async function fetchAuthorById(authorId) {
       if (!authorId) return null;
 
-      const fromView = await fetchViewOneById("v_authors_public", authorId);
-      if (fromView) return fromView;
+      const candidates = [
+        ["public", "v_authors_public"],
+        ["api", "authors_public"],
+        ["public", "authors_public"],
+        ["api", "author_detail_public"],
+        ["public", "author_detail_public"]
+      ];
+
+      for (const [schemaName, relation] of candidates) {
+        const data = await fetchViewOneById(relation, authorId, schemaName);
+        if (data) return materializeAuthorId(data, authorId);
+      }
 
       try {
         const { data, error } = await supabase
@@ -533,53 +550,64 @@
           .eq("id", authorId)
           .limit(1)
           .maybeSingle();
-        if (!error && data) return data;
+        if (!error && data) return materializeAuthorId(data, authorId);
       } catch (_) {}
 
-      return await fetchRestFirst([
-        { path: `v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
-        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" },
-        { path: `author_detail_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" }
-      ]);
+      for (const [schemaName, relation] of candidates) {
+        const rows = await fetchRest(`${relation}?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schemaName);
+        if (rows[0]) return materializeAuthorId(rows[0], authorId);
+      }
+
+      return null;
     }
 
     async function fetchAuthorByName(authorName) {
       const variants = buildNameVariants(authorName);
       if (!variants.length) return null;
       const wanted = new Set(variants.map(normalizeText));
+      const authorSearchSources = [
+        ["public", "v_authors_public"],
+        ["api", "authors_public"],
+        ["public", "authors_public"],
+        ["api", "author_detail_public"],
+        ["public", "author_detail_public"]
+      ];
 
       for (const variant of variants) {
-        try {
-          const { data, error } = await supabase
-            .from("v_authors_public")
-            .select("*")
-            .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
-            .limit(20);
+        for (const [schemaName, relation] of authorSearchSources) {
+          try {
+            const source = schemaName && schemaName !== "public" ? apiFrom(schemaName, relation) : supabase.from(relation);
+            const { data, error } = await source
+              .select("*")
+              .or(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)
+              .limit(20);
 
-          if (!error && Array.isArray(data) && data.length) {
-            const ranked = data.map(row => {
-              const p = normalizeText(row?.preferred_name);
-              const s = normalizeText(row?.sort_name);
+            if (!error && Array.isArray(data) && data.length) {
+              const ranked = data.map(row => {
+                const materialized = materializeAuthorId(row);
+                const p = normalizeText(materialized?.preferred_name);
+                const s = normalizeText(materialized?.sort_name);
+                const exact = wanted.has(p) || wanted.has(s);
+                return { row: materialized, exact };
+              }).sort((a, b) => Number(b.exact) - Number(a.exact));
+              if (ranked[0]?.row) return ranked[0].row;
+            }
+          } catch (_) {}
+
+          const rows = await fetchRest(
+            `${relation}?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`,
+            schemaName
+          );
+          if (Array.isArray(rows) && rows.length) {
+            const ranked = rows.map(row => {
+              const materialized = materializeAuthorId(row);
+              const p = normalizeText(materialized?.preferred_name);
+              const s = normalizeText(materialized?.sort_name);
               const exact = wanted.has(p) || wanted.has(s);
-              return { row, exact };
+              return { row: materialized, exact };
             }).sort((a, b) => Number(b.exact) - Number(a.exact));
             if (ranked[0]?.row) return ranked[0].row;
           }
-        } catch (_) {}
-
-        const rows = await fetchRest(
-          `v_authors_public?select=*&or=(${encodeURIComponent(`preferred_name.ilike.%${variant}%,sort_name.ilike.%${variant}%`)})&limit=20`
-        );
-        if (Array.isArray(rows) && rows.length) {
-          const ranked = rows.map(row => {
-            const p = normalizeText(row?.preferred_name);
-            const s = normalizeText(row?.sort_name);
-            const exact = wanted.has(p) || wanted.has(s);
-            return { row, exact };
-          }).sort((a, b) => Number(b.exact) - Number(a.exact));
-          if (ranked[0]?.row) return ranked[0].row;
         }
       }
 
@@ -633,19 +661,16 @@
 
       let rows = [];
       if (authorId) {
-        rows = await fetchViewManyByAuthorId("v_author_books_public_compat_v2", authorId);
-        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public_compat", authorId);
-        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public", authorId);
-        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId);
-        if (!rows.length) {
-          rows = await fetchRestManyFirst([
-            { path: `v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
-            { path: `v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
-            { path: `v_author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
-            { path: `author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
-            { path: `author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "api" }
-          ]);
-        }
+        rows = await fetchViewManyByAuthorId("v_author_books_public_compat_v2", authorId, "public");
+        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public_compat", authorId, "public");
+        if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public", authorId, "public");
+        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId, "api");
+        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId, "public");
+        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, "public");
+        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, "public");
+        if (!rows.length) rows = await fetchRest(`v_author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, "public");
+        if (!rows.length) rows = await fetchRest(`author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, "api");
+        if (!rows.length) rows = await fetchRest(`author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, "public");
       }
       if (Array.isArray(rows) && rows.length) return rows;
 
@@ -788,26 +813,11 @@
         return;
       }
 
-      const resolvedAuthorId = Number(author?.id || authorId || 0) || null;
-      if (resolvedAuthorId && (!author?.id || Number(author.id) !== resolvedAuthorId)) {
-        author = { ...author, id: resolvedAuthorId };
-      }
-      if (resolvedAuthorId) {
-        const currentUrl = new URL(location.href);
-        const currentId = String(currentUrl.searchParams.get("id") || "").trim();
-        const currentAuthorId = String(currentUrl.searchParams.get("author_id") || "").trim();
-        const resolvedString = String(resolvedAuthorId);
-        if (currentId !== resolvedString || currentAuthorId !== resolvedString) {
-          currentUrl.searchParams.set("id", resolvedString);
-          currentUrl.searchParams.set("author_id", resolvedString);
-          currentUrl.searchParams.delete("author");
-          history.replaceState(null, "", currentUrl.toString());
-        }
-      }
-
+      author = materializeAuthorId(author, authorId);
+      const resolvedAuthorId = normalizePositiveId(author?.id) || normalizePositiveId(author?.author_id) || authorId || null;
       const books = sortBooks(await fetchLinkedBooks(resolvedAuthorId, author));
 
-      const displayName = author.display_name || author.preferred_name || author.sort_name || "Sem nome";
+      const displayName = author.display_name || author.preferred_name || author.sort_name || author.name || "Sem nome";
       const secondaryName = [author.sort_name, author.preferred_name]
         .map(v => String(v || "").trim())
         .find(v => v && v !== displayName) || "";
@@ -815,21 +825,32 @@
       $("nameLine").textContent = displayName;
       $("heroIntro").textContent = buildHeroIntro(author, author.books_count_resolved || books.length || author.books_count || 0);
       setLine("sortLine", secondaryName);
-      $("bioLine").textContent = String(author.biography || author.notes || "—").trim() || "—";
+      $("bioLine").textContent = String(author.biography || author.bio || author.notes || "—").trim() || "—";
 
       setPill("yearsPill", "nascimento - falecimento", yearsLabel(author.birth_year, author.death_year));
-      setPill("countryPill", "País", author.country || "");
+      setPill("countryPill", "País", author.country || author.nationality || "");
       setPill("booksCountPill", "livros", String(author.books_count_resolved || books.length || author.books_count || 0));
-      setPill("viafPill", "VIAF", author.viaf_id || "");
-      setPill("isniPill", "ISNI", author.isni || "");
-      setPill("wikidataPill", "Wikidata", author.wikidata_id || "");
-      const sourceLabel = [author.source_kind || "", author.source_label || ""].filter(Boolean).join(" · ");
+      setPill("viafPill", "VIAF", author.viaf_id || author.viaf || "");
+      setPill("isniPill", "ISNI", author.isni || author.isni_id || "");
+      setPill("wikidataPill", "Wikidata", author.wikidata_id || author.wikidata || "");
+      const sourceLabel = [author.source_kind || "", author.source_label || "", author.catalog_source || ""].filter(Boolean).join(" · ");
       setPill("sourcePill", "fonte", sourceLabel);
 
-      setPhoto(author.photo_object_path || "");
+      setPhoto(author.photo_object_path || author.photo_url || "");
       renderBooks(books || []);
       setStatus("", "");
-      document.title = `${author.display_name || author.preferred_name || author.sort_name || "Autor"} - AnarBib`;
+      document.title = `${displayName || "Autor"} - AnarBib`;
+
+      if (resolvedAuthorId) {
+        const current = new URL(location.href);
+        const currentId = normalizePositiveId(current.searchParams.get("id"));
+        const currentAuthorId = normalizePositiveId(current.searchParams.get("author_id"));
+        if (currentId !== resolvedAuthorId || currentAuthorId !== resolvedAuthorId) {
+          current.searchParams.set("id", String(resolvedAuthorId));
+          current.searchParams.set("author_id", String(resolvedAuthorId));
+          history.replaceState(null, "", current.toString());
+        }
+      }
     }
 
     await setupContaButton();
