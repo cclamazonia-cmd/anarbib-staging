@@ -1010,6 +1010,8 @@ let authState = { user: null, isLibrarian: false, accessToken: null };
 let serviceState = null;
 let selectedLibraryKeys = new Set();
 let libraryAllExplicitlySelected = false;
+let authorAliasMap = new Map();
+let authorCanonicalMap = new Map();
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1642,6 +1644,48 @@ function buildLivroHref(row) {
   if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
   return url.toString();
 }
+function normalizeAliasKey(value) {
+  return normalize(String(value || '')
+    .replace(/[()\[\]{}]/g, ' ')
+    .replace(/\b(org|org\.|organizacao|organização|organizadora?|organizadores)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim());
+}
+function addAuthorAliasEntry(map, key, authorId) {
+  const normalizedKey = normalizeAliasKey(key);
+  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+  if (!normalizedKey || !normalizedAuthorId) return;
+  if (!map.has(normalizedKey)) map.set(normalizedKey, new Set());
+  map.get(normalizedKey).add(normalizedAuthorId);
+}
+function getUniqueAliasAuthorIdForChip(name, aliasMap) {
+  const normalizedKey = normalizeAliasKey(name);
+  if (!normalizedKey || !(aliasMap instanceof Map)) return null;
+  const ids = aliasMap.get(normalizedKey);
+  if (!ids || ids.size !== 1) return null;
+  const [authorId] = [...ids];
+  return normalizeAuthorIdValue(authorId);
+}
+async function loadAuthorAliasMap() {
+  const rows = await fetchRestRows(`author_name_aliases?select=${encodeURIComponent('author_id,alias_text,alias_norm,is_active')}&is_active=eq.true`, 'public');
+  const map = new Map();
+  for (const row of (rows || [])) {
+    addAuthorAliasEntry(map, row?.alias_text, row?.author_id);
+    addAuthorAliasEntry(map, row?.alias_norm, row?.author_id);
+  }
+  return map;
+}
+async function loadAuthorCanonicalMap() {
+  const rows = await fetchRestRows(`authors?select=${encodeURIComponent('id,sort_name,preferred_name')}`, 'public');
+  const map = new Map();
+  for (const row of (rows || [])) {
+    const authorId = normalizeAuthorIdValue(row?.id);
+    if (!authorId) continue;
+    const canonical = firstNonEmptyString(row?.sort_name, row?.preferred_name);
+    if (canonical) map.set(authorId, canonical);
+  }
+  return map;
+}
 function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const names = splitAuthorNames(authorValue);
   if (!names.length) return '<span class="muted">—</span>';
@@ -1827,9 +1871,11 @@ async function loadRowsFromSupabase() {
   try {
     const select = '*';
     const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, librarySupplementMap, res] = await Promise.all([
+    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap, res] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
       loadBookLibrarySupplementMap(),
+      loadAuthorAliasMap(),
+      loadAuthorCanonicalMap(),
       fetch(url, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -1845,6 +1891,7 @@ async function loadRowsFromSupabase() {
     }
     const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
+    authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
     return (data || []).map(r => {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
