@@ -46,14 +46,18 @@ html, body {
   background: var(--bg);
 }
 a { color: inherit; }
-.wrap { max-width: none; width: 100%; margin: 0; padding: 24px; }
+.wrap { --wrap-pad: 24px; max-width: none; width: 100%; margin: 0; padding: var(--wrap-pad); }
 .hero {
   border: 1px solid var(--line);
   background: linear-gradient(135deg, var(--red-2), var(--bg));
-  border-radius: 22px;
+  border-radius: 0 0 22px 22px;
   padding: 18px;
   box-shadow: var(--shadow);
   margin-bottom: 16px;
+  margin-left: calc(-1 * var(--wrap-pad));
+  margin-right: calc(-1 * var(--wrap-pad));
+  border-left: none;
+  border-right: none;
 }
 .topbar {
   display:flex;
@@ -434,6 +438,7 @@ a { color: inherit; }
   color:#fff;
 }
 .sheet {
+  position: relative;
   border:1px solid rgba(255,255,255,.10);
   border-radius:22px;
   overflow:hidden;
@@ -451,21 +456,22 @@ a { color: inherit; }
 }
 .sheet-head .title { font-weight:700; }
 .small { font-size:.86rem; color: var(--muted); }
-.table-wrap { overflow-y:auto; overflow-x:hidden; max-height:72vh; }
-.table-scroll-x {
+.table-wrap { overflow-y:auto; overflow-x:hidden; max-height:72vh; position:relative; }
+.table-x-scroll {
   overflow-x:auto;
-  overflow-y:hidden;
+  overflow-y:visible;
   scrollbar-width:none;
   -ms-overflow-style:none;
 }
-.table-scroll-x::-webkit-scrollbar {
-  height:0;
+.table-x-scroll::-webkit-scrollbar {
+  height:0 !important;
+  display:none !important;
 }
 .floating-x-scroll {
   position: fixed;
   left: 0;
-  right: 0;
   bottom: 0;
+  width: 0;
   height: 18px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -481,6 +487,34 @@ a { color: inherit; }
 }
 body.has-floating-x-scroll .footer {
   padding-bottom: 26px;
+}
+.table-jump-controls {
+  position: absolute;
+  top: 86px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 6;
+}
+.table-jump-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(12,12,12,.88);
+  color: var(--text);
+  font-weight: 900;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.table-jump-btn:hover {
+  border-color: rgba(255,255,255,.28);
+  transform: translateY(-1px);
+}
+.table-jump-btn:focus-visible {
+  outline: 2px solid rgba(255,255,255,.5);
+  outline-offset: 2px;
 }
 table {
   --col-ref-w: 136px;
@@ -742,7 +776,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   gap:8px;
 }
 @media (max-width: 640px) {
-  .wrap { padding: 14px; }
+  .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
   .filters-grid { grid-template-columns: 1fr; }
   .toolbar-actions { justify-content:flex-start; }
   .hero-actions { justify-content:flex-start; }
@@ -762,14 +796,15 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
 }
 @media (max-width: 760px) {
   .floating-x-scroll { display:none !important; }
+  .table-jump-controls { display:none; }
   .table-wrap {
     overflow:visible;
     max-height:none;
   }
-  .table-scroll-x {
+  .table-x-scroll {
     overflow:visible;
   }
-  .table-scroll-x > table {
+  .table-x-scroll > table {
     display:none;
   }
   .mobile-results {
@@ -887,8 +922,12 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <div class="small">Clique no cabeçalho para ordenar</div>
       </div>
     </div>
+    <div class="table-jump-controls" aria-label="Navegação vertical do quadro">
+      <button id="tableTopBtn" class="table-jump-btn" type="button" title="Ir para o topo" aria-label="Ir para o topo">↑</button>
+      <button id="tableBottomBtn" class="table-jump-btn" type="button" title="Ir para o fim" aria-label="Ir para o fim">↓</button>
+    </div>
     <div class="table-wrap">
-      <div id="tableScrollX" class="table-scroll-x">
+      <div id="tableXScroll" class="table-x-scroll">
       <table>
         <thead>
           <tr>
@@ -995,10 +1034,12 @@ const compactToggleBtn = document.getElementById('compactToggleBtn');
 const contextPill = document.getElementById('contextPill');
 const sortPill = document.getElementById('sortPill');
 const tableWrap = document.querySelector('.table-wrap');
-const tableScrollX = document.getElementById('tableScrollX');
-const catalogTable = tableScrollX?.querySelector('table');
+const tableXScroll = document.getElementById('tableXScroll');
+const catalogTable = tableXScroll?.querySelector('table') || tableWrap?.querySelector('table');
 const floatingXScroll = document.getElementById('floatingXScroll');
 const floatingXScrollInner = document.getElementById('floatingXScrollInner');
+const tableTopBtn = document.getElementById('tableTopBtn');
+const tableBottomBtn = document.getElementById('tableBottomBtn');
 
 function normalize(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -2138,35 +2179,57 @@ function render() {
   requestAnimationFrame(syncFloatingXScroll);
 }
 let syncingFloatingXScroll = false;
+function getHorizontalScrollHost() {
+  return tableXScroll || tableWrap;
+}
 function syncFloatingXScroll() {
-  if (!tableScrollX || !catalogTable || !floatingXScroll || !floatingXScrollInner) return;
+  const xScrollHost = getHorizontalScrollHost();
+  if (!xScrollHost || !catalogTable || !floatingXScroll || !floatingXScrollInner) return;
   const mobileMode = window.matchMedia('(max-width: 760px)').matches;
-  const hasOverflow = catalogTable.scrollWidth > tableScrollX.clientWidth + 1;
+  const hasOverflow = catalogTable.scrollWidth > xScrollHost.clientWidth + 1;
   if (mobileMode || !hasOverflow) {
     floatingXScroll.hidden = true;
+    floatingXScroll.style.left = '';
+    floatingXScroll.style.width = '';
     document.body.classList.remove('has-floating-x-scroll');
     return;
   }
+  const rect = xScrollHost.getBoundingClientRect();
   floatingXScroll.hidden = false;
   document.body.classList.add('has-floating-x-scroll');
+  floatingXScroll.style.left = `${Math.max(0, rect.left)}px`;
+  floatingXScroll.style.width = `${Math.max(0, rect.width)}px`;
   floatingXScrollInner.style.width = `${catalogTable.scrollWidth}px`;
-  if (!syncingFloatingXScroll) floatingXScroll.scrollLeft = tableScrollX.scrollLeft;
+  if (!syncingFloatingXScroll) floatingXScroll.scrollLeft = xScrollHost.scrollLeft;
 }
 function bindFloatingXScroll() {
-  if (!tableScrollX || !catalogTable || !floatingXScroll) return;
-  tableScrollX.addEventListener('scroll', () => {
+  const xScrollHost = getHorizontalScrollHost();
+  if (!xScrollHost || !catalogTable || !floatingXScroll) return;
+  xScrollHost.addEventListener('scroll', () => {
     if (syncingFloatingXScroll || floatingXScroll.hidden) return;
     syncingFloatingXScroll = true;
-    floatingXScroll.scrollLeft = tableScrollX.scrollLeft;
+    floatingXScroll.scrollLeft = xScrollHost.scrollLeft;
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   floatingXScroll.addEventListener('scroll', () => {
     if (syncingFloatingXScroll || floatingXScroll.hidden) return;
     syncingFloatingXScroll = true;
-    tableScrollX.scrollLeft = floatingXScroll.scrollLeft;
+    xScrollHost.scrollLeft = floatingXScroll.scrollLeft;
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   window.addEventListener('resize', syncFloatingXScroll, { passive: true });
+}
+function bindTableJumpControls() {
+  if (tableTopBtn && tableWrap) {
+    tableTopBtn.addEventListener('click', () => {
+      tableWrap.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  if (tableBottomBtn && tableWrap) {
+    tableBottomBtn.addEventListener('click', () => {
+      tableWrap.scrollTo({ top: tableWrap.scrollHeight, behavior: 'smooth' });
+    });
+  }
 }
 function debounce(fn, ms) {
   let t;
