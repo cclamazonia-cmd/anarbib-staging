@@ -1379,8 +1379,6 @@ function buildContextSummary(filtered) {
   }
   return items.map(item => `${item.label}: ${item.value}`).join(' · ');
 }
-const CATALOG_STATE_SESSION_KEY = `anarbib-catalog-state:${location.pathname}`;
-
 function syncStateToUrl() {
   const state = getFilterState();
   const url = new URL(location.href);
@@ -1409,35 +1407,9 @@ function syncStateToUrl() {
   if (state.compact) url.searchParams.set('compact', '1');
   else url.searchParams.delete('compact');
   history.replaceState(null, '', url.toString());
-  try { sessionStorage.setItem(CATALOG_STATE_SESSION_KEY, url.toString()); } catch (e) {}
-}
-function shouldRestoreCatalogStateFromSession() {
-  try {
-    const navEntry = performance.getEntriesByType?.('navigation')?.[0];
-    const navType = navEntry?.type || '';
-    return navType === 'reload' || navType === 'back_forward';
-  } catch (e) {
-    return false;
-  }
-}
-function getCatalogStateUrlForRestore() {
-  const currentUrl = new URL(location.href);
-  const trackedKeys = ['q','author','publisher','year','cdd','availability','libraries','sort','dir','compact'];
-  if (trackedKeys.some(key => currentUrl.searchParams.has(key))) return currentUrl;
-  if (!shouldRestoreCatalogStateFromSession()) return currentUrl;
-  try {
-    const stored = sessionStorage.getItem(CATALOG_STATE_SESSION_KEY);
-    if (!stored) return currentUrl;
-    const storedUrl = new URL(stored, location.origin);
-    if (storedUrl.origin !== location.origin) return currentUrl;
-    if (storedUrl.pathname !== location.pathname) return currentUrl;
-    return storedUrl;
-  } catch (e) {
-    return currentUrl;
-  }
 }
 function restoreStateFromUrl() {
-  const url = getCatalogStateUrlForRestore();
+  const url = new URL(location.href);
   search.value = url.searchParams.get('q') || '';
   authorFilter.value = url.searchParams.get('author') || '';
   publisherFilter.value = url.searchParams.get('publisher') || '';
@@ -1612,6 +1584,15 @@ function splitAuthorNames(value) {
     .map(part => part.trim())
     .filter(Boolean);
 }
+function normalizeAliasKey(value) {
+  return normalize(
+    String(value || '')
+      .replace(/\s*\([^)]*\)\s*/g, ' ')
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
 function buildAuthorNameVariants(value) {
   const raw = String(value || '').trim();
   const variants = new Set();
@@ -1644,6 +1625,51 @@ function findUniqueAuthorNameMatchIndex(names, relationNames, resolved) {
     }
   });
   return matches.length === 1 ? matches[0] : -1;
+}
+function buildAuthorAliasKeys(value) {
+  const raw = String(value || '').trim();
+  const variants = new Set();
+  const base = normalizeAliasKey(raw);
+  if (base) variants.add(base);
+  if (raw.includes(',')) {
+    const parts = raw.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const swapped = normalizeAliasKey(`${parts.slice(1).join(' ')} ${parts[0]}`);
+      if (swapped) variants.add(swapped);
+    }
+  }
+  return [...variants];
+}
+function dedupeAuthorRelationEntries(entries) {
+  const out = [];
+  const seen = new Set();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry?.author_id ?? entry);
+    if (!authorId) continue;
+    const ord = Number.isFinite(Number(entry?.ord)) ? Number(entry.ord) : null;
+    const key = `${authorId}|${ord ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...entry, authorId, ord });
+  }
+  return out.sort((a, b) => {
+    const ordA = Number.isFinite(a.ord) ? a.ord : Number.MAX_SAFE_INTEGER;
+    const ordB = Number.isFinite(b.ord) ? b.ord : Number.MAX_SAFE_INTEGER;
+    if (ordA !== ordB) return ordA - ordB;
+    return a.authorId - b.authorId;
+  });
+}
+function getAliasMatchedAuthorIdForChip(name, relationAuthorIds, authorAliasMap) {
+  if (!(authorAliasMap instanceof Map) || !authorAliasMap.size) return null;
+  const matches = new Set();
+  for (const key of buildAuthorAliasKeys(name)) {
+    const ids = authorAliasMap.get(key);
+    if (!ids) continue;
+    for (const authorId of ids) {
+      if (relationAuthorIds.has(authorId)) matches.add(authorId);
+    }
+  }
+  return matches.size === 1 ? [...matches][0] : null;
 }
 function splitAuthorIds(value) {
   if (Array.isArray(value)) return value.map(part => normalizeAuthorIdValue(part));
@@ -1757,36 +1783,42 @@ async function loadAuthorRelationsFromSupabase() {
   }
   return { byBookId, byBibRef };
 }
-function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId) {
+async function loadAuthorAliasMap() {
+  const rows = await fetchRestRows('author_name_aliases?select=author_id,alias_norm,is_active', 'public');
+  const map = new Map();
+  for (const row of (rows || [])) {
+    if (row?.is_active === false) continue;
+    const authorId = normalizeAuthorIdValue(row?.author_id);
+    const aliasKey = normalizeAliasKey(row?.alias_norm || '');
+    if (!authorId || !aliasKey) continue;
+    if (!map.has(aliasKey)) map.set(aliasKey, new Set());
+    map.get(aliasKey).add(authorId);
+  }
+  return map;
+}
+function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId, authorAliasMap) {
   const names = splitAuthorNames(authorValue);
   if (!names.length) return [];
 
   const resolved = new Array(names.length).fill(null);
-  const canUseOrdinalFallback = names.length === 1 && Array.isArray(relationEntries) && relationEntries.length === names.length;
+  const dedupedRelations = dedupeAuthorRelationEntries(relationEntries);
+  const relationAuthorIds = new Set(dedupedRelations.map(entry => entry.authorId).filter(Boolean));
 
-  if (Array.isArray(relationEntries) && relationEntries.length) {
-    relationEntries.forEach((entry, index) => {
-      const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry);
-      if (!authorId) return;
+  names.forEach((name, index) => {
+    const matchedAuthorId = getAliasMatchedAuthorIdForChip(name, relationAuthorIds, authorAliasMap);
+    if (matchedAuthorId) resolved[index] = matchedAuthorId;
+  });
 
-      const relationNames = [entry?.display_name, entry?.preferred_name, entry?.sort_name].filter(Boolean);
-      let position = findUniqueAuthorNameMatchIndex(names, relationNames, resolved);
+  dedupedRelations.forEach((entry) => {
+    const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry);
+    if (!authorId) return;
 
-      if (position < 0 && canUseOrdinalFallback) {
-        const ordNumber = Number(entry?.ord);
-        const fallbackPosition = Number.isInteger(ordNumber) && ordNumber >= 1 && ordNumber <= names.length
-          ? ordNumber - 1
-          : (index < names.length ? index : -1);
-        if (fallbackPosition >= 0 && fallbackPosition < names.length && !resolved[fallbackPosition]) {
-          position = fallbackPosition;
-        }
-      }
-
-      if (position >= 0 && position < names.length && !resolved[position]) {
-        resolved[position] = authorId;
-      }
-    });
-  }
+    const relationNames = [entry?.display_name, entry?.preferred_name, entry?.sort_name].filter(Boolean);
+    const position = findUniqueAuthorNameMatchIndex(names, relationNames, resolved);
+    if (position >= 0 && position < names.length && !resolved[position]) {
+      resolved[position] = authorId;
+    }
+  });
 
   if (names.length === 1 && !resolved[0] && fallbackAuthorId) {
     resolved[0] = normalizeAuthorIdValue(fallbackAuthorId);
@@ -1852,8 +1884,9 @@ async function loadRowsFromSupabase() {
   try {
     const select = '*';
     const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, librarySupplementMap, res] = await Promise.all([
+    const [authorRelations, authorAliasMap, librarySupplementMap, res] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
+      loadAuthorAliasMap(),
       loadBookLibrarySupplementMap(),
       fetch(url, {
         headers: {
@@ -1873,7 +1906,7 @@ async function loadRowsFromSupabase() {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
       const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId);
+      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId, authorAliasMap);
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
@@ -2568,21 +2601,6 @@ async function handleResultActions(e) {
 }
 tbody.addEventListener('click', handleResultActions);
 mobileResults.addEventListener('click', handleResultActions);
-let catalogInitDone = false;
-window.addEventListener('pagehide', () => {
-  if (!catalogInitDone) return;
-  syncStateToUrl();
-});
-window.addEventListener('pageshow', (e) => {
-  if (!catalogInitDone || !e.persisted) return;
-  restoreStateFromUrl();
-  render();
-});
-window.addEventListener('popstate', () => {
-  if (!catalogInitDone) return;
-  restoreStateFromUrl();
-  render();
-});
 document.addEventListener('keydown', (e) => {
   if (e.key === '/' && document.activeElement !== search && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
@@ -2602,7 +2620,6 @@ document.addEventListener('keydown', (e) => {
   rows = await loadRowsFromSupabase();
   prepareRows();
   render();
-  catalogInitDone = true;
 })();
 </script>
 </body>
