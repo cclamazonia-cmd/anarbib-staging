@@ -658,6 +658,7 @@
 
       const entries = names.map(name => ({ label: name, authorId: null }));
       const matchedLinkedAuthors = new Set();
+      const canUseOrdinalFallback = names.length > 0 && linkedAuthors.length === names.length;
 
       const findMatchingEntryIndex = (row) => {
         const targetVariants = new Set();
@@ -688,13 +689,30 @@
         matchedLinkedAuthors.add(linkedIndex);
       });
 
-      linkedAuthors.forEach((row, linkedIndex) => {
-        if (matchedLinkedAuthors.has(linkedIndex)) return;
-        const label = String(row?.display_name || row?.preferred_name || row?.sort_name || row?.name || "").trim();
-        const authorId = row?.id ?? row?.author_id ?? null;
-        if (!label) return;
-        entries.push({ label, authorId });
-      });
+      if (canUseOrdinalFallback) {
+        linkedAuthors.forEach((row, linkedIndex) => {
+          if (matchedLinkedAuthors.has(linkedIndex)) return;
+          const authorId = row?.id ?? row?.author_id ?? null;
+          if (!authorId) return;
+          const ordNumber = Number(row?.ord);
+          const fallbackIndex = Number.isInteger(ordNumber) && ordNumber >= 1 && ordNumber <= entries.length
+            ? ordNumber - 1
+            : (linkedIndex < entries.length ? linkedIndex : -1);
+          if (fallbackIndex < 0 || fallbackIndex >= entries.length) return;
+          if (entries[fallbackIndex]?.authorId) return;
+          entries[fallbackIndex].authorId = String(authorId).trim();
+          matchedLinkedAuthors.add(linkedIndex);
+        });
+      }
+
+      if (!entries.length) {
+        linkedAuthors.forEach((row) => {
+          const label = String(row?.display_name || row?.preferred_name || row?.sort_name || row?.name || "").trim();
+          const authorId = row?.id ?? row?.author_id ?? null;
+          if (!label) return;
+          entries.push({ label, authorId });
+        });
+      }
 
       if (entries.length === 1 && !entries[0].authorId && bookRow?.author_id != null) {
         entries[0].authorId = String(bookRow.author_id).trim();
