@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AnarBib - Autor</title>
-  <!-- build: 20260322-1 -->
+  <!-- build: 20260312-3 -->
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
@@ -248,7 +248,7 @@
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
 
-    const AUTHOR_BUILD = "20260322-1";
+    const AUTHOR_BUILD = "20260313-1";
     const EXTERNAL_AUTHOR_PHOTOS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/authors";
     document.documentElement.setAttribute("data-author-build", AUTHOR_BUILD);
 
@@ -412,14 +412,16 @@
       tryLoadImage(img, box, candidates, 0);
     }
 
-    async function fetchRest(path) {
+    async function fetchRest(path, schemaName = "public") {
       try {
+        const headers = {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Accept: "application/json"
+        };
+        if (schemaName && schemaName !== "public") headers["Accept-Profile"] = schemaName;
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            Accept: "application/json"
-          },
+          headers,
           cache: "no-store"
         });
         if (!res.ok) return [];
@@ -428,6 +430,22 @@
       } catch (_) {
         return [];
       }
+    }
+
+    async function fetchRestFirst(candidates) {
+      for (const candidate of (candidates || [])) {
+        const rows = await fetchRest(candidate.path, candidate.schema || "public");
+        if (Array.isArray(rows) && rows[0]) return rows[0];
+      }
+      return null;
+    }
+
+    async function fetchRestManyFirst(candidates) {
+      for (const candidate of (candidates || [])) {
+        const rows = await fetchRest(candidate.path, candidate.schema || "public");
+        if (Array.isArray(rows) && rows.length) return rows;
+      }
+      return [];
     }
 
     async function fetchViewOneById(viewName, idValue) {
@@ -465,11 +483,18 @@
       data = await fetchViewOneById("v_author_page_public", authorId);
       if (data) return data;
 
-      const rowsV2 = await fetchRest(`v_author_page_public_v2?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
-      if (rowsV2[0]) return rowsV2[0];
+      data = await fetchViewOneById("v_authors_public", authorId);
+      if (data) return data;
 
-      const rowsV1 = await fetchRest(`v_author_page_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
-      return rowsV1[0] || null;
+      return await fetchRestFirst([
+        { path: `v_author_page_public_v2?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `v_author_page_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" },
+        { path: `author_detail_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" }
+      ]);
     }
 
     async function fetchBooksByAuthorName(bookName) {
@@ -511,8 +536,13 @@
         if (!error && data) return data;
       } catch (_) {}
 
-      const rows = await fetchRest(`v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
-      return rows[0] || null;
+      return await fetchRestFirst([
+        { path: `v_authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "public" },
+        { path: `authors_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" },
+        { path: `author_detail_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`, schema: "api" }
+      ]);
     }
 
     async function fetchAuthorByName(authorName) {
@@ -606,9 +636,16 @@
         rows = await fetchViewManyByAuthorId("v_author_books_public_compat_v2", authorId);
         if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public_compat", authorId);
         if (!rows.length) rows = await fetchViewManyByAuthorId("v_author_books_public", authorId);
-        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
-        if (!rows.length) rows = await fetchRest(`v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
-        if (!rows.length) rows = await fetchRest(`v_author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`);
+        if (!rows.length) rows = await fetchViewManyByAuthorId("author_books_public", authorId);
+        if (!rows.length) {
+          rows = await fetchRestManyFirst([
+            { path: `v_author_books_public_compat_v2?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
+            { path: `v_author_books_public_compat?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
+            { path: `v_author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
+            { path: `author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "public" },
+            { path: `author_books_public?select=*&author_id=eq.${encodeURIComponent(authorId)}&order=ord.asc,titulo.asc`, schema: "api" }
+          ]);
+        }
       }
       if (Array.isArray(rows) && rows.length) return rows;
 
@@ -649,12 +686,7 @@
       for (const row of books) {
         const a = document.createElement("a");
         a.className = "book-card";
-        const livroUrl = new URL(ROUTES.LIVRO);
-        if (row.bib_ref) livroUrl.searchParams.set("ref", row.bib_ref);
-        if (row.library_id) livroUrl.searchParams.set("library_id", row.library_id);
-        if (row.library_slug) livroUrl.searchParams.set("library_slug", row.library_slug);
-        if (row.library_name) livroUrl.searchParams.set("library_name", row.library_name);
-        a.href = livroUrl.toString();
+        a.href = `${ROUTES.LIVRO}?ref=${encodeURIComponent(row.bib_ref || "")}`;
 
         const title = document.createElement("div");
         title.className = "book-title";
@@ -745,18 +777,6 @@
         }
       }
 
-      if (author?.id) {
-        const canonicalUrl = new URL(location.href);
-        canonicalUrl.searchParams.set("id", String(author.id));
-        canonicalUrl.searchParams.set("author_id", String(author.id));
-        canonicalUrl.searchParams.delete("author");
-        canonicalUrl.searchParams.delete("name");
-        canonicalUrl.searchParams.delete("autor");
-        canonicalUrl.searchParams.delete("preferred_name");
-        canonicalUrl.searchParams.delete("sort_name");
-        history.replaceState(null, "", canonicalUrl.toString());
-      }
-
       if (!author) {
         $("nameLine").textContent = "Autor não encontrado";
         $("heroIntro").textContent = "Não encontrei este autor nas vistas públicas.";
@@ -768,7 +788,24 @@
         return;
       }
 
-      const books = sortBooks(await fetchLinkedBooks(author.id, author));
+      const resolvedAuthorId = Number(author?.id || authorId || 0) || null;
+      if (resolvedAuthorId && (!author?.id || Number(author.id) !== resolvedAuthorId)) {
+        author = { ...author, id: resolvedAuthorId };
+      }
+      if (resolvedAuthorId) {
+        const currentUrl = new URL(location.href);
+        const currentId = String(currentUrl.searchParams.get("id") || "").trim();
+        const currentAuthorId = String(currentUrl.searchParams.get("author_id") || "").trim();
+        const resolvedString = String(resolvedAuthorId);
+        if (currentId !== resolvedString || currentAuthorId !== resolvedString) {
+          currentUrl.searchParams.set("id", resolvedString);
+          currentUrl.searchParams.set("author_id", resolvedString);
+          currentUrl.searchParams.delete("author");
+          history.replaceState(null, "", currentUrl.toString());
+        }
+      }
+
+      const books = sortBooks(await fetchLinkedBooks(resolvedAuthorId, author));
 
       const displayName = author.display_name || author.preferred_name || author.sort_name || "Sem nome";
       const secondaryName = [author.sort_name, author.preferred_name]

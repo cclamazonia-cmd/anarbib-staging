@@ -46,7 +46,7 @@ html, body {
   background: var(--bg);
 }
 a { color: inherit; }
-.wrap { max-width: none; width: 100%; margin: 0; padding: 24px; }
+.wrap { max-width: 1680px; width: 100%; margin: 0 auto; padding: 24px; }
 .hero {
   border: 1px solid var(--line);
   background: linear-gradient(135deg, var(--red-2), var(--bg));
@@ -451,7 +451,7 @@ a { color: inherit; }
 }
 .sheet-head .title { font-weight:700; }
 .small { font-size:.86rem; color: var(--muted); }
-.table-wrap { overflow-y:auto; overflow-x:hidden; max-height:72vh; }
+.table-wrap { overflow:auto; max-height:72vh; }
 .floating-x-scroll {
   position: fixed;
   left: 0;
@@ -909,7 +909,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
-const AUTHOR_PAGE_VERSION = '20260322-1';
+const AUTHOR_PAGE_VERSION = '20260312-3';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1564,25 +1564,31 @@ function splitAuthorIds(value) {
     .map(part => normalizeAuthorIdValue(part));
 }
 function buildAuthorHref(authorId) {
-  const normalizedId = normalizeAuthorIdValue(authorId);
-  if (!normalizedId) return '#';
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
   params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-  params.set('id', String(normalizedId));
-  params.set('author_id', String(normalizedId));
+  if (authorId) {
+    params.set('id', String(authorId));
+    params.set('author_id', String(authorId));
+  }
   return `${AUTOR_URL}?${params.toString()}`;
 }
 
 async function findAuthorIdForNavigation(authorName) {
   const raw = String(authorName || '').trim();
   if (!raw) return null;
-  const exactTables = ['authors', 'v_authors_public', 'authors_public'];
-  for (const table of exactTables) {
+  const exactSources = [
+    { table: 'authors', schema: 'public' },
+    { table: 'v_authors_public', schema: 'public' },
+    { table: 'authors_public', schema: 'public' },
+    { table: 'authors_public', schema: 'api' },
+    { table: 'author_detail_public', schema: 'api' }
+  ];
+  for (const source of exactSources) {
     for (const field of ['sort_name', 'preferred_name']) {
       try {
-        const path = `${table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
-        const data = await fetchRestRows(path, 'public');
+        const path = `${source.table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
+        const data = await fetchRestRows(path, source.schema);
         if (Array.isArray(data) && data.length === 1) {
           const id = normalizeAuthorIdValue(data[0]?.id);
           if (id) return id;
@@ -1614,9 +1620,11 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const parts = names.map((name, idx) => {
     const authorId = ids[idx] ?? singleId ?? null;
     const label = highlightHTML(name, terms);
-    const href = buildAuthorHref(authorId);
-    const dataId = authorId ? ` data-author-id="${authorId}"` : '';
-    return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}"${dataId}>${label}</a>`;
+    if (authorId) {
+      const href = buildAuthorHref(authorId);
+      return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}" data-author-id="${authorId}">${label}</a>`;
+    }
+    return `<span class="tag-link author-chip-static" title="Sem ficha de autor publicada para este nome.">${label}</span>`;
   });
 
   return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
@@ -1657,37 +1665,38 @@ async function loadAuthorLookupFromSupabase() {
   const datasets = await Promise.all([
     fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
     fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
+    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
+    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'api'),
+    fetchRestRows(`author_detail_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'api')
   ]);
   const data = chooseLargestDataset(...datasets);
   const map = new Map();
   for (const row of (data || [])) {
     const authorId = normalizeAuthorIdValue(row?.id);
     if (!authorId) continue;
-    const labels = [row?.sort_name, row?.preferred_name].filter(Boolean);
-    for (const label of labels) {
-      for (const key of buildAuthorNameVariants(label)) {
-        if (!map.has(key)) map.set(key, new Set());
-        map.get(key).add(authorId);
-      }
+    const keys = [normalize(row?.sort_name), normalize(row?.preferred_name)].filter(Boolean);
+    for (const key of keys) {
+      if (!map.has(key)) map.set(key, new Set());
+      map.get(key).add(authorId);
     }
   }
   return map;
 }
 async function loadAuthorRelationsFromSupabase() {
   const selectCandidates = [
-    'author_id,book_id,bib_ref,autor,display_name,preferred_name,sort_name,role,ord',
-    'author_id,book_id,bib_ref,autor,display_name,preferred_name,sort_name,role',
-    'author_id,book_id,bib_ref,autor,display_name,preferred_name,sort_name',
     'author_id,book_id,bib_ref,autor,role,ord',
     'author_id,book_id,bib_ref,autor,role',
     'author_id,book_id,bib_ref,autor'
   ];
-  const viewNames = ['v_author_books_public_compat_v2', 'v_author_books_public_compat', 'v_author_books_public'];
+  const relationSources = [
+    { table: 'v_author_books_public', schema: 'public' },
+    { table: 'author_books_public', schema: 'public' },
+    { table: 'author_books_public', schema: 'api' }
+  ];
   const datasets = [];
-  for (const viewName of viewNames) {
-    for (const select of selectCandidates) {
-      datasets.push(await fetchRestRows(`${viewName}?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public'));
+  for (const select of selectCandidates) {
+    for (const source of relationSources) {
+      datasets.push(await fetchRestRows(`${source.table}?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, source.schema));
     }
   }
   const data = chooseLargestDataset(...datasets);
@@ -2498,13 +2507,15 @@ async function handleResultActions(e) {
         authorBtn.dataset.authorId = authorId;
       }
     }
-    const normalizedAuthorId = normalizeAuthorIdValue(authorId);
-    if (!normalizedAuthorId) return;
     const params = new URLSearchParams();
     params.set('v', AUTHOR_PAGE_VERSION);
     params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    params.set('id', String(normalizedAuthorId));
-    params.set('author_id', String(normalizedAuthorId));
+    if (authorId) {
+      params.set('id', authorId);
+      params.set('author_id', authorId);
+    } else if (authorName) {
+      params.set('author', authorName);
+    }
     location.assign(`${AUTOR_URL}?${params.toString()}`);
     return;
   }
