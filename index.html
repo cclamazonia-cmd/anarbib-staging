@@ -2213,6 +2213,97 @@ function buildRowMarkup(r) {
     `
   };
 }
+
+function matchesNormalizedFilter(valueNorm, valueVariant, rawFilter) {
+  const filter = String(rawFilter || '').trim();
+  if (!filter) return true;
+  const parsed = parseQuery(filter);
+  const direct = String(valueNorm || '');
+  const variant = String(valueVariant || orthographySkeleton(valueNorm || ''));
+
+  for (const phrase of parsed.phrases) {
+    const forms = getExpandedTermForms(phrase);
+    const ok = forms.normalized.some(form => direct.includes(form))
+      || forms.skeletons.some(form => form && variant.includes(form));
+    if (!ok) return false;
+  }
+  for (const token of parsed.tokens) {
+    const forms = getExpandedTermForms(token);
+    const ok = forms.normalized.some(form => direct.includes(form))
+      || forms.skeletons.some(form => form && variant.includes(form));
+    if (!ok) return false;
+  }
+  return true;
+}
+function compareNullableText(a, b) {
+  return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
+}
+function currentRows() {
+  lastQuery = parseQuery(search.value || '');
+  const availabilityValue = availabilityFilter.value || 'all';
+  const filtered = rows.filter((r) => {
+    const queryMatch = scoreRow(r, lastQuery);
+    r._score = queryMatch.score || 0;
+    if (!queryMatch.ok) return false;
+    if (!matchesNormalizedFilter(r._n.autor, r._variantAutor, authorFilter.value)) return false;
+    if (!matchesNormalizedFilter(r._n.editora, orthographySkeleton(r._n.editora), publisherFilter.value)) return false;
+    if (!matchYearField(r.ano, yearFilter.value)) return false;
+    if (!matchesNormalizedFilter(r._n.cdd, orthographySkeleton(r._n.cdd), cddFilter.value)) return false;
+    if (availabilityValue !== 'all' && r._status?.key !== availabilityValue) return false;
+    if (!libraryAllExplicitlySelected && selectedLibraryKeys.size) {
+      const libraryKey = getLibraryKey(r.biblioteca || '');
+      if (!selectedLibraryKeys.has(libraryKey)) return false;
+    }
+    return true;
+  });
+
+  const statusRank = { available: 0, local: 1, unavailable: 2 };
+  filtered.sort((a, b) => {
+    if (sortKey === 'relevance') {
+      const scoreDiff = (b._score || 0) - (a._score || 0);
+      if (scoreDiff) return scoreDiff;
+      const titleCmp = compareNullableText(a.titulo, b.titulo);
+      if (titleCmp) return titleCmp;
+      return compareNullableText(a.bib_ref, b.bib_ref);
+    }
+    let cmp = 0;
+    if (sortKey === 'status') {
+      cmp = (statusRank[a._status?.key] ?? 99) - (statusRank[b._status?.key] ?? 99);
+    } else if (sortKey === 'ano') {
+      const av = parseInt(String(a.ano || '').replace(/[^0-9-]/g, ''), 10);
+      const bv = parseInt(String(b.ano || '').replace(/[^0-9-]/g, ''), 10);
+      cmp = (Number.isFinite(av) ? av : -999999) - (Number.isFinite(bv) ? bv : -999999);
+    } else if (sortKey === 'autor') {
+      cmp = compareNullableText(a.author_display || a.autor, b.author_display || b.autor);
+    } else {
+      cmp = compareNullableText(a[sortKey], b[sortKey]);
+    }
+    if (cmp === 0) cmp = compareNullableText(a.bib_ref, b.bib_ref);
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+  return filtered;
+}
+function updateStats(filtered) {
+  totalPill.textContent = `Total: ${rows.length}`;
+  visiblePill.textContent = `Exibidos: ${filtered.length}`;
+  const availableNow = filtered.filter(r => r._status?.key === 'available').length;
+  statusPill.textContent = `Disponíveis agora: ${availableNow}`;
+  contextPill.textContent = buildContextSummary(filtered);
+  sortPill.textContent = getSortLabel();
+}
+function paintHeaderSort() {
+  document.querySelectorAll('thead th[data-key]').forEach((th) => {
+    const existing = th.querySelector('.sort-indicator');
+    if (existing) existing.remove();
+    const key = th.dataset.key;
+    if (key !== sortKey) return;
+    const span = document.createElement('span');
+    span.className = 'sort-indicator';
+    span.textContent = sortKey === 'relevance' ? '•' : (sortDir === 'desc' ? '↓' : '↑');
+    th.appendChild(span);
+  });
+}
+
 function render() {
   const filtered = currentRows();
   tbody.innerHTML = '';
