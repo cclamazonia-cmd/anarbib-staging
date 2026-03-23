@@ -1682,6 +1682,21 @@ function getUniqueAliasAuthorIdForChip(name, authorAliasMap) {
   }
   return matches.size === 1 ? [...matches][0] : null;
 }
+function authorIdMatchesSingleChip(authorId, name, authorAliasMap) {
+  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+  if (!normalizedAuthorId) return false;
+
+  for (const key of buildAuthorAliasKeys(name)) {
+    const ids = authorAliasMap?.get(key);
+    if (ids && ids.has(normalizedAuthorId)) return true;
+  }
+
+  const canonicalName = firstNonEmptyString(authorCanonicalMap.get(normalizedAuthorId));
+  if (!canonicalName) return false;
+
+  const chipVariants = new Set(buildAuthorNameVariants(name));
+  return buildAuthorNameVariants(canonicalName).some(variant => chipVariants.has(variant));
+}
 function splitAuthorIds(value) {
   if (Array.isArray(value)) return value.map(part => normalizeAuthorIdValue(part));
   if (value === null || value === undefined) return [];
@@ -1847,7 +1862,10 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId, 
   });
 
   if (names.length === 1 && !resolved[0] && fallbackAuthorId) {
-    resolved[0] = normalizeAuthorIdValue(fallbackAuthorId);
+    const normalizedFallbackAuthorId = normalizeAuthorIdValue(fallbackAuthorId);
+    if (authorIdMatchesSingleChip(normalizedFallbackAuthorId, names[0], authorAliasMap)) {
+      resolved[0] = normalizedFallbackAuthorId;
+    }
   }
 
   return resolved.some(Boolean) ? resolved : [];
