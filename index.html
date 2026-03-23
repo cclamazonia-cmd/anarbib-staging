@@ -458,10 +458,10 @@ a { color: inherit; }
 }
 .sheet-head .title { font-weight:700; }
 .small { font-size:.86rem; color: var(--muted); }
-.table-wrap { overflow-y:auto; overflow-x:hidden; max-height:72vh; position:relative; }
+.table-wrap { overflow:hidden; max-height:72vh; position:relative; }
 .table-x-scroll {
-  overflow-x:auto;
-  overflow-y:visible;
+  overflow:auto;
+  max-height:72vh;
   scrollbar-width:none;
   -ms-overflow-style:none;
 }
@@ -2226,16 +2226,17 @@ function bindFloatingXScroll() {
 }
 function bindTableJumpControls() {
   const targetSection = document.querySelector('.sheet');
-  if (tableTopBtn && tableWrap) {
+  const verticalScrollHost = tableXScroll || tableWrap;
+  if (tableTopBtn && verticalScrollHost) {
     tableTopBtn.addEventListener('click', () => {
-      tableWrap.scrollTo({ top: 0, behavior: 'smooth' });
+      verticalScrollHost.scrollTo({ top: 0, behavior: 'smooth' });
       const topY = Math.max(0, window.scrollY + (targetSection?.getBoundingClientRect().top || 0) - 18);
       window.scrollTo({ top: topY, behavior: 'smooth' });
     });
   }
-  if (tableBottomBtn && tableWrap) {
+  if (tableBottomBtn && verticalScrollHost) {
     tableBottomBtn.addEventListener('click', () => {
-      tableWrap.scrollTo({ top: tableWrap.scrollHeight, behavior: 'smooth' });
+      verticalScrollHost.scrollTo({ top: verticalScrollHost.scrollHeight, behavior: 'smooth' });
       const sectionBottom = window.scrollY + (targetSection?.getBoundingClientRect().bottom || 0);
       const viewportBottomTarget = Math.max(0, sectionBottom - window.innerHeight + 18);
       window.scrollTo({ top: viewportBottomTarget, behavior: 'smooth' });
