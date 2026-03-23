@@ -923,7 +923,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   <section class="sheet">
     <div class="sheet-head">
       <div>
-        <div class="title">AnarBib · Catálogo(s) consultável(is)</div>
+        <div class="title">AnarBib · Catálogo(s) consultável-is</div>
         <div class="small">Clique no cabeçalho para ordenar</div>
       </div>
     </div>
@@ -1010,6 +1010,7 @@ let authState = { user: null, isLibrarian: false, accessToken: null };
 let serviceState = null;
 let authorCanonicalMap = new Map();
 let authorAliasMap = new Map();
+let authorCanonicalKeyMap = new Map();
 let selectedLibraryKeys = new Set();
 let libraryAllExplicitlySelected = false;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
@@ -1586,15 +1587,6 @@ function splitAuthorNames(value) {
     .map(part => part.trim())
     .filter(Boolean);
 }
-function normalizeAliasKey(value) {
-  return normalize(
-    String(value || '')
-      .replace(/\s*\([^)]*\)\s*/g, ' ')
-      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
-}
 function buildAuthorNameVariants(value) {
   const raw = String(value || '').trim();
   const variants = new Set();
@@ -1628,6 +1620,22 @@ function findUniqueAuthorNameMatchIndex(names, relationNames, resolved) {
   });
   return matches.length === 1 ? matches[0] : -1;
 }
+function splitAuthorIds(value) {
+  if (Array.isArray(value)) return value.map(part => normalizeAuthorIdValue(part));
+  if (value === null || value === undefined) return [];
+  return String(value)
+    .split(';')
+    .map(part => normalizeAuthorIdValue(part));
+}
+function normalizeAliasKey(value) {
+  return normalize(
+    String(value || '')
+      .replace(/\s*\([^)]*\)\s*/g, ' ')
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
 function buildAuthorAliasKeys(value) {
   const raw = String(value || '').trim();
   const variants = new Set();
@@ -1642,59 +1650,46 @@ function buildAuthorAliasKeys(value) {
   }
   return [...variants];
 }
-function dedupeAuthorRelationEntries(entries) {
-  const out = [];
-  const seen = new Set();
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry?.author_id ?? entry);
-    if (!authorId) continue;
-    const ord = Number.isFinite(Number(entry?.ord)) ? Number(entry.ord) : null;
-    const key = `${authorId}|${ord ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ ...entry, authorId, ord });
-  }
-  return out.sort((a, b) => {
-    const ordA = Number.isFinite(a.ord) ? a.ord : Number.MAX_SAFE_INTEGER;
-    const ordB = Number.isFinite(b.ord) ? b.ord : Number.MAX_SAFE_INTEGER;
-    if (ordA !== ordB) return ordA - ordB;
-    return a.authorId - b.authorId;
-  });
+function addAuthorLookupKey(map, key, authorId) {
+  if (!key || !authorId) return;
+  if (!map.has(key)) map.set(key, new Set());
+  map.get(key).add(authorId);
 }
-function getAliasMatchedAuthorIdForChip(name, relationAuthorIds, authorAliasMap) {
-  if (!(authorAliasMap instanceof Map) || !authorAliasMap.size) return null;
+function getUniqueAuthorIdFromLookupMap(name, lookupMap) {
+  if (!(lookupMap instanceof Map) || !lookupMap.size) return null;
   const matches = new Set();
   for (const key of buildAuthorAliasKeys(name)) {
-    const ids = authorAliasMap.get(key);
+    const ids = lookupMap.get(key);
     if (!ids) continue;
     for (const authorId of ids) {
-      if (relationAuthorIds.has(authorId)) matches.add(authorId);
+      const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+      if (normalizedAuthorId) matches.add(normalizedAuthorId);
     }
   }
   return matches.size === 1 ? [...matches][0] : null;
 }
-function getUniqueAliasAuthorIdForChip(name, authorAliasMap) {
-  if (!(authorAliasMap instanceof Map) || !authorAliasMap.size) return null;
-  const matches = new Set();
-  for (const key of buildAuthorAliasKeys(name)) {
-    const ids = authorAliasMap.get(key);
-    if (!ids) continue;
-    for (const authorId of ids) matches.add(authorId);
-  }
-  return matches.size === 1 ? [...matches][0] : null;
-}
-
-function resolveDisplayAuthorIdForChip(name, explicitAuthorId) {
+function getResolvedAuthorIdForChip(name, explicitAuthorId) {
   const normalizedExplicitAuthorId = normalizeAuthorIdValue(explicitAuthorId);
   if (normalizedExplicitAuthorId) return normalizedExplicitAuthorId;
-  return getUniqueAliasAuthorIdForChip(name, authorAliasMap);
+  return getUniqueAuthorIdFromLookupMap(name, authorAliasMap)
+    ?? getUniqueAuthorIdFromLookupMap(name, authorCanonicalKeyMap)
+    ?? null;
 }
-function splitAuthorIds(value) {
-  if (Array.isArray(value)) return value.map(part => normalizeAuthorIdValue(part));
-  if (value === null || value === undefined) return [];
-  return String(value)
-    .split(';')
-    .map(part => normalizeAuthorIdValue(part));
+function getCanonicalAuthorName(authorId, fallbackName) {
+  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+  if (!normalizedAuthorId) return fallbackName;
+  return firstNonEmptyString(authorCanonicalMap.get(normalizedAuthorId), fallbackName) || fallbackName;
+}
+function authorIdMatchesChip(authorId, chipName) {
+  const normalizedAuthorId = normalizeAuthorIdValue(authorId);
+  if (!normalizedAuthorId) return false;
+  for (const key of buildAuthorAliasKeys(chipName)) {
+    const aliasIds = authorAliasMap.get(key);
+    if (aliasIds && aliasIds.has(normalizedAuthorId)) return true;
+    const canonicalIds = authorCanonicalKeyMap.get(key);
+    if (canonicalIds && canonicalIds.has(normalizedAuthorId)) return true;
+  }
+  return false;
 }
 function buildAuthorHref(authorId) {
   const params = new URLSearchParams();
@@ -1722,14 +1717,12 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
   const singleId = names.length === 1 ? normalizeAuthorIdValue(authorIdsValue) : null;
   const parts = names.map((name, idx) => {
     const explicitAuthorId = ids[idx] ?? singleId ?? null;
-    const displayAuthorId = resolveDisplayAuthorIdForChip(name, explicitAuthorId);
-    const authorId = normalizeAuthorIdValue(explicitAuthorId)
-      ?? (names.length === 1 ? displayAuthorId : null);
-    const displayName = displayAuthorId ? firstNonEmptyString(authorCanonicalMap.get(displayAuthorId), name) : name;
+    const resolvedAuthorId = getResolvedAuthorIdForChip(name, explicitAuthorId);
+    const displayName = getCanonicalAuthorName(resolvedAuthorId, name);
     const label = highlightHTML(displayName, terms);
-    const href = buildAuthorHref(authorId);
-    if (authorId) {
-      return `<a class="tag-link author-chip" href="${href}" data-author-id="${authorId}">${label}</a>`;
+    if (resolvedAuthorId) {
+      const href = buildAuthorHref(resolvedAuthorId);
+      return `<a class="tag-link author-chip" href="${href}" data-author-id="${resolvedAuthorId}">${label}</a>`;
     }
     return `<span class="tag-link author-chip author-chip-static" aria-disabled="true">${label}</span>`;
   });
@@ -1813,51 +1806,62 @@ async function loadAuthorAliasMap() {
     const authorId = normalizeAuthorIdValue(row?.author_id);
     const aliasKey = normalizeAliasKey(row?.alias_norm || '');
     if (!authorId || !aliasKey) continue;
-    if (!map.has(aliasKey)) map.set(aliasKey, new Set());
-    map.get(aliasKey).add(authorId);
+    addAuthorLookupKey(map, aliasKey, authorId);
   }
   return map;
 }
-async function loadAuthorCanonicalMap() {
+async function loadAuthorCanonicalResources() {
   const rows = await fetchRestRows('authors?select=id,sort_name,preferred_name', 'public');
-  const map = new Map();
+  const canonicalMap = new Map();
+  const canonicalKeyMap = new Map();
   for (const row of (rows || [])) {
     const authorId = normalizeAuthorIdValue(row?.id);
     const canonicalName = firstNonEmptyString(row?.sort_name, row?.preferred_name);
     if (!authorId || !canonicalName) continue;
-    map.set(authorId, canonicalName);
+    canonicalMap.set(authorId, canonicalName);
+    for (const value of [row?.sort_name, row?.preferred_name]) {
+      for (const key of buildAuthorAliasKeys(value || '')) addAuthorLookupKey(canonicalKeyMap, key, authorId);
+    }
   }
-  return map;
+  return { canonicalMap, canonicalKeyMap };
 }
-function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId, authorAliasMap) {
+function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId) {
   const names = splitAuthorNames(authorValue);
   if (!names.length) return [];
 
   const resolved = new Array(names.length).fill(null);
-  const dedupedRelations = dedupeAuthorRelationEntries(relationEntries);
-  const relationAuthorIds = new Set(dedupedRelations.map(entry => entry.authorId).filter(Boolean));
 
-  names.forEach((name, index) => {
-    let matchedAuthorId = getAliasMatchedAuthorIdForChip(name, relationAuthorIds, authorAliasMap);
-    if (!matchedAuthorId && names.length === 1) {
-      matchedAuthorId = getUniqueAliasAuthorIdForChip(name, authorAliasMap);
+  if (Array.isArray(relationEntries) && relationEntries.length) {
+    relationEntries.forEach((entry, index) => {
+      const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry);
+      if (!authorId) return;
+
+      const relationNames = [entry?.display_name, entry?.preferred_name, entry?.sort_name].filter(Boolean);
+      let position = findUniqueAuthorNameMatchIndex(names, relationNames, resolved);
+
+      if (position < 0) {
+        const ordNumber = Number(entry?.ord);
+        const fallbackPosition = Number.isInteger(ordNumber) && ordNumber >= 1 && ordNumber <= names.length
+          ? ordNumber - 1
+          : (index < names.length ? index : -1);
+        if (fallbackPosition >= 0 && fallbackPosition < names.length && !resolved[fallbackPosition]) {
+          position = fallbackPosition;
+        }
+      }
+
+      if (position >= 0 && position < names.length && !resolved[position]) {
+        resolved[position] = authorId;
+      }
+    });
+  }
+
+  if (names.length === 1 && !resolved[0]) {
+    const aliasResolvedAuthorId = getResolvedAuthorIdForChip(names[0], null);
+    if (aliasResolvedAuthorId) {
+      resolved[0] = aliasResolvedAuthorId;
+    } else if (fallbackAuthorId && authorIdMatchesChip(fallbackAuthorId, names[0])) {
+      resolved[0] = normalizeAuthorIdValue(fallbackAuthorId);
     }
-    if (matchedAuthorId) resolved[index] = matchedAuthorId;
-  });
-
-  dedupedRelations.forEach((entry) => {
-    const authorId = normalizeAuthorIdValue(entry?.authorId ?? entry);
-    if (!authorId) return;
-
-    const relationNames = [entry?.display_name, entry?.preferred_name, entry?.sort_name].filter(Boolean);
-    const position = findUniqueAuthorNameMatchIndex(names, relationNames, resolved);
-    if (position >= 0 && position < names.length && !resolved[position]) {
-      resolved[position] = authorId;
-    }
-  });
-
-  if (names.length === 1 && !resolved[0] && fallbackAuthorId) {
-    resolved[0] = normalizeAuthorIdValue(fallbackAuthorId);
   }
 
   return resolved.some(Boolean) ? resolved : [];
@@ -1920,10 +1924,10 @@ async function loadRowsFromSupabase() {
   try {
     const select = '*';
     const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, loadedAuthorAliasMap, canonicalAuthorMap, librarySupplementMap, res] = await Promise.all([
+    const [authorRelations, loadedAuthorAliasMap, canonicalResources, librarySupplementMap, res] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
       loadAuthorAliasMap(),
-      loadAuthorCanonicalMap(),
+      loadAuthorCanonicalResources(),
       loadBookLibrarySupplementMap(),
       fetch(url, {
         headers: {
@@ -1933,8 +1937,9 @@ async function loadRowsFromSupabase() {
         }
       })
     ]);
-    authorCanonicalMap = canonicalAuthorMap instanceof Map ? canonicalAuthorMap : new Map();
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
+    authorCanonicalMap = canonicalResources?.canonicalMap instanceof Map ? canonicalResources.canonicalMap : new Map();
+    authorCanonicalKeyMap = canonicalResources?.canonicalKeyMap instanceof Map ? canonicalResources.canonicalKeyMap : new Map();
     const text = await res.text();
     if (!res.ok) {
       alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
@@ -1945,8 +1950,7 @@ async function loadRowsFromSupabase() {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
       const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorNameCount = splitAuthorNames(r.autor ?? '').length;
-      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId, authorAliasMap);
+      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId);
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
@@ -1961,7 +1965,7 @@ async function loadRowsFromSupabase() {
         library_slug: r.library_slug ?? '',
         library_name: r.library_name ?? '',
         author_id: authorId,
-        author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorNameCount === 1 && authorId ? String(authorId) : ''),
+        author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
