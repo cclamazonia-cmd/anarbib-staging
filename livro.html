@@ -239,7 +239,7 @@
       CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
       PAINEL: `${GH_BASE}/anarbib-conta-staging/painel.html`,
       AUTOR: new URL("autor.html", location.href).toString(),
-      AUTHOR_PAGE_VERSION: '20260313-1',
+      AUTHOR_PAGE_VERSION: '20260322-1',
     };
 
     document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
@@ -632,51 +632,33 @@
       return matches.size === 1 ? Array.from(matches)[0] : null;
     }
 
-    function authorUrl(authorId, authorName = "") {
+    function authorUrl(authorId) {
+      const rawId = String(authorId ?? "").trim();
+      if (!rawId) return "#";
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
       params.set("_cb", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      if (authorId != null && String(authorId).trim()) {
-        const id = String(authorId).trim();
-        params.set("id", id);
-        params.set("author_id", id);
-      } else if (authorName && String(authorName).trim()) {
-        params.set("author", String(authorName).trim());
-      }
+      params.set("id", rawId);
+      params.set("author_id", rawId);
       return `${ROUTES.AUTOR}?${params.toString()}`;
+    }
+
+    let authorLookupMapPromise = null;
+
+    async function getAuthorLookupMap() {
+      if (!authorLookupMapPromise) authorLookupMapPromise = loadAuthorLookupMap();
+      return await authorLookupMapPromise;
     }
 
     async function findUniqueAuthorLookup(name) {
       const variants = buildAuthorVariants(name);
       if (!variants.length) return null;
-      const datasets = [];
-      for (const table of ["authors", "v_authors_public", "authors_public"]) {
-        try {
-          const { data, error } = await supabase.from(table).select("id,preferred_name,sort_name").limit(5000);
-          if (!error && Array.isArray(data) && data.length) datasets.push(data);
-        } catch (_) {}
-      }
-      const all = datasets.flat();
-      const matched = [];
-      for (const row of all) {
-        const rowVariants = new Set();
-        [row?.preferred_name, row?.sort_name].filter(Boolean).forEach(value => buildAuthorVariants(value).forEach(v => rowVariants.add(v)));
-        if (!rowVariants.size) continue;
-        if (variants.some(v => rowVariants.has(v))) {
-          matched.push(row);
-        }
-      }
-      const ids = Array.from(new Set(matched.map(row => String(row?.id || '').trim()).filter(Boolean)));
-      return ids.length === 1 ? ids[0] : null;
+      const authorLookupMap = await getAuthorLookupMap();
+      return resolveUniqueAuthorIdFromLookup(authorLookupMap, name);
     }
 
-    async function renderBookAuthors(authorText, bookRow) {
-      const host = $("authorLine");
-      if (!host) return;
-
-      const names = splitAuthorDisplay(authorText);
+    async function loadLinkedAuthorsForBook(bookRow) {
       const linkedAuthors = [];
-
       const rawJson = bookRow?.authors_json;
       if (Array.isArray(rawJson)) {
         linkedAuthors.push(...rawJson);
@@ -687,63 +669,58 @@
         } catch (_) {}
       }
 
-      if (!linkedAuthors.length && bookRow?.id != null) {
+      if (linkedAuthors.length || bookRow?.id == null) return linkedAuthors;
+
+      const relationViews = [
+        ["v_book_author_links_public_v2", "author_id, display_name, preferred_name, sort_name, ord"],
+        ["v_book_author_links_public", "author_id, display_name, preferred_name, sort_name, ord"],
+        ["v_book_author_links_public", "author_id, preferred_name, sort_name, ord"],
+        ["v_author_books_public_compat_v2", "author_id, autor, display_name, preferred_name, sort_name, book_id, bib_ref, role, ord"],
+        ["v_author_books_public_compat", "author_id, autor, display_name, preferred_name, sort_name, book_id, bib_ref, role, ord"],
+        ["v_author_books_public", "author_id, autor, display_name, preferred_name, sort_name, book_id, bib_ref, role, ord"]
+      ];
+
+      for (const [viewName, selectClause] of relationViews) {
         try {
           let rel = await supabase
-            .from("v_book_author_links_public_v2")
-            .select("author_id, display_name, preferred_name, sort_name")
-            .eq("book_id", bookRow.id);
+            .from(viewName)
+            .select(selectClause)
+            .eq("book_id", bookRow.id)
+            .order("ord", { ascending: true })
+            .limit(20);
 
-          if (rel.error || !Array.isArray(rel.data) || !rel.data.length) {
+          if ((rel.error || !Array.isArray(rel.data) || !rel.data.length) && bookRow?.bib_ref) {
             rel = await supabase
-              .from("v_book_author_links_public")
-              .select("author_id, preferred_name, sort_name")
-              .eq("book_id", bookRow.id);
+              .from(viewName)
+              .select(selectClause)
+              .eq("bib_ref", bookRow.bib_ref)
+              .order("ord", { ascending: true })
+              .limit(20);
           }
 
           if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
             linkedAuthors.push(...rel.data.map(row => ({
               id: row.author_id,
-              display_name: row.display_name,
-              preferred_name: row.preferred_name,
-              sort_name: row.sort_name
+              author_id: row.author_id,
+              display_name: row.display_name || row.autor,
+              preferred_name: row.preferred_name || row.autor,
+              sort_name: row.sort_name || row.autor,
+              ord: row.ord
             })));
+            break;
           }
         } catch (_) {}
       }
 
-      if (!linkedAuthors.length) {
-        try {
-          let rel = null;
-          if (bookRow?.id != null) {
-            const byBookId = await supabase
-              .from("v_author_books_public")
-              .select("author_id,autor,book_id,bib_ref,role,ord")
-              .eq("book_id", bookRow.id)
-              .order("ord", { ascending: true })
-              .limit(20);
-            if (!byBookId.error && Array.isArray(byBookId.data) && byBookId.data.length) rel = byBookId;
-          }
-          if ((!rel || !rel.data?.length) && bookRow?.bib_ref) {
-            const byBibRef = await supabase
-              .from("v_author_books_public")
-              .select("author_id,autor,book_id,bib_ref,role,ord")
-              .eq("bib_ref", bookRow.bib_ref)
-              .order("ord", { ascending: true })
-              .limit(20);
-            if (!byBibRef.error && Array.isArray(byBibRef.data) && byBibRef.data.length) rel = byBibRef;
-          }
-          if (rel && Array.isArray(rel.data) && rel.data.length) {
-            linkedAuthors.push(...rel.data.map(row => ({
-              id: row.author_id,
-              display_name: row.autor,
-              preferred_name: row.autor,
-              sort_name: row.autor,
-              ord: row.ord
-            })));
-          }
-        } catch (_) {}
-      }
+      return linkedAuthors;
+    }
+
+    async function renderBookAuthors(authorText, bookRow) {
+      const host = $("authorLine");
+      if (!host) return;
+
+      const names = splitAuthorDisplay(authorText);
+      const linkedAuthors = await loadLinkedAuthorsForBook(bookRow);
 
       host.innerHTML = "";
       host.classList.add("author-inline-wrap");
@@ -808,7 +785,7 @@
 
         const a = document.createElement("a");
         a.className = "author-card-link";
-        a.href = authorUrl(entry.authorId, label);
+        a.href = authorUrl(entry.authorId);
         if (entry.authorId) a.dataset.authorId = String(entry.authorId);
         a.dataset.author = label;
         a.textContent = label;
@@ -862,7 +839,11 @@
             link.dataset.authorId = authorId;
           }
         }
-        location.assign(authorUrl(authorId, authorId ? '' : authorName));
+        if (!authorId) {
+          setStatus("Não encontrei um ID público confiável para este autor ainda.", "warn");
+          return;
+        }
+        location.assign(authorUrl(authorId));
       });
     }
 

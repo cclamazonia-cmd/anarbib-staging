@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AnarBib - Autor</title>
-  <!-- build: 20260312-3 -->
+  <!-- build: 20260322-1 -->
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
@@ -248,7 +248,7 @@
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
 
-    const AUTHOR_BUILD = "20260313-1";
+    const AUTHOR_BUILD = "20260322-1";
     const EXTERNAL_AUTHOR_PHOTOS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/authors";
     document.documentElement.setAttribute("data-author-build", AUTHOR_BUILD);
 
@@ -649,7 +649,12 @@
       for (const row of books) {
         const a = document.createElement("a");
         a.className = "book-card";
-        a.href = `${ROUTES.LIVRO}?ref=${encodeURIComponent(row.bib_ref || "")}`;
+        const livroUrl = new URL(ROUTES.LIVRO);
+        if (row.bib_ref) livroUrl.searchParams.set("ref", row.bib_ref);
+        if (row.library_id) livroUrl.searchParams.set("library_id", row.library_id);
+        if (row.library_slug) livroUrl.searchParams.set("library_slug", row.library_slug);
+        if (row.library_name) livroUrl.searchParams.set("library_name", row.library_name);
+        a.href = livroUrl.toString();
 
         const title = document.createElement("div");
         title.className = "book-title";
@@ -738,6 +743,18 @@
         if (authorByName?.id) {
           author = await fetchAuthorPageById(authorByName.id) || authorByName;
         }
+      }
+
+      if (author?.id) {
+        const canonicalUrl = new URL(location.href);
+        canonicalUrl.searchParams.set("id", String(author.id));
+        canonicalUrl.searchParams.set("author_id", String(author.id));
+        canonicalUrl.searchParams.delete("author");
+        canonicalUrl.searchParams.delete("name");
+        canonicalUrl.searchParams.delete("autor");
+        canonicalUrl.searchParams.delete("preferred_name");
+        canonicalUrl.searchParams.delete("sort_name");
+        history.replaceState(null, "", canonicalUrl.toString());
       }
 
       if (!author) {
