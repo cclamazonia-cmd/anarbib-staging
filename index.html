@@ -1047,6 +1047,8 @@ const floatingXScroll = document.getElementById('floatingXScroll');
 const floatingXScrollInner = document.getElementById('floatingXScrollInner');
 const tableTopBtn = document.getElementById('tableTopBtn');
 const tableBottomBtn = document.getElementById('tableBottomBtn');
+const MOBILE_CATALOG_MEDIA_QUERY = '(max-width: 760px)';
+let lastRenderIsMobileCatalogView = null;
 
 function normalize(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -2129,7 +2131,11 @@ async function createReservaFromCatalog(bibRef) {
   return { ok: true };
 }
 
-function buildRowMarkup(r) {
+function isMobileCatalogView() {
+  return window.matchMedia(MOBILE_CATALOG_MEDIA_QUERY).matches;
+}
+
+function buildRowMarkup(r, renderMode = 'both') {
   const ref = r.bib_ref || '';
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
@@ -2160,7 +2166,7 @@ function buildRowMarkup(r) {
     cddHtml,
     bibliotecaHtml,
     status,
-    rowHtml: `
+    rowHtml: renderMode === 'mobile' ? '' : `
       <td class="col-ref"><span class="ref-main">${refHtml}</span></td>
       <td class="col-autor">${autorHtml}</td>
       <td class="col-titulo">${tituloCell}</td>
@@ -2172,7 +2178,7 @@ function buildRowMarkup(r) {
       <td class="col-reserva">${reservaHtml}</td>
       <td class="col-acoes"><button class="btn-inline copyRefBtn" type="button" data-ref="${encodeURIComponent(ref)}">Copiar referência</button></td>
     `,
-    mobileHtml: `
+    mobileHtml: renderMode === 'desktop' ? '' : `
       <article class="mobile-card">
         <div class="mobile-card-head">
           <div>
@@ -2306,6 +2312,8 @@ function paintHeaderSort() {
 
 function render() {
   const filtered = currentRows();
+  const mobileView = isMobileCatalogView();
+  lastRenderIsMobileCatalogView = mobileView;
   tbody.innerHTML = '';
   mobileResults.innerHTML = '';
   updateStats(filtered);
@@ -2316,11 +2324,14 @@ function render() {
   empty.hidden = filtered.length !== 0;
 
   for (const r of filtered) {
-    const markup = buildRowMarkup(r);
+    const markup = buildRowMarkup(r, mobileView ? 'mobile' : 'desktop');
+    if (mobileView) {
+      mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
+      continue;
+    }
     const tr = document.createElement('tr');
     tr.innerHTML = markup.rowHtml;
     tbody.appendChild(tr);
-    mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
   }
   requestAnimationFrame(syncFloatingXScroll);
 }
@@ -2364,6 +2375,19 @@ function bindFloatingXScroll() {
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   window.addEventListener('resize', syncFloatingXScroll, { passive: true });
+}
+function bindResponsiveCatalogMode() {
+  const media = window.matchMedia(MOBILE_CATALOG_MEDIA_QUERY);
+  const handleChange = () => {
+    const mobileView = !!media.matches;
+    if (lastRenderIsMobileCatalogView === null || mobileView === lastRenderIsMobileCatalogView) {
+      syncFloatingXScroll();
+      return;
+    }
+    render();
+  };
+  if (typeof media.addEventListener === 'function') media.addEventListener('change', handleChange);
+  else if (typeof media.addListener === 'function') media.addListener(handleChange);
 }
 function bindTableJumpControls() {
   const targetSection = document.querySelector('.sheet');
@@ -2693,6 +2717,7 @@ document.addEventListener('keydown', (e) => {
 (async function init() {
   restoreStateFromUrl();
   bindFloatingXScroll();
+  bindResponsiveCatalogMode();
   bindTableJumpControls();
   authState = await getCurrentUserAndRole();
   await loadPublicServiceState();
