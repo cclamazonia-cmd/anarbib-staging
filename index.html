@@ -1626,6 +1626,33 @@ function splitAuthorIds(value) {
     .split(';')
     .map(part => normalizeAuthorIdValue(part));
 }
+function normalizeAuthorChipEntries(value) {
+  const source = (() => {
+    if (Array.isArray(value)) return value;
+    if (!value) return [];
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  })();
+  const out = [];
+  for (const item of source) {
+    if (!item || typeof item !== 'object') continue;
+    const authorId = normalizeAuthorIdValue(item.author_id ?? item.id);
+    const label = firstNonEmptyString(item.label, item.sort_name, item.preferred_name, item.author_name);
+    const ordRaw = Number(item.ord);
+    const ord = Number.isFinite(ordRaw) ? ordRaw : Number.MAX_SAFE_INTEGER;
+    if (!label) continue;
+    out.push({ author_id: authorId, label, ord });
+  }
+  out.sort((a, b) => (a.ord - b.ord) || String(a.label || '').localeCompare(String(b.label || ''), 'pt-BR', { numeric: true }));
+  return out;
+}
 function buildAuthorHref(authorId) {
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
@@ -1686,7 +1713,22 @@ async function loadAuthorCanonicalMap() {
   }
   return map;
 }
-function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
+function buildAuthorMarkup(authorValue, authorIdsValue, terms, authorChipEntries = null) {
+  const canonicalEntries = normalizeAuthorChipEntries(authorChipEntries);
+  if (canonicalEntries.length) {
+    const parts = canonicalEntries.map((entry) => {
+      const clickAuthorId = normalizeAuthorIdValue(entry.author_id);
+      const displayName = firstNonEmptyString(authorCanonicalMap.get(clickAuthorId), entry.label);
+      const label = highlightHTML(displayName, terms);
+      const href = buildAuthorHref(clickAuthorId);
+      if (clickAuthorId) {
+        return `<a class="tag-link author-chip" href="${href}" data-author-id="${clickAuthorId}">${label}</a>`;
+      }
+      return `<span class="tag-link author-chip author-chip-static" aria-disabled="true">${label}</span>`;
+    });
+    return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
+  }
+
   const names = splitAuthorNames(authorValue);
   if (!names.length) return '<span class="muted">—</span>';
 
@@ -1841,7 +1883,7 @@ function prepareRows() {
     r._status = status;
     const data = {
       bib_ref: normalize(r.bib_ref),
-      autor: normalize(r.autor),
+      autor: normalize(r.author_display || r.autor),
       titulo: normalize(r.titulo),
       subtitulo: normalize(r.subtitulo),
       ano: normalize(r.ano),
@@ -1869,38 +1911,63 @@ function prepareRows() {
 }
 async function loadRowsFromSupabase() {
   try {
-    const select = '*';
-    const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap, res] = await Promise.all([
-      loadAuthorRelationsFromSupabase(),
-      loadBookLibrarySupplementMap(),
-      loadAuthorAliasMap(),
-      loadAuthorCanonicalMap(),
-      fetch(url, {
+    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
+    const librarySupplementPromise = loadBookLibrarySupplementMap();
+    const aliasMapPromise = loadAuthorAliasMap();
+    const canonicalMapPromise = loadAuthorCanonicalMap();
+
+    const primarySelect = '*';
+    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
+    let res = await fetch(primaryUrl, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Accept: 'application/json'
+      }
+    });
+    let text = await res.text();
+    let useCanonicalView = res.ok;
+
+    if (!useCanonicalView) {
+      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent('*')}&order=titulo.asc`;
+      res = await fetch(fallbackUrl, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           Accept: 'application/json'
         }
-      })
-    ]);
-    const text = await res.text();
-    if (!res.ok) {
-      alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
-      return [];
+      });
+      text = await res.text();
+      if (!res.ok) {
+        alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
+        return [];
+      }
     }
+
+    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
+      authorRelationsPromise,
+      librarySupplementPromise,
+      aliasMapPromise,
+      canonicalMapPromise
+    ]);
+
     const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
+
     return (data || []).map(r => {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
       const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId);
+      const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
+      const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
+      const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
         autor: r.autor ?? '',
+        author_display: canonicalAuthorDisplay || r.autor || '',
+        author_chips: authorChipEntries,
         titulo: r.titulo ?? '',
         subtitulo: r.subtitulo ?? '',
         ano: r.ano ?? '',
@@ -1915,7 +1982,8 @@ async function loadRowsFromSupabase() {
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
-        created_at: r.created_at ?? null
+        created_at: r.created_at ?? null,
+        _usingCanonicalAuthorView: useCanonicalView
       };
     });
   } catch (e) {
@@ -1923,76 +1991,6 @@ async function loadRowsFromSupabase() {
     return [];
   }
 }
-function compareValues(a, b, key) {
-  if (key === 'status') return a._n.status.localeCompare(b._n.status, 'pt-BR', { numeric: true });
-  return (a._n[key] || '').localeCompare((b._n[key] || ''), 'pt-BR', { numeric: true });
-}
-function currentRows() {
-  const q = parseQuery(search.value || '');
-  lastQuery = q;
-  const author = normalize(authorFilter.value);
-  const publisher = normalize(publisherFilter.value);
-  const year = (yearFilter.value || '').toString().trim();
-  const cdd = normalize(cddFilter.value);
-  const availability = availabilityFilter.value;
-  const selectedLibraries = selectedLibraryKeys;
-  const hasQuery = q.tokens.length > 0 || q.phrases.length > 0;
-
-  const filtered = [];
-  for (const r of rows) {
-    if (author && !r._n.autor.includes(author)) continue;
-    if (publisher && !r._n.editora.includes(publisher)) continue;
-    if (!matchYearField(r.ano, year)) continue;
-    if (cdd && !r._n.cdd.includes(cdd)) continue;
-    if (availability !== 'all' && r._status.key !== availability) continue;
-    if (selectedLibraries.size && !selectedLibraries.has(getLibraryKey(r.biblioteca))) continue;
-
-    if (!hasQuery) {
-      r._score = 0;
-      filtered.push(r);
-      continue;
-    }
-    const res = scoreRow(r, q);
-    if (!res.ok) continue;
-    r._score = res.score;
-    filtered.push(r);
-  }
-
-  filtered.sort((a, b) => {
-    if (sortKey === 'relevance') {
-      if (hasQuery) {
-        const diff = (b._score || 0) - (a._score || 0);
-        if (diff) return diff;
-      }
-      return a._n.titulo.localeCompare(b._n.titulo, 'pt-BR', { numeric: true });
-    }
-    const cmp = compareValues(a, b, sortKey);
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
-
-  return filtered;
-}
-function updateStats(filtered) {
-  totalPill.textContent = `Total: ${rows.length}`;
-  visiblePill.textContent = `Exibidos: ${filtered.length}`;
-  const availableNow = filtered.filter(r => r._status.key === 'available').length;
-  statusPill.textContent = `Disponíveis agora: ${availableNow}`;
-  contextPill.textContent = buildContextSummary(filtered);
-  sortPill.textContent = getSortLabel();
-}
-function paintHeaderSort() {
-  document.querySelectorAll('thead th[data-key]').forEach(th => {
-    const key = th.dataset.key;
-    th.innerHTML = th.textContent.replace(/[\u2191\u2193]/g, '').trim();
-    if (key === sortKey) {
-      const span = document.createElement('span');
-      span.className = 'sort-indicator';
-      span.textContent = sortDir === 'asc' ? '↑' : '↓';
-      th.appendChild(span);
-    }
-  });
-}
-
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -2136,7 +2134,7 @@ function buildRowMarkup(r) {
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
   const authorIdsValue = (Array.isArray(r.author_ids_list) ? (r.author_ids_list.length ? r.author_ids_list : null) : (r.author_ids_list && String(r.author_ids_list).trim() ? r.author_ids_list : null)) ?? r.author_ids ?? r.author_id;
-  const autorHtml = buildAuthorMarkup(r.autor, authorIdsValue, terms);
+  const autorHtml = buildAuthorMarkup(r.author_display || r.autor, authorIdsValue, terms, r.author_chips);
   const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const subtituloHtml = r.subtitulo ? highlightHTML(r.subtitulo, terms) : '';
