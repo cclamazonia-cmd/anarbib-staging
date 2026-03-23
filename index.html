@@ -1762,7 +1762,7 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId) 
   if (!names.length) return [];
 
   const resolved = new Array(names.length).fill(null);
-  const canUseOrdinalFallback = Array.isArray(relationEntries) && relationEntries.length === names.length;
+  const canUseOrdinalFallback = names.length === 1 && Array.isArray(relationEntries) && relationEntries.length === names.length;
 
   if (Array.isArray(relationEntries) && relationEntries.length) {
     relationEntries.forEach((entry, index) => {
