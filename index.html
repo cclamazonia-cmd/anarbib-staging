@@ -1379,6 +1379,8 @@ function buildContextSummary(filtered) {
   }
   return items.map(item => `${item.label}: ${item.value}`).join(' · ');
 }
+const CATALOG_STATE_SESSION_KEY = `anarbib-catalog-state:${location.pathname}`;
+
 function syncStateToUrl() {
   const state = getFilterState();
   const url = new URL(location.href);
@@ -1407,9 +1409,35 @@ function syncStateToUrl() {
   if (state.compact) url.searchParams.set('compact', '1');
   else url.searchParams.delete('compact');
   history.replaceState(null, '', url.toString());
+  try { sessionStorage.setItem(CATALOG_STATE_SESSION_KEY, url.toString()); } catch (e) {}
+}
+function shouldRestoreCatalogStateFromSession() {
+  try {
+    const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+    const navType = navEntry?.type || '';
+    return navType === 'reload' || navType === 'back_forward';
+  } catch (e) {
+    return false;
+  }
+}
+function getCatalogStateUrlForRestore() {
+  const currentUrl = new URL(location.href);
+  const trackedKeys = ['q','author','publisher','year','cdd','availability','libraries','sort','dir','compact'];
+  if (trackedKeys.some(key => currentUrl.searchParams.has(key))) return currentUrl;
+  if (!shouldRestoreCatalogStateFromSession()) return currentUrl;
+  try {
+    const stored = sessionStorage.getItem(CATALOG_STATE_SESSION_KEY);
+    if (!stored) return currentUrl;
+    const storedUrl = new URL(stored, location.origin);
+    if (storedUrl.origin !== location.origin) return currentUrl;
+    if (storedUrl.pathname !== location.pathname) return currentUrl;
+    return storedUrl;
+  } catch (e) {
+    return currentUrl;
+  }
 }
 function restoreStateFromUrl() {
-  const url = new URL(location.href);
+  const url = getCatalogStateUrlForRestore();
   search.value = url.searchParams.get('q') || '';
   authorFilter.value = url.searchParams.get('author') || '';
   publisherFilter.value = url.searchParams.get('publisher') || '';
@@ -2539,6 +2567,21 @@ async function handleResultActions(e) {
 }
 tbody.addEventListener('click', handleResultActions);
 mobileResults.addEventListener('click', handleResultActions);
+let catalogInitDone = false;
+window.addEventListener('pagehide', () => {
+  if (!catalogInitDone) return;
+  syncStateToUrl();
+});
+window.addEventListener('pageshow', (e) => {
+  if (!catalogInitDone || !e.persisted) return;
+  restoreStateFromUrl();
+  render();
+});
+window.addEventListener('popstate', () => {
+  if (!catalogInitDone) return;
+  restoreStateFromUrl();
+  render();
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === '/' && document.activeElement !== search && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
@@ -2558,6 +2601,7 @@ document.addEventListener('keydown', (e) => {
   rows = await loadRowsFromSupabase();
   prepareRows();
   render();
+  catalogInitDone = true;
 })();
 </script>
 </body>
