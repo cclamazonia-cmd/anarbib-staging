@@ -591,47 +591,6 @@
       return Array.from(out);
     }
 
-    async function loadAuthorLookupMap() {
-      const candidates = [
-        ["authors", "id,preferred_name,sort_name"],
-        ["v_authors_public", "id,preferred_name,sort_name"],
-        ["authors_public", "id,preferred_name,sort_name"]
-      ];
-      for (const [table, select] of candidates) {
-        try {
-          const { data, error } = await supabase
-            .from(table)
-            .select(select)
-            .limit(5000);
-          if (error || !Array.isArray(data) || !data.length) continue;
-          const map = new Map();
-          data.forEach(row => {
-            const authorId = row?.id ?? null;
-            if (!authorId) return;
-            [row?.sort_name, row?.preferred_name].forEach(value => {
-              for (const variant of buildAuthorVariants(value)) {
-                if (!map.has(variant)) map.set(variant, new Set());
-                map.get(variant).add(authorId);
-              }
-            });
-          });
-          return map;
-        } catch (_) {}
-      }
-      return new Map();
-    }
-
-    function resolveUniqueAuthorIdFromLookup(authorLookupMap, label) {
-      if (!(authorLookupMap instanceof Map)) return null;
-      const matches = new Set();
-      for (const variant of buildAuthorVariants(label)) {
-        const bucket = authorLookupMap.get(variant);
-        if (!bucket) continue;
-        for (const authorId of bucket) matches.add(authorId);
-      }
-      return matches.size === 1 ? Array.from(matches)[0] : null;
-    }
-
     function authorUrl(authorId) {
       const params = new URLSearchParams();
       params.set("v", ROUTES.AUTHOR_PAGE_VERSION);
@@ -642,30 +601,6 @@
         params.set("author_id", id);
       }
       return `${ROUTES.AUTOR}?${params.toString()}`;
-    }
-
-    async function findUniqueAuthorLookup(name) {
-      const variants = buildAuthorVariants(name);
-      if (!variants.length) return null;
-      const datasets = [];
-      for (const table of ["authors", "v_authors_public", "authors_public"]) {
-        try {
-          const { data, error } = await supabase.from(table).select("id,preferred_name,sort_name").limit(5000);
-          if (!error && Array.isArray(data) && data.length) datasets.push(data);
-        } catch (_) {}
-      }
-      const all = datasets.flat();
-      const matched = [];
-      for (const row of all) {
-        const rowVariants = new Set();
-        [row?.preferred_name, row?.sort_name].filter(Boolean).forEach(value => buildAuthorVariants(value).forEach(v => rowVariants.add(v)));
-        if (!rowVariants.size) continue;
-        if (variants.some(v => rowVariants.has(v))) {
-          matched.push(row);
-        }
-      }
-      const ids = Array.from(new Set(matched.map(row => String(row?.id || '').trim()).filter(Boolean)));
-      return ids.length === 1 ? ids[0] : null;
     }
 
     async function renderBookAuthors(authorText, bookRow) {
@@ -685,38 +620,13 @@
         } catch (_) {}
       }
 
-      if (!linkedAuthors.length && bookRow?.id != null) {
-        try {
-          let rel = await supabase
-            .from("v_book_author_links_public_v2")
-            .select("author_id, display_name, preferred_name, sort_name")
-            .eq("book_id", bookRow.id);
-
-          if (rel.error || !Array.isArray(rel.data) || !rel.data.length) {
-            rel = await supabase
-              .from("v_book_author_links_public")
-              .select("author_id, preferred_name, sort_name")
-              .eq("book_id", bookRow.id);
-          }
-
-          if (!rel.error && Array.isArray(rel.data) && rel.data.length) {
-            linkedAuthors.push(...rel.data.map(row => ({
-              id: row.author_id,
-              display_name: row.display_name,
-              preferred_name: row.preferred_name,
-              sort_name: row.sort_name
-            })));
-          }
-        } catch (_) {}
-      }
-
       if (!linkedAuthors.length) {
         try {
           let rel = null;
           if (bookRow?.id != null) {
             const byBookId = await supabase
-              .from("v_author_books_public")
-              .select("author_id,autor,book_id,bib_ref,role,ord")
+              .from("author_books_public")
+              .select("author_id,author_name,preferred_name,sort_name,book_id,bib_ref,role,ord")
               .eq("book_id", bookRow.id)
               .order("ord", { ascending: true })
               .limit(20);
@@ -724,8 +634,8 @@
           }
           if ((!rel || !rel.data?.length) && bookRow?.bib_ref) {
             const byBibRef = await supabase
-              .from("v_author_books_public")
-              .select("author_id,autor,book_id,bib_ref,role,ord")
+              .from("author_books_public")
+              .select("author_id,author_name,preferred_name,sort_name,book_id,bib_ref,role,ord")
               .eq("bib_ref", bookRow.bib_ref)
               .order("ord", { ascending: true })
               .limit(20);
@@ -734,9 +644,9 @@
           if (rel && Array.isArray(rel.data) && rel.data.length) {
             linkedAuthors.push(...rel.data.map(row => ({
               id: row.author_id,
-              display_name: row.autor,
-              preferred_name: row.autor,
-              sort_name: row.autor,
+              display_name: row.author_name,
+              preferred_name: row.preferred_name,
+              sort_name: row.sort_name,
               ord: row.ord
             })));
           }
@@ -790,11 +700,6 @@
         entries[0].authorId = String(bookRow.author_id).trim();
       }
 
-      for (const entry of entries) {
-        if (entry.authorId) continue;
-        entry.authorId = await findUniqueAuthorLookup(entry.label);
-      }
-
       const dedupedEntries = [];
       const seenEntries = new Set();
       entries.forEach((entry) => {
@@ -822,12 +727,11 @@
           a.className = "author-card-link";
           a.href = authorUrl(entry.authorId);
           a.dataset.authorId = String(entry.authorId);
-          a.dataset.author = label;
           a.textContent = label;
           host.appendChild(a);
         } else {
           const span = document.createElement("span");
-          span.className = "author-card-link";
+          span.className = "author-card-static";
           span.textContent = label;
           span.setAttribute("aria-disabled", "true");
           host.appendChild(span);
@@ -839,50 +743,6 @@
           sep.textContent = ";";
           host.appendChild(sep);
         }
-      });
-    }
-
-
-    async function findAuthorIdForNavigation(authorName) {
-      const raw = String(authorName || '').trim();
-      if (!raw) return null;
-      for (const table of ['authors', 'v_authors_public', 'authors_public']) {
-        for (const field of ['sort_name', 'preferred_name']) {
-          try {
-            const { data, error } = await supabase
-              .from(table)
-              .select('id')
-              .eq(field, raw)
-              .limit(2);
-            if (!error && Array.isArray(data) && data.length === 1) {
-              const id = String(data[0]?.id || '').trim();
-              if (id) return id;
-            }
-          } catch (_) {}
-        }
-      }
-      return await findUniqueAuthorLookup(raw);
-    }
-
-    function setupAuthorNavigationFallback() {
-      const host = $("authorLine");
-      if (!host || host.dataset.authorNavBound === "1") return;
-      host.dataset.authorNavBound = "1";
-      host.addEventListener("click", async (e) => {
-        const link = e.target.closest("a.author-card-link");
-        if (!link) return;
-        e.preventDefault();
-        let authorId = String(link.dataset.authorId || "").trim();
-        const authorName = String(link.dataset.author || link.textContent || "").trim();
-        if (!authorId && authorName) {
-          const resolvedId = await findAuthorIdForNavigation(authorName);
-          if (resolvedId) {
-            authorId = String(resolvedId).trim();
-            link.dataset.authorId = authorId;
-          }
-        }
-        if (!authorId) return;
-        location.assign(authorUrl(authorId));
       });
     }
 
@@ -1150,7 +1010,6 @@
       $("title").textContent = titulo || "Sem título";
       setLine("subtitleLine", subtitulo);
       await renderBookAuthors(autor, data);
-      setupAuthorNavigationFallback();
 
       setPill("bibRefPill", "ref", data[colRef] || "", true);
       setPill("heroRefChip", "ref", data[colRef] || "");

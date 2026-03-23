@@ -1574,30 +1574,6 @@ function buildAuthorHref(authorId) {
   return `${AUTOR_URL}?${params.toString()}`;
 }
 
-async function findAuthorIdForNavigation(authorName) {
-  const raw = String(authorName || '').trim();
-  if (!raw) return null;
-  const exactTables = ['authors', 'v_authors_public', 'authors_public'];
-  for (const table of exactTables) {
-    for (const field of ['sort_name', 'preferred_name']) {
-      try {
-        const path = `${table}?select=${encodeURIComponent('id,' + field)}&${field}=eq.${encodeURIComponent(raw)}&limit=2`;
-        const data = await fetchRestRows(path, 'public');
-        if (Array.isArray(data) && data.length === 1) {
-          const id = normalizeAuthorIdValue(data[0]?.id);
-          if (id) return id;
-        }
-      } catch (e) {}
-    }
-  }
-  const normalized = normalize(raw);
-  if (!normalized) return null;
-  const lookup = await loadAuthorLookupFromSupabase();
-  const matches = lookup.get(normalized);
-  if (matches && matches.size === 1) return normalizeAuthorIdValue([...matches][0]);
-  return null;
-}
-
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
@@ -1616,9 +1592,9 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms) {
     const label = highlightHTML(name, terms);
     const href = buildAuthorHref(authorId);
     if (authorId) {
-      return `<a class="tag-link author-chip" href="${href}" data-author="${escapeHTML(name)}" data-author-id="${authorId}">${label}</a>`;
+      return `<a class="tag-link author-chip" href="${href}" data-author-id="${authorId}">${label}</a>`;
     }
-    return `<span class="tag-link author-chip author-chip-static" data-author="${escapeHTML(name)}" aria-disabled="true">${label}</span>`;
+    return `<span class="tag-link author-chip author-chip-static" aria-disabled="true">${label}</span>`;
   });
 
   return parts.length === 1 ? parts[0] : `<div class="author-chip-list">${parts.join('')}</div>`;
@@ -1655,34 +1631,15 @@ function isAuthorRole(roleValue) {
     || roleNorm.startsWith('coauthor')
     || roleNorm.startsWith('co-author');
 }
-async function loadAuthorLookupFromSupabase() {
-  const datasets = await Promise.all([
-    fetchRestRows(`v_authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors_public?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public'),
-    fetchRestRows(`authors?select=${encodeURIComponent('id,preferred_name,sort_name')}&order=id.asc`, 'public')
-  ]);
-  const data = chooseLargestDataset(...datasets);
-  const map = new Map();
-  for (const row of (data || [])) {
-    const authorId = normalizeAuthorIdValue(row?.id);
-    if (!authorId) continue;
-    const keys = [normalize(row?.sort_name), normalize(row?.preferred_name)].filter(Boolean);
-    for (const key of keys) {
-      if (!map.has(key)) map.set(key, new Set());
-      map.get(key).add(authorId);
-    }
-  }
-  return map;
-}
 async function loadAuthorRelationsFromSupabase() {
   const selectCandidates = [
-    'author_id,book_id,bib_ref,autor,role,ord',
-    'author_id,book_id,bib_ref,autor,role',
-    'author_id,book_id,bib_ref,autor'
+    'author_id,book_id,bib_ref,author_name,preferred_name,sort_name,role,ord',
+    'author_id,book_id,bib_ref,author_name,preferred_name,sort_name,role',
+    'author_id,book_id,bib_ref,author_name,preferred_name,sort_name'
   ];
   const datasets = [];
   for (const select of selectCandidates) {
-    datasets.push(await fetchRestRows(`v_author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public'));
+    datasets.push(await fetchRestRows(`author_books_public?select=${encodeURIComponent(select)}&order=book_id.asc,ord.asc,author_id.asc`, 'public'));
   }
   const data = chooseLargestDataset(...datasets);
   const byBookId = new Map();
@@ -1693,7 +1650,7 @@ async function loadAuthorRelationsFromSupabase() {
     const entry = {
       authorId,
       ord: Number.isFinite(Number(row?.ord)) ? Number(row.ord) : null,
-      display_name: firstNonEmptyString(row?.display_name, row?.preferred_name, row?.sort_name, row?.autor),
+      display_name: firstNonEmptyString(row?.author_name, row?.preferred_name, row?.sort_name),
       preferred_name: firstNonEmptyString(row?.preferred_name),
       sort_name: firstNonEmptyString(row?.sort_name),
       bib_ref: firstNonEmptyString(row?.bib_ref)
@@ -1711,7 +1668,7 @@ async function loadAuthorRelationsFromSupabase() {
   }
   return { byBookId, byBibRef };
 }
-function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fallbackAuthorId) {
+function resolveAuthorIdsForRow(authorValue, relationEntries, fallbackAuthorId) {
   const names = splitAuthorNames(authorValue);
   if (!names.length) return [];
 
@@ -1740,18 +1697,6 @@ function resolveAuthorIdsForRow(authorValue, relationEntries, authorLookup, fall
       }
     });
   }
-
-  names.forEach((name, index) => {
-    if (resolved[index]) return;
-    const matchedIds = new Set();
-    for (const variant of buildAuthorNameVariants(name)) {
-      const matches = authorLookup.get(variant);
-      if (!matches) continue;
-      for (const match of matches) matchedIds.add(match);
-    }
-    if (matchedIds.size !== 1) return;
-    resolved[index] = normalizeAuthorIdValue([...matchedIds][0]);
-  });
 
   if (names.length === 1 && !resolved[0] && fallbackAuthorId) {
     resolved[0] = normalizeAuthorIdValue(fallbackAuthorId);
@@ -1816,9 +1761,8 @@ async function loadRowsFromSupabase() {
   try {
     const select = '*';
     const url = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(select)}&order=titulo.asc`;
-    const [authorRelations, authorLookup, librarySupplementMap, res] = await Promise.all([
+    const [authorRelations, librarySupplementMap, res] = await Promise.all([
       loadAuthorRelationsFromSupabase(),
-      loadAuthorLookupFromSupabase(),
       loadBookLibrarySupplementMap(),
       fetch(url, {
         headers: {
@@ -1838,7 +1782,7 @@ async function loadRowsFromSupabase() {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
       const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorLookup, authorId);
+      const authorIdsList = resolveAuthorIdsForRow(r.autor ?? '', relationIds, authorId);
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
@@ -2482,26 +2426,13 @@ async function handleResultActions(e) {
   }
   const authorBtn = e.target.closest('.author-chip');
   if (authorBtn) {
+    const authorId = (authorBtn.dataset.authorId || '').trim();
+    if (!authorId) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
-    let authorId = (authorBtn.dataset.authorId || '').trim();
-    const authorName = (authorBtn.dataset.author || '').trim();
-    if (!authorId && authorName) {
-      const resolvedId = await findAuthorIdForNavigation(authorName);
-      if (resolvedId) {
-        authorId = String(resolvedId);
-        authorBtn.dataset.authorId = authorId;
-      }
-    }
-    const params = new URLSearchParams();
-    params.set('v', AUTHOR_PAGE_VERSION);
-    params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    if (authorId) {
-      params.set('id', authorId);
-      params.set('author_id', authorId);
-    } else if (authorName) {
-      params.set('author', authorName);
-    }
-    location.assign(`${AUTOR_URL}?${params.toString()}`);
+    location.assign(buildAuthorHref(authorId));
     return;
   }
   const cddBtn = e.target.closest('.cdd-chip');
