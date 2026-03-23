@@ -1734,6 +1734,7 @@ function prepareRows() {
       bib_ref: normalize(r.bib_ref),
       autor: normalize(r.autor),
       titulo: normalize(r.titulo),
+      subtitulo: normalize(r.subtitulo),
       ano: normalize(r.ano),
       editora: normalize(r.editora),
       cdd: normalize(r.cdd),
@@ -1741,7 +1742,7 @@ function prepareRows() {
       status: normalize(status.label)
     };
     r._n = data;
-    r._all = [data.bib_ref, data.autor, data.titulo, data.ano, data.editora, data.cdd, data.biblioteca, data.status].filter(Boolean).join(' ');
+    r._all = [data.bib_ref, data.autor, data.titulo, data.subtitulo, data.ano, data.editora, data.cdd, data.biblioteca, data.status].filter(Boolean).join(' ');
     r._words = r._all ? r._all.split(/\s+/).filter(Boolean) : [];
     r._variantAutor = orthographySkeleton(data.autor);
     r._variantTitulo = orthographySkeleton(data.titulo);
@@ -1788,6 +1789,7 @@ async function loadRowsFromSupabase() {
         bib_ref: r.bib_ref ?? '',
         autor: r.autor ?? '',
         titulo: r.titulo ?? '',
+        subtitulo: r.subtitulo ?? '',
         ano: r.ano ?? '',
         editora: r.editora ?? '',
         cdd: r.cdd ?? '',
@@ -2024,7 +2026,11 @@ function buildRowMarkup(r) {
   const autorHtml = buildAuthorMarkup(r.autor, authorIdsValue, terms);
   const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
-  const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700;">${tituloHtml}</a>` : tituloHtml;
+  const subtituloHtml = r.subtitulo ? highlightHTML(r.subtitulo, terms) : '';
+  const tituloInner = subtituloHtml
+    ? `${tituloHtml}<div style="margin-top:4px; font-size:.92em; font-weight:500; line-height:1.3; color:var(--muted);">${subtituloHtml}</div>`
+    : tituloHtml;
+  const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700; display:inline-block;">${tituloInner}</a>` : tituloInner;
   const anoHtml = r.ano ? highlightHTML(r.ano, terms) : '<span class="muted">—</span>';
   const editoraHtml = r.editora ? highlightHTML(r.editora, terms) : '<span class="muted">—</span>';
   const cddHtml = r.cdd
