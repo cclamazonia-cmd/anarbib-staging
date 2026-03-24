@@ -475,6 +475,21 @@
       };
     }
 
+    function sanitizePublicResumo(value) {
+      return String(value || "")
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .filter((line) => {
+          const norm = String(line || "").trim().toLowerCase();
+          if (!norm) return true;
+          return !(/^(catalog_source|origem do import|import btl|importado da btl)\b/.test(norm)
+            || /\b(btl_import_staging|terra_livre_import_staging|blmf_manual_legacy|blmf_reinjection_biblivre)\b/.test(norm));
+        })
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
     function getServiceModeLabel(mode) {
       return SERVICE_MODE_LABELS[String(mode || "").trim()] || "";
     }
@@ -483,36 +498,6 @@
       const custom = String(state?.public_message || "").trim();
       if (custom) return custom;
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
-    }
-
-    function sanitizePublicDescription(value) {
-      return String(value || "")
-        .replace(/
-?/g, "
-")
-        .split("
-")
-        .filter((line) => {
-          const norm = String(line || "").trim().toLowerCase();
-          if (!norm) return true;
-          return !(
-            norm.startsWith("catalog_source:") ||
-            norm.includes("btl_import_staging") ||
-            norm.includes("terra_livre_import_staging") ||
-            norm.includes("blmf_manual_legacy") ||
-            norm.includes("blmf_reinjection_biblivre") ||
-            norm.includes("import btl") ||
-            norm.includes("importado da btl") ||
-            norm.includes("origem do import")
-          );
-        })
-        .join("
-")
-        .replace(/
-{3,}/g, "
-
-")
-        .trim();
     }
 
     function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount }) {
@@ -1080,8 +1065,7 @@
       setPill("subjectsPill", "assuntos", assuntos);
       setPill("cddPill", "CDD", cdd, true);
 
-      const resumoPublico = sanitizePublicDescription(resumo);
-      $("desc").textContent = resumoPublico || "—";
+      $("desc").textContent = sanitizePublicResumo(resumo) || "—";
 
       async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
