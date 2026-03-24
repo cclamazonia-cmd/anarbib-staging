@@ -1280,8 +1280,8 @@
       <div class="toolbar-actions">
         <span id="userEmail" class="pill info">Sem sessão</span>
         <span id="rolePill" class="pill warn">Verificando acesso…</span>
-        <button id="loginBtn" type="button" class="button primary" onclick="(function(){try{const k='sb-asptfmokzykwzlshsncw-auth-token';const s=window.sessionStorage.getItem(k)||window.localStorage.getItem(k);if(s){window.location.reload();return;}}catch(e){}window.location.href='https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html';})();">Fazer login</button>
-        <button id="refreshAllBtn" type="button" class="button secondary" onclick="window.location.reload();">Atualizar</button>
+        <button id="loginBtn" class="button primary">Fazer login</button>
+        <button id="refreshAllBtn" class="button secondary">Atualizar</button>
       </div>
     </section>
 
@@ -4901,7 +4901,6 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4912,8 +4911,20 @@
         } catch {}
       }
 
+      if (hintedValue === true) {
+        state.profile = state.profile || { id: userId, email: state.session?.user?.email || '' };
+        state.isLibrarian = true;
+        persistSessionToBrowserStorages(state.session, true);
+        updateLoginButton();
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+        clearMessage(refs.globalMessage);
+        return;
+      }
+
+      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
+      state.isLibrarian = data?.is_librarian === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
