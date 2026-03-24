@@ -75,6 +75,13 @@
       display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);
       background:rgba(10,10,10,.72);padding:7px 10px;border-radius:999px;font-size:.9rem;color:rgba(255,255,255,.86)
     }
+    .hero-holdings-detail{display:none;gap:8px;margin-top:12px;flex-direction:column}
+    .hero-holding-line{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      border:1px solid rgba(255,255,255,.12);background:rgba(10,10,10,.38);
+      border-radius:14px;padding:10px 12px;color:rgba(255,255,255,.90)
+    }
+    .hero-holding-library{color:#fff;font-weight:900}
     .grid{display:grid;grid-template-columns:1fr;gap:14px}
     .section-title{margin:0 0 12px;font-size:1.05rem}
     .mini{font-size:.86rem;color:var(--muted)}
@@ -142,13 +149,6 @@
     .author-card-static { color: var(--muted); cursor:default; }
     .author-card-link:hover { background:rgba(255,255,255,.04); border-color:rgba(170,140,145,.85); transform:translateY(-1px); }
     .author-separator { color: var(--muted); margin:0 2px; }
-    .holdings-detail{display:none;gap:8px;margin-top:12px;flex-direction:column}
-    .holding-line{
-      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-      border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);
-      border-radius:14px;padding:10px 12px;color:var(--muted)
-    }
-    .holding-library{color:var(--text);font-weight:800}
   </style>
 </head>
 <body>
@@ -178,6 +178,7 @@
         <div class="chip" id="heroPubChip" style="display:none"></div>
         <div class="chip" id="heroExemplaresChip" style="display:none"></div>
       </div>
+      <div class="hero-holdings-detail" id="heroHoldingsDetail"></div>
     </div>
 
     <div class="card">
@@ -210,8 +211,6 @@
             <div class="pill" id="subjectsPill" style="display:none"></div>
             <div class="pill" id="cddPill">CDD: —</div>
           </div>
-
-          <div class="holdings-detail" id="holdingsDetail"></div>
 
           <div class="hr"></div>
 
@@ -717,6 +716,71 @@
       return n === 1 ? "1 exemplar identificado" : `${n} exemplares identificados`;
     }
 
+    function summarizeHoldings(rawHoldings, libraryContext = {}) {
+      const holdings = parseJsonArray(rawHoldings);
+      if (!holdings.length) {
+        return { lines: [], totalCount: 0, libraryLine: "" };
+      }
+
+      let scoped = holdings;
+      if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
+        const matched = findHoldingForLibraryContext(holdings, libraryContext);
+        if (matched) scoped = [matched];
+      }
+
+      const grouped = new Map();
+      for (const row of scoped) {
+        const libraryName = firstNonEmptyString(row?.library_name, row?.biblioteca, row?.name)
+          .split(" - ")[0]
+          .trim();
+        if (!libraryName) continue;
+
+        const rowTombos = parseJsonArray(row?.tombos_json)
+          .map(v => String(v || "").trim())
+          .filter(Boolean);
+        const countCandidates = [row?.exemplares_total, row?.holdings_count, row?.copies_count, row?.items_count, row?.count]
+          .map(v => Number(v))
+          .filter(v => Number.isFinite(v) && v > 0);
+        const count = countCandidates.length ? countCandidates[0] : rowTombos.length;
+        const previous = grouped.get(libraryName) || { libraryName, count: 0 };
+        previous.count += count;
+        grouped.set(libraryName, previous);
+      }
+
+      const lines = [...grouped.values()].map(entry => ({
+        libraryName: entry.libraryName,
+        count: entry.count,
+        label: formatExemplarCount(entry.count)
+      }));
+
+      return {
+        lines,
+        totalCount: lines.reduce((sum, entry) => sum + (Number(entry.count) || 0), 0),
+        libraryLine: lines.map(entry => entry.libraryName).join(" / ")
+      };
+    }
+
+    function renderHeroHoldingsDetail(holdingsInfo) {
+      const host = $("heroHoldingsDetail");
+      if (!host) return;
+      const lines = Array.isArray(holdingsInfo?.lines) ? holdingsInfo.lines : [];
+      if (!lines.length) {
+        host.innerHTML = "";
+        host.style.display = "none";
+        return;
+      }
+
+      host.innerHTML = "";
+      for (const entry of lines) {
+        if (!entry?.libraryName || !entry?.label) continue;
+        const line = document.createElement("div");
+        line.className = "hero-holding-line";
+        line.innerHTML = `<span class="hero-holding-library">${entry.libraryName}</span><span>— ${entry.label}</span>`;
+        host.appendChild(line);
+      }
+      host.style.display = "flex";
+    }
+
     function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount }) {
       const parts = [];
       const tipo = String(tipoMaterial || "").trim();
@@ -730,88 +794,11 @@
       if (year) parts.push(year);
 
       const countLabel = formatExemplarCount(tombosCount);
-      if (countLabel) parts.push(countLabel);
+      if (countLabel) {
+        parts.push(countLabel);
+      }
 
       return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
-    }
-
-    function summarizeHoldings(rawHoldings, libraryContext = {}) {
-      const holdings = parseJsonArray(rawHoldings);
-      if (!holdings.length) {
-        return { lines: [], totalCount: 0, libraryLine: "", tombos: [] };
-      }
-
-      let scoped = holdings;
-      if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-        const matched = findHoldingForLibraryContext(holdings, libraryContext);
-        if (matched) scoped = [matched];
-      }
-
-      const grouped = new Map();
-      const allTombos = [];
-
-      for (const row of scoped) {
-        const libraryName = firstNonEmptyString(row?.library_name, row?.biblioteca, row?.name)
-          .split(" - ")[0]
-          .trim();
-        if (!libraryName) continue;
-
-        const rowTombos = parseJsonArray(row?.tombos_json)
-          .map((v) => String(v || "").trim())
-          .filter(Boolean);
-
-        const numericCandidates = [
-          row?.exemplares_total,
-          row?.holdings_count,
-          row?.copies_count,
-          row?.items_count,
-          row?.count
-        ].map((v) => Number(v));
-
-        let count = numericCandidates.find((v) => Number.isFinite(v) && v > 0) || 0;
-        if (!count && rowTombos.length) count = rowTombos.length;
-
-        const prev = grouped.get(libraryName) || { libraryName, count: 0, tombos: [] };
-        prev.count += count;
-        prev.tombos.push(...rowTombos);
-        grouped.set(libraryName, prev);
-        allTombos.push(...rowTombos);
-      }
-
-      const lines = Array.from(grouped.values()).map((entry) => ({
-        libraryName: entry.libraryName,
-        count: entry.count,
-        label: formatExemplarCount(entry.count)
-      }));
-
-      return {
-        lines,
-        totalCount: lines.reduce((sum, entry) => sum + (Number(entry.count) || 0), 0),
-        libraryLine: lines.map((entry) => entry.libraryName).join(" / "),
-        tombos: Array.from(new Set(allTombos))
-      };
-    }
-
-    function renderHoldingsDetail(holdingsInfo) {
-      const host = $("holdingsDetail");
-      if (!host) return;
-
-      const lines = Array.isArray(holdingsInfo?.lines) ? holdingsInfo.lines : [];
-      if (!lines.length) {
-        host.innerHTML = "";
-        host.style.display = "none";
-        return;
-      }
-
-      host.innerHTML = "";
-      for (const entry of lines) {
-        if (!entry?.libraryName || !entry?.label) continue;
-        const line = document.createElement("div");
-        line.className = "holding-line";
-        line.innerHTML = `<span class="holding-library">${entry.libraryName}</span><span>— ${entry.label}</span>`;
-        host.appendChild(line);
-      }
-      host.style.display = "flex";
     }
 
     function applyPublicServiceState() {
@@ -1491,19 +1478,16 @@
         return [];
       }
 
+      const tombos = await loadTombosForBook(data, bib_ref, libraryContext);
       const holdingsInfo = summarizeHoldings(data?.holding_libraries_json, libraryContext);
-      let tombos = holdingsInfo.tombos;
-      if (!tombos.length) {
-        tombos = await loadTombosForBook(data, bib_ref, libraryContext);
-      }
       const exemplaresCount = holdingsInfo.totalCount || tombos.length;
       document.title = `${titulo || "Livro"} - AnarBib`;
       const libraryLine = holdingsInfo.libraryLine || await getLibraryLineForBibRef(bib_ref, data, libraryContext);
       $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: exemplaresCount });
+      renderHeroHoldingsDetail(holdingsInfo);
       setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
-      setPill("exemplaresPill", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
+      setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
       setPill("heroExemplaresChip", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
-      renderHoldingsDetail(holdingsInfo);
 
       if (pdf) {
         $("btnAbrirPdf").style.display = "inline-flex";
