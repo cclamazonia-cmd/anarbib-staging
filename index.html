@@ -1044,6 +1044,7 @@ let selectedLibraryKeys = new Set();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
 let lastVisibleWindowKey = '';
+let suppressVisibleLimitReset = false;
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
@@ -1402,6 +1403,11 @@ function getVisibleWindowStateKey() {
 }
 function maybeResetVisibleRowLimit() {
   const nextKey = getVisibleWindowStateKey();
+  if (suppressVisibleLimitReset) {
+    lastVisibleWindowKey = nextKey;
+    suppressVisibleLimitReset = false;
+    return;
+  }
   if (nextKey !== lastVisibleWindowKey) {
     visibleRowLimit = CATALOG_BATCH_SIZE;
     lastVisibleWindowKey = nextKey;
@@ -2595,6 +2601,13 @@ function render() {
   const hasMoreResults = visibleRows.length < filtered.length;
   loadMoreWrap.hidden = !hasMoreResults;
   loadMoreBtn.disabled = !hasMoreResults;
+  if (hasMoreResults) {
+    const remaining = Math.max(0, filtered.length - visibleRows.length);
+    const nextBatch = Math.min(CATALOG_BATCH_SIZE, remaining);
+    loadMoreBtn.textContent = `Carregar mais (${nextBatch})`;
+  } else {
+    loadMoreBtn.textContent = 'Carregar mais';
+  }
 
   requestAnimationFrame(syncFloatingXScroll);
 }
@@ -2883,7 +2896,9 @@ csvAdvancedLink.addEventListener('click', (e) => { e.preventDefault(); exportCSV
 contaBtn.addEventListener('click', handleContaClick);
 loginBtn.addEventListener('click', handleLoginClick);
 loadMoreBtn.addEventListener('click', () => {
-  visibleRowLimit += CATALOG_BATCH_SIZE;
+  const filteredLength = currentRows().length;
+  visibleRowLimit = Math.min(visibleRowLimit + CATALOG_BATCH_SIZE, filteredLength);
+  suppressVisibleLimitReset = true;
   render();
 });
 copySearchBtn.addEventListener('click', copyCurrentSearch);
