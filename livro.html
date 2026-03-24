@@ -170,7 +170,7 @@
     <div class="hero">
       <h1 id="title">Carregando…</h1>
       <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
-      <p id="heroIntro">Carregando dados do livro…</p>
+      <p id="heroIntro" style="display:none">Carregando dados do livro…</p>
       <div class="author-inline-wrap" id="authorLine" style="margin-top:10px">—</div>
       <div class="chips">
         <div class="chip" id="heroRefChip" style="display:none"></div>
@@ -766,19 +766,9 @@
       return SERVICE_MODE_LABELS[String(mode || "").trim()] || "";
     }
 
-    function isGenericUnavailableServiceMessage(value) {
-      const normalized = String(value || "")
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim();
-      return normalized === "informacao temporariamente indisponivel";
-    }
-
     function getServiceMessage(state) {
       const custom = String(state?.public_message || "").trim();
-      if (custom && !isGenericUnavailableServiceMessage(custom)) return custom;
+      if (custom) return custom;
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
     }
 
@@ -920,9 +910,7 @@
 
       publicServiceState = data ? {
         service_mode: String(data.service_mode || "").trim(),
-        allow_reservations: data.allow_reservations === false
-          ? false
-          : (data.allows_new_reservations === false ? false : true),
+        allow_reservations: data.allow_reservations === false ? false : true,
         public_message: String(data.public_message || "").trim(),
         updated_at: data.updated_at || null
       } : null;
@@ -1189,7 +1177,7 @@
             .from("user_library_memberships")
             .select("library_id,is_primary,status,libraries!left(slug,name)")
             .eq("user_id", session.user.id)
-            .eq("status", "active")
+            .eq("status", "ativa")
             .order("is_primary", { ascending: false })
             .limit(1);
 
