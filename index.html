@@ -969,6 +969,9 @@ const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
+const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
+const CATALOG_LEGACY_WITH_AUTHORS_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
+const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1922,28 +1925,104 @@ function prepareRows() {
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
 }
+
+function normalizeHoldingLibraries(value) {
+  const source = (() => {
+    if (Array.isArray(value)) return value;
+    if (!value) return [];
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  })();
+  const out = [];
+  for (const item of source) {
+    if (!item || typeof item !== 'object') continue;
+    const library_id = item.library_id ?? null;
+    const library_slug = firstNonEmptyString(item.library_slug);
+    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
+    const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
+    if (!library_id && !library_slug && !library_name) continue;
+    out.push({ library_id, library_slug, library_name, exemplares_total });
+  }
+  return out;
+}
+function deriveSingleLibraryContext(holdingLibraries) {
+  const holdings = Array.isArray(holdingLibraries) ? holdingLibraries : [];
+  if (holdings.length !== 1) return { library_id: null, library_slug: '', library_name: '' };
+  const holding = holdings[0] || {};
+  return {
+    library_id: holding.library_id ?? null,
+    library_slug: firstNonEmptyString(holding.library_slug),
+    library_name: firstNonEmptyString(holding.library_name)
+  };
+}
+function shouldLoadLibrarySupplement(sourceVariant, data) {
+  if (sourceVariant === 'catalog_v2') return false;
+  return (data || []).some((row) => {
+    const holdingLibraries = normalizeHoldingLibraries(row?.holding_libraries_json);
+    if (holdingLibraries.length) return false;
+    return !firstNonEmptyString(
+      row?.biblioteca,
+      row?.library_name,
+      row?.library_slug,
+      row?.library_display,
+      row?.library_label,
+      row?.library,
+      row?.biblioteca_display,
+      row?.biblioteca_label,
+      row?.biblioteca_nome,
+      row?.biblioteca_name
+    );
+  });
+}
+function shouldLoadAuthorRelationData(sourceVariant, data) {
+  if (sourceVariant === 'catalog_v2') {
+    return (data || []).some((row) => {
+      const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
+      return namesCount > 1 && !normalizeAuthorChipEntries(row?.author_chips).length;
+    });
+  }
+  return true;
+}
+function shouldLoadAuthorAliasData(sourceVariant, data) {
+  if (sourceVariant !== 'catalog_v2') return true;
+  return (data || []).some((row) => {
+    const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
+    const authorId = normalizeAuthorIdValue(row?.author_id);
+    return namesCount === 1 && !authorId && !normalizeAuthorChipEntries(row?.author_chips).length;
+  });
+}
+function shouldLoadAuthorCanonicalData(sourceVariant, data) {
+  if (sourceVariant !== 'catalog_v2') return true;
+  return (data || []).some((row) => {
+    const authorId = normalizeAuthorIdValue(row?.author_id);
+    return !!authorId && !firstNonEmptyString(row?.author_display);
+  });
+}
 async function loadRowsFromSupabase() {
   try {
-    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
-    const librarySupplementPromise = loadBookLibrarySupplementMap();
-    const aliasMapPromise = loadAuthorAliasMap();
-    const canonicalMapPromise = loadAuthorCanonicalMap();
-
-    const primarySelect = '*';
-    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
-    let res = await fetch(primaryUrl, {
+    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`;
+    const primaryRes = await fetch(primaryUrl, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         Accept: 'application/json'
       }
     });
-    let text = await res.text();
-    let useCanonicalView = res.ok;
 
-    if (!useCanonicalView) {
-      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent('*')}&order=titulo.asc`;
-      res = await fetch(fallbackUrl, {
+    let res = primaryRes;
+    let text = await primaryRes.text();
+    let sourceVariant = primaryRes.ok ? 'catalog_v2' : 'legacy_with_authors';
+
+    if (!primaryRes.ok) {
+      const fallbackWithAuthorsUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(CATALOG_LEGACY_WITH_AUTHORS_SELECT)}&order=titulo.asc`;
+      res = await fetch(fallbackWithAuthorsUrl, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -1952,29 +2031,60 @@ async function loadRowsFromSupabase() {
       });
       text = await res.text();
       if (!res.ok) {
-        alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
-        return [];
+        const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(CATALOG_LEGACY_SELECT)}&order=titulo.asc`;
+        res = await fetch(fallbackUrl, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Accept: 'application/json'
+          }
+        });
+        text = await res.text();
+        sourceVariant = 'legacy';
+        if (!res.ok) {
+          alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
+          return [];
+        }
       }
     }
 
+    const data = text ? JSON.parse(text) : [];
+    const needsLibrarySupplement = shouldLoadLibrarySupplement(sourceVariant, data);
+    const needsAuthorRelations = shouldLoadAuthorRelationData(sourceVariant, data);
+    const needsAuthorAliases = shouldLoadAuthorAliasData(sourceVariant, data);
+    const needsAuthorCanonical = shouldLoadAuthorCanonicalData(sourceVariant, data);
+
     const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
-      authorRelationsPromise,
-      librarySupplementPromise,
-      aliasMapPromise,
-      canonicalMapPromise
+      needsAuthorRelations ? loadAuthorRelationsFromSupabase() : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() }),
+      needsLibrarySupplement ? loadBookLibrarySupplementMap() : Promise.resolve(new Map()),
+      needsAuthorAliases ? loadAuthorAliasMap() : Promise.resolve(new Map()),
+      needsAuthorCanonical ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
 
-    const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
     return (data || []).map(r => {
+      const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json);
+      const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
-      const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
+      const relationIds = needsAuthorRelations ? getAuthorRelationEntriesForRow(r, authorRelations) : [];
       const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
+      const biblioteca = sourceVariant === 'catalog_v2'
+        ? canonicalizeLibraryLabel(
+            holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
+            r?.bib_ref || ''
+          )
+        : resolveLibraryLabel({
+            ...r,
+            library_id: singleLibraryContext.library_id || r?.library_id,
+            library_slug: singleLibraryContext.library_slug || r?.library_slug,
+            library_name: singleLibraryContext.library_name || r?.library_name
+          }, librarySupplementMap);
+
       return {
         id: r.id ?? null,
         bib_ref: r.bib_ref ?? '',
@@ -1986,17 +2096,19 @@ async function loadRowsFromSupabase() {
         ano: r.ano ?? '',
         editora: r.editora ?? '',
         cdd: r.cdd ?? '',
-        biblioteca: resolveLibraryLabel(r, librarySupplementMap),
-        library_id: r.library_id ?? null,
-        library_slug: r.library_slug ?? '',
-        library_name: r.library_name ?? '',
+        biblioteca,
+        library_id: singleLibraryContext.library_id || r.library_id || null,
+        library_slug: singleLibraryContext.library_slug || r.library_slug || '',
+        library_name: singleLibraryContext.library_name || r.library_name || '',
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _usingCanonicalAuthorView: useCanonicalView
+        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+        _usingCatalogViewV2: sourceVariant === 'catalog_v2',
+        _usingCanonicalAuthorView: sourceVariant !== 'legacy'
       };
     });
   } catch (e) {
@@ -2004,6 +2116,7 @@ async function loadRowsFromSupabase() {
     return [];
   }
 }
+
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
