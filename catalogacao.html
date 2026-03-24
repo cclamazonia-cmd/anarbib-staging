@@ -5280,16 +5280,46 @@
       if (syncLabel) fillLabelForm(record, { switchTab: false });
     }
 
+    function extractRpcNumericId(data, preferredKeys = []) {
+      if (data === null || data === undefined) return null;
+      if (typeof data === 'number' && Number.isFinite(data)) return Number(data);
+      if (typeof data === 'string' && data.trim() !== '' && Number.isFinite(Number(data))) return Number(data);
+      if (Array.isArray(data)) {
+        if (data.length !== 1) return null;
+        return extractRpcNumericId(data[0], preferredKeys);
+      }
+      if (typeof data === 'object') {
+        for (const key of preferredKeys) {
+          if (key in data) {
+            const value = extractRpcNumericId(data[key], []);
+            if (value) return value;
+          }
+        }
+        if ('id' in data) {
+          const value = extractRpcNumericId(data.id, []);
+          if (value) return value;
+        }
+        const values = Object.values(data);
+        if (values.length === 1) return extractRpcNumericId(values[0], []);
+      }
+      return null;
+    }
+
     async function fetchDraftAndEdit(type, id) {
       const mapping = {
-        book: { table: 'book_drafts', fill: fillBookForm },
-        author: { table: 'author_drafts', fill: fillAuthorForm },
-        exemplar: { table: 'exemplar_drafts', fill: fillExemplarForm },
+        book: { table: 'book_drafts', fill: fillBookForm, label: 'livro' },
+        author: { table: 'author_drafts', fill: fillAuthorForm, label: 'autor' },
+        exemplar: { table: 'exemplar_drafts', fill: fillExemplarForm, label: 'exemplar' },
       };
       const cfg = mapping[type];
       if (!cfg) return;
-      const { data, error } = await supabase.from(cfg.table).select('*').eq('id', id).single();
+      const numericId = Number(id);
+      if (!Number.isFinite(numericId) || numericId <= 0) {
+        throw new Error(`ID de rascunho inválido para ${cfg.label}.`);
+      }
+      const { data, error } = await supabase.from(cfg.table).select('*').eq('id', numericId).maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error(`O rascunho de ${cfg.label} foi criado, mas não pôde ser relido em ${cfg.table} (id ${numericId}).`);
       await cfg.fill(data);
     }
 
@@ -6558,11 +6588,13 @@
         p_batch_id: batchId ? Number(batchId) : null
       });
       if (error) throw error;
+      const createdDraftId = extractRpcNumericId(data, ['create_book_draft_from_book', 'p_draft_id']);
+      if (!createdDraftId) throw new Error('O rascunho de edição foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de livro criado (#${data}).`, 'ok');
-      await fetchDraftAndEdit('book', Number(data));
-      return Number(data);
+      showMessage(refs.catalogMessage, `Rascunho de edição de livro criado (#${createdDraftId}).`, 'ok');
+      await fetchDraftAndEdit('book', createdDraftId);
+      return createdDraftId;
     }
 
     async function loadOrCreateAuthorDraftFromCatalog(authorId) {
@@ -6592,11 +6624,13 @@
         p_batch_id: batchId ? Number(batchId) : null
       });
       if (error) throw error;
+      const createdDraftId = extractRpcNumericId(data, ['create_author_draft_from_author', 'p_draft_id']);
+      if (!createdDraftId) throw new Error('O rascunho de autor foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de autor criado (#${data}).`, 'ok');
-      await fetchDraftAndEdit('author', Number(data));
-      return Number(data);
+      showMessage(refs.catalogMessage, `Rascunho de edição de autor criado (#${createdDraftId}).`, 'ok');
+      await fetchDraftAndEdit('author', createdDraftId);
+      return createdDraftId;
     }
 
     function renderCatalogAuthors() {
