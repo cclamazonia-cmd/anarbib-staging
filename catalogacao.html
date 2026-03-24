@@ -2148,6 +2148,7 @@
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
+    const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -3232,15 +3233,42 @@
       return d.toLocaleString('pt-BR');
     }
 
+    function buildStoragePublicUrl(projectUrl, bucket, path) {
+      const cleanPath = String(path || '').trim().replace(/^\/+/, '');
+      if (!cleanPath) return '';
+      const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+      return `${projectUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
+    }
+
     function setPreviewImage(imgEl, path, bucket) {
-      if (!path) {
+      const rawPath = String(path || '').trim();
+      if (!rawPath) {
         imgEl.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#d1d5db" font-family="Arial" font-size="18">Sem imagem</text></svg>`);
         imgEl.alt = 'Sem imagem';
+        imgEl.onerror = null;
         return;
       }
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      imgEl.src = data?.publicUrl || '';
-      imgEl.alt = path;
+      if (/^(https?:|data:)/i.test(rawPath)) {
+        imgEl.src = rawPath;
+        imgEl.alt = rawPath;
+        imgEl.onerror = null;
+        return;
+      }
+      const primaryUrl = buildStoragePublicUrl(SUPABASE_URL, bucket, rawPath);
+      const fallbackUrl = PROD_SUPABASE_URL && PROD_SUPABASE_URL !== SUPABASE_URL
+        ? buildStoragePublicUrl(PROD_SUPABASE_URL, bucket, rawPath)
+        : '';
+      imgEl.onerror = () => {
+        if (fallbackUrl && imgEl.dataset.assetFallbackApplied !== '1') {
+          imgEl.dataset.assetFallbackApplied = '1';
+          imgEl.src = fallbackUrl;
+          return;
+        }
+        imgEl.onerror = null;
+      };
+      imgEl.dataset.assetFallbackApplied = '0';
+      imgEl.src = primaryUrl;
+      imgEl.alt = rawPath;
     }
 
     function isActiveQueueItem(item = {}) {
@@ -5034,10 +5062,29 @@
       return { ok: true, source: 'queue' };
     }
 
+    async function fetchAllCatalogAuthors(pageSize = 1000) {
+      let from = 0;
+      const rows = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from('authors')
+          .select('*')
+          .order('sort_name', { ascending: true, nullsFirst: false })
+          .order('preferred_name', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = Array.isArray(data) ? data : [];
+        rows.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      return rows;
+    }
+
     async function loadCatalog() {
       const [{ data: books, error: booksError }, { data: authors, error: authorsError }, { data: exemplars, error: exemplarsError }] = await Promise.all([
         supabase.from('v_catalog_books_editable').select('*').order('updated_at', { ascending: false }).limit(1000),
-        supabase.from('authors').select('*').order('sort_name', { ascending: true, nullsFirst: false }).order('preferred_name', { ascending: true }).limit(300),
+        fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         supabase.from('v_exemplar_labels').select('*').order('exemplar_id', { ascending: false }).limit(300),
       ]);
 
