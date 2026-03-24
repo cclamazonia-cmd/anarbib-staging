@@ -2145,12 +2145,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { supabase } from './js/blmf-supabase.js';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
     const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
@@ -2160,7 +2163,7 @@
       CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
-    const LOGIN_URL = `${ROUTES.CADASTRO}?next=${encodeURIComponent(window.location.href)}`;
+    const LOGIN_URL = ROUTES.CADASTRO;
 
     const state = {
       session: null,
@@ -2176,6 +2179,10 @@
       showOnlyActiveDrafts: false,
       labelPreviewBatchId: '',
       labelPreviewItems: [],
+      catalogTotals: {
+        books: null,
+        authors: null,
+      },
       catalogSort: {
         books: { key: 'id', dir: 'desc' },
         authors: { key: 'sort_name', dir: 'asc' },
@@ -3286,8 +3293,8 @@
     function updateStats() {
       refs.statOpenBatches.textContent = state.batches.filter(b => b.status === 'open').length;
       refs.statDrafts.textContent = state.queueItems.filter(item => isActiveQueueItem(item)).length;
-      refs.statBooks.textContent = state.books.length;
-      refs.statAuthors.textContent = state.authors.length;
+      refs.statBooks.textContent = Number.isFinite(state.catalogTotals?.books) ? state.catalogTotals.books : state.books.length;
+      refs.statAuthors.textContent = Number.isFinite(state.catalogTotals?.authors) ? state.catalogTotals.authors : state.authors.length;
     }
 
     const DRAFT_VISUAL_STATE_MAP = {
@@ -4932,13 +4939,6 @@
       ]);
     }
 
-    function withTimeout(promise, ms, label) {
-      return Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms))
-      ]);
-    }
-
     async function fetchProfileRecord(userId) {
       try {
         const publicRead = await withTimeout(
@@ -5086,10 +5086,18 @@
     }
 
     async function loadCatalog() {
-      const [{ data: books, error: booksError }, { data: authors, error: authorsError }, { data: exemplars, error: exemplarsError }] = await Promise.all([
+      const [
+        { data: books, error: booksError },
+        { data: authors, error: authorsError },
+        { data: exemplars, error: exemplarsError },
+        { count: booksTotal, error: booksTotalError },
+        { count: authorsTotal, error: authorsTotalError },
+      ] = await Promise.all([
         supabase.from('v_catalog_books_editable').select('*').order('updated_at', { ascending: false }).limit(1000),
         fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         supabase.from('v_exemplar_labels').select('*').order('exemplar_id', { ascending: false }).limit(300),
+        supabase.from('v_catalog_books_editable').select('*', { count: 'exact', head: true }),
+        supabase.from('authors').select('*', { count: 'exact', head: true }),
       ]);
 
       const errors = [];
@@ -5115,6 +5123,20 @@
         errors.push({ source: 'exemplars', error: exemplarsError });
       } else {
         state.exemplars = exemplars || [];
+      }
+
+      if (booksTotalError) {
+        console.warn('loadCatalog books total failed:', booksTotalError);
+        state.catalogTotals.books = state.books.length;
+      } else {
+        state.catalogTotals.books = Number.isFinite(booksTotal) ? booksTotal : state.books.length;
+      }
+
+      if (authorsTotalError) {
+        console.warn('loadCatalog authors total failed:', authorsTotalError);
+        state.catalogTotals.authors = state.authors.length;
+      } else {
+        state.catalogTotals.authors = Number.isFinite(authorsTotal) ? authorsTotal : state.authors.length;
       }
 
       renderCatalogBooks();
