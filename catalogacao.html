@@ -2145,14 +2145,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { supabase } from './js/blmf-supabase.js';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
     const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
@@ -2162,7 +2158,7 @@
       CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
-    const LOGIN_URL = ROUTES.CADASTRO;
+    const LOGIN_URL = `${ROUTES.CADASTRO}?next=${encodeURIComponent(window.location.href)}`;
 
     const state = {
       session: null,
