@@ -499,7 +499,7 @@
       try {
         let query = supabase
           .from("v_library_service_public")
-          .select("*")
+          .select("library_id,slug,name,service_mode,public_message,allow_reservations,allows_new_reservations,updated_at")
           .limit(1);
 
         if (scope.libraryId) query = query.eq("library_id", scope.libraryId);
@@ -540,7 +540,7 @@
       publicServiceState = state;
       applyPublicServiceState();
 
-      if (currentUserContext?.isLoggedIn && !currentUserContext?.isLibrarian && librariesMatch(profileScope, serviceScope)) {
+      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, serviceScope)) {
         applyReaderScopedServiceChip(state);
       }
     }
@@ -623,6 +623,10 @@
   const holdingNames = extractHoldingLibraryNames(bookRow?.holding_libraries_json);
   if (!localContextRequested && holdingNames.length) {
     return holdingNames.join(" / ");
+  }
+
+  if (preferredLocal) {
+    return String(preferredLocal).split(" - ")[0].trim();
   }
 
   try {
@@ -951,6 +955,7 @@
 
       const names = splitAuthorDisplay(authorText);
       const linkedAuthors = [];
+      const canUseDirectSingleAuthorLink = names.length === 1 && bookRow?.author_id != null && String(bookRow.author_id || "").trim();
 
       const rawJson = bookRow?.authors_json;
       if (Array.isArray(rawJson)) {
@@ -962,7 +967,7 @@
         } catch (_) {}
       }
 
-      if (!linkedAuthors.length) {
+      if (!linkedAuthors.length && !canUseDirectSingleAuthorLink) {
         try {
           let rel = null;
           if (bookRow?.id != null) {
@@ -1146,7 +1151,7 @@
         try {
           const { data } = await supabase
             .from("profiles")
-            .select("*")
+            .select("is_librarian,library_id,biblioteca_id,default_library_id,home_library_id,library_slug,biblioteca_slug,default_library_slug,home_library_slug,library_name,biblioteca,biblioteca_nome,default_library_name,home_library_name")
             .eq("id", session.user.id)
             .maybeSingle();
           profile = data || null;
