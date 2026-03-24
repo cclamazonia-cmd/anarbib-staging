@@ -1913,11 +1913,6 @@ function prepareRows() {
 }
 async function loadRowsFromSupabase() {
   try {
-    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
-    const librarySupplementPromise = loadBookLibrarySupplementMap();
-    const aliasMapPromise = loadAuthorAliasMap();
-    const canonicalMapPromise = loadAuthorCanonicalMap();
-
     const primarySelect = '*';
     const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
     let res = await fetch(primaryUrl, {
@@ -1946,6 +1941,38 @@ async function loadRowsFromSupabase() {
       }
     }
 
+    const data = text ? JSON.parse(text) : [];
+    const needsAuthorFallbackData = !useCanonicalView || (data || []).some((row) => {
+      const authorChipEntries = normalizeAuthorChipEntries(row?.author_chips);
+      const rawAuthor = firstNonEmptyString(row?.author_display, row?.autor);
+      return rawAuthor.includes(';') && !authorChipEntries.length;
+    });
+    const needsLibrarySupplementData = !useCanonicalView || (data || []).some((row) => !firstNonEmptyString(
+      row?.biblioteca,
+      row?.library_label,
+      row?.library_display,
+      row?.library_name,
+      row?.library_slug,
+      row?.library,
+      row?.biblioteca_display,
+      row?.biblioteca_label,
+      row?.biblioteca_nome,
+      row?.biblioteca_name
+    ));
+
+    const authorRelationsPromise = needsAuthorFallbackData
+      ? loadAuthorRelationsFromSupabase()
+      : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() });
+    const librarySupplementPromise = needsLibrarySupplementData
+      ? loadBookLibrarySupplementMap()
+      : Promise.resolve(new Map());
+    const aliasMapPromise = needsAuthorFallbackData
+      ? loadAuthorAliasMap()
+      : Promise.resolve(new Map());
+    const canonicalMapPromise = needsAuthorFallbackData
+      ? loadAuthorCanonicalMap()
+      : Promise.resolve(new Map());
+
     const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
       authorRelationsPromise,
       librarySupplementPromise,
@@ -1953,7 +1980,6 @@ async function loadRowsFromSupabase() {
       canonicalMapPromise
     ]);
 
-    const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
