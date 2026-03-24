@@ -2149,6 +2149,7 @@
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
+    const SUPABASE_PROJECT_REF = 'uflwmikiyjfnikiphtcp';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
@@ -4808,8 +4809,34 @@
       return hint;
     }
 
+    function decodeJwtPayload(token = '') {
+      try {
+        const [, payload] = String(token || '').split('.');
+        if (!payload) return null;
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '='.repeat((4 - (base64.length % 4 || 4)) % 4);
+        return JSON.parse(atob(padded));
+      } catch {
+        return null;
+      }
+    }
+
+    function getSessionProjectRef(session = null) {
+      const payload = decodeJwtPayload(session?.access_token || '');
+      return String(payload?.ref || '').trim();
+    }
+
+    function sessionBelongsToCurrentProject(session = null) {
+      return getSessionProjectRef(session) === SUPABASE_PROJECT_REF;
+    }
+
+    function clearStoredSessionCandidate() {
+      try { window.sessionStorage.removeItem(AUTH_STORAGE_KEY); } catch {}
+      try { window.localStorage.removeItem(AUTH_STORAGE_KEY); } catch {}
+    }
+
     function persistSessionToBrowserStorages(session, isLib = null) {
-      if (!session) return;
+      if (!session || !sessionBelongsToCurrentProject(session)) return;
       const serialized = JSON.stringify(session);
       try { window.localStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('localStorage auth persist failed:', e); }
       try { window.sessionStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('sessionStorage auth persist failed:', e); }
@@ -4827,9 +4854,15 @@
       }
       if (!raw) return null;
       try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!sessionBelongsToCurrentProject(parsed)) {
+          clearStoredSessionCandidate();
+          return null;
+        }
+        return parsed;
       } catch (error) {
         console.warn('Stored session parse failed:', error);
+        clearStoredSessionCandidate();
         return null;
       }
     }
@@ -4838,6 +4871,10 @@
       let { data, error } = await supabase.auth.getSession();
       if (error) throw error;
       if (data?.session?.user?.id) {
+        if (!sessionBelongsToCurrentProject(data.session)) {
+          clearStoredSessionCandidate();
+          return null;
+        }
         persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
         return data.session;
       }
@@ -4850,16 +4887,18 @@
             refresh_token: storedSession.refresh_token,
           });
           if (restored.error) throw restored.error;
-          if (restored.data?.session?.user?.id) {
+          if (restored.data?.session?.user?.id && sessionBelongsToCurrentProject(restored.data.session)) {
             persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
             return restored.data.session;
           }
+          clearStoredSessionCandidate();
         } catch (restoreError) {
           console.warn('Session restore failed:', restoreError);
+          clearStoredSessionCandidate();
         }
       }
 
-      return storedSession || null;
+      return null;
     }
 
     async function requireSession() {
@@ -7501,10 +7540,14 @@
     });
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
-      state.session = session;
-      if (session) {
-        refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
-        persistSessionToBrowserStorages(session, readLibrarianHintFromSession(session));
+      const validSession = sessionBelongsToCurrentProject(session) ? session : null;
+      if (session && !validSession) {
+        clearStoredSessionCandidate();
+      }
+      state.session = validSession;
+      if (validSession) {
+        refs.userEmail.textContent = validSession.user.email || 'Usuário autenticado';
+        persistSessionToBrowserStorages(validSession, readLibrarianHintFromSession(validSession));
         try {
           await loadProfile();
         } catch (error) {

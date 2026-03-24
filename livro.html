@@ -540,7 +540,7 @@
       publicServiceState = state;
       applyPublicServiceState();
 
-      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, serviceScope)) {
+      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, state || serviceScope)) {
         applyReaderScopedServiceChip(state);
       }
     }
@@ -623,10 +623,6 @@
   const holdingNames = extractHoldingLibraryNames(bookRow?.holding_libraries_json);
   if (!localContextRequested && holdingNames.length) {
     return holdingNames.join(" / ");
-  }
-
-  if (preferredLocal) {
-    return String(preferredLocal).split(" - ")[0].trim();
   }
 
   try {
@@ -885,7 +881,7 @@
     async function loadPublicServiceState() {
       const { data, error } = await supabase
         .from("v_library_service_public")
-        .select("*")
+        .select("service_mode,allow_reservations,public_message,updated_at")
         .limit(1)
         .maybeSingle();
 
@@ -955,7 +951,6 @@
 
       const names = splitAuthorDisplay(authorText);
       const linkedAuthors = [];
-      const canUseDirectSingleAuthorLink = names.length === 1 && bookRow?.author_id != null && String(bookRow.author_id || "").trim();
 
       const rawJson = bookRow?.authors_json;
       if (Array.isArray(rawJson)) {
@@ -966,6 +961,11 @@
           if (Array.isArray(parsed)) linkedAuthors.push(...parsed);
         } catch (_) {}
       }
+
+      const canUseDirectSingleAuthorLink = !linkedAuthors.length
+        && names.length === 1
+        && bookRow?.author_id != null
+        && String(bookRow.author_id || "").trim();
 
       if (!linkedAuthors.length && !canUseDirectSingleAuthorLink) {
         try {
@@ -1151,14 +1151,33 @@
         try {
           const { data } = await supabase
             .from("profiles")
-            .select("is_librarian,library_id,biblioteca_id,default_library_id,home_library_id,library_slug,biblioteca_slug,default_library_slug,home_library_slug,library_name,biblioteca,biblioteca_nome,default_library_name,home_library_name")
+            .select("id,is_librarian,library_id,biblioteca_id,default_library_id,home_library_id,library_slug,biblioteca_slug,default_library_slug,home_library_slug,library_name,biblioteca,biblioteca_nome,default_library_name,home_library_name")
             .eq("id", session.user.id)
             .maybeSingle();
           profile = data || null;
           isLibrarian = !!data?.is_librarian;
         } catch (_) {}
 
-        const profileScope = extractProfileLibraryScope(profile);
+        let profileScope = extractProfileLibraryScope(profile);
+        if (!profileScope.libraryId && !profileScope.librarySlug && !profileScope.libraryName) {
+          try {
+            const { data: membershipRows } = await supabase
+              .from("user_library_memberships")
+              .select("library_id,status,is_primary")
+              .eq("user_id", session.user.id)
+              .eq("status", "active")
+              .order("is_primary", { ascending: false })
+              .limit(1);
+            const membership = Array.isArray(membershipRows) && membershipRows.length ? membershipRows[0] : null;
+            if (membership?.library_id != null) {
+              profileScope = {
+                ...profileScope,
+                libraryId: String(membership.library_id).trim() || profileScope.libraryId,
+              };
+            }
+          } catch (_) {}
+        }
+
         currentUserContext = {
           isLoggedIn: true,
           userId: String(session.user.id || "").trim(),
@@ -1546,16 +1565,36 @@
         return [];
       }
 
-      const tombos = await loadTombosForBook(data, bib_ref, libraryContext);
       const holdingsInfo = summarizeHoldings(data?.holding_libraries_json, libraryContext);
-      const exemplaresCount = holdingsInfo.totalCount || tombos.length;
+      const immediateHolding = findHoldingForLibraryContext(data?.holding_libraries_json, libraryContext);
+      const immediateTombos = parseJsonArray(immediateHolding?.tombos_json).length
+        ? parseJsonArray(immediateHolding?.tombos_json).map(v => String(v || "").trim()).filter(Boolean)
+        : parseJsonArray(data?.tombos_json).map(v => String(v || "").trim()).filter(Boolean);
+      const initialLibraryLine = holdingsInfo.libraryLine || firstNonEmptyString(data?.library_name, data?.biblioteca, libraryContext?.libraryName);
+      const initialExemplaresCount = holdingsInfo.totalCount || immediateTombos.length || Number(data?.exemplares_total || 0) || 0;
       document.title = `${titulo || "Livro"} - AnarBib`;
-      const libraryLine = holdingsInfo.libraryLine || await getLibraryLineForBibRef(bib_ref, data, libraryContext);
-      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: exemplaresCount });
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine: initialLibraryLine, editora, ano, tombosCount: initialExemplaresCount });
       renderHeroHoldingsDetail(holdingsInfo);
-      setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
-      setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
-      setPill("heroExemplaresChip", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
+      setPill("tomboPill", "tombo", immediateTombos.length ? Array.from(new Set(immediateTombos)).join(", ") : "", true);
+      setPill("exemplaresPill", "exemplares", initialExemplaresCount > 1 ? String(initialExemplaresCount) : "");
+      setPill("heroExemplaresChip", "exemplares", initialExemplaresCount ? String(initialExemplaresCount) : "");
+
+      const finalizeHoldingsRender = async () => {
+        try {
+          const [resolvedTombos, resolvedLibraryLine] = await Promise.all([
+            immediateTombos.length ? Promise.resolve(Array.from(new Set(immediateTombos))) : loadTombosForBook(data, bib_ref, libraryContext),
+            initialLibraryLine ? Promise.resolve(initialLibraryLine) : getLibraryLineForBibRef(bib_ref, data, libraryContext)
+          ]);
+          const finalExemplaresCount = holdingsInfo.totalCount || resolvedTombos.length || Number(data?.exemplares_total || 0) || 0;
+          $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine: resolvedLibraryLine, editora, ano, tombosCount: finalExemplaresCount });
+          setPill("tomboPill", "tombo", resolvedTombos.length ? resolvedTombos.join(", ") : "", true);
+          setPill("exemplaresPill", "exemplares", finalExemplaresCount > 1 ? String(finalExemplaresCount) : "");
+          setPill("heroExemplaresChip", "exemplares", finalExemplaresCount ? String(finalExemplaresCount) : "");
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao finalizar dados de exemplares", err);
+        }
+      };
+      void finalizeHoldingsRender();
 
       if (pdf) {
         $("btnAbrirPdf").style.display = "inline-flex";
