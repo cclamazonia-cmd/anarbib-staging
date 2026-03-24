@@ -2155,7 +2155,7 @@
       CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
-    const LOGIN_URL = ROUTES.CADASTRO;
+    const LOGIN_URL = `${ROUTES.CADASTRO}?next=${encodeURIComponent(window.location.href)}`;
 
     const state = {
       session: null,
@@ -4827,8 +4827,23 @@
       }
     }
 
+    async function waitAuthResult(promise, timeoutMs = 1500) {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), timeoutMs)),
+      ]);
+    }
+
     async function ensureSharedSession() {
-      let { data, error } = await supabase.auth.getSession();
+      let data = null;
+      let error = null;
+      try {
+        const result = await waitAuthResult(supabase.auth.getSession(), 1500);
+        data = result?.data || null;
+        error = result?.error || null;
+      } catch (sessionError) {
+        console.warn('getSession timeout/failure:', sessionError);
+      }
       if (error) throw error;
       if (data?.session?.user?.id) {
         persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
@@ -4838,10 +4853,10 @@
       const storedSession = readStoredSessionCandidate();
       if (storedSession?.access_token && storedSession?.refresh_token) {
         try {
-          const restored = await supabase.auth.setSession({
+          const restored = await waitAuthResult(supabase.auth.setSession({
             access_token: storedSession.access_token,
             refresh_token: storedSession.refresh_token,
-          });
+          }), 2000);
           if (restored.error) throw restored.error;
           if (restored.data?.session?.user?.id) {
             persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
@@ -4894,9 +4909,7 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchProfileRecord(userId);
-      const hint = readLibrarianHintFromSession(state.session);
-      let hintedValue = hint;
+      let hintedValue = readLibrarianHintFromSession(state.session);
       if (hintedValue === null) {
         try {
           const storedHint = window.sessionStorage.getItem(LIBRARIAN_HINT_KEY) ?? window.localStorage.getItem(LIBRARIAN_HINT_KEY);
@@ -4905,8 +4918,20 @@
         } catch {}
       }
 
+      if (hintedValue === true) {
+        state.profile = state.profile || { id: userId, email: state.session?.user?.email || '' };
+        state.isLibrarian = true;
+        persistSessionToBrowserStorages(state.session, true);
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+        clearMessage(refs.globalMessage);
+        updateLoginButton();
+        return;
+      }
+
+      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
+      state.isLibrarian = data?.is_librarian === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
