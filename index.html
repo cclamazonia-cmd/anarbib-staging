@@ -1047,11 +1047,6 @@ const floatingXScroll = document.getElementById('floatingXScroll');
 const floatingXScrollInner = document.getElementById('floatingXScrollInner');
 const tableTopBtn = document.getElementById('tableTopBtn');
 const tableBottomBtn = document.getElementById('tableBottomBtn');
-const MOBILE_CATALOG_MEDIA_QUERY = '(max-width: 760px)';
-let lastRenderIsMobileCatalogView = null;
-let currentRowsComputationVersion = 0;
-let currentRowsCacheKey = '';
-let currentRowsCacheValue = [];
 
 function normalize(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -1882,28 +1877,6 @@ function buildLivroHref(row) {
   if (row?.library_name) url.searchParams.set('library_name', row.library_name);
   return url.toString();
 }
-function buildCurrentRowsCacheKey() {
-  const selectedLibrariesKey = libraryAllExplicitlySelected
-    ? LIBRARY_FILTER_ALL_VALUE
-    : [...selectedLibraryKeys].sort().join('|');
-  return JSON.stringify({
-    version: currentRowsComputationVersion,
-    q: search.value || '',
-    author: authorFilter.value || '',
-    publisher: publisherFilter.value || '',
-    year: yearFilter.value || '',
-    cdd: cddFilter.value || '',
-    availability: availabilityFilter.value || 'all',
-    libraries: selectedLibrariesKey,
-    sortKey,
-    sortDir
-  });
-}
-function invalidateCurrentRowsCache() {
-  currentRowsCacheKey = '';
-  currentRowsCacheValue = [];
-}
-
 function prepareRows() {
   for (const r of rows) {
     const status = getStatusInfo(r);
@@ -1935,16 +1908,9 @@ function prepareRows() {
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
-  currentRowsComputationVersion += 1;
-  invalidateCurrentRowsCache();
 }
 async function loadRowsFromSupabase() {
   try {
-    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
-    const librarySupplementPromise = loadBookLibrarySupplementMap();
-    const aliasMapPromise = loadAuthorAliasMap();
-    const canonicalMapPromise = loadAuthorCanonicalMap();
-
     const primarySelect = '*';
     const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
     let res = await fetch(primaryUrl, {
@@ -1973,22 +1939,50 @@ async function loadRowsFromSupabase() {
       }
     }
 
-    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
-      authorRelationsPromise,
-      librarySupplementPromise,
-      aliasMapPromise,
-      canonicalMapPromise
+    const data = text ? JSON.parse(text) : [];
+    const needsAuthorFallbackData = !useCanonicalView || (data || []).some((row) => {
+      const chips = normalizeAuthorChipEntries(row?.author_chips);
+      if (chips.length) return false;
+      const authorText = firstNonEmptyString(row?.author_display, row?.autor);
+      const authorNames = splitAuthorNames(authorText);
+      const authorId = normalizeAuthorIdValue(row?.author_id);
+      return authorNames.length > 1 || !authorId;
+    });
+    const needsLibrarySupplementData = (data || []).some((row) => !firstNonEmptyString(
+      row?.biblioteca,
+      row?.library_label,
+      row?.library_display,
+      row?.library_name,
+      row?.library_slug,
+      row?.library,
+      row?.biblioteca_display,
+      row?.biblioteca_label,
+      row?.biblioteca_nome,
+      row?.biblioteca_name
+    ));
+
+    const [
+      authorRelations,
+      librarySupplementMap,
+      loadedAuthorAliasMap,
+      loadedAuthorCanonicalMap
+    ] = await Promise.all([
+      needsAuthorFallbackData ? loadAuthorRelationsFromSupabase() : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() }),
+      needsLibrarySupplementData ? loadBookLibrarySupplementMap() : Promise.resolve(new Map()),
+      needsAuthorFallbackData ? loadAuthorAliasMap() : Promise.resolve(new Map()),
+      needsAuthorFallbackData ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
 
-    const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
     return (data || []).map(r => {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
-      const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
+      const relationIds = needsAuthorFallbackData ? getAuthorRelationEntriesForRow(r, authorRelations) : [];
+      const authorIdsList = needsAuthorFallbackData
+        ? resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId)
+        : (authorId ? [authorId] : []);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       return {
@@ -2020,6 +2014,7 @@ async function loadRowsFromSupabase() {
     return [];
   }
 }
+
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -2158,11 +2153,7 @@ async function createReservaFromCatalog(bibRef) {
   return { ok: true };
 }
 
-function isMobileCatalogView() {
-  return window.matchMedia(MOBILE_CATALOG_MEDIA_QUERY).matches;
-}
-
-function buildRowMarkup(r, renderMode = 'both') {
+function buildRowMarkup(r) {
   const ref = r.bib_ref || '';
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
@@ -2193,7 +2184,7 @@ function buildRowMarkup(r, renderMode = 'both') {
     cddHtml,
     bibliotecaHtml,
     status,
-    rowHtml: renderMode === 'mobile' ? '' : `
+    rowHtml: `
       <td class="col-ref"><span class="ref-main">${refHtml}</span></td>
       <td class="col-autor">${autorHtml}</td>
       <td class="col-titulo">${tituloCell}</td>
@@ -2205,7 +2196,7 @@ function buildRowMarkup(r, renderMode = 'both') {
       <td class="col-reserva">${reservaHtml}</td>
       <td class="col-acoes"><button class="btn-inline copyRefBtn" type="button" data-ref="${encodeURIComponent(ref)}">Copiar referência</button></td>
     `,
-    mobileHtml: renderMode === 'desktop' ? '' : `
+    mobileHtml: `
       <article class="mobile-card">
         <div class="mobile-card-head">
           <div>
@@ -2272,11 +2263,6 @@ function compareNullableText(a, b) {
   return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
 }
 function currentRows() {
-  const cacheKey = buildCurrentRowsCacheKey();
-  if (currentRowsCacheKey === cacheKey) {
-    return currentRowsCacheValue;
-  }
-
   lastQuery = parseQuery(search.value || '');
   const availabilityValue = availabilityFilter.value || 'all';
   const filtered = rows.filter((r) => {
@@ -2319,8 +2305,6 @@ function currentRows() {
     if (cmp === 0) cmp = compareNullableText(a.bib_ref, b.bib_ref);
     return sortDir === 'desc' ? -cmp : cmp;
   });
-  currentRowsCacheKey = cacheKey;
-  currentRowsCacheValue = filtered;
   return filtered;
 }
 function updateStats(filtered) {
@@ -2346,8 +2330,6 @@ function paintHeaderSort() {
 
 function render() {
   const filtered = currentRows();
-  const mobileView = isMobileCatalogView();
-  lastRenderIsMobileCatalogView = mobileView;
   tbody.innerHTML = '';
   mobileResults.innerHTML = '';
   updateStats(filtered);
@@ -2358,14 +2340,11 @@ function render() {
   empty.hidden = filtered.length !== 0;
 
   for (const r of filtered) {
-    const markup = buildRowMarkup(r, mobileView ? 'mobile' : 'desktop');
-    if (mobileView) {
-      mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
-      continue;
-    }
+    const markup = buildRowMarkup(r);
     const tr = document.createElement('tr');
     tr.innerHTML = markup.rowHtml;
     tbody.appendChild(tr);
+    mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
   }
   requestAnimationFrame(syncFloatingXScroll);
 }
@@ -2409,19 +2388,6 @@ function bindFloatingXScroll() {
     requestAnimationFrame(() => { syncingFloatingXScroll = false; });
   }, { passive: true });
   window.addEventListener('resize', syncFloatingXScroll, { passive: true });
-}
-function bindResponsiveCatalogMode() {
-  const media = window.matchMedia(MOBILE_CATALOG_MEDIA_QUERY);
-  const handleChange = () => {
-    const mobileView = !!media.matches;
-    if (lastRenderIsMobileCatalogView === null || mobileView === lastRenderIsMobileCatalogView) {
-      syncFloatingXScroll();
-      return;
-    }
-    render();
-  };
-  if (typeof media.addEventListener === 'function') media.addEventListener('change', handleChange);
-  else if (typeof media.addListener === 'function') media.addListener(handleChange);
 }
 function bindTableJumpControls() {
   const targetSection = document.querySelector('.sheet');
@@ -2625,10 +2591,10 @@ async function handleContaClick() {
   }
 }
 search.addEventListener('input', debouncedRender);
-authorFilter.addEventListener('input', debouncedRender);
-publisherFilter.addEventListener('input', debouncedRender);
-yearFilter.addEventListener('input', debouncedRender);
-cddFilter.addEventListener('input', debouncedRender);
+authorFilter.addEventListener('input', render);
+publisherFilter.addEventListener('input', render);
+yearFilter.addEventListener('input', render);
+cddFilter.addEventListener('input', render);
 availabilityFilter.addEventListener('change', render);
 libraryFilterMenu.addEventListener('change', (e) => {
   const input = e.target.closest('input[type="checkbox"]');
@@ -2751,7 +2717,6 @@ document.addEventListener('keydown', (e) => {
 (async function init() {
   restoreStateFromUrl();
   bindFloatingXScroll();
-  bindResponsiveCatalogMode();
   bindTableJumpControls();
   authState = await getCurrentUserAndRole();
   await loadPublicServiceState();
