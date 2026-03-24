@@ -1917,7 +1917,7 @@ function prepareRows() {
 async function loadRowsFromSupabase() {
   try {
     const primarySelect = '*';
-    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
+    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
     let res = await fetch(primaryUrl, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
@@ -1927,6 +1927,21 @@ async function loadRowsFromSupabase() {
     });
     let text = await res.text();
     let useCanonicalView = res.ok;
+    let usingCatalogV2 = res.ok;
+
+    if (!useCanonicalView) {
+      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent('*')}&order=titulo.asc`;
+      res = await fetch(fallbackUrl, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Accept: 'application/json'
+        }
+      });
+      text = await res.text();
+      useCanonicalView = res.ok;
+      usingCatalogV2 = false;
+    }
 
     if (!useCanonicalView) {
       const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent('*')}&order=titulo.asc`;
@@ -1942,6 +1957,7 @@ async function loadRowsFromSupabase() {
         alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
         return [];
       }
+      usingCatalogV2 = false;
     }
 
     const data = text ? JSON.parse(text) : [];
@@ -2011,7 +2027,8 @@ async function loadRowsFromSupabase() {
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _usingCanonicalAuthorView: useCanonicalView
+        _usingCanonicalAuthorView: useCanonicalView,
+        _usingCatalogViewV2: usingCatalogV2
       };
     });
   } catch (e) {
