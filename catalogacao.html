@@ -2147,13 +2147,13 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-    const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
+    const SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
-    const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
+    const AUTH_STORAGE_KEY = 'sb-asptfmokzykwzlshsncw-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
     const ROUTES = {
@@ -4901,6 +4901,7 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
+      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4911,20 +4912,8 @@
         } catch {}
       }
 
-      if (hintedValue === true) {
-        state.profile = { id: userId, email: state.session?.user?.email || '' };
-        state.isLibrarian = true;
-        persistSessionToBrowserStorages(state.session, true);
-        updateLoginButton();
-        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-        refs.rolePill.className = 'pill ok';
-        clearMessage(refs.globalMessage);
-        return;
-      }
-
-      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true;
+      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
@@ -4943,7 +4932,13 @@
 
     async function loadBatches() {
       const { data, error } = await supabase.from('catalog_batches').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.warn('loadBatches failed:', error);
+        state.batches = [];
+        refreshBatchSelects();
+        renderBatchList();
+        return { ok: false, source: 'batches', error };
+      }
       state.batches = data || [];
       refreshBatchSelects();
       renderBatchList();
@@ -4954,19 +4949,17 @@
           console.warn('Não foi possível recarregar a prévia dos rótulos.', error);
         }
       }
+      return { ok: true, source: 'batches' };
     }
 
     async function loadQueue() {
       const { data, error } = await supabase.from('v_catalog_queue').select('*').order('updated_at', { ascending: false });
       if (error) {
-        const message = String(error?.message || '');
-        if (message.includes("Could not find the table 'public.v_catalog_queue' in the schema cache")) {
-          state.queueItems = [];
-          clearQueueSelection();
-          renderQueue();
-          return;
-        }
-        throw error;
+        console.warn('loadQueue failed:', error);
+        state.queueItems = [];
+        clearQueueSelection();
+        renderQueue();
+        return { ok: false, source: 'queue', error };
       }
       let queueItems = data || [];
 
@@ -5002,6 +4995,7 @@
       state.queueItems = queueItems;
       clearQueueSelection();
       renderQueue();
+      return { ok: true, source: 'queue' };
     }
 
     async function loadCatalog() {
@@ -5010,12 +5004,32 @@
         supabase.from('authors').select('*').order('sort_name', { ascending: true, nullsFirst: false }).order('preferred_name', { ascending: true }).limit(300),
         supabase.from('v_exemplar_labels').select('*').order('exemplar_id', { ascending: false }).limit(300),
       ]);
-      if (booksError) throw booksError;
-      if (authorsError) throw authorsError;
-      if (exemplarsError) throw exemplarsError;
-      state.books = books || [];
-      state.authors = authors || [];
-      state.exemplars = exemplars || [];
+
+      const errors = [];
+      if (booksError) {
+        console.warn('loadCatalog books failed:', booksError);
+        state.books = [];
+        errors.push({ source: 'books', error: booksError });
+      } else {
+        state.books = books || [];
+      }
+
+      if (authorsError) {
+        console.warn('loadCatalog authors failed:', authorsError);
+        state.authors = [];
+        errors.push({ source: 'authors', error: authorsError });
+      } else {
+        state.authors = authors || [];
+      }
+
+      if (exemplarsError) {
+        console.warn('loadCatalog exemplars failed:', exemplarsError);
+        state.exemplars = [];
+        errors.push({ source: 'exemplars', error: exemplarsError });
+      } else {
+        state.exemplars = exemplars || [];
+      }
+
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogExemplars();
@@ -5024,6 +5038,8 @@
       } else {
         renderTrash();
       }
+
+      return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
     async function refreshAll(showSuccess = false) {
@@ -5036,7 +5052,7 @@
         await requireSession();
         await loadProfile();
         const currentTab = getActiveCatalogacaoTab();
-        await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
         setTab(currentTab);
         if (refs.labelBatchPreviewId?.value) {
           try {
@@ -5047,7 +5063,17 @@
         }
         updateStats();
         updateLoginButton();
-        if (showSuccess) {
+
+        const failedSources = [];
+        if (batchesResult?.ok === false) failedSources.push('lotes');
+        if (queueResult?.ok === false) failedSources.push('fila editorial');
+        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+
+        if (failedSources.length) {
+          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        } else if (showSuccess) {
           showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
         }
       } catch (error) {
