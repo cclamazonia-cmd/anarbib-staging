@@ -162,8 +162,8 @@
 
     <div class="hero">
       <h1 id="title">Carregando…</h1>
-      <p id="heroIntro">Carregando dados do livro…</p>
       <div class="muted" id="subtitleLine" style="display:none;margin-top:8px"></div>
+      <p id="heroIntro">Carregando dados do livro…</p>
       <div class="author-inline-wrap" id="authorLine" style="margin-top:10px">—</div>
       <div class="chips">
         <div class="chip" id="heroRefChip" style="display:none"></div>
@@ -476,13 +476,43 @@
     }
 
     function getServiceModeLabel(mode) {
-      return SERVICE_MODE_LABELS[String(mode || "").trim()] || "Funcionamento";
+      return SERVICE_MODE_LABELS[String(mode || "").trim()] || "";
     }
 
     function getServiceMessage(state) {
       const custom = String(state?.public_message || "").trim();
       if (custom) return custom;
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
+    }
+
+    function sanitizePublicDescription(value) {
+      return String(value || "")
+        .replace(/
+?/g, "
+")
+        .split("
+")
+        .filter((line) => {
+          const norm = String(line || "").trim().toLowerCase();
+          if (!norm) return true;
+          return !(
+            norm.startsWith("catalog_source:") ||
+            norm.includes("btl_import_staging") ||
+            norm.includes("terra_livre_import_staging") ||
+            norm.includes("blmf_manual_legacy") ||
+            norm.includes("blmf_reinjection_biblivre") ||
+            norm.includes("import btl") ||
+            norm.includes("importado da btl") ||
+            norm.includes("origem do import")
+          );
+        })
+        .join("
+")
+        .replace(/
+{3,}/g, "
+
+")
+        .trim();
     }
 
     function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount }) {
@@ -509,9 +539,9 @@
       const state = publicServiceState;
       const btnReservar = $("btnReservar");
       const serviceModePill = $("serviceModePill");
+      const label = getServiceModeLabel(state?.service_mode);
 
-      if (state?.service_mode) {
-        const label = getServiceModeLabel(state.service_mode);
+      if (label) {
         setPill("serviceModePill", "funcionamento", label);
       } else if (serviceModePill) {
         serviceModePill.style.display = "none";
@@ -1050,7 +1080,8 @@
       setPill("subjectsPill", "assuntos", assuntos);
       setPill("cddPill", "CDD", cdd, true);
 
-      $("desc").textContent = resumo || "—";
+      const resumoPublico = sanitizePublicDescription(resumo);
+      $("desc").textContent = resumoPublico || "—";
 
       async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
         const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
