@@ -1012,6 +1012,9 @@ let selectedLibraryKeys = new Set();
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
+let currentRowsComputationVersion = 0;
+let currentRowsCacheKey = '';
+let currentRowsCacheValue = null;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1908,6 +1911,8 @@ function prepareRows() {
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
+  currentRowsComputationVersion += 1;
+  invalidateCurrentRowsCache();
 }
 async function loadRowsFromSupabase() {
   try {
@@ -2262,8 +2267,34 @@ function matchesNormalizedFilter(valueNorm, valueVariant, rawFilter) {
 function compareNullableText(a, b) {
   return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
 }
+function buildCurrentRowsCacheKey() {
+  const selectedLibraries = libraryAllExplicitlySelected
+    ? [LIBRARY_FILTER_ALL_VALUE]
+    : [...selectedLibraryKeys].sort();
+  return JSON.stringify({
+    rowsVersion: currentRowsComputationVersion,
+    q: (search.value || '').trim(),
+    author: (authorFilter.value || '').trim(),
+    publisher: (publisherFilter.value || '').trim(),
+    year: (yearFilter.value || '').trim(),
+    cdd: (cddFilter.value || '').trim(),
+    availability: availabilityFilter.value || 'all',
+    libraries: selectedLibraries,
+    libraryAllExplicitlySelected: !!libraryAllExplicitlySelected,
+    sortKey,
+    sortDir
+  });
+}
+function invalidateCurrentRowsCache() {
+  currentRowsCacheKey = '';
+  currentRowsCacheValue = null;
+}
 function currentRows() {
   lastQuery = parseQuery(search.value || '');
+  const cacheKey = buildCurrentRowsCacheKey();
+  if (cacheKey === currentRowsCacheKey && Array.isArray(currentRowsCacheValue)) {
+    return currentRowsCacheValue;
+  }
   const availabilityValue = availabilityFilter.value || 'all';
   const filtered = rows.filter((r) => {
     const queryMatch = scoreRow(r, lastQuery);
@@ -2305,6 +2336,8 @@ function currentRows() {
     if (cmp === 0) cmp = compareNullableText(a.bib_ref, b.bib_ref);
     return sortDir === 'desc' ? -cmp : cmp;
   });
+  currentRowsCacheKey = cacheKey;
+  currentRowsCacheValue = filtered;
   return filtered;
 }
 function updateStats(filtered) {
