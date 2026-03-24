@@ -4901,7 +4901,6 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4912,8 +4911,20 @@
         } catch {}
       }
 
+      if (hintedValue === true) {
+        state.profile = state.profile || { id: userId, email: state.session?.user?.email || '' };
+        state.isLibrarian = true;
+        persistSessionToBrowserStorages(state.session, true);
+        updateLoginButton();
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+        clearMessage(refs.globalMessage);
+        return;
+      }
+
+      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
+      state.isLibrarian = data?.is_librarian === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
