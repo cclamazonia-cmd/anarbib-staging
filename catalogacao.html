@@ -2145,14 +2145,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    const SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0';
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
+    import { supabase } from './js/blmf-supabase.js';
     const AUTH_STORAGE_KEY = 'sb-asptfmokzykwzlshsncw-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
@@ -4901,6 +4894,7 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
+      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4911,20 +4905,8 @@
         } catch {}
       }
 
-      if (hintedValue === true) {
-        state.profile = state.profile || { id: userId, email: state.session?.user?.email || '' };
-        state.isLibrarian = true;
-        persistSessionToBrowserStorages(state.session, true);
-        updateLoginButton();
-        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-        refs.rolePill.className = 'pill ok';
-        clearMessage(refs.globalMessage);
-        return;
-      }
-
-      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true;
+      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
