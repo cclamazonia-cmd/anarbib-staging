@@ -412,6 +412,14 @@
       };
     }
 
+    function normalizeLibraryScope(scope = {}) {
+      return {
+        libraryId: firstNonEmptyString(scope?.libraryId, scope?.library_id, scope?.biblioteca_id, scope?.default_library_id, scope?.home_library_id),
+        librarySlug: firstNonEmptyString(scope?.librarySlug, scope?.library_slug, scope?.slug, scope?.biblioteca_slug, scope?.default_library_slug, scope?.home_library_slug),
+        libraryName: firstNonEmptyString(scope?.libraryName, scope?.library_name, scope?.name, scope?.biblioteca, scope?.biblioteca_nome, scope?.default_library_name, scope?.home_library_name)
+      };
+    }
+
     function librariesMatch(a = {}, b = {}) {
       const aId = String(a.libraryId || "").trim();
       const bId = String(b.libraryId || "").trim();
@@ -521,17 +529,17 @@
       applyPublicServiceState();
       applyReaderScopedServiceChip(null);
 
-      const profileScope = {
+      const profileScope = normalizeLibraryScope({
         libraryId: currentUserContext?.libraryId,
         librarySlug: currentUserContext?.librarySlug,
         libraryName: currentUserContext?.libraryName
-      };
+      });
 
-      let serviceScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+      let serviceScope = normalizeLibraryScope(resolveBookPageLibraryScope(bookRow, libraryContext));
 
       if ((!serviceScope.libraryId && !serviceScope.librarySlug && !serviceScope.libraryName) && (profileScope.libraryId || profileScope.librarySlug || profileScope.libraryName)) {
         const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, profileScope);
-        if (matchedHolding) serviceScope = buildLibraryScopeFromHolding(matchedHolding);
+        if (matchedHolding) serviceScope = normalizeLibraryScope(buildLibraryScopeFromHolding(matchedHolding));
       }
 
       const state = await fetchLibraryServiceStateByScope(serviceScope);
@@ -540,7 +548,13 @@
       publicServiceState = state;
       applyPublicServiceState();
 
-      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, state || serviceScope)) {
+      const matchedScope = normalizeLibraryScope({
+        libraryId: firstNonEmptyString(state?.library_id, serviceScope.libraryId),
+        librarySlug: firstNonEmptyString(state?.slug, state?.library_slug, serviceScope.librarySlug),
+        libraryName: firstNonEmptyString(state?.name, state?.library_name, serviceScope.libraryName)
+      });
+
+      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, matchedScope)) {
         applyReaderScopedServiceChip(state);
       }
     }
@@ -881,7 +895,7 @@
     async function loadPublicServiceState() {
       const { data, error } = await supabase
         .from("v_library_service_public")
-        .select("service_mode,allow_reservations,public_message,updated_at")
+        .select("*")
         .limit(1)
         .maybeSingle();
 
@@ -962,12 +976,7 @@
         } catch (_) {}
       }
 
-      const canUseDirectSingleAuthorLink = !linkedAuthors.length
-        && names.length === 1
-        && bookRow?.author_id != null
-        && String(bookRow.author_id || "").trim();
-
-      if (!linkedAuthors.length && !canUseDirectSingleAuthorLink) {
+      if (!linkedAuthors.length) {
         try {
           let rel = null;
           if (bookRow?.id != null) {
@@ -1172,7 +1181,7 @@
             if (membership?.library_id != null) {
               profileScope = {
                 ...profileScope,
-                libraryId: String(membership.library_id).trim() || profileScope.libraryId,
+                libraryId: String(membership.library_id).trim() || profileScope.libraryId
               };
             }
           } catch (_) {}
@@ -1566,44 +1575,56 @@
       }
 
       const holdingsInfo = summarizeHoldings(data?.holding_libraries_json, libraryContext);
-      const immediateHolding = findHoldingForLibraryContext(data?.holding_libraries_json, libraryContext);
-      const immediateTombos = parseJsonArray(immediateHolding?.tombos_json).length
-        ? parseJsonArray(immediateHolding?.tombos_json).map(v => String(v || "").trim()).filter(Boolean)
-        : parseJsonArray(data?.tombos_json).map(v => String(v || "").trim()).filter(Boolean);
-      const initialLibraryLine = holdingsInfo.libraryLine || firstNonEmptyString(data?.library_name, data?.biblioteca, libraryContext?.libraryName);
-      const initialExemplaresCount = holdingsInfo.totalCount || immediateTombos.length || Number(data?.exemplares_total || 0) || 0;
+      const initialLibraryLine = String(
+        holdingsInfo.libraryLine
+        || firstNonEmptyString(data?.library_name, data?.biblioteca, libraryContext?.libraryName)
+      ).split(" - ")[0].trim();
+      const initialExemplaresCount = holdingsInfo.totalCount || 0;
+
       document.title = `${titulo || "Livro"} - AnarBib`;
-      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine: initialLibraryLine, editora, ano, tombosCount: initialExemplaresCount });
+      $("heroIntro").textContent = buildHeroIntro({
+        tipoMaterial,
+        libraryLine: initialLibraryLine,
+        editora,
+        ano,
+        tombosCount: initialExemplaresCount
+      });
       renderHeroHoldingsDetail(holdingsInfo);
-      setPill("tomboPill", "tombo", immediateTombos.length ? Array.from(new Set(immediateTombos)).join(", ") : "", true);
       setPill("exemplaresPill", "exemplares", initialExemplaresCount > 1 ? String(initialExemplaresCount) : "");
       setPill("heroExemplaresChip", "exemplares", initialExemplaresCount ? String(initialExemplaresCount) : "");
 
-      const finalizeHoldingsRender = async () => {
-        try {
-          const [resolvedTombos, resolvedLibraryLine] = await Promise.all([
-            immediateTombos.length ? Promise.resolve(Array.from(new Set(immediateTombos))) : loadTombosForBook(data, bib_ref, libraryContext),
-            initialLibraryLine ? Promise.resolve(initialLibraryLine) : getLibraryLineForBibRef(bib_ref, data, libraryContext)
-          ]);
-          const finalExemplaresCount = holdingsInfo.totalCount || resolvedTombos.length || Number(data?.exemplares_total || 0) || 0;
-          $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine: resolvedLibraryLine, editora, ano, tombosCount: finalExemplaresCount });
-          setPill("tomboPill", "tombo", resolvedTombos.length ? resolvedTombos.join(", ") : "", true);
-          setPill("exemplaresPill", "exemplares", finalExemplaresCount > 1 ? String(finalExemplaresCount) : "");
-          setPill("heroExemplaresChip", "exemplares", finalExemplaresCount ? String(finalExemplaresCount) : "");
-        } catch (err) {
-          console.warn("AnarBib livro: falha ao finalizar dados de exemplares", err);
-        }
-      };
-      void finalizeHoldingsRender();
+      const tombosPromise = loadTombosForBook(data, bib_ref, libraryContext);
+      const libraryLinePromise = initialLibraryLine
+        ? Promise.resolve(initialLibraryLine)
+        : getLibraryLineForBibRef(bib_ref, data, libraryContext);
+      let hasDigitalAvailability = false;
+      const digitalAvailabilityPromise = getDigitalAvailabilityForBibRef(bib_ref, data)
+        .then((value) => {
+          hasDigitalAvailability = !!value;
+          setDigitalAvailability(hasDigitalAvailability);
+          return hasDigitalAvailability;
+        })
+        .catch((err) => {
+          console.warn("AnarBib livro: falha ao consultar disponibilidade digital", err);
+          hasDigitalAvailability = false;
+          setDigitalAvailability(false);
+          return false;
+        });
+
+      void loadReaderScopedServiceChip(data, libraryContext);
 
       if (pdf) {
         $("btnAbrirPdf").style.display = "inline-flex";
         $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
 
-      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
-      setDigitalAvailability(hasDigitalAvailability);
-      await loadReaderScopedServiceChip(data, libraryContext);
+      const [tombos, libraryLine] = await Promise.all([tombosPromise, libraryLinePromise]);
+      const exemplaresCount = holdingsInfo.totalCount || tombos.length;
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: exemplaresCount });
+      setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
+      setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
+      setPill("heroExemplaresChip", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
+      await digitalAvailabilityPromise;
 
       $("btnLer").addEventListener("click", async () => {
         const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
