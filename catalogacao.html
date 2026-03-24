@@ -4901,7 +4901,6 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4912,8 +4911,20 @@
         } catch {}
       }
 
+      if (hintedValue === true) {
+        state.profile = { id: userId, email: state.session?.user?.email || '' };
+        state.isLibrarian = true;
+        persistSessionToBrowserStorages(state.session, true);
+        updateLoginButton();
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+        clearMessage(refs.globalMessage);
+        return;
+      }
+
+      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
+      state.isLibrarian = data?.is_librarian === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
@@ -4947,7 +4958,16 @@
 
     async function loadQueue() {
       const { data, error } = await supabase.from('v_catalog_queue').select('*').order('updated_at', { ascending: false });
-      if (error) throw error;
+      if (error) {
+        const message = String(error?.message || '');
+        if (message.includes("Could not find the table 'public.v_catalog_queue' in the schema cache")) {
+          state.queueItems = [];
+          clearQueueSelection();
+          renderQueue();
+          return;
+        }
+        throw error;
+      }
       let queueItems = data || [];
 
       // v_catalog_queue não expõe label_status; para exemplares, reconciliamos o estado real
@@ -7228,9 +7248,7 @@
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
     refs.loginBtn.addEventListener('click', () => {
-      const hasSession = !!state.session?.user?.id;
-      const hasConfirmedAccess = hasSession && state.isLibrarian === true && !refs.rolePill?.classList.contains('danger');
-      if (hasConfirmedAccess) {
+      if (state.session?.user?.id) {
         refreshAll(true);
         return;
       }
