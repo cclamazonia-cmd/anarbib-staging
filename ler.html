@@ -164,28 +164,27 @@
 
     .logo-reserve {
       display:grid;
-      grid-template-columns: repeat(2, minmax(88px, 108px));
-      gap:12px;
-      align-items:start;
+      grid-template-columns: repeat(2, minmax(120px, 150px));
+      gap:10px;
+      align-items:stretch;
       flex: 0 0 auto;
     }
 
     .logo-slot {
       width: 96px;
-      min-height: 96px;
+      height: 96px;
       border-radius: 24px;
-      border: 1px solid rgba(255,255,255,.18);
+      border: 1px dashed rgba(255,255,255,.26);
       background: rgba(18,18,18,.24);
       display:grid;
       place-items:center;
-      padding: 8px;
+      padding: 10px;
       text-align:center;
       color: rgba(255,255,255,.88);
-      font-size: .76rem;
+      font-size: .74rem;
       line-height: 1.2;
       font-weight: 700;
       overflow: hidden;
-      box-shadow: var(--shadow);
       position: relative;
     }
 
@@ -193,18 +192,17 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      display:block;
+      display: block;
       border-radius: inherit;
-      background: rgba(255,255,255,.04);
-      padding: 8px;
+      background: rgba(255,255,255,.03);
     }
 
-    .logo-slot-fallback {
-      display:grid;
-      place-items:center;
-      width:100%;
-      height:100%;
-      padding: 8px;
+    .logo-slot .logo-fallback {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      padding: 4px;
     }
 
     .hero-meta {
@@ -551,13 +549,13 @@
           <p id="subline">Preparando a leitura…</p>
         </div>
         <div class="logo-reserve" aria-label="Logótipos da biblioteca e da rede">
-          <div class="logo-slot" aria-label="Logótipo da biblioteca do leitor">
-            <img id="readerLibraryLogo" class="hidden" alt="Biblioteca do leitor" />
-            <div class="logo-slot-fallback" id="readerLibraryLogoFallback">Biblioteca<br>do leitor</div>
+          <div class="logo-slot" id="readerLibraryLogoSlot" aria-label="Logótipo da biblioteca do leitor">
+            <div class="logo-fallback" id="readerLibraryLogoFallback">Biblioteca</div>
+            <img id="readerLibraryLogoImg" alt="Logótipo da biblioteca" hidden />
           </div>
-          <div class="logo-slot" aria-label="Logótipo da rede AnarBib">
-            <img id="networkLogo" class="hidden" alt="Rede AnarBib" />
-            <div class="logo-slot-fallback" id="networkLogoFallback">Rede<br>AnarBib</div>
+          <div class="logo-slot" id="anarbibLogoSlot" aria-label="Logótipo da rede AnarBib">
+            <div class="logo-fallback" id="anarbibLogoFallback">AnarBib</div>
+            <img id="anarbibLogoImg" alt="Logótipo da rede AnarBib" hidden />
           </div>
         </div>
       </div>
@@ -630,9 +628,11 @@
     import { supabase } from "./js/blmf-supabase.js";
 
     const GH_BASE = "https://cclamazonia-cmd.github.io";
-    const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
-    const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
-    const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
+    const REPO_BASE = `${GH_BASE}/anarbib-conta-staging`;
+    const RAW_REPO_BASE = "https://raw.githubusercontent.com/cclamazonia-cmd/anarbib-conta-staging/main";
+    const CONTA_URL = `${REPO_BASE}/conta.html`;
+    const CADASTRO_URL = `${REPO_BASE}/cadastro.html`;
+    const PAINEL_URL = `${REPO_BASE}/painel.html`;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
     const PDFJS_MAIN = "./vendor/pdfjs/build/pdf.mjs";
     const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
@@ -644,48 +644,16 @@
       librarySlug: (params.get("library_slug") || "").trim()
     };
     const SUPABASE_PROJECT_REF = "uflwmikiyjfnikiphtcp";
-    const LEGACY_SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
     const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
-    const LEGACY_AUTH_STORAGE_KEY = `sb-${LEGACY_SUPABASE_PROJECT_REF}-auth-token`;
+    const LEGACY_AUTH_STORAGE_KEY = "sb-asptfmokzykwzlshsncw-auth-token";
+    const LOGO_BASE = `${REPO_BASE}/assets/img/libraries`;
+    const RAW_LOGO_BASE = `${RAW_REPO_BASE}/assets/img/libraries`;
+    const LOCAL_LOGO_ASSETS = {
+      anarbib: [`${LOGO_BASE}/anarbib/logo-anarbib.png`, `${RAW_LOGO_BASE}/anarbib/logo-anarbib.png`, "./assets/img/libraries/anarbib/logo-anarbib.png"],
+      blmf: [`${LOGO_BASE}/blmf/logo-blmf.png`, `${RAW_LOGO_BASE}/blmf/logo-blmf.png`, "./assets/img/libraries/blmf/logo-blmf.png"],
+      btl: [`${LOGO_BASE}/btl/logo-btl.png`, `${RAW_LOGO_BASE}/btl/logo-btl.png`, "./assets/img/libraries/btl/logo-btl.png"],
+    };
     const storageKey = bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default";
-    const LOGO_BUCKET = "library-ui-assets";
-    const LOCAL_LOGO_ASSETS = Object.freeze({
-      anarbib: "./assets/img/libraries/anarbib/logo-anarbib.png",
-      blmf: "./assets/img/libraries/blmf/logo-blmf.png",
-      btl: "./assets/img/libraries/btl/logo-btl.png"
-    });
-    const LIBRARY_DIRECTORY = Object.freeze({
-      default: {
-        slug: "default",
-        display_name: "AnarBib",
-        short_name: "AnarBib",
-        logo_url: LOCAL_LOGO_ASSETS.anarbib,
-        name_aliases: ["anarbib", "rede anarbib"]
-      },
-      blmf: {
-        slug: "blmf",
-        display_name: "Biblioteca Libertária Maxwell Ferreira",
-        short_name: "BLMF",
-        logo_url: LOCAL_LOGO_ASSETS.blmf,
-        name_aliases: [
-          "biblioteca libertária maxwell ferreira",
-          "biblioteca libertaria maxwell ferreira",
-          "blmf",
-          "maxwell ferreira"
-        ]
-      },
-      btl: {
-        slug: "btl",
-        display_name: "Biblioteca Terra Livre",
-        short_name: "BTL",
-        logo_url: LOCAL_LOGO_ASSETS.btl,
-        name_aliases: [
-          "biblioteca terra livre",
-          "btl",
-          "terra livre"
-        ]
-      }
-    });
 
     const state = {
       scale: 1.15,
@@ -745,138 +713,6 @@
       return u.toString();
     }
 
-    function normalizeLookup(value) {
-      return String(value || "")
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .trim()
-        .toLowerCase();
-    }
-
-    function findLibraryMetaBySlugOrName(rawSlug, rawName) {
-      const slug = normalizeLookup(rawSlug);
-      const name = normalizeLookup(rawName);
-      if (slug && LIBRARY_DIRECTORY[slug]) return LIBRARY_DIRECTORY[slug];
-      for (const meta of Object.values(LIBRARY_DIRECTORY)) {
-        const aliases = Array.isArray(meta.name_aliases) ? meta.name_aliases : [];
-        if (name && aliases.some((alias) => normalizeLookup(alias) === name)) return meta;
-      }
-      return LIBRARY_DIRECTORY.default;
-    }
-
-    function inferLibraryMeta(rawSlug = "", rawName = "") {
-      const html = document.documentElement;
-      const datasetSlug = String(html?.dataset?.librarySlug || "").trim();
-      const datasetName = String(html?.dataset?.libraryName || "").trim();
-      const baseMeta = findLibraryMetaBySlugOrName(rawSlug || datasetSlug, rawName || datasetName);
-      return {
-        ...baseMeta,
-        slug: String(rawSlug || datasetSlug || baseMeta.slug || "default").trim().toLowerCase(),
-        display_name: String(rawName || datasetName || baseMeta.display_name || "AnarBib").trim(),
-        logo_url: String(baseMeta.logo_url || "").trim(),
-      };
-    }
-
-    function buildBucketLogoCandidates(slug) {
-      const cleanSlug = String(slug || "").trim().toLowerCase();
-      if (!cleanSlug) return [];
-      const candidatePaths = [
-        `libraries/${cleanSlug}/logo-${cleanSlug}.png`,
-        `libraries/${cleanSlug}/logo.png`,
-        `assets/img/libraries/${cleanSlug}/logo-${cleanSlug}.png`,
-        `${cleanSlug}/logo-${cleanSlug}.png`,
-        `${cleanSlug}/logo.png`
-      ];
-      return candidatePaths
-        .map((filePath) => {
-          try {
-            return supabase.storage.from(LOGO_BUCKET).getPublicUrl(filePath)?.data?.publicUrl || "";
-          } catch (_) {
-            return "";
-          }
-        })
-        .filter(Boolean);
-    }
-
-    function uniqueUrls(urls) {
-      return Array.from(new Set((urls || []).map((url) => String(url || "").trim()).filter(Boolean)));
-    }
-
-    function resolveLogoCandidates(meta, isNetwork = false) {
-      const slug = isNetwork ? "anarbib" : String(meta?.slug || "default").trim().toLowerCase();
-      const localFallback = isNetwork
-        ? LOCAL_LOGO_ASSETS.anarbib
-        : String(meta?.logo_url || LOCAL_LOGO_ASSETS[slug] || "");
-      return uniqueUrls([
-        ...buildBucketLogoCandidates(slug),
-        localFallback
-      ]);
-    }
-
-    function preloadImage(url) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => reject(new Error(`Falha ao carregar ${url}`));
-        img.src = url;
-      });
-    }
-
-    async function applyLogoToSlot(imgEl, fallbackEl, candidates, altText) {
-      if (!imgEl || !fallbackEl) return false;
-      for (const url of uniqueUrls(candidates)) {
-        try {
-          await preloadImage(url);
-          imgEl.src = url;
-          imgEl.alt = altText;
-          imgEl.classList.remove("hidden");
-          fallbackEl.classList.add("hidden");
-          return true;
-        } catch (_) {}
-      }
-      imgEl.removeAttribute("src");
-      imgEl.classList.add("hidden");
-      fallbackEl.classList.remove("hidden");
-      return false;
-    }
-
-    async function loadHeroLogos() {
-      const networkLogo = $("networkLogo");
-      const networkFallback = $("networkLogoFallback");
-      const readerLogo = $("readerLibraryLogo");
-      const readerFallback = $("readerLibraryLogoFallback");
-
-      const session = await getSessionWithFallback().catch(() => null);
-      let readerMeta = inferLibraryMeta(libraryContext.librarySlug, "");
-
-      if (session?.user?.id) {
-        try {
-          const { data } = await supabase
-            .from("api.my_access")
-            .select("default_library_slug, default_library_name, library_slug, library_name")
-            .maybeSingle();
-          const effectiveSlug = String(data?.default_library_slug || data?.library_slug || readerMeta.slug || "").trim();
-          const effectiveName = String(data?.default_library_name || data?.library_name || readerMeta.display_name || "").trim();
-          readerMeta = inferLibraryMeta(effectiveSlug, effectiveName);
-        } catch (_) {}
-      }
-
-      await applyLogoToSlot(
-        networkLogo,
-        networkFallback,
-        resolveLogoCandidates({ slug: "anarbib", logo_url: LOCAL_LOGO_ASSETS.anarbib }, true),
-        "Rede AnarBib"
-      );
-
-      const readerLabel = readerMeta?.display_name || "Biblioteca do leitor";
-      await applyLogoToSlot(
-        readerLogo,
-        readerFallback,
-        resolveLogoCandidates(readerMeta, false),
-        readerLabel
-      );
-    }
-
     function buildBookUrl() {
       const url = new URL("livro.html", location.href);
       if (bibRef) url.searchParams.set("ref", bibRef);
@@ -898,15 +734,15 @@
     }
 
     function readStoredSession() {
-      const candidateKeys = [AUTH_STORAGE_KEY, LEGACY_AUTH_STORAGE_KEY];
-      for (const key of candidateKeys) {
+      const keys = [AUTH_STORAGE_KEY, LEGACY_AUTH_STORAGE_KEY];
+      for (const key of keys) {
         let tokenRaw = "";
         try { tokenRaw = sessionStorage.getItem(key) || ""; } catch (_) {}
         if (!tokenRaw) {
           try { tokenRaw = localStorage.getItem(key) || ""; } catch (_) {}
         }
         const session = parseStoredSession(tokenRaw);
-        if (session?.access_token) return { tokenRaw, session };
+        if (session) return { tokenRaw, session };
       }
       return { tokenRaw: "", session: null };
     }
@@ -916,6 +752,78 @@
       if (!raw) return;
       try { sessionStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
       try { localStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
+    }
+
+
+    function uniqueList(values = []) {
+      return Array.from(new Set(values.filter(Boolean)));
+    }
+
+    function assetCandidatesForSlug(slug) {
+      const key = String(slug || "").trim().toLowerCase();
+      return uniqueList(LOCAL_LOGO_ASSETS[key] || []);
+    }
+
+    function setLogoState(imgId, fallbackId, src, alt) {
+      const img = $(imgId);
+      const fallback = $(fallbackId);
+      if (!img || !fallback) return;
+      if (!src) {
+        img.hidden = true;
+        img.removeAttribute("src");
+        fallback.hidden = false;
+        return;
+      }
+      img.src = src;
+      img.alt = alt || "Logótipo";
+      img.hidden = false;
+      fallback.hidden = true;
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(src);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    async function firstWorkingImage(candidates = []) {
+      for (const src of uniqueList(candidates)) {
+        try {
+          await loadImage(src);
+          return src;
+        } catch (_) {}
+      }
+      return "";
+    }
+
+    async function resolveReaderLibrarySlug(session) {
+      const fallbackSlug = (libraryContext.librarySlug || document.documentElement.dataset.librarySlug || "").trim().toLowerCase();
+      if (!session?.user?.id) return fallbackSlug;
+      try {
+        const { data } = await supabase.schema("api").from("my_access")
+          .select("library_slug, default_library_slug")
+          .maybeSingle();
+        const slug = String(data?.library_slug || data?.default_library_slug || "").trim().toLowerCase();
+        return slug || fallbackSlug;
+      } catch (_) {
+        return fallbackSlug;
+      }
+    }
+
+    async function loadHeroLogos(session) {
+      const readerSlug = await resolveReaderLibrarySlug(session);
+      const readerLogo = await firstWorkingImage(assetCandidatesForSlug(readerSlug));
+      setLogoState(
+        "readerLibraryLogoImg",
+        "readerLibraryLogoFallback",
+        readerLogo,
+        readerSlug === "blmf" ? "Logótipo da Biblioteca Libertária Maxwell Ferreira" : readerSlug === "btl" ? "Logótipo da Biblioteca Terra Livre" : "Logótipo da biblioteca"
+      );
+      const anarbibLogo = await firstWorkingImage(assetCandidatesForSlug("anarbib"));
+      setLogoState("anarbibLogoImg", "anarbibLogoFallback", anarbibLogo, "Logótipo da rede AnarBib");
     }
 
     async function getSessionWithFallback() {
@@ -1222,7 +1130,10 @@
       $("btnLogin").href = buildCadastroUrl();
       $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
       $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
-      await loadHeroLogos();
+
+      const bootSession = await getSessionWithFallback();
+      await setupNavButtons();
+      await loadHeroLogos(bootSession);
 
       if (!bibRef) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
