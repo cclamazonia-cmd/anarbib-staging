@@ -766,9 +766,19 @@
       return SERVICE_MODE_LABELS[String(mode || "").trim()] || "";
     }
 
+    function isGenericUnavailableServiceMessage(value) {
+      const normalized = String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+      return normalized === "informacao temporariamente indisponivel";
+    }
+
     function getServiceMessage(state) {
       const custom = String(state?.public_message || "").trim();
-      if (custom) return custom;
+      if (custom && !isGenericUnavailableServiceMessage(custom)) return custom;
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
     }
 
@@ -910,7 +920,9 @@
 
       publicServiceState = data ? {
         service_mode: String(data.service_mode || "").trim(),
-        allow_reservations: data.allow_reservations === false ? false : true,
+        allow_reservations: data.allow_reservations === false
+          ? false
+          : (data.allows_new_reservations === false ? false : true),
         public_message: String(data.public_message || "").trim(),
         updated_at: data.updated_at || null
       } : null;
@@ -1177,7 +1189,7 @@
             .from("user_library_memberships")
             .select("library_id,is_primary,status,libraries!left(slug,name)")
             .eq("user_id", session.user.id)
-            .eq("status", "ativa")
+            .eq("status", "active")
             .order("is_primary", { ascending: false })
             .limit(1);
 

@@ -923,8 +923,9 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <label class="field-label" for="availabilityFilter">Disponibilidade</label>
         <select id="availabilityFilter" class="select">
           <option value="all">Todas</option>
-          <option value="available">Mostrar só “Disponível agora”</option>
-          <option value="local">Somente consulta local</option>
+          <option value="available">Mostrar só “Disponível”</option>
+          <option value="local">Consultável no lugar</option>
+          <option value="restricted">Indisponível para você</option>
           <option value="unavailable">Indisponível no momento</option>
         </select>
       </div>
@@ -1058,7 +1059,7 @@ let rows = [];
 let lastQuery = { tokens: [], phrases: [] };
 let sortKey = 'relevance';
 let sortDir = 'asc';
-let authState = { user: null, isLibrarian: false, accessToken: null };
+let authState = { user: null, isLibrarian: false, accessToken: null, homeLibrary: null };
 let serviceState = null;
 let selectedLibraryKeys = new Set();
 const CATALOG_BATCH_SIZE = 100;
@@ -1068,6 +1069,7 @@ let suppressVisibleLimitReset = false;
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
+let holdingAvailabilityMap = new Map();
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1196,7 +1198,27 @@ function diceCoefficient(a, b) {
   return (2 * overlap) / ((a.length - 1) + (b.length - 1));
 }
 function getStatusInfo(r) {
-  if (r.loanable === false) return { key: 'local', label: 'Somente consulta local', cls: 'status-local' };
+  const homeLibrary = authState?.homeLibrary || null;
+  const holdings = getResolvedHoldingEntriesForRow(r);
+
+  if (homeLibrary && holdings.length) {
+    const userHoldings = holdings.filter((entry) => libraryMatchesUserContext(entry, homeLibrary));
+    if (!userHoldings.length) {
+      return { key: 'restricted', label: 'Indisponível para você', cls: 'status-unavailable' };
+    }
+    if (userHoldings.some((entry) => entry.loanable === false)) {
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    }
+    if (userHoldings.some((entry) => Number(entry.available_count || 0) > 0)) {
+      if (serviceState?.allow_reservations === false) {
+        return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
+      }
+      return { key: 'available', label: 'Disponível agora', cls: 'status-available' };
+    }
+    return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+  }
+
+  if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
   if (Number(r.available_count || 0) > 0) {
     if (serviceState?.allow_reservations === false) {
       return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
@@ -1371,8 +1393,9 @@ function resolveLibraryLabel(row, librarySupplementMap) {
 }
 function getAvailabilityLabel(value) {
   switch (value) {
-    case 'available': return 'Disponível agora';
-    case 'local': return 'Consulta local';
+    case 'available': return 'Disponível';
+    case 'local': return 'Consultável no lugar';
+    case 'restricted': return 'Indisponível para você';
     case 'unavailable': return 'Indisponível';
     default: return 'Todas';
   }
@@ -1809,12 +1832,14 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms, authorChipEntries
   const canonicalEntries = normalizeAuthorChipEntries(authorChipEntries);
   if (canonicalEntries.length) {
     const parts = canonicalEntries.map((entry) => {
-      const clickAuthorId = normalizeAuthorIdValue(entry.author_id);
-      const displayName = firstNonEmptyString(authorCanonicalMap.get(clickAuthorId), entry.label);
+      const explicitAuthorId = normalizeAuthorIdValue(entry.author_id);
+      const aliasAuthorId = getUniqueAliasAuthorIdForChip(entry.label, authorAliasMap);
+      const resolvedAuthorId = explicitAuthorId || aliasAuthorId || null;
+      const displayName = resolvedAuthorId ? firstNonEmptyString(authorCanonicalMap.get(resolvedAuthorId), entry.label) : entry.label;
       const label = highlightHTML(displayName, terms);
-      const href = buildAuthorHref(clickAuthorId);
-      if (clickAuthorId) {
-        return `<a class="tag-link author-chip" href="${href}" data-author-id="${clickAuthorId}">${label}</a>`;
+      const href = buildAuthorHref(resolvedAuthorId);
+      if (resolvedAuthorId) {
+        return `<a class="tag-link author-chip" href="${href}" data-author-id="${resolvedAuthorId}">${label}</a>`;
       }
       return `<span class="tag-link author-chip author-chip-static" aria-disabled="true">${label}</span>`;
     });
@@ -2024,12 +2049,18 @@ function normalizeHoldingLibraries(value) {
   const out = [];
   for (const item of source) {
     if (!item || typeof item !== 'object') continue;
-    const library_id = item.library_id ?? null;
-    const library_slug = firstNonEmptyString(item.library_slug);
-    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
-    const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
+    const library_id = item.library_id ?? item.biblioteca_id ?? item.home_library_id ?? null;
+    const library_slug = firstNonEmptyString(item.library_slug, item.biblioteca_slug, item.home_library_slug);
+    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.biblioteca_name, item.name, item.home_library_name);
+    const exemplares_total = Number(item.exemplares_total ?? item.total_exemplares ?? 0) || 0;
+    const available_count_raw = item.available_count ?? item.available ?? item.disponiveis ?? item.available_items;
+    const available_count = available_count_raw === null || available_count_raw === undefined || available_count_raw === ''
+      ? null
+      : (Number(available_count_raw) || 0);
+    const loanable = item.loanable === false ? false : (item.loanable === true ? true : null);
+    const tipo_material = firstNonEmptyString(item.tipo_material, item.material_type, item.tipo, item.type);
     if (!library_id && !library_slug && !library_name) continue;
-    out.push({ library_id, library_slug, library_name, exemplares_total });
+    out.push({ library_id, library_slug, library_name, exemplares_total, available_count, loanable, tipo_material });
   }
   return out;
 }
@@ -2042,6 +2073,205 @@ function deriveSingleLibraryContext(holdingLibraries) {
     library_slug: firstNonEmptyString(holding.library_slug),
     library_name: firstNonEmptyString(holding.library_name)
   };
+}
+
+function normalizeHomeLibraryContext(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const library_id = raw.library_id ?? raw.biblioteca_id ?? raw.home_library_id ?? raw.registration_library_id ?? raw.default_library_id ?? null;
+  const library_slug = firstNonEmptyString(raw.library_slug, raw.biblioteca_slug, raw.home_library_slug, raw.registration_library_slug, raw.default_library_slug);
+  const rawLibraryName = firstNonEmptyString(raw.library_name, raw.biblioteca, raw.biblioteca_name, raw.home_library_name, raw.registration_library_name, raw.default_library_name, raw.library_label);
+  const library_name = rawLibraryName ? canonicalizeLibraryLabel(rawLibraryName, '') : '';
+  if (!library_id && !library_slug && !library_name) return null;
+  return {
+    library_id,
+    library_slug,
+    library_name,
+    library_key: getLibraryKey(library_name || library_slug || String(library_id || ''))
+  };
+}
+function readLibraryHintFromObject(obj) {
+  return normalizeHomeLibraryContext(obj);
+}
+function buildLibraryMatchKeys(raw) {
+  const ctx = normalizeHomeLibraryContext(raw);
+  if (!ctx) return new Set();
+  const keys = new Set();
+  if (ctx.library_id !== null && ctx.library_id !== undefined && String(ctx.library_id).trim()) {
+    keys.add(`id:${String(ctx.library_id).trim()}`);
+  }
+  if (ctx.library_slug) keys.add(`slug:${normalize(ctx.library_slug)}`);
+  if (ctx.library_name) {
+    keys.add(`name:${getLibraryKey(ctx.library_name)}`);
+    keys.add(`name:${getLibraryKey(canonicalizeLibraryLabel(ctx.library_name, ''))}`);
+  }
+  if (ctx.library_key) keys.add(`key:${ctx.library_key}`);
+  return keys;
+}
+function libraryMatchesUserContext(entry, homeLibrary) {
+  const entryKeys = buildLibraryMatchKeys(entry);
+  const homeKeys = buildLibraryMatchKeys(homeLibrary);
+  if (!entryKeys.size || !homeKeys.size) return false;
+  for (const key of entryKeys) {
+    if (homeKeys.has(key)) return true;
+  }
+  return false;
+}
+function normalizeHoldingEntry(item, fallbackRow = null) {
+  if (!item && !fallbackRow) return null;
+  const source = item || {};
+  const row = fallbackRow || {};
+  const library_id = source.library_id ?? source.biblioteca_id ?? row.library_id ?? null;
+  const library_slug = firstNonEmptyString(source.library_slug, source.biblioteca_slug, row.library_slug);
+  const library_name = canonicalizeLibraryLabel(firstNonEmptyString(
+    source.library_name,
+    source.biblioteca,
+    source.biblioteca_name,
+    source.library_label,
+    source.library_display,
+    source.name,
+    row.library_name,
+    row.biblioteca
+  ), row?.bib_ref || '');
+  const available_raw = source.available_count ?? source.available ?? source.disponiveis ?? row.available_count;
+  const available_count = available_raw === null || available_raw === undefined || available_raw === ''
+    ? null
+    : (Number(available_raw) || 0);
+  const loanable = source.loanable === false ? false : (source.loanable === true ? true : (row.loanable === false ? false : (row.loanable === true ? true : null)));
+  const tipo_material = firstNonEmptyString(source.tipo_material, source.material_type, source.tipo, row.tipo_material);
+  if (!library_id && !library_slug && !library_name) return null;
+  return {
+    library_id,
+    library_slug,
+    library_name,
+    available_count,
+    loanable,
+    tipo_material
+  };
+}
+function mergeHoldingEntries(entries) {
+  const merged = new Map();
+  for (const rawEntry of (entries || [])) {
+    const entry = normalizeHoldingEntry(rawEntry);
+    if (!entry) continue;
+    const key = [...buildLibraryMatchKeys(entry)][0] || `${normalize(entry.library_name)}::${normalize(entry.library_slug)}::${String(entry.library_id || '')}`;
+    if (!merged.has(key)) {
+      merged.set(key, entry);
+      continue;
+    }
+    const prev = merged.get(key);
+    merged.set(key, {
+      library_id: prev.library_id ?? entry.library_id,
+      library_slug: prev.library_slug || entry.library_slug,
+      library_name: prev.library_name || entry.library_name,
+      available_count: prev.available_count !== null && prev.available_count !== undefined ? prev.available_count : entry.available_count,
+      loanable: prev.loanable !== null && prev.loanable !== undefined ? prev.loanable : entry.loanable,
+      tipo_material: prev.tipo_material || entry.tipo_material
+    });
+  }
+  return [...merged.values()];
+}
+function getResolvedHoldingEntriesForRow(row) {
+  const entries = [];
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) {
+    row._holdingRows.forEach((item) => {
+      const entry = normalizeHoldingEntry(item, item);
+      if (entry) entries.push(entry);
+    });
+  }
+  if (Array.isArray(row?._holdingLibrariesDetailed) && row._holdingLibrariesDetailed.length) {
+    row._holdingLibrariesDetailed.forEach((item) => {
+      const entry = normalizeHoldingEntry(item, row);
+      if (entry) entries.push(entry);
+    });
+  }
+  const bibRef = String(row?.bib_ref || '').trim();
+  if (bibRef && holdingAvailabilityMap instanceof Map && holdingAvailabilityMap.has(bibRef)) {
+    for (const item of (holdingAvailabilityMap.get(bibRef) || [])) {
+      const entry = normalizeHoldingEntry(item, row);
+      if (entry) entries.push(entry);
+    }
+  }
+  if (!entries.length) {
+    const fallback = normalizeHoldingEntry(row, row);
+    if (fallback) entries.push(fallback);
+  }
+  return mergeHoldingEntries(entries);
+}
+async function fetchAuthorizedRows(path, accessToken, schemaName = 'public') {
+  try {
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json'
+    };
+    if (schemaName && schemaName !== 'public') headers['Accept-Profile'] = schemaName;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers });
+    const text = await res.text();
+    if (!res.ok) return [];
+    return text ? JSON.parse(text) : [];
+  } catch (e) {
+    return [];
+  }
+}
+async function loadHomeLibraryFromProfile(userId, accessToken) {
+  if (!userId || !accessToken) return null;
+  const selectCandidates = [
+    'library_id,library_slug,library_name,biblioteca',
+    'home_library_id,home_library_slug,home_library_name,biblioteca',
+    'registration_library_id,registration_library_slug,registration_library_name,biblioteca',
+    'default_library_id,default_library_slug,default_library_name,biblioteca',
+    'library_id,biblioteca',
+    'home_library_id,biblioteca',
+    'registration_library_id,biblioteca',
+    'library_slug,biblioteca',
+    'home_library_slug,biblioteca',
+    'registration_library_slug,biblioteca'
+  ];
+  for (const select of selectCandidates) {
+    const rows = await fetchAuthorizedRows(`profiles?select=${encodeURIComponent(select)}&id=eq.${encodeURIComponent(userId)}`, accessToken, 'public');
+    if (!Array.isArray(rows) || !rows[0]) continue;
+    const ctx = normalizeHomeLibraryContext(rows[0]);
+    if (ctx) return ctx;
+  }
+  return null;
+}
+async function loadHoldingAvailabilityMap() {
+  const viewNames = ['v_books_public_with_authors', 'v_books_public', 'v_books_catalog_public_v2', 'v_books_catalog_public'];
+  const selectCandidates = [
+    'bib_ref,library_id,library_slug,library_name,biblioteca,available_count,loanable,tipo_material',
+    'bib_ref,library_id,library_slug,library_name,biblioteca,available_count,loanable',
+    'bib_ref,holding_libraries_json,available_count,loanable,tipo_material,biblioteca,library_id,library_slug,library_name',
+    'bib_ref,holding_libraries_json,available_count,loanable,biblioteca,library_id,library_slug,library_name'
+  ];
+  const datasets = [];
+  for (const viewName of viewNames) {
+    for (const select of selectCandidates) {
+      const data = await fetchRestRows(`${viewName}?select=${encodeURIComponent(select)}&order=bib_ref.asc`, 'public');
+      if (Array.isArray(data) && data.length) datasets.push(data);
+    }
+  }
+  const data = chooseLargestDataset(...datasets);
+  const map = new Map();
+  for (const row of (data || [])) {
+    const bibRef = String(row?.bib_ref || '').trim();
+    if (!bibRef) continue;
+    if (!map.has(bibRef)) map.set(bibRef, []);
+    const entries = map.get(bibRef);
+    const holdings = normalizeHoldingLibraries(row?.holding_libraries_json);
+    if (holdings.length) {
+      holdings.forEach((item) => {
+        const entry = normalizeHoldingEntry(item, row);
+        if (entry) entries.push(entry);
+      });
+      continue;
+    }
+    const entry = normalizeHoldingEntry(row, row);
+    if (entry) entries.push(entry);
+  }
+  for (const [bibRef, entries] of map.entries()) {
+    map.set(bibRef, mergeHoldingEntries(entries));
+  }
+  return map;
 }
 function shouldLoadLibrarySupplement(sourceVariant, data) {
   if (sourceVariant === 'catalog_v2') return false;
@@ -2074,14 +2304,18 @@ function shouldLoadAuthorRelationData(sourceVariant, data) {
 function shouldLoadAuthorAliasData(sourceVariant, data) {
   if (sourceVariant !== 'catalog_v2') return true;
   return (data || []).some((row) => {
+    const chipEntries = normalizeAuthorChipEntries(row?.author_chips);
+    if (chipEntries.some((entry) => !normalizeAuthorIdValue(entry?.author_id))) return true;
     const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
     const authorId = normalizeAuthorIdValue(row?.author_id);
-    return namesCount === 1 && !authorId && !normalizeAuthorChipEntries(row?.author_chips).length;
+    return namesCount === 1 && !authorId && !chipEntries.length;
   });
 }
 function shouldLoadAuthorCanonicalData(sourceVariant, data) {
   if (sourceVariant !== 'catalog_v2') return true;
   return (data || []).some((row) => {
+    const chipEntries = normalizeAuthorChipEntries(row?.author_chips);
+    if (chipEntries.length) return true;
     const authorId = normalizeAuthorIdValue(row?.author_id);
     return !!authorId && !firstNonEmptyString(row?.author_display);
   });
@@ -2188,6 +2422,7 @@ async function loadRowsFromSupabase() {
         available_count: Number(r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
         _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+        _holdingLibrariesDetailed: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: sourceVariant !== 'legacy'
       };
@@ -2274,7 +2509,10 @@ function buildReservationMarkup(r) {
     return '<div class="reserve-slot"><span class="status-badge status-available">Reservado</span></div>';
   }
   if (status.key === 'local') {
-    return '<div class="reserve-slot"><span class="reserve-note">Consulta local</span></div>';
+    return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
+  }
+  if (status.key === 'restricted') {
+    return '<div class="reserve-slot"><span class="reserve-note">Indisponível para você</span></div>';
   }
   if (status.key === 'unavailable') {
     return '<div class="reserve-slot"><span class="reserve-note">Indisponível</span></div>';
@@ -2521,6 +2759,7 @@ function groupCatalogRows(items) {
       author_ids: mergedAuthorIds.length ? mergedAuthorIds.join('; ') : (primary?.author_ids || ''),
       author_chips: mergedAuthorChips.length ? mergedAuthorChips : normalizeAuthorChipEntries(primary?.author_chips),
       _holdingLibraries: holdingLibraries,
+      _holdingLibrariesDetailed: mergeHoldingEntries(groupItems.map((item) => normalizeHoldingEntry(item, item)).filter(Boolean)),
       _holdingRows: groupItems,
       _isMultiLibrary: holdingLibraries.length > 1,
       _score: Math.max(...groupItems.map((item) => Number(item?._score || 0)), 0)
@@ -2549,7 +2788,7 @@ function currentRows() {
   });
 
   const filtered = groupCatalogRows(filteredRaw);
-  const statusRank = { available: 0, local: 1, unavailable: 2 };
+  const statusRank = { available: 0, local: 1, restricted: 2, unavailable: 3 };
   filtered.sort((a, b) => {
     if (sortKey === 'relevance') {
       const scoreDiff = (b._score || 0) - (a._score || 0);
@@ -2818,10 +3057,10 @@ async function getCurrentUserAndRole() {
   if (!tokenRaw) {
     try { tokenRaw = localStorage.getItem(AUTH_STORAGE_KEY); } catch (e) {}
   }
-  if (!tokenRaw) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+  if (!tokenRaw) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, homeLibrary: null };
 
   const session = parseStoredSession(tokenRaw);
-  if (!session?.access_token) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+  if (!session?.access_token) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, homeLibrary: null };
 
   persistSessionForNextPage(tokenRaw, session);
 
@@ -2829,9 +3068,10 @@ async function getCurrentUserAndRole() {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` }
     });
-    if (!userRes.ok) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+    if (!userRes.ok) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, homeLibrary: null };
     const user = await userRes.json();
     let isLibrarian = false;
+    let homeLibrary = null;
 
     const sessionHints = [
       readLibrarianHintFromObject(session),
@@ -2844,19 +3084,31 @@ async function getCurrentUserAndRole() {
     ].filter(v => v !== null);
     if (sessionHints.length) isLibrarian = sessionHints.includes(true);
 
+    const libraryHints = [
+      readLibraryHintFromObject(session),
+      readLibraryHintFromObject(session?.user),
+      readLibraryHintFromObject(session?.user?.app_metadata),
+      readLibraryHintFromObject(session?.user?.user_metadata),
+      readLibraryHintFromObject(user),
+      readLibraryHintFromObject(user?.app_metadata),
+      readLibraryHintFromObject(user?.user_metadata)
+    ].filter(Boolean);
+    if (libraryHints.length) homeLibrary = libraryHints[0];
+
     try {
-      const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=is_librarian&id=eq.${encodeURIComponent(user.id)}`, {
-        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` }
-      });
-      if (profileRes.ok) {
-        const arr = await profileRes.json();
-        if (Array.isArray(arr) && arr[0]) isLibrarian = !!arr[0].is_librarian;
-      }
+      const profileRows = await fetchAuthorizedRows(`profiles?select=${encodeURIComponent('is_librarian')}&id=eq.${encodeURIComponent(user.id)}`, session.access_token, 'public');
+      if (Array.isArray(profileRows) && profileRows[0]) isLibrarian = !!profileRows[0].is_librarian;
     } catch (e) {}
 
-    return { user, isLibrarian, accessToken: session.access_token, tokenRaw };
+    if (!homeLibrary) {
+      try {
+        homeLibrary = await loadHomeLibraryFromProfile(user.id, session.access_token);
+      } catch (e) {}
+    }
+
+    return { user, isLibrarian, accessToken: session.access_token, tokenRaw, homeLibrary };
   } catch (e) {
-    return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null };
+    return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, homeLibrary: null };
   }
 }
 async function handleContaClick() {
@@ -3013,7 +3265,12 @@ document.addEventListener('keydown', (e) => {
   bindTableJumpControls();
   authState = await getCurrentUserAndRole();
   await loadPublicServiceState();
-  rows = await loadRowsFromSupabase();
+  const [loadedRows, loadedHoldingAvailabilityMap] = await Promise.all([
+    loadRowsFromSupabase(),
+    loadHoldingAvailabilityMap()
+  ]);
+  rows = Array.isArray(loadedRows) ? loadedRows : [];
+  holdingAvailabilityMap = loadedHoldingAvailabilityMap instanceof Map ? loadedHoldingAvailabilityMap : new Map();
   prepareRows();
   render();
 })();
