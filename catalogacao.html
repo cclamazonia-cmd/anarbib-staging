@@ -2145,10 +2145,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { supabase } from './js/blmf-supabase.js';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
     const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
@@ -2158,7 +2162,7 @@
       CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
-    const LOGIN_URL = `${ROUTES.CADASTRO}?next=${encodeURIComponent(window.location.href)}`;
+    const LOGIN_URL = ROUTES.CADASTRO;
 
     const state = {
       session: null,
@@ -4831,11 +4835,14 @@
     }
 
     async function ensureSharedSession() {
-      let { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      if (data?.session?.user?.id) {
-        persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
-        return data.session;
+      for (let i = 0; i < 12; i += 1) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (data?.session?.user?.id) {
+          persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
+          return data.session;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       const storedSession = readStoredSessionCandidate();
@@ -4850,9 +4857,29 @@
             persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
             return restored.data.session;
           }
+
+          for (let i = 0; i < 12; i += 1) {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session?.user?.id) {
+              persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
+              return data.session;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
         } catch (restoreError) {
           console.warn('Session restore failed:', restoreError);
         }
+      }
+
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id && storedSession) {
+          const hydratedSession = { ...storedSession, user: data.user };
+          persistSessionToBrowserStorages(hydratedSession, readLibrarianHintFromSession(hydratedSession));
+          return hydratedSession;
+        }
+      } catch (userError) {
+        console.warn('getUser fallback failed:', userError);
       }
 
       return storedSession || null;
