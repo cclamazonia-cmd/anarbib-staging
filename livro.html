@@ -527,18 +527,13 @@
         libraryName: currentUserContext?.libraryName
       };
 
-      const pageHasExplicitLibraryContext = !!(libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName);
-      let serviceScope = resolveBookPageLibraryScope(bookRow, libraryContext);
       const matchedHolding = (profileScope.libraryId || profileScope.librarySlug || profileScope.libraryName)
         ? findHoldingForLibraryContext(bookRow?.holding_libraries_json, profileScope)
         : null;
-      const matchedHoldingScope = matchedHolding ? buildLibraryScopeFromHolding(matchedHolding) : { libraryId: "", librarySlug: "", libraryName: "" };
 
-      if (!pageHasExplicitLibraryContext && (matchedHoldingScope.libraryId || matchedHoldingScope.librarySlug || matchedHoldingScope.libraryName)) {
-        serviceScope = matchedHoldingScope;
-      } else if ((!serviceScope.libraryId && !serviceScope.librarySlug && !serviceScope.libraryName) && (matchedHoldingScope.libraryId || matchedHoldingScope.librarySlug || matchedHoldingScope.libraryName)) {
-        serviceScope = matchedHoldingScope;
-      }
+      let serviceScope = matchedHolding
+        ? buildLibraryScopeFromHolding(matchedHolding)
+        : resolveBookPageLibraryScope(bookRow, libraryContext);
 
       const state = await fetchLibraryServiceStateByScope(serviceScope);
       if (!state) return;
@@ -546,13 +541,13 @@
       publicServiceState = state;
       applyPublicServiceState();
 
-      const resolvedStateScope = {
+      const matchedScope = {
         libraryId: firstNonEmptyString(state?.library_id, serviceScope?.libraryId),
-        librarySlug: firstNonEmptyString(state?.slug, state?.library_slug, serviceScope?.librarySlug),
-        libraryName: firstNonEmptyString(state?.name, state?.library_name, serviceScope?.libraryName)
+        librarySlug: firstNonEmptyString(state?.slug, serviceScope?.librarySlug),
+        libraryName: firstNonEmptyString(state?.name, serviceScope?.libraryName)
       };
 
-      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, resolvedStateScope)) {
+      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, matchedScope)) {
         applyReaderScopedServiceChip(state);
       }
     }
@@ -1158,7 +1153,7 @@
         try {
           const { data } = await supabase
             .from("profiles")
-            .select("*")
+            .select("id,is_librarian")
             .eq("id", session.user.id)
             .maybeSingle();
           profile = data || null;
@@ -1166,6 +1161,25 @@
         } catch (_) {}
 
         const profileScope = extractProfileLibraryScope(profile);
+
+        if (!profileScope.libraryId) {
+          try {
+            const { data: memberships } = await supabase
+              .from("user_library_memberships")
+              .select("library_id,is_primary,status,created_at")
+              .eq("user_id", session.user.id)
+              .eq("status", "active")
+              .order("is_primary", { ascending: false })
+              .order("created_at", { ascending: true })
+              .limit(1);
+
+            const primaryMembership = Array.isArray(memberships) && memberships.length ? memberships[0] : null;
+            if (primaryMembership?.library_id != null) {
+              profileScope.libraryId = String(primaryMembership.library_id).trim();
+            }
+          } catch (_) {}
+        }
+
         currentUserContext = {
           isLoggedIn: true,
           userId: String(session.user.id || "").trim(),
