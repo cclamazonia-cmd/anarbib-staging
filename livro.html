@@ -527,13 +527,16 @@
         libraryName: currentUserContext?.libraryName
       };
 
-      const matchedHolding = (profileScope.libraryId || profileScope.librarySlug || profileScope.libraryName)
-        ? findHoldingForLibraryContext(bookRow?.holding_libraries_json, profileScope)
-        : null;
+      let serviceScope = { libraryId: "", librarySlug: "", libraryName: "" };
 
-      let serviceScope = matchedHolding
-        ? buildLibraryScopeFromHolding(matchedHolding)
-        : resolveBookPageLibraryScope(bookRow, libraryContext);
+      if (profileScope.libraryId || profileScope.librarySlug || profileScope.libraryName) {
+        const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, profileScope);
+        if (matchedHolding) serviceScope = buildLibraryScopeFromHolding(matchedHolding);
+      }
+
+      if (!serviceScope.libraryId && !serviceScope.librarySlug && !serviceScope.libraryName) {
+        serviceScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+      }
 
       const state = await fetchLibraryServiceStateByScope(serviceScope);
       if (!state) return;
@@ -541,13 +544,13 @@
       publicServiceState = state;
       applyPublicServiceState();
 
-      const matchedScope = {
-        libraryId: firstNonEmptyString(state?.library_id, serviceScope?.libraryId),
-        librarySlug: firstNonEmptyString(state?.slug, serviceScope?.librarySlug),
-        libraryName: firstNonEmptyString(state?.name, serviceScope?.libraryName)
+      const resolvedStateScope = {
+        libraryId: firstNonEmptyString(state?.library_id),
+        librarySlug: firstNonEmptyString(state?.slug),
+        libraryName: firstNonEmptyString(state?.name)
       };
 
-      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, matchedScope)) {
+      if (currentUserContext?.isLoggedIn && librariesMatch(profileScope, resolvedStateScope)) {
         applyReaderScopedServiceChip(state);
       }
     }
@@ -1162,32 +1165,40 @@
 
         const profileScope = extractProfileLibraryScope(profile);
 
-        if (!profileScope.libraryId) {
-          try {
-            const { data: memberships } = await supabase
-              .from("user_library_memberships")
-              .select("library_id,is_primary,status,created_at")
-              .eq("user_id", session.user.id)
-              .eq("status", "active")
-              .order("is_primary", { ascending: false })
-              .order("created_at", { ascending: true })
-              .limit(1);
+        let membershipScope = { libraryId: "", librarySlug: "", libraryName: "" };
+        try {
+          const { data: memberships } = await supabase
+            .from("user_library_memberships")
+            .select("library_id,is_primary,status,libraries!left(slug,name)")
+            .eq("user_id", session.user.id)
+            .eq("status", "active")
+            .order("is_primary", { ascending: false })
+            .limit(1);
 
-            const primaryMembership = Array.isArray(memberships) && memberships.length ? memberships[0] : null;
-            if (primaryMembership?.library_id != null) {
-              profileScope.libraryId = String(primaryMembership.library_id).trim();
-            }
-          } catch (_) {}
-        }
+          const membership = Array.isArray(memberships) ? memberships[0] : null;
+          const linkedLibrary = membership?.libraries || null;
+
+          membershipScope = {
+            libraryId: firstNonEmptyString(membership?.library_id),
+            librarySlug: firstNonEmptyString(linkedLibrary?.slug),
+            libraryName: firstNonEmptyString(linkedLibrary?.name)
+          };
+        } catch (_) {}
+
+        const effectiveScope = {
+          libraryId: firstNonEmptyString(profileScope.libraryId, membershipScope.libraryId),
+          librarySlug: firstNonEmptyString(profileScope.librarySlug, membershipScope.librarySlug),
+          libraryName: firstNonEmptyString(profileScope.libraryName, membershipScope.libraryName)
+        };
 
         currentUserContext = {
           isLoggedIn: true,
           userId: String(session.user.id || "").trim(),
           isLibrarian,
           profile,
-          libraryId: profileScope.libraryId,
-          librarySlug: profileScope.librarySlug,
-          libraryName: profileScope.libraryName
+          libraryId: effectiveScope.libraryId,
+          librarySlug: effectiveScope.librarySlug,
+          libraryName: effectiveScope.libraryName
         };
 
         const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
