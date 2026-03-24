@@ -34,12 +34,69 @@
     document.documentElement.style.setProperty(name, value);
   }
 
-  async function installFont(definition, cssVarName) {
+  function isAbsoluteUrl(value) {
+    return /^https?:\/\//i.test(String(value || '').trim());
+  }
+
+  function normalizeThemeRelativePath(rawPath) {
+    const clean = String(rawPath || '').trim().replace(/^\.?\//, '');
+    if (!clean) return '';
+    if (clean.startsWith('themes/')) return clean;
+    return `themes/${clean}`;
+  }
+
+  function extractBucketPathFromSupabaseUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+
+    const patterns = [
+      `/storage/v1/object/public/${THEME_BUCKET}/`,
+      `/storage/v1/object/sign/${THEME_BUCKET}/`,
+      `/storage/v1/object/authenticated/${THEME_BUCKET}/`,
+      `/storage/v1/object/${THEME_BUCKET}/`
+    ];
+
+    for (const marker of patterns) {
+      const idx = raw.indexOf(marker);
+      if (idx >= 0) {
+        let path = raw.slice(idx + marker.length);
+        path = path.split('?')[0];
+        return decodeURIComponent(path);
+      }
+    }
+
+    return '';
+  }
+
+  function resolveThemeAssetUrl(url, manifest) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+
+    if (isAbsoluteUrl(raw)) {
+      const bucketPath = extractBucketPathFromSupabaseUrl(raw);
+      if (bucketPath) return publicAsset(bucketPath);
+      return raw;
+    }
+
+    const normalized = normalizeThemeRelativePath(raw);
+    if (!normalized) return '';
+
+    return publicAsset(normalized);
+  }
+
+  async function installFont(definition, cssVarName, manifest) {
     if (!definition?.family || !definition?.url) return;
+
+    const resolvedUrl = resolveThemeAssetUrl(definition.url, manifest);
+    if (!resolvedUrl) {
+      console.warn('[AnarBib] Font load skipped: invalid URL for', definition.family, definition.url);
+      return;
+    }
+
     try {
       const fontFace = new FontFace(
         definition.family,
-        `url(${definition.url})`,
+        `url("${resolvedUrl}")`,
         {
           style: definition.style || 'normal',
           weight: definition.weight || '400',
@@ -50,7 +107,7 @@
       document.fonts.add(loaded);
       setCssVar(cssVarName, `"${definition.family}"`);
     } catch (error) {
-      console.warn('[AnarBib] Font load failed:', definition.family, error);
+      console.warn('[AnarBib] Font load failed:', definition.family, resolvedUrl, error);
     }
   }
 
@@ -69,22 +126,25 @@
     if (!assets) return;
 
     if (assets.background) {
-      setCssVar('--brand-bg-image', `url("${assets.background}")`);
+      const bgUrl = resolveThemeAssetUrl(assets.background);
+      setCssVar('--brand-bg-image', `url("${bgUrl}")`);
     }
 
     const logoNodes = document.querySelectorAll('[data-brand-logo]');
     if (assets.logo) {
+      const logoUrl = resolveThemeAssetUrl(assets.logo);
       logoNodes.forEach((node) => {
         if (node.tagName === 'IMG') {
-          node.src = assets.logo;
+          node.src = logoUrl;
           node.alt = node.alt || 'Logotipo';
         } else {
-          node.style.backgroundImage = `url("${assets.logo}")`;
+          node.style.backgroundImage = `url("${logoUrl}")`;
         }
       });
     }
 
-    ensureFavicon(assets.favicon);
+    const faviconUrl = assets.favicon ? resolveThemeAssetUrl(assets.favicon) : '';
+    ensureFavicon(faviconUrl);
   }
 
   function applyColors(colors) {
@@ -123,9 +183,9 @@
     applyColors(manifest.colors);
     applyLayout(manifest.layout);
 
-    if (manifest.fonts?.heading) await installFont(manifest.fonts.heading, '--brand-font-heading');
-    if (manifest.fonts?.body) await installFont(manifest.fonts.body, '--brand-font-body');
-    if (manifest.fonts?.accent) await installFont(manifest.fonts.accent, '--brand-font-accent');
+    if (manifest.fonts?.heading) await installFont(manifest.fonts.heading, '--brand-font-heading', manifest);
+    if (manifest.fonts?.body) await installFont(manifest.fonts.body, '--brand-font-body', manifest);
+    if (manifest.fonts?.accent) await installFont(manifest.fonts.accent, '--brand-font-accent', manifest);
 
     applyMeta(manifest, context);
   }
