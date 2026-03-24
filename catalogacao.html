@@ -2145,14 +2145,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { supabase } from './js/blmf-supabase.js';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
+    const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
     const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
@@ -2162,7 +2160,7 @@
       CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
-    const LOGIN_URL = ROUTES.CADASTRO;
+    const LOGIN_URL = `${ROUTES.CADASTRO}?next=${encodeURIComponent(window.location.href)}`;
 
     const state = {
       session: null,
@@ -2173,10 +2171,6 @@
       books: [],
       authors: [],
       exemplars: [],
-      catalogTotals: {
-        books: null,
-        authors: null,
-      },
       batchExemplarItems: [],
       batchLabelItems: [],
       showOnlyActiveDrafts: false,
@@ -3236,15 +3230,42 @@
       return d.toLocaleString('pt-BR');
     }
 
+    function buildStoragePublicUrl(projectUrl, bucket, path) {
+      const cleanPath = String(path || '').trim().replace(/^\/+/, '');
+      if (!cleanPath) return '';
+      const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+      return `${projectUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
+    }
+
     function setPreviewImage(imgEl, path, bucket) {
-      if (!path) {
+      const rawPath = String(path || '').trim();
+      if (!rawPath) {
         imgEl.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#d1d5db" font-family="Arial" font-size="18">Sem imagem</text></svg>`);
         imgEl.alt = 'Sem imagem';
+        imgEl.onerror = null;
         return;
       }
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      imgEl.src = data?.publicUrl || '';
-      imgEl.alt = path;
+      if (/^(https?:|data:)/i.test(rawPath)) {
+        imgEl.src = rawPath;
+        imgEl.alt = rawPath;
+        imgEl.onerror = null;
+        return;
+      }
+      const primaryUrl = buildStoragePublicUrl(SUPABASE_URL, bucket, rawPath);
+      const fallbackUrl = PROD_SUPABASE_URL && PROD_SUPABASE_URL !== SUPABASE_URL
+        ? buildStoragePublicUrl(PROD_SUPABASE_URL, bucket, rawPath)
+        : '';
+      imgEl.onerror = () => {
+        if (fallbackUrl && imgEl.dataset.assetFallbackApplied !== '1') {
+          imgEl.dataset.assetFallbackApplied = '1';
+          imgEl.src = fallbackUrl;
+          return;
+        }
+        imgEl.onerror = null;
+      };
+      imgEl.dataset.assetFallbackApplied = '0';
+      imgEl.src = primaryUrl;
+      imgEl.alt = rawPath;
     }
 
     function isActiveQueueItem(item = {}) {
@@ -3265,8 +3286,8 @@
     function updateStats() {
       refs.statOpenBatches.textContent = state.batches.filter(b => b.status === 'open').length;
       refs.statDrafts.textContent = state.queueItems.filter(item => isActiveQueueItem(item)).length;
-      refs.statBooks.textContent = Number.isFinite(state.catalogTotals?.books) ? state.catalogTotals.books : state.books.length;
-      refs.statAuthors.textContent = Number.isFinite(state.catalogTotals?.authors) ? state.catalogTotals.authors : state.authors.length;
+      refs.statBooks.textContent = state.books.length;
+      refs.statAuthors.textContent = state.authors.length;
     }
 
     const DRAFT_VISUAL_STATE_MAP = {
@@ -4839,11 +4860,14 @@
     }
 
     async function ensureSharedSession() {
-      let { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      if (data?.session?.user?.id) {
-        persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
-        return data.session;
+      for (let i = 0; i < 12; i += 1) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (data?.session?.user?.id) {
+          persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
+          return data.session;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       const storedSession = readStoredSessionCandidate();
@@ -4858,9 +4882,29 @@
             persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
             return restored.data.session;
           }
+
+          for (let i = 0; i < 12; i += 1) {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session?.user?.id) {
+              persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
+              return data.session;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
         } catch (restoreError) {
           console.warn('Session restore failed:', restoreError);
         }
+      }
+
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id && storedSession) {
+          const hydratedSession = { ...storedSession, user: data.user };
+          persistSessionToBrowserStorages(hydratedSession, readLibrarianHintFromSession(hydratedSession));
+          return hydratedSession;
+        }
+      } catch (userError) {
+        console.warn('getUser fallback failed:', userError);
       }
 
       return storedSession || null;
@@ -4881,21 +4925,41 @@
       updateLoginButton();
     }
 
+    function withTimeout(promise, label, ms = 4000) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
+      ]);
+    }
+
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms))
+      ]);
+    }
+
     async function fetchProfileRecord(userId) {
       try {
-        const apiRead = await supabase.schema('api').from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle();
-        if (!apiRead.error && apiRead.data) return apiRead.data;
-        if (apiRead.error) console.warn('api.profiles read failed:', apiRead.error);
-      } catch (error) {
-        console.warn('api.profiles read exception:', error);
-      }
-
-      try {
-        const publicRead = await supabase.from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle();
+        const publicRead = await withTimeout(
+          supabase.from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle(),
+          'public.profiles read'
+        );
         if (!publicRead.error && publicRead.data) return publicRead.data;
         if (publicRead.error) console.warn('public.profiles read failed:', publicRead.error);
       } catch (error) {
         console.warn('public.profiles read exception:', error);
+      }
+
+      try {
+        const apiRead = await withTimeout(
+          supabase.schema('api').from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle(),
+          'api.profiles read'
+        );
+        if (!apiRead.error && apiRead.data) return apiRead.data;
+        if (apiRead.error) console.warn('api.profiles read failed:', apiRead.error);
+      } catch (error) {
+        console.warn('api.profiles read exception:', error);
       }
 
       return null;
@@ -5002,19 +5066,30 @@
       return { ok: true, source: 'queue' };
     }
 
+    async function fetchAllCatalogAuthors(pageSize = 1000) {
+      let from = 0;
+      const rows = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from('authors')
+          .select('*')
+          .order('sort_name', { ascending: true, nullsFirst: false })
+          .order('preferred_name', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = Array.isArray(data) ? data : [];
+        rows.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      return rows;
+    }
+
     async function loadCatalog() {
-      const [
-        { data: books, error: booksError },
-        { data: authors, error: authorsError },
-        { data: exemplars, error: exemplarsError },
-        { count: booksCount, error: booksCountError },
-        { count: authorsCount, error: authorsCountError },
-      ] = await Promise.all([
+      const [{ data: books, error: booksError }, { data: authors, error: authorsError }, { data: exemplars, error: exemplarsError }] = await Promise.all([
         supabase.from('v_catalog_books_editable').select('*').order('updated_at', { ascending: false }).limit(1000),
-        supabase.from('authors').select('*').order('sort_name', { ascending: true, nullsFirst: false }).order('preferred_name', { ascending: true }).limit(300),
+        fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         supabase.from('v_exemplar_labels').select('*').order('exemplar_id', { ascending: false }).limit(300),
-        supabase.from('v_catalog_books_editable').select('*', { count: 'exact', head: true }),
-        supabase.from('authors').select('*', { count: 'exact', head: true }),
       ]);
 
       const errors = [];
@@ -5040,20 +5115,6 @@
         errors.push({ source: 'exemplars', error: exemplarsError });
       } else {
         state.exemplars = exemplars || [];
-      }
-
-      if (booksCountError) {
-        console.warn('loadCatalog books count failed:', booksCountError);
-        state.catalogTotals.books = state.books.length;
-      } else {
-        state.catalogTotals.books = Number.isFinite(booksCount) ? booksCount : state.books.length;
-      }
-
-      if (authorsCountError) {
-        console.warn('loadCatalog authors count failed:', authorsCountError);
-        state.catalogTotals.authors = state.authors.length;
-      } else {
-        state.catalogTotals.authors = Number.isFinite(authorsCount) ? authorsCount : state.authors.length;
       }
 
       renderCatalogBooks();
@@ -5270,16 +5331,46 @@
       if (syncLabel) fillLabelForm(record, { switchTab: false });
     }
 
+    function extractRpcNumericId(data, preferredKeys = []) {
+      if (data === null || data === undefined) return null;
+      if (typeof data === 'number' && Number.isFinite(data)) return Number(data);
+      if (typeof data === 'string' && data.trim() !== '' && Number.isFinite(Number(data))) return Number(data);
+      if (Array.isArray(data)) {
+        if (data.length !== 1) return null;
+        return extractRpcNumericId(data[0], preferredKeys);
+      }
+      if (typeof data === 'object') {
+        for (const key of preferredKeys) {
+          if (key in data) {
+            const value = extractRpcNumericId(data[key], []);
+            if (value) return value;
+          }
+        }
+        if ('id' in data) {
+          const value = extractRpcNumericId(data.id, []);
+          if (value) return value;
+        }
+        const values = Object.values(data);
+        if (values.length === 1) return extractRpcNumericId(values[0], []);
+      }
+      return null;
+    }
+
     async function fetchDraftAndEdit(type, id) {
       const mapping = {
-        book: { table: 'book_drafts', fill: fillBookForm },
-        author: { table: 'author_drafts', fill: fillAuthorForm },
-        exemplar: { table: 'exemplar_drafts', fill: fillExemplarForm },
+        book: { table: 'book_drafts', fill: fillBookForm, label: 'livro' },
+        author: { table: 'author_drafts', fill: fillAuthorForm, label: 'autor' },
+        exemplar: { table: 'exemplar_drafts', fill: fillExemplarForm, label: 'exemplar' },
       };
       const cfg = mapping[type];
       if (!cfg) return;
-      const { data, error } = await supabase.from(cfg.table).select('*').eq('id', id).single();
+      const numericId = Number(id);
+      if (!Number.isFinite(numericId) || numericId <= 0) {
+        throw new Error(`ID de rascunho inválido para ${cfg.label}.`);
+      }
+      const { data, error } = await supabase.from(cfg.table).select('*').eq('id', numericId).maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error(`O rascunho de ${cfg.label} foi criado, mas não pôde ser relido em ${cfg.table} (id ${numericId}).`);
       await cfg.fill(data);
     }
 
@@ -6548,11 +6639,13 @@
         p_batch_id: batchId ? Number(batchId) : null
       });
       if (error) throw error;
+      const createdDraftId = extractRpcNumericId(data, ['create_book_draft_from_book', 'p_draft_id']);
+      if (!createdDraftId) throw new Error('O rascunho de edição foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de livro criado (#${data}).`, 'ok');
-      await fetchDraftAndEdit('book', Number(data));
-      return Number(data);
+      showMessage(refs.catalogMessage, `Rascunho de edição de livro criado (#${createdDraftId}).`, 'ok');
+      await fetchDraftAndEdit('book', createdDraftId);
+      return createdDraftId;
     }
 
     async function loadOrCreateAuthorDraftFromCatalog(authorId) {
@@ -6582,11 +6675,13 @@
         p_batch_id: batchId ? Number(batchId) : null
       });
       if (error) throw error;
+      const createdDraftId = extractRpcNumericId(data, ['create_author_draft_from_author', 'p_draft_id']);
+      if (!createdDraftId) throw new Error('O rascunho de autor foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de autor criado (#${data}).`, 'ok');
-      await fetchDraftAndEdit('author', Number(data));
-      return Number(data);
+      showMessage(refs.catalogMessage, `Rascunho de edição de autor criado (#${createdDraftId}).`, 'ok');
+      await fetchDraftAndEdit('author', createdDraftId);
+      return createdDraftId;
     }
 
     function renderCatalogAuthors() {
