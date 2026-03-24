@@ -564,7 +564,7 @@ tbody tr:hover td { background: rgba(179,0,24,.08); }
 .col-ano { width: 92px; white-space: nowrap; }
 .col-editora { width: 250px; }
 .col-cdd { width: 120px; }
-.col-biblioteca(s) { width: 220px; }
+.col-biblioteca { width: 220px; }
 .col-status { width: 185px; }
 .col-reserva { width: 175px; white-space: nowrap; }
 .col-acoes { width: 175px; white-space: nowrap; }
@@ -845,7 +845,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
       <button id="clearBtn" class="button secondary" type="button">Limpar filtros</button>
       <button id="pdfBtn" class="button" type="button">Exportar PDF</button>
       <button id="contaBtn" class="button secondary" type="button">Painel / minha conta</button>
-      <button id="loginBtn" class="button secondary" type="button">Login</button>
       <span class="hero-actions-separator" aria-hidden="true"></span>
       <a id="regimentoBtn" class="button secondary" href="https://cclamazonia-cmd.github.io/blmf-catalogo/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual do AnarBib</a>
       <a id="csvAdvancedLink" class="action-link" href="#" role="button">CSV (avançado)</a>
@@ -943,7 +942,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
             <th class="col-ano" data-key="ano">ano</th>
             <th class="col-editora" data-key="editora">editora</th>
             <th class="col-cdd" data-key="cdd">CDD</th>
-            <th class="col-biblioteca(s)">biblioteca(s)</th>
+            <th class="col-biblioteca">biblioteca</th>
             <th class="col-status" data-key="status">disponibilidade</th>
             <th class="col-reserva" data-key="reserva">reserva</th>
             <th class="col-acoes" data-key="acoes">ações</th>
@@ -1013,6 +1012,9 @@ let selectedLibraryKeys = new Set();
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
+let currentRowsComputationVersion = 0;
+let currentRowsCacheKey = '';
+let currentRowsCacheValue = null;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1033,7 +1035,6 @@ const visiblePill = document.getElementById('visiblePill');
 const statusPill = document.getElementById('statusPill');
 const empty = document.getElementById('empty');
 const contaBtn = document.getElementById('contaBtn');
-const loginBtn = document.getElementById('loginBtn');
 const clearBtn = document.getElementById('clearBtn');
 const pdfBtn = document.getElementById('pdfBtn');
 const csvAdvancedLink = document.getElementById('csvAdvancedLink');
@@ -1879,7 +1880,66 @@ function buildLivroHref(row) {
   if (row?.library_name) url.searchParams.set('library_name', row.library_name);
   return url.toString();
 }
+
+const PERF_NOW = () => (window.performance && typeof window.performance.now === 'function' ? window.performance.now() : Date.now());
+const catalogPerf = {
+  initStartedAt: PERF_NOW(),
+  initial: {
+    fetchPrincipalMs: 0,
+    fallbackFetchMs: 0,
+    auxiliaryLoadsMs: 0,
+    loadRowsTotalMs: 0,
+    prepareRowsMs: 0,
+    scoringAndSortMs: 0,
+    renderDomMs: 0,
+    initTotalMs: 0
+  },
+  currentRowsCacheHits: 0,
+  currentRowsCacheMisses: 0,
+  lastRender: {
+    scoringAndSortMs: 0,
+    renderDomMs: 0,
+    rowsRendered: 0
+  },
+  reportInitial() {
+    try {
+      console.groupCollapsed('[AnarBib perf] index initial load');
+      console.table({
+        fetchPrincipalMs: Number(this.initial.fetchPrincipalMs || 0).toFixed(1),
+        fallbackFetchMs: Number(this.initial.fallbackFetchMs || 0).toFixed(1),
+        auxiliaryLoadsMs: Number(this.initial.auxiliaryLoadsMs || 0).toFixed(1),
+        loadRowsTotalMs: Number(this.initial.loadRowsTotalMs || 0).toFixed(1),
+        prepareRowsMs: Number(this.initial.prepareRowsMs || 0).toFixed(1),
+        scoringAndSortMs: Number(this.initial.scoringAndSortMs || 0).toFixed(1),
+        renderDomMs: Number(this.initial.renderDomMs || 0).toFixed(1),
+        initTotalMs: Number(this.initial.initTotalMs || 0).toFixed(1),
+        currentRowsCacheHits: this.currentRowsCacheHits,
+        currentRowsCacheMisses: this.currentRowsCacheMisses
+      });
+      console.groupEnd();
+    } catch (_) {}
+  },
+  reportCurrent(label = 'manual') {
+    try {
+      console.groupCollapsed(`[AnarBib perf] index ${label}`);
+      console.table({
+        scoringAndSortMs: Number(this.lastRender.scoringAndSortMs || 0).toFixed(1),
+        renderDomMs: Number(this.lastRender.renderDomMs || 0).toFixed(1),
+        rowsRendered: this.lastRender.rowsRendered || 0,
+        currentRowsCacheHits: this.currentRowsCacheHits,
+        currentRowsCacheMisses: this.currentRowsCacheMisses
+      });
+      console.groupEnd();
+    } catch (_) {}
+  }
+};
+window.__anarbibCatalogPerf = catalogPerf;
+window.dumpCatalogPerf = function(label = 'manual') {
+  catalogPerf.reportCurrent(label);
+};
+
 function prepareRows() {
+  const prepareRowsStartedAt = PERF_NOW();
   for (const r of rows) {
     const status = getStatusInfo(r);
     r._status = status;
@@ -1910,16 +1970,19 @@ function prepareRows() {
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
+  currentRowsComputationVersion += 1;
+  invalidateCurrentRowsCache();
+  catalogPerf.initial.prepareRowsMs = PERF_NOW() - prepareRowsStartedAt;
 }
 async function loadRowsFromSupabase() {
+  const loadRowsStartedAt = PERF_NOW();
+  let primaryFetchMs = 0;
+  let fallbackFetchMs = 0;
+  let auxiliaryLoadsMs = 0;
   try {
-    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
-    const librarySupplementPromise = loadBookLibrarySupplementMap();
-    const aliasMapPromise = loadAuthorAliasMap();
-    const canonicalMapPromise = loadAuthorCanonicalMap();
-
     const primarySelect = '*';
-    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
+    const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
+    const primaryFetchStartedAt = PERF_NOW();
     let res = await fetch(primaryUrl, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
@@ -1928,10 +1991,12 @@ async function loadRowsFromSupabase() {
       }
     });
     let text = await res.text();
+    primaryFetchMs = PERF_NOW() - primaryFetchStartedAt;
     let useCanonicalView = res.ok;
+    let usingCatalogV2 = res.ok;
 
     if (!useCanonicalView) {
-      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent('*')}&order=titulo.asc`;
+      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent('*')}&order=titulo.asc`;
       res = await fetch(fallbackUrl, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -1940,28 +2005,78 @@ async function loadRowsFromSupabase() {
         }
       });
       text = await res.text();
+      useCanonicalView = res.ok;
+      usingCatalogV2 = false;
+    }
+
+    if (!useCanonicalView) {
+      const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent('*')}&order=titulo.asc`;
+      const fallbackFetchStartedAt = PERF_NOW();
+      res = await fetch(fallbackUrl, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Accept: 'application/json'
+        }
+      });
+      text = await res.text();
+      fallbackFetchMs = PERF_NOW() - fallbackFetchStartedAt;
       if (!res.ok) {
         alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
         return [];
       }
+      usingCatalogV2 = false;
     }
 
-    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
-      authorRelationsPromise,
-      librarySupplementPromise,
-      aliasMapPromise,
-      canonicalMapPromise
+    const data = text ? JSON.parse(text) : [];
+    const needsAuthorFallbackData = !useCanonicalView || (data || []).some((row) => {
+      const chips = normalizeAuthorChipEntries(row?.author_chips);
+      if (chips.length) return false;
+      const authorText = firstNonEmptyString(row?.author_display, row?.autor);
+      const authorNames = splitAuthorNames(authorText);
+      const authorId = normalizeAuthorIdValue(row?.author_id);
+      return authorNames.length > 1 || !authorId;
+    });
+    const needsLibrarySupplementData = (data || []).some((row) => !firstNonEmptyString(
+      row?.biblioteca,
+      row?.library_label,
+      row?.library_display,
+      row?.library_name,
+      row?.library_slug,
+      row?.library,
+      row?.biblioteca_display,
+      row?.biblioteca_label,
+      row?.biblioteca_nome,
+      row?.biblioteca_name
+    ));
+
+    const auxiliaryLoadsStartedAt = PERF_NOW();
+    const [
+      authorRelations,
+      librarySupplementMap,
+      loadedAuthorAliasMap,
+      loadedAuthorCanonicalMap
+    ] = await Promise.all([
+      needsAuthorFallbackData ? loadAuthorRelationsFromSupabase() : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() }),
+      needsLibrarySupplementData ? loadBookLibrarySupplementMap() : Promise.resolve(new Map()),
+      needsAuthorFallbackData ? loadAuthorAliasMap() : Promise.resolve(new Map()),
+      needsAuthorFallbackData ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
 
-    const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
+    auxiliaryLoadsMs = PERF_NOW() - auxiliaryLoadsStartedAt;
+    catalogPerf.initial.fetchPrincipalMs = primaryFetchMs;
+    catalogPerf.initial.fallbackFetchMs = fallbackFetchMs;
+    catalogPerf.initial.auxiliaryLoadsMs = auxiliaryLoadsMs;
 
     return (data || []).map(r => {
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
-      const relationIds = getAuthorRelationEntriesForRow(r, authorRelations);
-      const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
+      const relationIds = needsAuthorFallbackData ? getAuthorRelationEntriesForRow(r, authorRelations) : [];
+      const authorIdsList = needsAuthorFallbackData
+        ? resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId)
+        : (authorId ? [authorId] : []);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       return {
@@ -1985,14 +2100,21 @@ async function loadRowsFromSupabase() {
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _usingCanonicalAuthorView: useCanonicalView
+        _usingCanonicalAuthorView: useCanonicalView,
+        _usingCatalogViewV2: usingCatalogV2
       };
     });
   } catch (e) {
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
+  } finally {
+    catalogPerf.initial.fetchPrincipalMs = primaryFetchMs;
+    catalogPerf.initial.fallbackFetchMs = fallbackFetchMs;
+    catalogPerf.initial.auxiliaryLoadsMs = auxiliaryLoadsMs;
+    catalogPerf.initial.loadRowsTotalMs = PERF_NOW() - loadRowsStartedAt;
   }
 }
+
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -2240,8 +2362,37 @@ function matchesNormalizedFilter(valueNorm, valueVariant, rawFilter) {
 function compareNullableText(a, b) {
   return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
 }
+function buildCurrentRowsCacheKey() {
+  const selectedLibraries = libraryAllExplicitlySelected
+    ? [LIBRARY_FILTER_ALL_VALUE]
+    : [...selectedLibraryKeys].sort();
+  return JSON.stringify({
+    rowsVersion: currentRowsComputationVersion,
+    q: (search.value || '').trim(),
+    author: (authorFilter.value || '').trim(),
+    publisher: (publisherFilter.value || '').trim(),
+    year: (yearFilter.value || '').trim(),
+    cdd: (cddFilter.value || '').trim(),
+    availability: availabilityFilter.value || 'all',
+    libraries: selectedLibraries,
+    libraryAllExplicitlySelected: !!libraryAllExplicitlySelected,
+    sortKey,
+    sortDir
+  });
+}
+function invalidateCurrentRowsCache() {
+  currentRowsCacheKey = '';
+  currentRowsCacheValue = null;
+}
 function currentRows() {
   lastQuery = parseQuery(search.value || '');
+  const cacheKey = buildCurrentRowsCacheKey();
+  if (cacheKey === currentRowsCacheKey && Array.isArray(currentRowsCacheValue)) {
+    catalogPerf.currentRowsCacheHits += 1;
+    return currentRowsCacheValue;
+  }
+  catalogPerf.currentRowsCacheMisses += 1;
+  const currentRowsStartedAt = PERF_NOW();
   const availabilityValue = availabilityFilter.value || 'all';
   const filtered = rows.filter((r) => {
     const queryMatch = scoreRow(r, lastQuery);
@@ -2283,6 +2434,11 @@ function currentRows() {
     if (cmp === 0) cmp = compareNullableText(a.bib_ref, b.bib_ref);
     return sortDir === 'desc' ? -cmp : cmp;
   });
+  currentRowsCacheKey = cacheKey;
+  currentRowsCacheValue = filtered;
+  const currentRowsMs = PERF_NOW() - currentRowsStartedAt;
+  catalogPerf.lastRender.scoringAndSortMs = currentRowsMs;
+  if (!catalogPerf.initial.scoringAndSortMs) catalogPerf.initial.scoringAndSortMs = currentRowsMs;
   return filtered;
 }
 function updateStats(filtered) {
@@ -2308,6 +2464,7 @@ function paintHeaderSort() {
 
 function render() {
   const filtered = currentRows();
+  const renderDomStartedAt = PERF_NOW();
   tbody.innerHTML = '';
   mobileResults.innerHTML = '';
   updateStats(filtered);
@@ -2324,6 +2481,10 @@ function render() {
     tbody.appendChild(tr);
     mobileResults.insertAdjacentHTML('beforeend', markup.mobileHtml);
   }
+  const renderDomMs = PERF_NOW() - renderDomStartedAt;
+  catalogPerf.lastRender.renderDomMs = renderDomMs;
+  catalogPerf.lastRender.rowsRendered = filtered.length;
+  if (!catalogPerf.initial.renderDomMs) catalogPerf.initial.renderDomMs = renderDomMs;
   requestAnimationFrame(syncFloatingXScroll);
 }
 let syncingFloatingXScroll = false;
@@ -2568,9 +2729,6 @@ async function handleContaClick() {
     contaBtn.disabled = false;
   }
 }
-function handleLoginClick() {
-  location.assign(buildCadastroUrl(location.href));
-}
 search.addEventListener('input', debouncedRender);
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
@@ -2609,7 +2767,6 @@ clearBtn.addEventListener('click', clearFilters);
 pdfBtn.addEventListener('click', exportPDF);
 csvAdvancedLink.addEventListener('click', (e) => { e.preventDefault(); exportCSV(); });
 contaBtn.addEventListener('click', handleContaClick);
-loginBtn.addEventListener('click', handleLoginClick);
 copySearchBtn.addEventListener('click', copyCurrentSearch);
 compactToggleBtn.addEventListener('click', toggleCompactMode);
 activeFilters.addEventListener('click', (e) => {
@@ -2705,6 +2862,8 @@ document.addEventListener('keydown', (e) => {
   rows = await loadRowsFromSupabase();
   prepareRows();
   render();
+  catalogPerf.initial.initTotalMs = PERF_NOW() - catalogPerf.initStartedAt;
+  catalogPerf.reportInitial();
 })();
 </script>
 </body>
