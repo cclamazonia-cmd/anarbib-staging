@@ -2147,13 +2147,13 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-    const SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0';
+    const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
-    const AUTH_STORAGE_KEY = 'sb-asptfmokzykwzlshsncw-auth-token';
+    const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
     const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
     const ROUTES = {
@@ -4901,6 +4901,7 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
+      const data = await fetchProfileRecord(userId);
       const hint = readLibrarianHintFromSession(state.session);
       let hintedValue = hint;
       if (hintedValue === null) {
@@ -4911,20 +4912,8 @@
         } catch {}
       }
 
-      if (hintedValue === true) {
-        state.profile = state.profile || { id: userId, email: state.session?.user?.email || '' };
-        state.isLibrarian = true;
-        persistSessionToBrowserStorages(state.session, true);
-        updateLoginButton();
-        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-        refs.rolePill.className = 'pill ok';
-        clearMessage(refs.globalMessage);
-        return;
-      }
-
-      const data = await fetchProfileRecord(userId);
       state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true;
+      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
       persistSessionToBrowserStorages(state.session, state.isLibrarian);
       updateLoginButton();
 
@@ -4958,17 +4947,7 @@
 
     async function loadQueue() {
       const { data, error } = await supabase.from('v_catalog_queue').select('*').order('updated_at', { ascending: false });
-      if (error) {
-        const msg = String(error?.message || '');
-        if (msg.includes("Could not find the table 'public.v_catalog_queue'")) {
-          console.warn('v_catalog_queue ausente no schema cache; fila editorial ficará vazia nesta sessão.', error);
-          state.queueItems = [];
-          clearQueueSelection();
-          renderQueue();
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
       let queueItems = data || [];
 
       // v_catalog_queue não expõe label_status; para exemplares, reconciliamos o estado real
