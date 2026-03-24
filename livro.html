@@ -469,6 +469,82 @@
       return { libraryId: "", librarySlug: "", libraryName: "" };
     }
 
+    function buildLibraryScopeFromHolding(holding = {}) {
+      return {
+        libraryId: firstNonEmptyString(holding?.library_id),
+        librarySlug: firstNonEmptyString(holding?.library_slug),
+        libraryName: firstNonEmptyString(holding?.library_name, holding?.biblioteca, holding?.name)
+      };
+    }
+
+    function normalizeServiceStateRow(row) {
+      if (!row || typeof row !== "object") return null;
+      const allowReservationsRaw = row.allow_reservations;
+      const allowsNewReservationsRaw = row.allows_new_reservations;
+      return {
+        library_id: firstNonEmptyString(row.library_id),
+        slug: firstNonEmptyString(row.slug, row.library_slug),
+        name: firstNonEmptyString(row.name, row.library_name),
+        service_mode: String(row.service_mode || "").trim(),
+        public_message: String(row.public_message || "").trim(),
+        allow_reservations: typeof allowReservationsRaw === "boolean"
+          ? allowReservationsRaw
+          : (typeof allowsNewReservationsRaw === "boolean" ? allowsNewReservationsRaw : true),
+        updated_at: row.updated_at || null
+      };
+    }
+
+    async function fetchLibraryServiceStateByScope(scope = {}) {
+      if (!scope?.libraryId && !scope?.librarySlug && !scope?.libraryName) return null;
+      try {
+        let query = supabase
+          .from("v_library_service_public")
+          .select("*")
+          .limit(1);
+
+        if (scope.libraryId) query = query.eq("library_id", scope.libraryId);
+        else if (scope.librarySlug) query = query.eq("slug", scope.librarySlug);
+        else if (scope.libraryName) query = query.eq("name", scope.libraryName);
+        else return null;
+
+        const { data, error } = await query.maybeSingle();
+        if (error || !data) return null;
+        return normalizeServiceStateRow(data);
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar funcionamento da biblioteca", err);
+        return null;
+      }
+    }
+
+    async function loadBookServiceState(bookRow = {}, libraryContext = {}) {
+      publicServiceState = null;
+      applyPublicServiceState();
+      applyReaderScopedServiceChip(null);
+
+      const profileScope = {
+        libraryId: currentUserContext?.libraryId,
+        librarySlug: currentUserContext?.librarySlug,
+        libraryName: currentUserContext?.libraryName
+      };
+
+      let serviceScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+
+      if ((!serviceScope.libraryId && !serviceScope.librarySlug && !serviceScope.libraryName) && (profileScope.libraryId || profileScope.librarySlug || profileScope.libraryName)) {
+        const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, profileScope);
+        if (matchedHolding) serviceScope = buildLibraryScopeFromHolding(matchedHolding);
+      }
+
+      const state = await fetchLibraryServiceStateByScope(serviceScope);
+      if (!state) return;
+
+      publicServiceState = state;
+      applyPublicServiceState();
+
+      if (currentUserContext?.isLoggedIn && !currentUserContext?.isLibrarian && librariesMatch(profileScope, serviceScope)) {
+        applyReaderScopedServiceChip(state);
+      }
+    }
+
     function applyReaderScopedServiceChip(state) {
       const chip = $("serviceModePill");
       const line = $("serviceMessageLine");
@@ -489,37 +565,7 @@
     }
 
     async function loadReaderScopedServiceChip(bookRow = {}, libraryContext = {}) {
-      applyReaderScopedServiceChip(null);
-
-      if (!currentUserContext?.isLoggedIn || currentUserContext?.isLibrarian) return;
-
-      const profileScope = {
-        libraryId: currentUserContext?.libraryId,
-        librarySlug: currentUserContext?.librarySlug,
-        libraryName: currentUserContext?.libraryName
-      };
-      if (!profileScope.libraryId && !profileScope.librarySlug && !profileScope.libraryName) return;
-
-      const pageScope = resolveBookPageLibraryScope(bookRow, libraryContext);
-      if (!librariesMatch(profileScope, pageScope)) return;
-
-      try {
-        let query = supabase
-          .from("v_library_service_public")
-          .select("library_id,slug,name,service_mode,public_message,allow_reservations,updated_at")
-          .limit(1);
-
-        if (pageScope.libraryId) query = query.eq("library_id", pageScope.libraryId);
-        else if (pageScope.librarySlug) query = query.eq("slug", pageScope.librarySlug);
-        else if (pageScope.libraryName) query = query.eq("name", pageScope.libraryName);
-        else return;
-
-        const { data, error } = await query.maybeSingle();
-        if (error || !data) return;
-        applyReaderScopedServiceChip(data);
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao carregar funcionamento contextual da biblioteca", err);
-      }
+      await loadBookServiceState(bookRow, libraryContext);
     }
 
     async function getDigitalAvailabilityForBibRef(bib_ref, bookRow = null) {
@@ -1188,20 +1234,31 @@
         return;
       }
 
-      const candidateTables = libraryContext.libraryId || libraryContext.librarySlug
-        ? ["v_books_public", "v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "books"]
-        : ["v_books_catalog_public_v2", "v_books_catalog_public", "books_public", "v_books_public", "books"];
-
       let booksTable = null;
       let data = null;
       let keys = [];
       let sample = {};
       const localContextRequested = !!(libraryContext.libraryId || libraryContext.librarySlug);
+      const v2Select = [
+        "id","book_id","bib_ref","autor","author_display","author_chips","authors_json",
+        "titulo","subtitulo","ano","editora","cdd","loanable","available_count","created_at",
+        "cover_object_path","edicao","local_publicacao","isbn","issn","idioma","paginas","notas",
+        "tipo_material","autores_secundarios","colecao","volume","assuntos","tradutor","organizador",
+        "author_id","catalog_source","library_id","library_slug","library_name","biblioteca",
+        "has_online_reading","exemplares_total","bibliotecas_count","holding_libraries_json","tombos_json"
+      ].join(",");
+      const fallbackSelect = [
+        "id","bib_ref","autor","titulo","subtitulo","ano","editora","cdd","loanable","available_count",
+        "created_at","cover_object_path","edicao","local_publicacao","isbn","issn","idioma","paginas",
+        "notas","tipo_material","autores_secundarios","colecao","volume","assuntos","tradutor",
+        "organizador","author_id","catalog_source","library_id","library_slug","library_name","biblioteca",
+        "has_online_reading","tombo"
+      ].join(",");
 
       try {
         const v2 = await supabase
           .from("v_book_detail_public_v2")
-          .select("*")
+          .select(v2Select)
           .eq("bib_ref", bib_ref)
           .maybeSingle();
 
@@ -1228,47 +1285,53 @@
       }
 
       if (!booksTable) {
-        for (const candidate of candidateTables) {
-          const peek = await supabase.from(candidate).select("*").limit(1);
-          if (peek.error) continue;
+        try {
+          let fallback = await supabase
+            .from("v_books_public")
+            .select(fallbackSelect)
+            .eq("bib_ref", bib_ref)
+            .limit(localContextRequested ? 50 : 1);
 
-          sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
-          keys = Object.keys(sample);
-
-          const candidateRefCol =
-            findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
-          const candidateLibraryIdCol = findCol(keys, ["library_id"]);
-          const candidateLibrarySlugCol = findCol(keys, ["library_slug"]);
-
-          let probe = null;
-          if ((libraryContext.libraryId || libraryContext.librarySlug) && (candidateLibraryIdCol || candidateLibrarySlugCol)) {
-            let query = supabase
-              .from(candidate)
-              .select("*")
-              .eq(candidateRefCol, bib_ref);
-            if (libraryContext.libraryId && candidateLibraryIdCol) {
-              query = query.eq(candidateLibraryIdCol, libraryContext.libraryId);
+          if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
+            let rows = fallback.data;
+            if (localContextRequested) {
+              const filtered = rows.filter((row) => {
+                const rowLibraryId = String(row?.library_id || "").trim();
+                const rowLibrarySlug = String(row?.library_slug || "").trim();
+                if (libraryContext.libraryId && rowLibraryId && rowLibraryId === libraryContext.libraryId) return true;
+                if (libraryContext.librarySlug && rowLibrarySlug && rowLibrarySlug === libraryContext.librarySlug) return true;
+                return false;
+              });
+              if (filtered.length) rows = filtered;
             }
-            if (libraryContext.librarySlug && candidateLibrarySlugCol) {
-              query = query.eq(candidateLibrarySlugCol, libraryContext.librarySlug);
+            if (rows.length) {
+              booksTable = "v_books_public";
+              data = rows[0];
+              sample = data;
+              keys = Object.keys(data);
             }
-            probe = await query.limit(1);
           }
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao consultar v_books_public em fallback", err);
+        }
+      }
 
-          if (!probe || probe.error || !Array.isArray(probe.data) || !probe.data.length) {
-            probe = await supabase
-              .from(candidate)
-              .select("*")
-              .eq(candidateRefCol, bib_ref)
-              .limit(1);
-          }
+      if (!booksTable) {
+        try {
+          const fallbackBooks = await supabase
+            .from("books")
+            .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+            .eq("bib_ref", bib_ref)
+            .maybeSingle();
 
-          if (probe.error) continue;
-          if (Array.isArray(probe.data) && probe.data.length) {
-            booksTable = candidate;
-            data = probe.data[0];
-            break;
+          if (!fallbackBooks.error && fallbackBooks.data) {
+            booksTable = "books";
+            data = fallbackBooks.data;
+            sample = data;
+            keys = Object.keys(data);
           }
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao consultar books em fallback", err);
         }
       }
 
@@ -1550,7 +1613,7 @@
     }
 
     await setupContaButton();
-    await loadPublicServiceState();
+    applyPublicServiceState();
     await loadBook();
   </script>
 </body>
