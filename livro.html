@@ -297,6 +297,15 @@
     };
 
     let publicServiceState = null;
+    let currentUserContext = {
+      isLoggedIn: false,
+      userId: "",
+      isLibrarian: false,
+      profile: null,
+      libraryId: "",
+      librarySlug: "",
+      libraryName: ""
+    };
 
     function setStatus(msg, cls) {
       const el = $("status");
@@ -365,7 +374,165 @@
       return names;
     }
 
-    async function getDigitalAvailabilityForBibRef(bib_ref) {
+    function parseJsonArray(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string" && raw.trim()) {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    function normalizeLoose(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function extractProfileLibraryScope(profile) {
+      return {
+        libraryId: firstNonEmptyString(profile?.library_id, profile?.biblioteca_id, profile?.default_library_id, profile?.home_library_id),
+        librarySlug: firstNonEmptyString(profile?.library_slug, profile?.biblioteca_slug, profile?.default_library_slug, profile?.home_library_slug),
+        libraryName: firstNonEmptyString(profile?.library_name, profile?.biblioteca, profile?.biblioteca_nome, profile?.default_library_name, profile?.home_library_name)
+      };
+    }
+
+    function librariesMatch(a = {}, b = {}) {
+      const aId = String(a.libraryId || "").trim();
+      const bId = String(b.libraryId || "").trim();
+      if (aId && bId) return aId === bId;
+
+      const aSlug = normalizeLoose(a.librarySlug);
+      const bSlug = normalizeLoose(b.librarySlug);
+      if (aSlug && bSlug) return aSlug === bSlug;
+
+      const aName = normalizeLoose(firstNonEmptyString(a.libraryName).split(" - ")[0]);
+      const bName = normalizeLoose(firstNonEmptyString(b.libraryName).split(" - ")[0]);
+      return !!(aName && bName && aName === bName);
+    }
+
+    function findHoldingForLibraryContext(rawHoldings, libraryContext = {}) {
+      const holdings = parseJsonArray(rawHoldings);
+      if (!holdings.length) return null;
+
+      const ctxId = String(libraryContext?.libraryId || "").trim();
+      const ctxSlug = normalizeLoose(libraryContext?.librarySlug);
+      const ctxName = normalizeLoose(firstNonEmptyString(libraryContext?.libraryName).split(" - ")[0]);
+
+      if (ctxId) {
+        const matchById = holdings.find((row) => String(row?.library_id || "").trim() === ctxId);
+        if (matchById) return matchById;
+      }
+      if (ctxSlug) {
+        const matchBySlug = holdings.find((row) => normalizeLoose(row?.library_slug) === ctxSlug);
+        if (matchBySlug) return matchBySlug;
+      }
+      if (ctxName) {
+        const matchByName = holdings.find((row) => normalizeLoose(firstNonEmptyString(row?.library_name).split(" - ")[0]) === ctxName);
+        if (matchByName) return matchByName;
+      }
+      return null;
+    }
+
+    function resolveBookPageLibraryScope(bookRow = {}, libraryContext = {}) {
+      const direct = {
+        libraryId: firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca)
+      };
+      if (direct.libraryId || direct.librarySlug || direct.libraryName) return direct;
+
+      const holdings = parseJsonArray(bookRow?.holding_libraries_json);
+      if (holdings.length === 1) {
+        return {
+          libraryId: firstNonEmptyString(holdings[0]?.library_id),
+          librarySlug: firstNonEmptyString(holdings[0]?.library_slug),
+          libraryName: firstNonEmptyString(holdings[0]?.library_name)
+        };
+      }
+
+      return { libraryId: "", librarySlug: "", libraryName: "" };
+    }
+
+    function applyReaderScopedServiceChip(state) {
+      const chip = $("serviceModePill");
+      const line = $("serviceMessageLine");
+      if (line) {
+        line.style.display = "none";
+        line.textContent = "";
+      }
+      if (!chip) return;
+
+      const label = getServiceModeLabel(state?.service_mode);
+      if (!label) {
+        chip.style.display = "none";
+        chip.textContent = "";
+        return;
+      }
+
+      setPill("serviceModePill", "funcionamento", label);
+    }
+
+    async function loadReaderScopedServiceChip(bookRow = {}, libraryContext = {}) {
+      applyReaderScopedServiceChip(null);
+
+      if (!currentUserContext?.isLoggedIn || currentUserContext?.isLibrarian) return;
+
+      const profileScope = {
+        libraryId: currentUserContext?.libraryId,
+        librarySlug: currentUserContext?.librarySlug,
+        libraryName: currentUserContext?.libraryName
+      };
+      if (!profileScope.libraryId && !profileScope.librarySlug && !profileScope.libraryName) return;
+
+      const pageScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+      if (!librariesMatch(profileScope, pageScope)) return;
+
+      try {
+        let query = supabase
+          .from("v_library_service_public")
+          .select("library_id,slug,name,service_mode,public_message,allow_reservations,updated_at")
+          .limit(1);
+
+        if (pageScope.libraryId) query = query.eq("library_id", pageScope.libraryId);
+        else if (pageScope.librarySlug) query = query.eq("slug", pageScope.librarySlug);
+        else if (pageScope.libraryName) query = query.eq("name", pageScope.libraryName);
+        else return;
+
+        const { data, error } = await query.maybeSingle();
+        if (error || !data) return;
+        applyReaderScopedServiceChip(data);
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao carregar funcionamento contextual da biblioteca", err);
+      }
+    }
+
+    async function getDigitalAvailabilityForBibRef(bib_ref, bookRow = null) {
+      if (bookRow && typeof bookRow?.has_online_reading === "boolean") {
+        return !!bookRow.has_online_reading;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("v_book_detail_public_v2")
+          .select("has_online_reading")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
+
+        if (!error && data) {
+          return !!data?.has_online_reading;
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar exemplar digital na v_book_detail_public_v2", err);
+      }
+
       try {
         const { data, error } = await supabase
           .from("v_books_public")
@@ -391,6 +558,41 @@
   );
   if (localContextRequested && preferredLocal) {
     return String(preferredLocal).split(" - ")[0].trim();
+  }
+
+  const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
+  if (matchedHolding) {
+    const matchedLabel = firstNonEmptyString(matchedHolding?.library_name, matchedHolding?.biblioteca, matchedHolding?.name);
+    if (matchedLabel) return String(matchedLabel).split(" - ")[0].trim();
+  }
+
+  const holdingNames = extractHoldingLibraryNames(bookRow?.holding_libraries_json);
+  if (!localContextRequested && holdingNames.length) {
+    return holdingNames.join(" / ");
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("v_book_detail_public_v2")
+      .select("holding_libraries_json,biblioteca,library_id,library_slug,library_name")
+      .eq("bib_ref", bib_ref)
+      .maybeSingle();
+
+    if (!error && data) {
+      const localHolding = findHoldingForLibraryContext(data?.holding_libraries_json, libraryContext);
+      if (localHolding) {
+        const localLabel = firstNonEmptyString(localHolding?.library_name, localHolding?.biblioteca, localHolding?.name);
+        if (localLabel) return String(localLabel).split(" - ")[0].trim();
+      }
+
+      const names = extractHoldingLibraryNames(data?.holding_libraries_json);
+      if (names.length) return names.join(" / ");
+
+      const fallbackLabel = firstNonEmptyString(data?.library_name, data?.biblioteca);
+      if (fallbackLabel) return String(fallbackLabel).split(" - ")[0].trim();
+    }
+  } catch (err) {
+    console.warn("AnarBib livro: falha ao consultar bibliotecas na v_book_detail_public_v2", err);
   }
 
   try {
@@ -524,16 +726,16 @@
       const state = publicServiceState;
       const btnReservar = $("btnReservar");
       const serviceModePill = $("serviceModePill");
-      const label = getServiceModeLabel(state?.service_mode);
+      const serviceMessageLine = $("serviceMessageLine");
 
-      if (label) {
-        setPill("serviceModePill", "funcionamento", label);
-      } else if (serviceModePill) {
+      if (serviceModePill) {
         serviceModePill.style.display = "none";
         serviceModePill.textContent = "";
       }
-
-      setLine("serviceMessageLine", getServiceMessage(state));
+      if (serviceMessageLine) {
+        serviceMessageLine.style.display = "none";
+        serviceMessageLine.textContent = "";
+      }
 
       if (!btnReservar) return;
 
@@ -803,16 +1005,39 @@
       const btnEntrar = $("btnEntrar");
       const { data: { session } } = await supabase.auth.getSession();
 
+      currentUserContext = {
+        isLoggedIn: false,
+        userId: "",
+        isLibrarian: false,
+        profile: null,
+        libraryId: "",
+        librarySlug: "",
+        libraryName: ""
+      };
+
       if (session?.user?.id) {
         let isLibrarian = false;
+        let profile = null;
         try {
           const { data } = await supabase
             .from("profiles")
-            .select("is_librarian")
+            .select("*")
             .eq("id", session.user.id)
             .maybeSingle();
+          profile = data || null;
           isLibrarian = !!data?.is_librarian;
         } catch (_) {}
+
+        const profileScope = extractProfileLibraryScope(profile);
+        currentUserContext = {
+          isLoggedIn: true,
+          userId: String(session.user.id || "").trim(),
+          isLibrarian,
+          profile,
+          libraryId: profileScope.libraryId,
+          librarySlug: profileScope.librarySlug,
+          libraryName: profileScope.libraryName
+        };
 
         const targetHref = isLibrarian ? ROUTES.PAINEL : ROUTES.CONTA;
         btnConta.textContent = isLibrarian ? "Painel" : "Minha conta";
@@ -892,47 +1117,79 @@
       let data = null;
       let keys = [];
       let sample = {};
+      const localContextRequested = !!(libraryContext.libraryId || libraryContext.librarySlug);
 
-      for (const candidate of candidateTables) {
-        const peek = await supabase.from(candidate).select("*").limit(1);
-        if (peek.error) continue;
+      try {
+        const v2 = await supabase
+          .from("v_book_detail_public_v2")
+          .select("*")
+          .eq("bib_ref", bib_ref)
+          .maybeSingle();
 
-        sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
-        keys = Object.keys(sample);
-
-        const candidateRefCol =
-          findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
-        const candidateLibraryIdCol = findCol(keys, ["library_id"]);
-        const candidateLibrarySlugCol = findCol(keys, ["library_slug"]);
-
-        let probe = null;
-        if ((libraryContext.libraryId || libraryContext.librarySlug) && (candidateLibraryIdCol || candidateLibrarySlugCol)) {
-          let query = supabase
-            .from(candidate)
-            .select("*")
-            .eq(candidateRefCol, bib_ref);
-          if (libraryContext.libraryId && candidateLibraryIdCol) {
-            query = query.eq(candidateLibraryIdCol, libraryContext.libraryId);
+        if (!v2.error && v2.data) {
+          const candidateRow = { ...v2.data };
+          const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+          if (!localContextRequested || matchedHolding) {
+            if (matchedHolding) {
+              if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+              if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+              if (matchedHolding?.library_name) {
+                candidateRow.library_name = matchedHolding.library_name;
+                candidateRow.biblioteca = matchedHolding.library_name;
+              }
+            }
+            booksTable = "v_book_detail_public_v2";
+            data = candidateRow;
+            sample = candidateRow;
+            keys = Object.keys(candidateRow);
           }
-          if (libraryContext.librarySlug && candidateLibrarySlugCol) {
-            query = query.eq(candidateLibrarySlugCol, libraryContext.librarySlug);
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao consultar v_book_detail_public_v2", err);
+      }
+
+      if (!booksTable) {
+        for (const candidate of candidateTables) {
+          const peek = await supabase.from(candidate).select("*").limit(1);
+          if (peek.error) continue;
+
+          sample = (peek.data && peek.data[0]) ? peek.data[0] : {};
+          keys = Object.keys(sample);
+
+          const candidateRefCol =
+            findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
+          const candidateLibraryIdCol = findCol(keys, ["library_id"]);
+          const candidateLibrarySlugCol = findCol(keys, ["library_slug"]);
+
+          let probe = null;
+          if ((libraryContext.libraryId || libraryContext.librarySlug) && (candidateLibraryIdCol || candidateLibrarySlugCol)) {
+            let query = supabase
+              .from(candidate)
+              .select("*")
+              .eq(candidateRefCol, bib_ref);
+            if (libraryContext.libraryId && candidateLibraryIdCol) {
+              query = query.eq(candidateLibraryIdCol, libraryContext.libraryId);
+            }
+            if (libraryContext.librarySlug && candidateLibrarySlugCol) {
+              query = query.eq(candidateLibrarySlugCol, libraryContext.librarySlug);
+            }
+            probe = await query.limit(1);
           }
-          probe = await query.limit(1);
-        }
 
-        if (!probe || probe.error || !Array.isArray(probe.data) || !probe.data.length) {
-          probe = await supabase
-            .from(candidate)
-            .select("*")
-            .eq(candidateRefCol, bib_ref)
-            .limit(1);
-        }
+          if (!probe || probe.error || !Array.isArray(probe.data) || !probe.data.length) {
+            probe = await supabase
+              .from(candidate)
+              .select("*")
+              .eq(candidateRefCol, bib_ref)
+              .limit(1);
+          }
 
-        if (probe.error) continue;
-        if (Array.isArray(probe.data) && probe.data.length) {
-          booksTable = candidate;
-          data = probe.data[0];
-          break;
+          if (probe.error) continue;
+          if (Array.isArray(probe.data) && probe.data.length) {
+            booksTable = candidate;
+            data = probe.data[0];
+            break;
+          }
         }
       }
 
@@ -1068,10 +1325,20 @@
       $("desc").textContent = sanitizePublicResumo(resumo) || "—";
 
       async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
-        const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
-        let tombos = [];
+        const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
+        let tombos = parseJsonArray(matchedHolding?.tombos_json)
+          .map(v => String(v || "").trim())
+          .filter(Boolean);
 
-        if (inBook && bookRow?.[inBook] != null) {
+        if (!tombos.length) {
+          tombos = parseJsonArray(bookRow?.tombos_json)
+            .map(v => String(v || "").trim())
+            .filter(Boolean);
+        }
+
+        const inBook = findCol(Object.keys(bookRow || {}), ["tombo", "rotulo", "rótulo", "etiqueta", "label"]);
+
+        if (!tombos.length && inBook && bookRow?.[inBook] != null) {
           const raw = bookRow[inBook];
           if (Array.isArray(raw)) {
             tombos = raw
@@ -1145,8 +1412,9 @@
         $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
 
-      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref);
+      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
       setDigitalAvailability(hasDigitalAvailability);
+      await loadReaderScopedServiceChip(data, libraryContext);
 
       $("btnLer").addEventListener("click", async () => {
         const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
