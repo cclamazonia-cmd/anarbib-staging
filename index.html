@@ -1049,6 +1049,9 @@ const tableTopBtn = document.getElementById('tableTopBtn');
 const tableBottomBtn = document.getElementById('tableBottomBtn');
 const MOBILE_CATALOG_MEDIA_QUERY = '(max-width: 760px)';
 let lastRenderIsMobileCatalogView = null;
+let currentRowsComputationVersion = 0;
+let currentRowsCacheKey = '';
+let currentRowsCacheValue = [];
 
 function normalize(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -1879,6 +1882,28 @@ function buildLivroHref(row) {
   if (row?.library_name) url.searchParams.set('library_name', row.library_name);
   return url.toString();
 }
+function buildCurrentRowsCacheKey() {
+  const selectedLibrariesKey = libraryAllExplicitlySelected
+    ? LIBRARY_FILTER_ALL_VALUE
+    : [...selectedLibraryKeys].sort().join('|');
+  return JSON.stringify({
+    version: currentRowsComputationVersion,
+    q: search.value || '',
+    author: authorFilter.value || '',
+    publisher: publisherFilter.value || '',
+    year: yearFilter.value || '',
+    cdd: cddFilter.value || '',
+    availability: availabilityFilter.value || 'all',
+    libraries: selectedLibrariesKey,
+    sortKey,
+    sortDir
+  });
+}
+function invalidateCurrentRowsCache() {
+  currentRowsCacheKey = '';
+  currentRowsCacheValue = [];
+}
+
 function prepareRows() {
   for (const r of rows) {
     const status = getStatusInfo(r);
@@ -1910,9 +1935,16 @@ function prepareRows() {
     ].filter(Boolean).join(' ');
     r._variantWords = r._variantAll ? r._variantAll.split(/\s+/).filter(Boolean) : [];
   }
+  currentRowsComputationVersion += 1;
+  invalidateCurrentRowsCache();
 }
 async function loadRowsFromSupabase() {
   try {
+    const authorRelationsPromise = loadAuthorRelationsFromSupabase();
+    const librarySupplementPromise = loadBookLibrarySupplementMap();
+    const aliasMapPromise = loadAuthorAliasMap();
+    const canonicalMapPromise = loadAuthorCanonicalMap();
+
     const primarySelect = '*';
     const primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(primarySelect)}&order=titulo.asc`;
     let res = await fetch(primaryUrl, {
@@ -1941,38 +1973,6 @@ async function loadRowsFromSupabase() {
       }
     }
 
-    const data = text ? JSON.parse(text) : [];
-    const needsAuthorFallbackData = !useCanonicalView || (data || []).some((row) => {
-      const authorChipEntries = normalizeAuthorChipEntries(row?.author_chips);
-      const rawAuthor = firstNonEmptyString(row?.author_display, row?.autor);
-      return rawAuthor.includes(';') && !authorChipEntries.length;
-    });
-    const needsLibrarySupplementData = !useCanonicalView || (data || []).some((row) => !firstNonEmptyString(
-      row?.biblioteca,
-      row?.library_label,
-      row?.library_display,
-      row?.library_name,
-      row?.library_slug,
-      row?.library,
-      row?.biblioteca_display,
-      row?.biblioteca_label,
-      row?.biblioteca_nome,
-      row?.biblioteca_name
-    ));
-
-    const authorRelationsPromise = needsAuthorFallbackData
-      ? loadAuthorRelationsFromSupabase()
-      : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() });
-    const librarySupplementPromise = needsLibrarySupplementData
-      ? loadBookLibrarySupplementMap()
-      : Promise.resolve(new Map());
-    const aliasMapPromise = needsAuthorFallbackData
-      ? loadAuthorAliasMap()
-      : Promise.resolve(new Map());
-    const canonicalMapPromise = needsAuthorFallbackData
-      ? loadAuthorCanonicalMap()
-      : Promise.resolve(new Map());
-
     const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
       authorRelationsPromise,
       librarySupplementPromise,
@@ -1980,6 +1980,7 @@ async function loadRowsFromSupabase() {
       canonicalMapPromise
     ]);
 
+    const data = text ? JSON.parse(text) : [];
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
@@ -2271,6 +2272,11 @@ function compareNullableText(a, b) {
   return String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
 }
 function currentRows() {
+  const cacheKey = buildCurrentRowsCacheKey();
+  if (currentRowsCacheKey === cacheKey) {
+    return currentRowsCacheValue;
+  }
+
   lastQuery = parseQuery(search.value || '');
   const availabilityValue = availabilityFilter.value || 'all';
   const filtered = rows.filter((r) => {
@@ -2313,6 +2319,8 @@ function currentRows() {
     if (cmp === 0) cmp = compareNullableText(a.bib_ref, b.bib_ref);
     return sortDir === 'desc' ? -cmp : cmp;
   });
+  currentRowsCacheKey = cacheKey;
+  currentRowsCacheValue = filtered;
   return filtered;
 }
 function updateStats(filtered) {
