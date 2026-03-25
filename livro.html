@@ -898,6 +898,7 @@
     function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}) {
       const viewerUrl = new URL("ler.html", location.href);
       viewerUrl.searchParams.set("ref", bib_ref);
+      if (bookRow?.titulo) viewerUrl.searchParams.set("title", bookRow.titulo);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
       const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
       const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
