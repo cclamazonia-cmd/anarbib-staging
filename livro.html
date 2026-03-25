@@ -311,14 +311,6 @@
     };
 
     let publicServiceState = null;
-    let currentBookAccessState = {
-      key: "",
-      label: "",
-      cls: "",
-      canReserve: true,
-      allowLoginReserve: true,
-      reserveTitle: "Reservar este livro"
-    };
     let currentUserContext = {
       isLoggedIn: false,
       userId: "",
@@ -328,151 +320,6 @@
       librarySlug: "",
       libraryName: ""
     };
-
-
-    function setReserveButtonState(buttonState = {}) {
-      currentBookAccessState = {
-        key: String(buttonState?.key || "").trim(),
-        label: String(buttonState?.label || "").trim(),
-        cls: String(buttonState?.cls || "").trim(),
-        canReserve: buttonState?.canReserve !== false,
-        allowLoginReserve: buttonState?.allowLoginReserve !== false,
-        reserveTitle: String(buttonState?.reserveTitle || "Reservar este livro").trim() || "Reservar este livro"
-      };
-      applyPublicServiceState();
-    }
-
-    function normalizeCount(value) {
-      const n = Number(value);
-      return Number.isFinite(n) && n > 0 ? n : 0;
-    }
-
-    function getSessionHoldingForBook(bookRow = {}) {
-      const sessionScope = {
-        libraryId: currentUserContext?.libraryId,
-        librarySlug: currentUserContext?.librarySlug,
-        libraryName: currentUserContext?.libraryName
-      };
-
-      if (!(sessionScope.libraryId || sessionScope.librarySlug || sessionScope.libraryName)) {
-        return null;
-      }
-
-      const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, sessionScope);
-      if (matchedHolding) {
-        return matchedHolding;
-      }
-
-      const directScope = {
-        libraryId: firstNonEmptyString(bookRow?.library_id),
-        librarySlug: firstNonEmptyString(bookRow?.library_slug),
-        libraryName: firstNonEmptyString(bookRow?.library_name, bookRow?.biblioteca)
-      };
-
-      if (librariesMatch(sessionScope, directScope)) {
-        return {
-          library_id: directScope.libraryId,
-          library_slug: directScope.librarySlug,
-          library_name: directScope.libraryName,
-          exemplares_total: bookRow?.exemplares_total,
-          loanable: bookRow?.loanable
-        };
-      }
-
-      return null;
-    }
-
-    function computeBookAccessState(bookRow = {}, libraryContext = {}) {
-      const loanable = bookRow?.loanable !== false;
-
-      if (!currentUserContext?.isLoggedIn) {
-        if (!loanable) {
-          return {
-            key: "local_only",
-            label: "Consultável no lugar",
-            cls: "warn",
-            canReserve: false,
-            allowLoginReserve: false,
-            reserveTitle: "Consulta local"
-          };
-        }
-        return {
-          key: "check",
-          label: "Disponibilidade a verificar",
-          cls: "warn",
-          canReserve: true,
-          allowLoginReserve: true,
-          reserveTitle: "Entre para reservar"
-        };
-      }
-
-      const sessionHolding = getSessionHoldingForBook(bookRow);
-      const hasSessionHolding = !!sessionHolding;
-      if (!hasSessionHolding) {
-        return {
-          key: "not_for_you",
-          label: "Indisponível para você",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Indisponível para sua biblioteca"
-        };
-      }
-
-      const explicitContextActive = !!(libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName);
-      const sessionScope = {
-        libraryId: currentUserContext?.libraryId,
-        librarySlug: currentUserContext?.librarySlug,
-        libraryName: currentUserContext?.libraryName
-      };
-      const contextMatchesSession = !explicitContextActive || librariesMatch(libraryContext, sessionScope);
-
-      if (!contextMatchesSession) {
-        return {
-          key: "other_library",
-          label: "Presente em outra biblioteca",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Mude para sua biblioteca para reservar"
-        };
-      }
-
-      if (sessionHolding?.loanable === false || !loanable) {
-        return {
-          key: "local_only",
-          label: "Consultável no lugar",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Consulta local"
-        };
-      }
-
-      const sessionExemplaresTotal = normalizeCount(
-        sessionHolding?.session_exemplares_total ?? sessionHolding?.exemplares_total ?? bookRow?.session_exemplares_total ?? bookRow?.exemplares_total ?? 0
-      );
-
-      if (sessionExemplaresTotal > 0) {
-        return {
-          key: "available",
-          label: "Disponível",
-          cls: "ok",
-          canReserve: true,
-          allowLoginReserve: true,
-          reserveTitle: "Reservar este livro"
-        };
-      }
-
-      return {
-        key: "unavailable_now",
-        label: "Indisponível no momento",
-        cls: "warn",
-        canReserve: false,
-        allowLoginReserve: false,
-        reserveTitle: "Indisponível no momento"
-      };
-    }
 
     function setStatus(msg, cls) {
       const el = $("status");
@@ -1016,6 +863,81 @@
       return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
     }
 
+    function evaluateReserveContextState(bookRow = {}, libraryContext = {}) {
+      const defaultState = {
+        allowed: true,
+        label: "Reservar este livro",
+        title: "Reservar este livro",
+        reason: ""
+      };
+
+      if (!currentUserContext?.isLoggedIn) return defaultState;
+
+      const sessionScope = {
+        libraryId: currentUserContext?.libraryId,
+        librarySlug: currentUserContext?.librarySlug,
+        libraryName: currentUserContext?.libraryName
+      };
+
+      const sessionHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, sessionScope);
+      if (!sessionHolding) {
+        return {
+          allowed: false,
+          label: "Indisponível para você",
+          title: "Este livro não está disponível para empréstimo na sua biblioteca.",
+          reason: "Este livro não está disponível para empréstimo na sua biblioteca."
+        };
+      }
+
+      const pageScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+      const pageScopeSpecified = !!(pageScope.libraryId || pageScope.librarySlug || pageScope.libraryName);
+      if (pageScopeSpecified && !librariesMatch(sessionScope, pageScope)) {
+        return {
+          allowed: false,
+          label: "Presente em outra biblioteca",
+          title: "O contexto exibido pertence a outra biblioteca.",
+          reason: "Este livro está presente em outra biblioteca no contexto exibido."
+        };
+      }
+
+      if (bookRow?.loanable === false) {
+        return {
+          allowed: false,
+          label: "Consultável no lugar",
+          title: "Este item é consultável apenas no local.",
+          reason: "Este item é consultável apenas no local."
+        };
+      }
+
+      return defaultState;
+    }
+
+    function applyReserveContextState() {
+      const btnReservar = $("btnReservar");
+      if (!btnReservar) return;
+
+      if (publicServiceState?.allow_reservations === false) {
+        btnReservar.textContent = "Reservas temporariamente fechadas";
+        btnReservar.classList.add("disabled");
+        btnReservar.setAttribute("aria-disabled", "true");
+        btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
+        return;
+      }
+
+      if (reserveButtonContextState?.allowed === false) {
+        btnReservar.textContent = reserveButtonContextState.label || "Reservar indisponível";
+        btnReservar.classList.add("disabled");
+        btnReservar.setAttribute("aria-disabled", "true");
+        btnReservar.title = reserveButtonContextState.title || reserveButtonContextState.reason || "Reserva indisponível no contexto exibido.";
+        return;
+      }
+
+      btnReservar.textContent = "Reservar este livro";
+      btnReservar.classList.remove("disabled");
+      btnReservar.setAttribute("aria-disabled", "false");
+      btnReservar.title = "Reservar este livro";
+    }
+
     function applyPublicServiceState() {
       const state = publicServiceState;
       const btnReservar = $("btnReservar");
@@ -1032,34 +954,7 @@
       }
 
       if (!btnReservar) return;
-
-      const baseTitle = currentBookAccessState?.reserveTitle || "Reservar este livro";
-
-      if (state?.allow_reservations === false) {
-        btnReservar.textContent = "Reservas temporariamente fechadas";
-        btnReservar.classList.add("disabled");
-        btnReservar.setAttribute("aria-disabled", "true");
-        btnReservar.disabled = true;
-        btnReservar.style.display = "inline-flex";
-        btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
-        return;
-      }
-
-      btnReservar.textContent = "Reservar este livro";
-      btnReservar.style.display = "inline-flex";
-
-      if (currentBookAccessState?.canReserve === false) {
-        btnReservar.classList.add("disabled");
-        btnReservar.setAttribute("aria-disabled", "true");
-        btnReservar.disabled = true;
-        btnReservar.title = baseTitle;
-        return;
-      }
-
-      btnReservar.classList.remove("disabled");
-      btnReservar.setAttribute("aria-disabled", "false");
-      btnReservar.disabled = false;
-      btnReservar.title = baseTitle;
+      applyReserveContextState();
     }
 
     async function loadPublicServiceState() {
@@ -1126,10 +1021,6 @@
         params.set("id", id);
         params.set("author_id", id);
       }
-      const libraryContext = getLibraryContextFromUrl();
-      if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
-      if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
-      if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
       return `${ROUTES.AUTOR}?${params.toString()}`;
     }
 
@@ -1385,32 +1276,21 @@
         btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
         btnConta.onclick = () => location.assign(targetHref);
 
-        btnEntrar.textContent = "Logout";
-        btnEntrar.setAttribute("aria-disabled", "false");
-        btnEntrar.classList.remove("disabled");
-        btnEntrar.title = "Sair";
-        btnEntrar.href = "#";
-        btnEntrar.onclick = async (e) => {
-          e.preventDefault();
-          try {
-            await supabase.auth.signOut();
-          } catch (err) {
-            console.warn("AnarBib livro: falha ao encerrar sessão", err);
-          }
-          location.assign(location.href);
-        };
+        btnEntrar.setAttribute("aria-disabled", "true");
+        btnEntrar.classList.add("disabled");
+        btnEntrar.title = "Você já está logado(a/e).";
+        btnEntrar.removeAttribute("href");
+        btnEntrar.addEventListener("click", (e) => e.preventDefault());
       } else {
         btnConta.textContent = "Painel / minha conta";
         btnConta.setAttribute("aria-disabled", "true");
         btnConta.title = "Disponível apenas quando logado(a/e).";
         btnConta.onclick = (e) => e.preventDefault();
 
-        btnEntrar.textContent = "Entrar";
         btnEntrar.setAttribute("aria-disabled", "false");
         btnEntrar.classList.remove("disabled");
         btnEntrar.title = "Entrar";
         btnEntrar.href = buildCadastroUrl(location.href);
-        btnEntrar.onclick = null;
       }
     }
 
@@ -1422,18 +1302,14 @@
         return;
       }
 
-      if (currentBookAccessState?.canReserve === false && currentUserContext?.isLoggedIn) {
-        setStatus(currentBookAccessState?.label || "Esta reserva não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
+      if (reserveButtonContextState?.allowed === false) {
+        setStatus(reserveButtonContextState.reason || "A reserva não está disponível no contexto exibido.", "warn");
         return;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        if (currentBookAccessState?.allowLoginReserve === false) {
-          setStatus(currentBookAccessState?.label || "Esta reserva não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
-          return;
-        }
         setStatus("Para reservar, você precisa entrar.", "warn");
         location.assign(buildCadastroUrl(location.href));
         return;
@@ -1776,6 +1652,9 @@
         return [];
       }
 
+      reserveButtonContextState = evaluateReserveContextState(data, libraryContext);
+      applyPublicServiceState();
+
       const tombos = await loadTombosForBook(data, bib_ref, libraryContext);
       const holdingsInfo = summarizeHoldings(data?.holding_libraries_json, libraryContext);
       const exemplaresCount = holdingsInfo.totalCount || tombos.length;
@@ -1795,10 +1674,6 @@
       const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
       setDigitalAvailability(hasDigitalAvailability);
       await loadReaderScopedServiceChip(data, libraryContext);
-
-      const accessState = computeBookAccessState(data, libraryContext);
-      setStatus(accessState.label, accessState.cls);
-      setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
         const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
