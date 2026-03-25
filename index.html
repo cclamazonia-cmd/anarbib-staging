@@ -1218,9 +1218,15 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
   return false;
 }
 function getRowLibraryCandidates(row) {
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) return row._holdingRows;
-  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) return row._holdingLibrariesInfo;
-  return [row];
+  const candidates = [];
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) {
+    candidates.push(...row._holdingRows);
+  }
+  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
+    candidates.push(...row._holdingLibrariesInfo);
+  }
+  if (!candidates.length) return [row];
+  return candidates;
 }
 function getStatusInfo(r) {
   const userLibrary = getUserLibraryContext();
