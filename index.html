@@ -1020,8 +1020,8 @@ const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CATALOG_SESSION_V1_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint';
-const CATALOG_STRUCTURAL_V1_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global';
+const CATALOG_SESSION_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,availability_source,legacy_available_count_global';
+const CATALOG_STRUCTURAL_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,availability_source,legacy_available_count_global';
 const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
 const CATALOG_LEGACY_WITH_AUTHORS_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
 const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
@@ -1219,75 +1219,58 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
 }
 function getRowLibraryCandidates(row) {
   const candidates = [];
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) {
-    candidates.push(...row._holdingRows);
-  }
-  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
-    candidates.push(...row._holdingLibrariesInfo);
-  }
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) candidates.push(...row._holdingRows);
+  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) candidates.push(...row._holdingLibrariesInfo);
   if (!candidates.length) return [row];
   return candidates;
 }
+function mapSessionStatusHintToStatus(hint) {
+  const key = normalize(hint || '');
+  switch (key) {
+    case 'consultavel_no_local':
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    case 'no_acervo_da_sua_biblioteca':
+      return { key: 'available', label: 'No acervo', cls: 'status-available' };
+    case 'indisponivel_para_voce':
+      return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
+    case 'sem_biblioteca_de_sessao':
+      return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    default:
+      return null;
+  }
+}
 function getStatusInfo(r) {
+  const directSessionStatus = mapSessionStatusHintToStatus(r?.session_status_hint);
+  if (authState?.user && directSessionStatus) return directSessionStatus;
+
   const userLibrary = getUserLibraryContext();
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
-  const sessionHint = firstNonEmptyString(r?.session_status_hint);
-  if (sessionHint) {
-    if (sessionHint === 'sem_biblioteca_de_sessao') {
-      return { key: 'unavailable', label: 'Sem biblioteca ativa', cls: 'status-unavailable' };
-    }
-    if (sessionHint === 'indisponivel_para_voce') {
-      return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
-    }
-    if (sessionHint === 'consultavel_no_local') {
-      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-    }
-    if (sessionHint === 'no_acervo_da_sua_biblioteca') {
-      return { key: 'available', label: 'No acervo da sua biblioteca', cls: 'status-available' };
-    }
-  }
-
-  const holdingsOnly = firstNonEmptyString(r?.availability_source) === 'holdings_only';
-  if (holdingsOnly) {
-    if (hasScopedLibrary) {
-      const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
-      if (!localRows.length) {
-        return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
-      }
-      const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-      if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-      return { key: 'available', label: 'No acervo da sua biblioteca', cls: 'status-available' };
-    }
-    if (Number(r?.exemplares_total || 0) > 0) {
-      if (r?.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-      return { key: 'available', label: 'No acervo', cls: 'status-available' };
-    }
-    return { key: 'unavailable', label: 'Indisponível', cls: 'status-unavailable' };
-  }
 
   if (hasScopedLibrary) {
     const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
     if (!localRows.length) {
       return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
     }
+
+    const hintedLocalStatus = localRows
+      .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
+      .find(Boolean);
+    if (hintedLocalStatus) return hintedLocalStatus;
+
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
     if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-    const localAvailable = localRows.some((item) => Number(item?.available_count || 0) > 0) || (Number(r.available_count || 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
-    if (localAvailable) {
-      if (serviceState?.allow_reservations === false) {
-        return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
-      }
-      return { key: 'available', label: 'Disponível agora', cls: 'status-available' };
+
+    const localInHolding = localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? item?.available_count ?? 0) > 0)
+      || (Number(r.session_exemplares_total ?? r.available_count ?? 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
+    if (localInHolding) {
+      return { key: 'available', label: 'No acervo', cls: 'status-available' };
     }
     return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
   }
 
   if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
   if (Number(r.available_count || 0) > 0) {
-    if (serviceState?.allow_reservations === false) {
-      return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
-    }
-    return { key: 'available', label: 'Disponível agora', cls: 'status-available' };
+    return { key: 'available', label: 'No acervo', cls: 'status-available' };
   }
   return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
 }
@@ -2128,8 +2111,9 @@ function normalizeHoldingLibraries(value) {
     const library_slug = firstNonEmptyString(item.library_slug);
     const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
+    const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
-    out.push({ library_id, library_slug, library_name, exemplares_total });
+    out.push({ library_id, library_slug, library_name, exemplares_total, tombos_json });
   }
   return out;
 }
@@ -2144,7 +2128,7 @@ function deriveSingleLibraryContext(holdingLibraries) {
   };
 }
 function shouldLoadLibrarySupplement(sourceVariant, data) {
-  if (sourceVariant === 'catalog_v2') return false;
+  if (['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return false;
   return (data || []).some((row) => {
     const holdingLibraries = normalizeHoldingLibraries(row?.holding_libraries_json);
     if (holdingLibraries.length) return false;
@@ -2163,7 +2147,7 @@ function shouldLoadLibrarySupplement(sourceVariant, data) {
   });
 }
 function shouldLoadAuthorRelationData(sourceVariant, data) {
-  if (sourceVariant === 'catalog_v2') {
+  if (['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) {
     return (data || []).some((row) => {
       const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
       return namesCount > 1 && !normalizeAuthorChipEntries(row?.author_chips).length;
@@ -2172,7 +2156,7 @@ function shouldLoadAuthorRelationData(sourceVariant, data) {
   return true;
 }
 function shouldLoadAuthorAliasData(sourceVariant, data) {
-  if (sourceVariant !== 'catalog_v2') return true;
+  if (!['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return true;
   return (data || []).some((row) => {
     const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
     const authorId = normalizeAuthorIdValue(row?.author_id);
@@ -2180,7 +2164,7 @@ function shouldLoadAuthorAliasData(sourceVariant, data) {
   });
 }
 function shouldLoadAuthorCanonicalData(sourceVariant, data) {
-  if (sourceVariant !== 'catalog_v2') return true;
+  if (!['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return true;
   return (data || []).some((row) => {
     const authorId = normalizeAuthorIdValue(row?.author_id);
     return !!authorId && !firstNonEmptyString(row?.author_display);
@@ -2188,83 +2172,59 @@ function shouldLoadAuthorCanonicalData(sourceVariant, data) {
 }
 async function loadRowsFromSupabase() {
   try {
-    const useSessionCatalog = !!(authState?.user && authState?.accessToken);
-    let primaryUrl = '';
-    let primaryHeaders = {
+    const requestHeaders = (useSessionAuth = false) => ({
       apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${useSessionAuth && authState?.accessToken ? authState.accessToken : SUPABASE_ANON_KEY}`,
       Accept: 'application/json'
-    };
-    let sourceVariant = 'structural_v1';
+    });
 
-    if (useSessionCatalog) {
-      primaryUrl = `${SUPABASE_URL}/rest/v1/catalog_books_public_session_v1?select=${encodeURIComponent(CATALOG_SESSION_V1_SELECT)}&order=titulo.asc`;
-      primaryHeaders = {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${authState.accessToken}`,
-        Accept: 'application/json',
-        'Accept-Profile': 'api'
-      };
-      sourceVariant = 'session_v1';
-    } else {
-      primaryUrl = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_structural_v1?select=${encodeURIComponent(CATALOG_STRUCTURAL_V1_SELECT)}&order=titulo.asc`;
+    const attempts = [];
+    if (authState?.user && authState?.accessToken) {
+      attempts.push({
+        url: `${SUPABASE_URL}/rest/v1/catalog_books_public_session_v1?select=${encodeURIComponent(CATALOG_SESSION_V1_SELECT)}&order=titulo.asc`,
+        headers: requestHeaders(true),
+        sourceVariant: 'session_v1'
+      });
+    }
+    attempts.push({
+      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_structural_v1?select=${encodeURIComponent(CATALOG_STRUCTURAL_V1_SELECT)}&order=titulo.asc`,
+      headers: requestHeaders(false),
+      sourceVariant: 'structural_v1'
+    });
+    attempts.push({
+      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
+      headers: requestHeaders(false),
+      sourceVariant: 'catalog_v2'
+    });
+    attempts.push({
+      url: `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(CATALOG_LEGACY_WITH_AUTHORS_SELECT)}&order=titulo.asc`,
+      headers: requestHeaders(false),
+      sourceVariant: 'legacy_with_authors'
+    });
+    attempts.push({
+      url: `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(CATALOG_LEGACY_SELECT)}&order=titulo.asc`,
+      headers: requestHeaders(false),
+      sourceVariant: 'legacy'
+    });
+
+    let res = null;
+    let text = '';
+    let sourceVariant = 'legacy';
+    let lastErrorText = '';
+
+    for (const attempt of attempts) {
+      res = await fetch(attempt.url, { headers: attempt.headers });
+      text = await res.text();
+      if (res.ok) {
+        sourceVariant = attempt.sourceVariant;
+        break;
+      }
+      lastErrorText = text;
     }
 
-    const primaryRes = await fetch(primaryUrl, { headers: primaryHeaders });
-
-    let res = primaryRes;
-    let text = await primaryRes.text();
-
-    if (!primaryRes.ok) {
-      const structuralUrl = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_structural_v1?select=${encodeURIComponent(CATALOG_STRUCTURAL_V1_SELECT)}&order=titulo.asc`;
-      res = await fetch(structuralUrl, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Accept: 'application/json'
-        }
-      });
-      text = await res.text();
-      sourceVariant = 'structural_v1';
-      if (!res.ok) {
-        const fallbackCatalogV2Url = `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`;
-        res = await fetch(fallbackCatalogV2Url, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            Accept: 'application/json'
-          }
-        });
-        text = await res.text();
-        sourceVariant = res.ok ? 'catalog_v2' : 'legacy_with_authors';
-        if (!res.ok) {
-          const fallbackWithAuthorsUrl = `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(CATALOG_LEGACY_WITH_AUTHORS_SELECT)}&order=titulo.asc`;
-          res = await fetch(fallbackWithAuthorsUrl, {
-            headers: {
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              Accept: 'application/json'
-            }
-          });
-          text = await res.text();
-          if (!res.ok) {
-            const fallbackUrl = `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(CATALOG_LEGACY_SELECT)}&order=titulo.asc`;
-            res = await fetch(fallbackUrl, {
-              headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-                Accept: 'application/json'
-              }
-            });
-            text = await res.text();
-            sourceVariant = 'legacy';
-            if (!res.ok) {
-              alert('Erro ao carregar catálogo: ' + res.status + ' — ' + text);
-              return [];
-            }
-          }
-        }
-      }
+    if (!res || !res.ok) {
+      alert('Erro ao carregar catálogo: ' + (res?.status ?? 'falha') + ' — ' + lastErrorText);
+      return [];
     }
 
     const data = text ? JSON.parse(text) : [];
@@ -2292,7 +2252,8 @@ async function loadRowsFromSupabase() {
       const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
-      const biblioteca = sourceVariant === 'catalog_v2'
+      const usingStructuredHoldings = ['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant);
+      const biblioteca = usingStructuredHoldings
         ? canonicalizeLibraryLabel(
             holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
             r?.bib_ref || ''
@@ -2306,6 +2267,7 @@ async function loadRowsFromSupabase() {
 
       return {
         id: r.id ?? null,
+        book_id: r.book_id ?? r.id ?? null,
         bib_ref: r.bib_ref ?? '',
         autor: r.autor ?? '',
         author_display: canonicalAuthorDisplay || r.autor || '',
@@ -2323,16 +2285,18 @@ async function loadRowsFromSupabase() {
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
-        available_count: Number(r.available_count ?? r.legacy_available_count_global ?? 0) || 0,
-        session_status_hint: firstNonEmptyString(r.session_status_hint),
-        session_has_holding: r.session_has_holding === true,
-        session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
+        available_count: Number(r.available_count ?? r.session_exemplares_total ?? 0) || 0,
+        created_at: r.created_at ?? null,
         session_library_id: r.session_library_id ?? null,
         session_library_slug: firstNonEmptyString(r.session_library_slug),
         session_library_name: firstNonEmptyString(r.session_library_name),
+        session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
+        session_tombos_json: Array.isArray(r.session_tombos_json) ? r.session_tombos_json : [],
+        session_has_holding: r.session_has_holding === true,
+        session_status_hint: firstNonEmptyString(r.session_status_hint),
         availability_source: firstNonEmptyString(r.availability_source),
-        created_at: r.created_at ?? null,
-        _holdingLibraries: uniqueSortedStrings(holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')).filter(Boolean)),
+        legacy_available_count_global: Number(r.legacy_available_count_global ?? 0) || 0,
+        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: sourceVariant !== 'legacy'
