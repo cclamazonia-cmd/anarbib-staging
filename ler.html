@@ -1153,8 +1153,8 @@
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
       $("btnLogin").href = buildCadastroUrl();
-      $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
-      $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
+      $("subline").textContent = titulo ? `Abrindo ${titulo}.` : "Falta o título do livro.";
+      $("sheetSub").textContent = titulo ? `Leitura de ${titulo}.` : "Abra esta página a partir da ficha do livro.";
 
       const bootSession = await getSessionWithFallback();
       await setupNavButtons();
@@ -1166,7 +1166,7 @@
       }
 
       clearError();
-      setStatus("A verificar sessão e permissões…", "warn");
+      setStatus("Verificando sessão e permissões…", "warn");
 
       try {
         const pdfjsLib = await loadPdfJs();
