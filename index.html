@@ -895,7 +895,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
       <button id="contaBtn" class="button secondary" type="button">Painel / minha conta</button>
       <button id="loginBtn" class="button secondary" type="button">Login</button>
       <span class="hero-actions-separator" aria-hidden="true"></span>
-      <a id="regimentoBtn" class="button secondary" href="https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual do AnarBib</a>
+      <a id="regimentoBtn" class="button secondary" href="https://cclamazonia-cmd.github.io/blmf-catalogo/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual do AnarBib</a>
       <a id="csvAdvancedLink" class="action-link" href="#" role="button">CSV (avançado)</a>
     </div>
   </section>
@@ -1216,8 +1216,8 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
   return false;
 }
 function getRowLibraryCandidates(row) {
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) return row._holdingRows;
   if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) return row._holdingLibrariesInfo;
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) return row._holdingRows;
   return [row];
 }
 function getStatusInfo(r) {
@@ -1309,15 +1309,23 @@ function canonicalizeLibraryLabel(rawValue, bibRef = '') {
 function getLibraryKey(label) {
   return normalize(label);
 }
+function getDisplayLibrariesForRow(row) {
+  const values = Array.isArray(row?._holdingLibraries) && row._holdingLibraries.length
+    ? row._holdingLibraries
+    : [row?.biblioteca];
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))]
+    .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR', { sensitivity: 'base', numeric: true }));
+}
 function getLibraryLabelsFromRows() {
   const labels = new Map();
   for (const label of DEFAULT_LIBRARY_LABELS) {
     labels.set(getLibraryKey(label), label);
   }
   for (const row of rows) {
-    const label = canonicalizeLibraryLabel(row?.biblioteca, row?.bib_ref);
-    if (!label) continue;
-    labels.set(getLibraryKey(label), label);
+    for (const label of getDisplayLibrariesForRow(row)) {
+      if (!label) continue;
+      labels.set(getLibraryKey(label), label);
+    }
   }
   return [...labels.entries()].map(([key, label]) => ({ key, label }));
 }
@@ -2066,7 +2074,7 @@ function prepareRows() {
   }
 }
 
-function normalizeHoldingLibraries(value) {
+function normalizeHoldingLibraries(value, bibRef = '') {
   const source = (() => {
     if (Array.isArray(value)) return value;
     if (!value) return [];
@@ -2085,10 +2093,14 @@ function normalizeHoldingLibraries(value) {
     if (!item || typeof item !== 'object') continue;
     const library_id = item.library_id ?? null;
     const library_slug = firstNonEmptyString(item.library_slug);
-    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
+    const library_name = canonicalizeLibraryLabel(firstNonEmptyString(item.library_name, item.biblioteca, item.name), bibRef);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
+    const available_count = Number(item.available_count ?? item.available_now ?? item.available ?? 0) || 0;
+    const loanableHint = readBooleanHint(item.loanable);
+    const consultOnlyHint = readBooleanHint(item.consult_only);
+    const loanable = loanableHint === false || consultOnlyHint === true ? false : true;
     if (!library_id && !library_slug && !library_name) continue;
-    out.push({ library_id, library_slug, library_name, exemplares_total });
+    out.push({ library_id, library_slug, library_name, exemplares_total, available_count, loanable });
   }
   return out;
 }
@@ -2205,7 +2217,8 @@ async function loadRowsFromSupabase() {
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
     return (data || []).map(r => {
-      const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json);
+      const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r?.bib_ref || '');
+      const holdingLibraryLabels = uniqueSortedStrings(holdingLibraries.map((item) => item.library_name).filter(Boolean));
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
@@ -2214,10 +2227,7 @@ async function loadRowsFromSupabase() {
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       const biblioteca = sourceVariant === 'catalog_v2'
-        ? canonicalizeLibraryLabel(
-            holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
-            r?.bib_ref || ''
-          )
+        ? (holdingLibraryLabels.join(' / ') || canonicalizeLibraryLabel(r?.biblioteca, r?.bib_ref || ''))
         : resolveLibraryLabel({
             ...r,
             library_id: singleLibraryContext.library_id || r?.library_id,
@@ -2246,7 +2256,7 @@ async function loadRowsFromSupabase() {
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+        _holdingLibraries: holdingLibraryLabels.length ? holdingLibraryLabels : uniqueSortedStrings([biblioteca]),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: sourceVariant !== 'legacy'
@@ -2414,7 +2424,10 @@ function buildRowMarkup(r) {
   const cddHtml = r.cdd
     ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
     : '<span class="muted">—</span>';
-  const bibliotecaHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
+  const bibliotecaLabels = getDisplayLibrariesForRow(r);
+  const bibliotecaText = bibliotecaLabels.join(' / ') || r.biblioteca || '';
+  const bibliotecaHtml = bibliotecaText ? highlightHTML(bibliotecaText, terms) : '<span class="muted">—</span>';
+  const bibliotecaMetaLabel = bibliotecaLabels.length > 1 ? 'Biblioteca(s)' : 'Biblioteca';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
@@ -2464,7 +2477,7 @@ function buildRowMarkup(r) {
             <div class="mobile-meta-value">${cddHtml}</div>
           </div>
           <div class="mobile-meta">
-            <span class="mobile-meta-label">Biblioteca</span>
+            <span class="mobile-meta-label">${bibliotecaMetaLabel}</span>
             <div class="mobile-meta-value">${bibliotecaHtml}</div>
           </div>
           <div class="mobile-meta">
@@ -2588,7 +2601,10 @@ function groupCatalogRows(items) {
 
   return [...groups.values()].map((groupItems) => {
     const primary = pickPrimaryRowForGroup(groupItems) || {};
-    const holdingLibraries = uniqueSortedStrings(groupItems.map((item) => item?.biblioteca));
+    const holdingLibraries = uniqueSortedStrings(groupItems.flatMap((item) => {
+      if (Array.isArray(item?._holdingLibraries) && item._holdingLibraries.length) return item._holdingLibraries;
+      return [item?.biblioteca];
+    }));
     const mergedAuthorIds = mergeAuthorIdsForGroup(groupItems);
     const mergedAuthorChips = mergeAuthorChipEntriesForGroup(groupItems);
     const mergedHoldingLibraryInfo = mergeHoldingLibraryInfoForGroup(groupItems);
@@ -2626,8 +2642,8 @@ function currentRows() {
     if (!matchesNormalizedFilter(r._n.cdd, orthographySkeleton(r._n.cdd), cddFilter.value)) return false;
     if (availabilityValue !== 'all' && r._status?.key !== availabilityValue) return false;
     if (!libraryAllExplicitlySelected && selectedLibraryKeys.size) {
-      const libraryKey = getLibraryKey(r.biblioteca || '');
-      if (!selectedLibraryKeys.has(libraryKey)) return false;
+      const rowLibraryKeys = getDisplayLibrariesForRow(r).map((label) => getLibraryKey(label)).filter(Boolean);
+      if (!rowLibraryKeys.some((libraryKey) => selectedLibraryKeys.has(libraryKey))) return false;
     }
     return true;
   });
