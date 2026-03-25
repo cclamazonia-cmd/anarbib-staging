@@ -1020,11 +1020,11 @@ const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
+const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,loanable,created_at,library_id,library_slug,library_name,has_online_reading,catalog_source,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,availability_source,legacy_available_count_global';
+const CATALOG_STRUCTURAL_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,loanable,created_at,library_id,library_slug,library_name,has_online_reading,catalog_source,availability_source,legacy_available_count_global';
 const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
 const CATALOG_LEGACY_WITH_AUTHORS_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
 const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
-const CATALOG_SESSION_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,availability_source,legacy_available_count_global';
-const CATALOG_STRUCTURAL_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,availability_source,legacy_available_count_global';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1230,6 +1230,20 @@ function getRowLibraryCandidates(row) {
   if (!candidates.length) return [row];
   return candidates;
 }
+function mapSessionStatusHintToStatus(hint) {
+  switch (String(hint || '').trim()) {
+    case 'consultavel_no_local':
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    case 'indisponivel_para_voce':
+      return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
+    case 'no_acervo_da_sua_biblioteca':
+      return { key: 'available', label: 'No acervo', cls: 'status-available' };
+    case 'sem_biblioteca_de_sessao':
+      return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    default:
+      return null;
+  }
+}
 function rowMatchesSelectedLibraries(row) {
   if (libraryAllExplicitlySelected || !selectedLibraryKeys.size) return true;
 
@@ -1270,10 +1284,7 @@ function getStatusInfo(r) {
   if (directSessionStatus) return directSessionStatus;
 
   const userLibrary = getUserLibraryContext();
-  const hasScopedLibrary = !!(
-    authState?.user &&
-    (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name)
-  );
+  const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
 
   if (authState?.user && hasScopedLibrary && !personalizedAvailabilityReady) {
     if (r.loanable === false) {
@@ -1293,25 +1304,19 @@ function getStatusInfo(r) {
       .find(Boolean);
     if (hintedLocalStatus) return hintedLocalStatus;
 
-    const localOnly =
-      localRows.some((item) => item?.loanable === false) ||
-      (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) {
-      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-    }
+    const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
+    if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
 
-    const localInHolding =
-      localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? 0) > 0) ||
-      (Number(r.session_exemplares_total ?? 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
+    const localInHolding = localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? 0) > 0)
+      || (Number(r.session_exemplares_total ?? 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
     if (localInHolding) {
       return { key: 'available', label: 'No acervo', cls: 'status-available' };
     }
-
     return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
   }
 
   if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (Number(r.available_count || 0) > 0) {
+  if (Number(r.available_count || 0) > 0 || Number(r.exemplares_total || 0) > 0) {
     return { key: 'available', label: 'No acervo', cls: 'status-available' };
   }
   return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
@@ -2154,8 +2159,11 @@ function normalizeHoldingLibraries(value) {
     const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
+    const session_status_hint = firstNonEmptyString(item.session_status_hint);
+    const session_exemplares_total = Number(item.session_exemplares_total ?? 0) || 0;
+    const loanable = item.loanable === false ? false : true;
     if (!library_id && !library_slug && !library_name) continue;
-    out.push({ library_id, library_slug, library_name, exemplares_total, tombos_json });
+    out.push({ library_id, library_slug, library_name, exemplares_total, tombos_json, session_status_hint, session_exemplares_total, loanable });
   }
   return out;
 }
@@ -2169,8 +2177,33 @@ function deriveSingleLibraryContext(holdingLibraries) {
     library_name: firstNonEmptyString(holding.library_name)
   };
 }
+function buildBibliotecaDisplayLabel(sourceVariant, row, holdingLibraries, singleLibraryContext, fallbackLabel) {
+  const holdingLabels = uniqueSortedStrings((holdingLibraries || []).map((item) =>
+    canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref || '')
+  ));
+
+  if (sourceVariant === 'session_v1' && row?.session_has_holding) {
+    const sessionLabel = canonicalizeLibraryLabel(
+      firstNonEmptyString(row?.session_library_name, row?.session_library_slug),
+      row?.bib_ref || ''
+    );
+    if (sessionLabel) return sessionLabel;
+  }
+
+  if (holdingLabels.length > 1) return holdingLabels.join(' / ');
+  if (holdingLabels.length === 1) return holdingLabels[0];
+
+  if (singleLibraryContext?.library_name || singleLibraryContext?.library_slug) {
+    return canonicalizeLibraryLabel(
+      firstNonEmptyString(singleLibraryContext.library_name, singleLibraryContext.library_slug),
+      row?.bib_ref || ''
+    );
+  }
+
+  return canonicalizeLibraryLabel(fallbackLabel, row?.bib_ref || '');
+}
 function shouldLoadLibrarySupplement(sourceVariant, data) {
-  if (['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return false;
+  if (['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant)) return false;
   return (data || []).some((row) => {
     const holdingLibraries = normalizeHoldingLibraries(row?.holding_libraries_json);
     if (holdingLibraries.length) return false;
@@ -2189,7 +2222,7 @@ function shouldLoadLibrarySupplement(sourceVariant, data) {
   });
 }
 function shouldLoadAuthorRelationData(sourceVariant, data) {
-  if (['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) {
+  if (['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant)) {
     return (data || []).some((row) => {
       const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
       return namesCount > 1 && !normalizeAuthorChipEntries(row?.author_chips).length;
@@ -2198,7 +2231,7 @@ function shouldLoadAuthorRelationData(sourceVariant, data) {
   return true;
 }
 function shouldLoadAuthorAliasData(sourceVariant, data) {
-  if (!['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return true;
+  if (!['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant)) return true;
   return (data || []).some((row) => {
     const namesCount = splitAuthorNames(row?.author_display || row?.autor || '').length;
     const authorId = normalizeAuthorIdValue(row?.author_id);
@@ -2206,7 +2239,7 @@ function shouldLoadAuthorAliasData(sourceVariant, data) {
   });
 }
 function shouldLoadAuthorCanonicalData(sourceVariant, data) {
-  if (!['catalog_v2','session_v1','structural_v1'].includes(sourceVariant)) return true;
+  if (!['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant)) return true;
   return (data || []).some((row) => {
     const authorId = normalizeAuthorIdValue(row?.author_id);
     return !!authorId && !firstNonEmptyString(row?.author_display);
@@ -2214,68 +2247,84 @@ function shouldLoadAuthorCanonicalData(sourceVariant, data) {
 }
 async function loadRowsFromSupabase() {
   try {
-    const requestHeaders = (useSessionAuth = false) => ({
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${useSessionAuth && authState?.accessToken ? authState.accessToken : SUPABASE_ANON_KEY}`,
-      Accept: 'application/json'
-    });
-
     const attempts = [];
     if (authState?.user && authState?.accessToken) {
       attempts.push({
-        url: `${SUPABASE_URL}/rest/v1/catalog_books_public_session_v1?select=${encodeURIComponent(CATALOG_SESSION_V1_SELECT)}&order=titulo.asc`,
-        headers: requestHeaders(true),
+        path: 'catalog_books_public_session_v1',
+        select: CATALOG_SESSION_SELECT,
+        schemaName: 'api',
+        accessToken: authState.accessToken,
         sourceVariant: 'session_v1'
       });
     }
-    attempts.push({
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_structural_v1?select=${encodeURIComponent(CATALOG_STRUCTURAL_V1_SELECT)}&order=titulo.asc`,
-      headers: requestHeaders(false),
-      sourceVariant: 'structural_v1'
-    });
-    attempts.push({
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
-      headers: requestHeaders(false),
-      sourceVariant: 'catalog_v2'
-    });
-    attempts.push({
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(CATALOG_LEGACY_WITH_AUTHORS_SELECT)}&order=titulo.asc`,
-      headers: requestHeaders(false),
-      sourceVariant: 'legacy_with_authors'
-    });
-    attempts.push({
-      url: `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(CATALOG_LEGACY_SELECT)}&order=titulo.asc`,
-      headers: requestHeaders(false),
-      sourceVariant: 'legacy'
-    });
+    attempts.push(
+      {
+        path: 'v_books_public_catalog_structural_v1',
+        select: CATALOG_STRUCTURAL_SELECT,
+        schemaName: 'public',
+        accessToken: null,
+        sourceVariant: 'structural_v1'
+      },
+      {
+        path: 'v_books_public_catalog_v2',
+        select: CATALOG_V2_SELECT,
+        schemaName: 'public',
+        accessToken: null,
+        sourceVariant: 'catalog_v2'
+      },
+      {
+        path: 'v_books_public_with_authors',
+        select: CATALOG_LEGACY_WITH_AUTHORS_SELECT,
+        schemaName: 'public',
+        accessToken: null,
+        sourceVariant: 'legacy_with_authors'
+      },
+      {
+        path: 'v_books_public',
+        select: CATALOG_LEGACY_SELECT,
+        schemaName: 'public',
+        accessToken: null,
+        sourceVariant: 'legacy'
+      }
+    );
 
-    let res = null;
-    let text = '';
+    let data = [];
     let sourceVariant = 'legacy';
-    let lastErrorText = '';
+    let lastErrorMessage = '';
 
     for (const attempt of attempts) {
-      res = await fetch(attempt.url, { headers: attempt.headers });
-      text = await res.text();
-      if (res.ok) {
+      try {
+        const headers = {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${attempt.accessToken || SUPABASE_ANON_KEY}`,
+          Accept: 'application/json'
+        };
+        if (attempt.schemaName && attempt.schemaName !== 'public') {
+          headers['Accept-Profile'] = attempt.schemaName;
+        }
+        const url = `${SUPABASE_URL}/rest/v1/${attempt.path}?select=${encodeURIComponent(attempt.select)}&order=titulo.asc`;
+        const res = await fetch(url, { headers });
+        const text = await res.text();
+        if (!res.ok) {
+          lastErrorMessage = `${attempt.path}: ${res.status} — ${text}`;
+          continue;
+        }
+        data = text ? JSON.parse(text) : [];
         sourceVariant = attempt.sourceVariant;
-        catalogSourceVariant = sourceVariant;
-        personalizedAvailabilityReady = !!(authState?.user && sourceVariant === 'session_v1');
         break;
+      } catch (err) {
+        lastErrorMessage = `${attempt.path}: ${err?.message || String(err)}`;
       }
-      lastErrorText = text;
     }
 
-    if (!res || !res.ok) {
-      catalogSourceVariant = 'legacy';
-      personalizedAvailabilityReady = false;
-      alert('Erro ao carregar catálogo: ' + (res?.status ?? 'falha') + ' — ' + lastErrorText);
-      return [];
+    if (!Array.isArray(data)) data = [];
+    if (!data.length && lastErrorMessage && sourceVariant === 'legacy') {
+      console.warn('Falha ao carregar catálogo principal:', lastErrorMessage);
     }
 
-    const data = text ? JSON.parse(text) : [];
     catalogSourceVariant = sourceVariant;
     personalizedAvailabilityReady = !!(authState?.user && sourceVariant === 'session_v1');
+
     const needsLibrarySupplement = shouldLoadLibrarySupplement(sourceVariant, data);
     const needsAuthorRelations = shouldLoadAuthorRelationData(sourceVariant, data);
     const needsAuthorAliases = shouldLoadAuthorAliasData(sourceVariant, data);
@@ -2300,22 +2349,27 @@ async function loadRowsFromSupabase() {
       const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
-      const usingStructuredHoldings = ['catalog_v2', 'session_v1', 'structural_v1'].includes(sourceVariant);
-      const biblioteca = usingStructuredHoldings
-        ? canonicalizeLibraryLabel(
-            holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
-            r?.bib_ref || ''
-          )
-        : resolveLibraryLabel({
-            ...r,
-            library_id: singleLibraryContext.library_id || r?.library_id,
-            library_slug: singleLibraryContext.library_slug || r?.library_slug,
-            library_name: singleLibraryContext.library_name || r?.library_name
-          }, librarySupplementMap);
+      const biblioteca = buildBibliotecaDisplayLabel(
+        sourceVariant,
+        r,
+        holdingLibraries,
+        {
+          library_id: singleLibraryContext.library_id || r?.library_id,
+          library_slug: singleLibraryContext.library_slug || r?.library_slug,
+          library_name: singleLibraryContext.library_name || r?.library_name
+        },
+        sourceVariant === 'catalog_v2'
+          ? r?.biblioteca
+          : resolveLibraryLabel({
+              ...r,
+              library_id: singleLibraryContext.library_id || r?.library_id,
+              library_slug: singleLibraryContext.library_slug || r?.library_slug,
+              library_name: singleLibraryContext.library_name || r?.library_name
+            }, librarySupplementMap)
+      );
 
       return {
         id: r.id ?? null,
-        book_id: r.book_id ?? r.id ?? null,
         bib_ref: r.bib_ref ?? '',
         autor: r.autor ?? '',
         author_display: canonicalAuthorDisplay || r.autor || '',
@@ -2329,35 +2383,32 @@ async function loadRowsFromSupabase() {
         library_id: singleLibraryContext.library_id || r.library_id || null,
         library_slug: singleLibraryContext.library_slug || r.library_slug || '',
         library_name: singleLibraryContext.library_name || r.library_name || '',
-        author_id: authorId,
-        author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
-        author_ids_list: authorIdsList,
-        author_chips: authorChipEntries,
-        loanable: r.loanable === false ? false : true,
-        available_count: Number(r.available_count ?? r.session_exemplares_total ?? 0) || 0,
-        created_at: r.created_at ?? null,
         session_library_id: r.session_library_id ?? null,
         session_library_slug: firstNonEmptyString(r.session_library_slug),
         session_library_name: firstNonEmptyString(r.session_library_name),
         session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
-        session_tombos_json: Array.isArray(r.session_tombos_json) ? r.session_tombos_json : [],
         session_has_holding: r.session_has_holding === true,
         session_status_hint: firstNonEmptyString(r.session_status_hint),
         availability_source: firstNonEmptyString(r.availability_source),
-        legacy_available_count_global: Number(r.legacy_available_count_global ?? 0) || 0,
-        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+        author_id: authorId,
+        author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
+        author_ids_list: authorIdsList,
+        loanable: r.loanable === false ? false : true,
+        available_count: Number(r.available_count ?? r.legacy_available_count_global ?? 0) || 0,
+        exemplares_total: Number(r.exemplares_total ?? 0) || 0,
+        created_at: r.created_at ?? null,
+        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(firstNonEmptyString(item.library_name, item.library_slug), r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: sourceVariant !== 'legacy'
       };
     });
   } catch (e) {
-    catalogSourceVariant = 'legacy';
-    personalizedAvailabilityReady = false;
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
   }
 }
+
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -2659,11 +2710,14 @@ function mergeHoldingLibraryInfoForGroup(items) {
       const library_slug = firstNonEmptyString(candidate.library_slug);
       const library_name = firstNonEmptyString(candidate.library_name, candidate.biblioteca);
       const available_count = Number(candidate.available_count ?? 0) || 0;
+      const exemplares_total = Number(candidate.exemplares_total ?? 0) || 0;
+      const session_exemplares_total = Number(candidate.session_exemplares_total ?? 0) || 0;
+      const session_status_hint = firstNonEmptyString(candidate.session_status_hint);
       const loanable = candidate.loanable === false ? false : true;
       const key = `${library_id || ''}::${library_slug}::${normalize(library_name)}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      merged.push({ library_id, library_slug, library_name, available_count, loanable });
+      merged.push({ library_id, library_slug, library_name, available_count, exemplares_total, session_exemplares_total, session_status_hint, loanable });
     }
   }
   return merged;
@@ -2729,7 +2783,6 @@ function currentRows() {
   });
 
   let filtered = groupCatalogRows(filteredRaw);
-
   if (!libraryAllExplicitlySelected && selectedLibraryKeys.size) {
     filtered = filtered.filter(rowMatchesSelectedLibraries);
   }
