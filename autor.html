@@ -232,7 +232,7 @@
     const GH_BASE = location.origin;
     const ROUTES = {
       BLOG_HOME: "https://cclamazonia.noblogs.org/",
-      CATALOGO: `${GH_BASE}/anarbib-staging/`,
+      CATALOGO: `${GH_BASE}/anarbib-staging/index.html`,
       CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
       CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
       LIVRO: `${GH_BASE}/anarbib-staging/livro.html`,
@@ -320,7 +320,10 @@
         || u.searchParams.get("sort_name")
         || ""
       ).trim() || null;
-      return { authorId, authorName };
+      const libraryId = (u.searchParams.get("library_id") || "").trim() || null;
+      const librarySlug = (u.searchParams.get("library_slug") || "").trim() || null;
+      const libraryName = (u.searchParams.get("library_name") || "").trim() || null;
+      return { authorId, authorName, libraryId, librarySlug, libraryName };
     }
 
     function normalizeText(value) {
@@ -377,6 +380,15 @@
 
     function uniqueStrings(values) {
       return [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
+    }
+
+    function buildLivroHref(row, ctx = {}) {
+      const url = new URL(ROUTES.LIVRO, location.href);
+      url.searchParams.set("ref", String(row?.bib_ref || "").trim());
+      if (ctx.libraryId) url.searchParams.set("library_id", ctx.libraryId);
+      if (ctx.librarySlug) url.searchParams.set("library_slug", ctx.librarySlug);
+      if (ctx.libraryName) url.searchParams.set("library_name", ctx.libraryName);
+      return url.toString();
     }
 
     function buildPhotoCandidates(pathOrUrl) {
@@ -509,7 +521,7 @@
         });
     }
 
-    function renderBooks(books) {
+    function renderBooks(books, ctx = {}) {
       const list = $("booksList");
       const empty = $("booksEmpty");
       list.innerHTML = "";
@@ -521,7 +533,7 @@
       for (const row of books) {
         const a = document.createElement("a");
         a.className = "book-card";
-        a.href = `${ROUTES.LIVRO}?ref=${encodeURIComponent(row.bib_ref || "")}`;
+        a.href = buildLivroHref(row, ctx);
 
         const title = document.createElement("div");
         title.className = "book-title";
@@ -571,11 +583,18 @@
         btnConta.title = isLibrarian ? "Abrir painel" : "Abrir minha conta";
         btnConta.onclick = () => location.assign(targetHref);
 
-        btnEntrar.setAttribute("aria-disabled", "true");
-        btnEntrar.classList.add("disabled");
-        btnEntrar.title = "Você já está logado(a/e).";
+        btnEntrar.setAttribute("aria-disabled", "false");
+        btnEntrar.classList.remove("disabled");
+        btnEntrar.textContent = "Logout";
+        btnEntrar.title = "Sair";
         btnEntrar.removeAttribute("href");
-        btnEntrar.addEventListener("click", (e) => e.preventDefault());
+        btnEntrar.onclick = async (e) => {
+          e.preventDefault();
+          try {
+            await supabase.auth.signOut();
+          } catch (_) {}
+          location.assign(location.pathname + location.search + location.hash);
+        };
       } else {
         btnConta.textContent = "Painel / minha conta";
         btnConta.setAttribute("aria-disabled", "true");
@@ -584,13 +603,15 @@
 
         btnEntrar.setAttribute("aria-disabled", "false");
         btnEntrar.classList.remove("disabled");
+        btnEntrar.textContent = "Entrar";
         btnEntrar.title = "Entrar";
+        btnEntrar.onclick = null;
         btnEntrar.href = ROUTES.CADASTRO;
       }
     }
 
     async function loadAuthor() {
-      const { authorId } = getUrlBits();
+      const { authorId, libraryId, librarySlug, libraryName } = getUrlBits();
 
       if (!authorId) {
         $("nameLine").textContent = "Autor não encontrado";
@@ -638,7 +659,7 @@
       setPill("sourcePill", "fonte", sourceLabel);
 
       setPhoto(author.photo_object_path || "");
-      renderBooks(books || []);
+      renderBooks(books || [], { libraryId, librarySlug, libraryName });
       setStatus("", "");
       document.title = `${author.preferred_name || author.sort_name || "Autor"} - AnarBib`;
     }
