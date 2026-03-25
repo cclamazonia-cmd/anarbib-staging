@@ -1269,32 +1269,54 @@ function getStatusInfo(r) {
 }
 function getStatusInfo(r) {
   const userLibrary = getUserLibraryContext();
-  const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
+  const hasScopedLibrary = !!(
+    authState?.user &&
+    (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name)
+  );
 
   if (hasScopedLibrary) {
     const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
+
     if (!localRows.length) {
       return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
     }
-    const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-    const localAvailable = localRows.some((item) => Number(item?.available_count || 0) > 0) || (Number(r.available_count || 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
-    if (localAvailable) {
+
+    const localOnly =
+      localRows.some((item) => item?.loanable === false) ||
+      (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
+
+    if (localOnly) {
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    }
+
+    const localInHolding =
+      localRows.some((item) =>
+        Number(item?.session_exemplares_total ?? item?.exemplares_total ?? item?.available_count ?? 0) > 0
+      ) ||
+      (rowMatchesUserLibrary(r, userLibrary) &&
+        Number(r?.session_exemplares_total ?? r?.exemplares_total ?? r?.available_count ?? 0) > 0);
+
+    if (localInHolding) {
       if (serviceState?.allow_reservations === false) {
         return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
       }
       return { key: 'available', label: 'Disponível', cls: 'status-available' };
     }
+
     return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
   }
 
-  if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (Number(r.available_count || 0) > 0) {
+  if (r.loanable === false) {
+    return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+  }
+
+  if (Number(r?.exemplares_total ?? r?.available_count ?? 0) > 0) {
     if (serviceState?.allow_reservations === false) {
       return { key: 'available', label: 'Disponível no acervo', cls: 'status-available' };
     }
     return { key: 'available', label: 'Disponível', cls: 'status-available' };
   }
+
   return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
 }
 function parseQuery(raw) {
