@@ -1220,9 +1220,47 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
   return false;
 }
 function getRowLibraryCandidates(row) {
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) return row._holdingRows;
-  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) return row._holdingLibrariesInfo;
-  return [row];
+  const candidates = [];
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) {
+    candidates.push(...row._holdingRows);
+  }
+  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
+    candidates.push(...row._holdingLibrariesInfo);
+  }
+  if (!candidates.length) return [row];
+  return candidates;
+}
+function rowMatchesSelectedLibraries(row) {
+  if (libraryAllExplicitlySelected || !selectedLibraryKeys.size) return true;
+
+  const labels = new Set();
+
+  if (Array.isArray(row?._holdingLibrariesInfo)) {
+    for (const item of row._holdingLibrariesInfo) {
+      const label = canonicalizeLibraryLabel(
+        firstNonEmptyString(item?.library_name, item?.library_slug),
+        row?.bib_ref || ''
+      );
+      if (label) labels.add(getLibraryKey(label));
+    }
+  }
+
+  if (!labels.size && Array.isArray(row?._holdingLibraries)) {
+    for (const raw of row._holdingLibraries) {
+      const label = canonicalizeLibraryLabel(raw, row?.bib_ref || '');
+      if (label) labels.add(getLibraryKey(label));
+    }
+  }
+
+  if (!labels.size) {
+    const fallback = canonicalizeLibraryLabel(row?.biblioteca, row?.bib_ref || '');
+    if (fallback) labels.add(getLibraryKey(fallback));
+  }
+
+  for (const key of selectedLibraryKeys) {
+    if (labels.has(key)) return true;
+  }
+  return false;
 }
 function getStatusInfo(r) {
   const directSessionStatus =
@@ -2687,14 +2725,14 @@ function currentRows() {
     if (!matchYearField(r.ano, yearFilter.value)) return false;
     if (!matchesNormalizedFilter(r._n.cdd, orthographySkeleton(r._n.cdd), cddFilter.value)) return false;
     if (availabilityValue !== 'all' && r._status?.key !== availabilityValue) return false;
-    if (!libraryAllExplicitlySelected && selectedLibraryKeys.size) {
-      const libraryKey = getLibraryKey(r.biblioteca || '');
-      if (!selectedLibraryKeys.has(libraryKey)) return false;
-    }
     return true;
   });
 
-  const filtered = groupCatalogRows(filteredRaw);
+  let filtered = groupCatalogRows(filteredRaw);
+
+  if (!libraryAllExplicitlySelected && selectedLibraryKeys.size) {
+    filtered = filtered.filter(rowMatchesSelectedLibraries);
+  }
   const statusRank = { available: 0, local: 1, unavailable: 2 };
   filtered.sort((a, b) => {
     if (sortKey === 'relevance') {
