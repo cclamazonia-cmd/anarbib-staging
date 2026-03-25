@@ -627,7 +627,7 @@
       </section>
 
       <div class="status-row" id="statusRow">
-        <p class="status-box" id="statusBox">A iniciar…</p>
+        <p class="status-box" id="statusBox">Iniciando…</p>
         <div class="error-box" id="errorBox"></div>
       </div>
 
@@ -663,6 +663,7 @@
 
     const params = new URLSearchParams(location.search);
     const bibRef = (params.get("ref") || "").trim();
+    const bookTitle = (params.get("title") || "").trim();
     const libraryContext = {
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim()
@@ -1218,9 +1219,9 @@
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
       $("btnLogin").href = buildCadastroUrl();
-      $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
-      $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
-      setStatus("A preparar a leitura…", "warn");
+      $("subline").textContent = bibRef ? `Abrindo ${bookTitle || bibRef}.` : "Falta a referência do livro.";
+      $("sheetSub").textContent = bibRef ? `Leitura de ${bookTitle || bibRef}.` : "Abra esta página a partir da ficha do livro.";
+      setStatus("Preparando a leitura…", "warn");
 
       let bootSession = null;
       try {
@@ -1246,7 +1247,7 @@
       }
 
       clearError();
-      setStatus("A verificar sessão e permissões…", "warn");
+      setStatus("Verificando sessão e permissões…", "warn");
 
       try {
         const pdfjsLib = await loadPdfJs();
