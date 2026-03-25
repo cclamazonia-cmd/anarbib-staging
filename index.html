@@ -1020,11 +1020,11 @@ const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CATALOG_SESSION_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,availability_source,legacy_available_count_global';
-const CATALOG_STRUCTURAL_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,availability_source,legacy_available_count_global';
 const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
 const CATALOG_LEGACY_WITH_AUTHORS_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
 const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
+const CATALOG_SESSION_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,availability_source,legacy_available_count_global';
+const CATALOG_STRUCTURAL_V1_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,holding_libraries_json,holding_library_names_json,loanable,created_at,availability_source,legacy_available_count_global';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1073,6 +1073,8 @@ let suppressVisibleLimitReset = false;
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
+let catalogSourceVariant = 'legacy';
+let personalizedAvailabilityReady = false;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 
@@ -1218,33 +1220,29 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
   return false;
 }
 function getRowLibraryCandidates(row) {
-  const candidates = [];
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) candidates.push(...row._holdingRows);
-  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) candidates.push(...row._holdingLibrariesInfo);
-  if (!candidates.length) return [row];
-  return candidates;
-}
-function mapSessionStatusHintToStatus(hint) {
-  const key = normalize(hint || '');
-  switch (key) {
-    case 'consultavel_no_local':
-      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-    case 'no_acervo_da_sua_biblioteca':
-      return { key: 'available', label: 'No acervo', cls: 'status-available' };
-    case 'indisponivel_para_voce':
-      return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
-    case 'sem_biblioteca_de_sessao':
-      return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
-    default:
-      return null;
-  }
+  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) return row._holdingRows;
+  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) return row._holdingLibrariesInfo;
+  return [row];
 }
 function getStatusInfo(r) {
-  const directSessionStatus = mapSessionStatusHintToStatus(r?.session_status_hint);
-  if (authState?.user && directSessionStatus) return directSessionStatus;
+  const directSessionStatus =
+    personalizedAvailabilityReady
+      ? mapSessionStatusHintToStatus(r?.session_status_hint)
+      : null;
+  if (directSessionStatus) return directSessionStatus;
 
   const userLibrary = getUserLibraryContext();
-  const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
+  const hasScopedLibrary = !!(
+    authState?.user &&
+    (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name)
+  );
+
+  if (authState?.user && hasScopedLibrary && !personalizedAvailabilityReady) {
+    if (r.loanable === false) {
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    }
+    return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+  }
 
   if (hasScopedLibrary) {
     const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
@@ -1257,14 +1255,20 @@ function getStatusInfo(r) {
       .find(Boolean);
     if (hintedLocalStatus) return hintedLocalStatus;
 
-    const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    const localOnly =
+      localRows.some((item) => item?.loanable === false) ||
+      (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
+    if (localOnly) {
+      return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    }
 
-    const localInHolding = localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? item?.available_count ?? 0) > 0)
-      || (Number(r.session_exemplares_total ?? r.available_count ?? 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
+    const localInHolding =
+      localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? 0) > 0) ||
+      (Number(r.session_exemplares_total ?? 0) > 0 && rowMatchesUserLibrary(r, userLibrary));
     if (localInHolding) {
       return { key: 'available', label: 'No acervo', cls: 'status-available' };
     }
+
     return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
   }
 
@@ -2217,17 +2221,23 @@ async function loadRowsFromSupabase() {
       text = await res.text();
       if (res.ok) {
         sourceVariant = attempt.sourceVariant;
+        catalogSourceVariant = sourceVariant;
+        personalizedAvailabilityReady = !!(authState?.user && sourceVariant === 'session_v1');
         break;
       }
       lastErrorText = text;
     }
 
     if (!res || !res.ok) {
+      catalogSourceVariant = 'legacy';
+      personalizedAvailabilityReady = false;
       alert('Erro ao carregar catálogo: ' + (res?.status ?? 'falha') + ' — ' + lastErrorText);
       return [];
     }
 
     const data = text ? JSON.parse(text) : [];
+    catalogSourceVariant = sourceVariant;
+    personalizedAvailabilityReady = !!(authState?.user && sourceVariant === 'session_v1');
     const needsLibrarySupplement = shouldLoadLibrarySupplement(sourceVariant, data);
     const needsAuthorRelations = shouldLoadAuthorRelationData(sourceVariant, data);
     const needsAuthorAliases = shouldLoadAuthorAliasData(sourceVariant, data);
@@ -2284,6 +2294,7 @@ async function loadRowsFromSupabase() {
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
+        author_chips: authorChipEntries,
         loanable: r.loanable === false ? false : true,
         available_count: Number(r.available_count ?? r.session_exemplares_total ?? 0) || 0,
         created_at: r.created_at ?? null,
@@ -2303,11 +2314,12 @@ async function loadRowsFromSupabase() {
       };
     });
   } catch (e) {
+    catalogSourceVariant = 'legacy';
+    personalizedAvailabilityReady = false;
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
   }
 }
-
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -2714,7 +2726,11 @@ function updateStats(filtered, renderedCount = filtered.length) {
   totalPill.textContent = `Total: ${totalGrouped}`;
   visiblePill.textContent = renderedCount < filtered.length ? `Exibidos: ${renderedCount} de ${filtered.length}` : `Exibidos: ${filtered.length}`;
   const availableNow = filtered.filter(r => r._status?.key === 'available').length;
-  statusPill.textContent = `No acervo: ${availableNow}`;
+  if (authState?.user && !personalizedAvailabilityReady) {
+    statusPill.textContent = 'No acervo: —';
+  } else {
+    statusPill.textContent = `No acervo: ${availableNow}`;
+  }
   contextPill.textContent = buildContextSummary(filtered);
   sortPill.textContent = getSortLabel();
 }
