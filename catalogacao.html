@@ -2145,17 +2145,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { supabase } from './js/blmf-supabase.js';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
-    const AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
-    const LIBRARIAN_HINT_KEY = 'anarbib_is_librarian_hint';
 
     const ROUTES = {
       PAINEL: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html',
@@ -4806,119 +4800,22 @@
     function updateLoginButton() {
       if (!refs.loginBtn) return;
       if (state.session?.user?.id) {
-        refs.loginBtn.textContent = 'Sessão ativa';
-        refs.loginBtn.className = 'button success';
+        refs.loginBtn.textContent = 'Logout';
+        refs.loginBtn.className = 'button secondary';
       } else {
         refs.loginBtn.textContent = 'Fazer login';
         refs.loginBtn.className = 'button primary';
       }
     }
 
-    function readBooleanHints(source) {
-      if (!source || typeof source !== 'object') return null;
-      const candidates = [
-        source.is_librarian,
-        source.isLibrarian,
-        source.bibliotecario,
-        source.role === 'librarian' ? true : undefined,
-        Array.isArray(source.roles) && source.roles.includes('librarian') ? true : undefined,
-      ];
-      for (const value of candidates) {
-        if (value === true || value === false) return value;
-        if (value === 'true') return true;
-        if (value === 'false') return false;
-      }
-      return null;
-    }
-
-    function readLibrarianHintFromSession(session = null) {
-      const sessionUser = session?.user || null;
-      const hint =
-        readBooleanHints(sessionUser?.app_metadata) ??
-        readBooleanHints(sessionUser?.user_metadata) ??
-        readBooleanHints(session);
-      return hint;
-    }
-
-    function persistSessionToBrowserStorages(session, isLib = null) {
-      if (!session) return;
-      const serialized = JSON.stringify(session);
-      try { window.localStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('localStorage auth persist failed:', e); }
-      try { window.sessionStorage.setItem(AUTH_STORAGE_KEY, serialized); } catch (e) { console.warn('sessionStorage auth persist failed:', e); }
-      if (isLib === true || isLib === false) {
-        try { window.localStorage.setItem(LIBRARIAN_HINT_KEY, String(isLib)); } catch {}
-        try { window.sessionStorage.setItem(LIBRARIAN_HINT_KEY, String(isLib)); } catch {}
-      }
-    }
-
-    function readStoredSessionCandidate() {
-      let raw = null;
-      try { raw = window.sessionStorage.getItem(AUTH_STORAGE_KEY); } catch {}
-      if (!raw) {
-        try { raw = window.localStorage.getItem(AUTH_STORAGE_KEY); } catch {}
-      }
-      if (!raw) return null;
-      try {
-        return JSON.parse(raw);
-      } catch (error) {
-        console.warn('Stored session parse failed:', error);
-        return null;
-      }
-    }
-
-    async function ensureSharedSession() {
-      for (let i = 0; i < 12; i += 1) {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (data?.session?.user?.id) {
-          persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
-          return data.session;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
-      const storedSession = readStoredSessionCandidate();
-      if (storedSession?.access_token && storedSession?.refresh_token) {
-        try {
-          const restored = await supabase.auth.setSession({
-            access_token: storedSession.access_token,
-            refresh_token: storedSession.refresh_token,
-          });
-          if (restored.error) throw restored.error;
-          if (restored.data?.session?.user?.id) {
-            persistSessionToBrowserStorages(restored.data.session, readLibrarianHintFromSession(restored.data.session));
-            return restored.data.session;
-          }
-
-          for (let i = 0; i < 12; i += 1) {
-            const { data } = await supabase.auth.getSession();
-            if (data?.session?.user?.id) {
-              persistSessionToBrowserStorages(data.session, readLibrarianHintFromSession(data.session));
-              return data.session;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        } catch (restoreError) {
-          console.warn('Session restore failed:', restoreError);
-        }
-      }
-
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.id && storedSession) {
-          const hydratedSession = { ...storedSession, user: data.user };
-          persistSessionToBrowserStorages(hydratedSession, readLibrarianHintFromSession(hydratedSession));
-          return hydratedSession;
-        }
-      } catch (userError) {
-        console.warn('getUser fallback failed:', userError);
-      }
-
-      return storedSession || null;
+    async function getCurrentSession() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data?.session || null;
     }
 
     async function requireSession() {
-      const session = await ensureSharedSession();
+      const session = await getCurrentSession();
       state.session = session;
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
@@ -4939,27 +4836,29 @@
       ]);
     }
 
-    async function fetchProfileRecord(userId) {
+    async function fetchAccessRecord(userId) {
+      const accessSelect = 'id, user_id, email, public_id, first_name, last_name, is_librarian, is_restricted, can_access_conta, can_access_painel, can_access_catalogacao, default_library_id, default_library_slug, default_library_name, library_id, library_slug, library_name, role, status, is_primary';
+
       try {
         const publicRead = await withTimeout(
-          supabase.from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle(),
-          'public.profiles read'
+          supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'public.my_access read'
         );
         if (!publicRead.error && publicRead.data) return publicRead.data;
-        if (publicRead.error) console.warn('public.profiles read failed:', publicRead.error);
+        if (publicRead.error) console.warn('public.my_access read failed:', publicRead.error);
       } catch (error) {
-        console.warn('public.profiles read exception:', error);
+        console.warn('public.my_access read exception:', error);
       }
 
       try {
         const apiRead = await withTimeout(
-          supabase.schema('api').from('profiles').select('id, email, first_name, last_name, is_librarian').eq('id', userId).maybeSingle(),
-          'api.profiles read'
+          supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'api.my_access read'
         );
         if (!apiRead.error && apiRead.data) return apiRead.data;
-        if (apiRead.error) console.warn('api.profiles read failed:', apiRead.error);
+        if (apiRead.error) console.warn('api.my_access read failed:', apiRead.error);
       } catch (error) {
-        console.warn('api.profiles read exception:', error);
+        console.warn('api.my_access read exception:', error);
       }
 
       return null;
@@ -4969,23 +4868,15 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchProfileRecord(userId);
-      const hint = readLibrarianHintFromSession(state.session);
-      let hintedValue = hint;
-      if (hintedValue === null) {
-        try {
-          const storedHint = window.sessionStorage.getItem(LIBRARIAN_HINT_KEY) ?? window.localStorage.getItem(LIBRARIAN_HINT_KEY);
-          if (storedHint === 'true') hintedValue = true;
-          if (storedHint === 'false') hintedValue = false;
-        } catch {}
-      }
+      const data = await fetchAccessRecord(userId);
 
-      state.profile = data || { id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.is_librarian === true || hintedValue === true;
-      persistSessionToBrowserStorages(state.session, state.isLibrarian);
+      state.profile = data || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = data?.can_access_catalogacao === true;
+
       updateLoginButton();
 
       if (state.isLibrarian) {
+        refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
@@ -7416,12 +7307,16 @@
     el('addAuthorContributorBtn').addEventListener('click', () => addTypedContributor('autor'));
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
-    refs.loginBtn.addEventListener('click', () => {
+    refs.loginBtn.addEventListener('click', async () => {
       const hasSession = !!state.session?.user?.id;
-      const hasConfirmedAccess = hasSession && state.isLibrarian === true && !refs.rolePill?.classList.contains('danger');
-      if (hasConfirmedAccess) {
-        refreshAll(true);
+      if (!hasSession) {
+        window.location.href = LOGIN_URL;
         return;
+      }
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.warn('signOut failed:', error);
       }
       window.location.href = LOGIN_URL;
     });
@@ -7647,7 +7542,6 @@
       state.session = session;
       if (session) {
         refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
-        persistSessionToBrowserStorages(session, readLibrarianHintFromSession(session));
         try {
           await loadProfile();
         } catch (error) {
@@ -7656,6 +7550,8 @@
           refs.rolePill.className = 'pill danger';
         }
       } else {
+        state.profile = null;
+        state.isLibrarian = false;
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
