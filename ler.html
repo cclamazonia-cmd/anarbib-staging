@@ -562,7 +562,7 @@
         <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogos</a>
         <a class="button secondary" id="btnNavLivro" href="livro.html">Livro</a>
         <a class="button secondary" id="btnNavConta" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html">Minha conta</a>
-        <a class="button secondary" id="btnNavManual" href="https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf">Manual</a>
+        <a class="button secondary" id="btnNavManual" href="https://github.com/cclamazonia-cmd/anarbib-staging/blob/main/Manual_do_AnarBib.pdf">Manual</a>
       </nav>
     </header>
 
@@ -627,7 +627,7 @@
       </section>
 
       <div class="status-row" id="statusRow">
-        <p class="status-box" id="statusBox">Iniciando…</p>
+        <p class="status-box" id="statusBox">A iniciar…</p>
         <div class="error-box" id="errorBox"></div>
       </div>
 
@@ -667,7 +667,13 @@
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim()
     };
-    const SUPABASE_PROJECT_REF = "uflwmikiyjfnikiphtcp";
+    const SUPABASE_PROJECT_REF = (() => {
+      try {
+        return new URL(supabase.supabaseUrl).hostname.split(".")[0] || "uflwmikiyjfnikiphtcp";
+      } catch (_) {
+        return "uflwmikiyjfnikiphtcp";
+      }
+    })();
     const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
     const LEGACY_AUTH_STORAGE_KEY = "sb-asptfmokzykwzlshsncw-auth-token";
     const LOGO_BASE = `${REPO_BASE}/assets/img/libraries`;
@@ -970,6 +976,42 @@
       }
     }
 
+    async function withTimeout(promise, ms, message) {
+      let timer = null;
+      try {
+        return await Promise.race([
+          promise,
+          new Promise((_, reject) => {
+            timer = window.setTimeout(() => reject(new Error(message)), ms);
+          })
+        ]);
+      } finally {
+        if (timer) window.clearTimeout(timer);
+      }
+    }
+
+    function normalizeReadStateRow(readState) {
+      return Array.isArray(readState)
+        ? (readState[0] || null)
+        : (readState && typeof readState === "object" ? readState : null);
+    }
+
+    async function verifyReadAccess(ref) {
+      const { data: readState, error: readStateError } = await supabase.rpc(
+        "fn_book_restricted_pdf_state_for_current_user",
+        { p_bib_ref: ref }
+      );
+
+      if (readStateError) {
+        throw new Error(readStateError.message || "Não foi possível verificar o acesso ao exemplar digital.");
+      }
+
+      const row = normalizeReadStateRow(readState);
+      if (row?.can_show_read_button) return row;
+
+      throw new Error("O exemplar digital existe, mas a leitura está reservada a contas ativas com acesso autorizado.");
+    }
+
     async function loadPdfJs() {
       try {
         const pdfjsLib = await import(PDFJS_MAIN);
@@ -992,32 +1034,55 @@
     async function downloadPdfBlob(ref) {
       const session = await ensureSession();
       await ensureProfile();
+      await verifyReadAccess(ref);
 
-      const invokeAttempt = await supabase.functions.invoke("read-pdf", {
-        body: { bib_ref: ref },
-      });
+      const requestBody = {
+        bib_ref: ref,
+        library_id: libraryContext.libraryId || null,
+        library_slug: libraryContext.librarySlug || null,
+      };
+
+      const invokeAttempt = await withTimeout(
+        supabase.functions.invoke("read-pdf", { body: requestBody }),
+        12000,
+        "A função de leitura demorou demais para responder."
+      );
 
       if (!invokeAttempt.error && invokeAttempt.data) {
         return normalizeBlob(invokeAttempt.data);
       }
 
-      const fallbackResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/read-pdf`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ bib_ref: ref }),
-      });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
 
-      if (!fallbackResponse.ok) {
-        const details = await fallbackResponse.text().catch(() => "");
-        const invokeMessage = invokeAttempt.error?.message ? `\n\n${invokeAttempt.error.message}` : "";
-        throw new Error(`Falha ao pedir o PDF (${fallbackResponse.status}).${invokeMessage}${details ? `\n\n${details}` : ""}`);
+      try {
+        const fallbackResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/read-pdf`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+
+        if (!fallbackResponse.ok) {
+          const details = await fallbackResponse.text().catch(() => "");
+          const invokeMessage = invokeAttempt.error?.message ? `\n\n${invokeAttempt.error.message}` : "";
+          throw new Error(`Falha ao pedir o PDF (${fallbackResponse.status}).${invokeMessage}${details ? `\n\n${details}` : ""}`);
+        }
+
+        return await fallbackResponse.blob();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          const invokeMessage = invokeAttempt.error?.message ? `\n\n${invokeAttempt.error.message}` : "";
+          throw new Error(`A leitura demorou demais para responder.${invokeMessage}`);
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeoutId);
       }
-
-      return await fallbackResponse.blob();
     }
 
     function updatePageUi() {
@@ -1153,12 +1218,27 @@
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
       $("btnLogin").href = buildCadastroUrl();
-      $("subline").textContent = titulo ? `Abrindo ${titulo}.` : "Falta o título do livro.";
-      $("sheetSub").textContent = titulo ? `Leitura de ${titulo}.` : "Abra esta página a partir da ficha do livro.";
+      $("subline").textContent = bibRef ? `Abrindo ${bibRef}.` : "Falta a referência do livro.";
+      $("sheetSub").textContent = bibRef ? `Leitura de ${bibRef}.` : "Abra esta página a partir da ficha do livro.";
+      setStatus("A preparar a leitura…", "warn");
 
-      const bootSession = await getSessionWithFallback();
-      await setupNavButtons();
-      await loadHeroLogos(bootSession);
+      let bootSession = null;
+      try {
+        bootSession = await withTimeout(
+          getSessionWithFallback(),
+          8000,
+          "A sessão demorou demais para responder."
+        );
+      } catch (sessionErr) {
+        console.warn("AnarBib ler v3: sessão inicial indisponível", sessionErr);
+      }
+
+      setupNavButtons().catch((err) => {
+        console.warn("AnarBib ler v3: falha nos botões de navegação", err);
+      });
+      loadHeroLogos(bootSession).catch((err) => {
+        console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
+      });
 
       if (!bibRef) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
@@ -1166,7 +1246,7 @@
       }
 
       clearError();
-      setStatus("Verificando sessão e permissões…", "warn");
+      setStatus("A verificar sessão e permissões…", "warn");
 
       try {
         const pdfjsLib = await loadPdfJs();
@@ -1364,7 +1444,10 @@
       if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
     });
 
-    boot();
+    boot().catch((err) => {
+      console.error("AnarBib ler v3: falha fatal no boot", err);
+      showError("Leitura indisponível neste momento.", err?.message || String(err));
+    });
   </script>
 </body>
 </html>
