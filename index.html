@@ -1013,7 +1013,9 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
   <p class="footer"></p>
 </div>
 
-<script>
+<script type="module">
+import { supabase } from "./js/blmf-supabase.js";
+
 const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
@@ -1028,7 +1030,6 @@ const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,e
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
-const SUPABASE_PROJECT_REF = "asptfmokzykwzlshsncw";
 const RAW_SEARCH_VARIANTS = {
   "Bakunin": ["Bakounine", "Bakounin", "Bakunine"],
   "Mikhail Bakunin": ["Mikhail Bakounine", "Mikhail Bakounin", "Miguel Bakunin"],
@@ -2162,16 +2163,6 @@ function getAuthorRelationEntriesForRow(row, authorRelations) {
   }
   return [];
 }
-function buildLivroHref(row) {
-  const url = new URL(LIVRO_URL);
-  if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
-  const explicitViewContext = resolveExplicitViewLibraryContext(row);
-  if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
-  if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
-  if (explicitViewContext?.library_name) url.searchParams.set('library_name', String(explicitViewContext.library_name));
-  url.searchParams.set('return_to', location.href);
-  return url.toString();
-}
 function prepareRows() {
   for (const r of rows) {
     const status = getStatusInfo(r);
@@ -3088,8 +3079,6 @@ function clearFilters() {
   render();
   search.focus();
 }
-const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
-
 function readBooleanHint(value) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value === 1;
@@ -3116,23 +3105,6 @@ function readLibrarianHintFromObject(obj) {
     if (candidate === true) return true;
   }
   return null;
-}
-function parseStoredSession(tokenRaw) {
-  if (!tokenRaw) return null;
-  try {
-    const parsed = JSON.parse(tokenRaw);
-    if (parsed?.access_token) return parsed;
-    if (parsed?.currentSession?.access_token) return parsed.currentSession;
-    if (parsed?.data?.session?.access_token) return parsed.data.session;
-    if (Array.isArray(parsed) && parsed[0]?.access_token) return parsed[0];
-  } catch (e) {}
-  return null;
-}
-function persistSessionForNextPage(tokenRaw, session) {
-  const raw = tokenRaw || (session ? JSON.stringify(session) : '');
-  if (!raw) return;
-  try { sessionStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (e) {}
-  try { localStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (e) {}
 }
 function normalizeAccessContextRow(row) {
   if (!row || typeof row !== 'object') return null;
@@ -3221,56 +3193,45 @@ function updateLoginButtonState() {
 }
 
 async function getCurrentUserAndRole() {
-  let tokenRaw = null;
-
-  try { tokenRaw = sessionStorage.getItem(AUTH_STORAGE_KEY); } catch (e) {}
-  if (!tokenRaw) {
-    try { tokenRaw = localStorage.getItem(AUTH_STORAGE_KEY); } catch (e) {}
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token || !session?.user) {
+    return { user: null, isLibrarian: false, accessToken: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
   }
-  if (!tokenRaw) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
 
-  const session = parseStoredSession(tokenRaw);
-  if (!session?.access_token) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
+  const user = session.user;
+  let isLibrarian = false;
 
-  persistSessionForNextPage(tokenRaw, session);
+  const sessionHints = [
+    readLibrarianHintFromObject(session),
+    readLibrarianHintFromObject(session?.user),
+    readLibrarianHintFromObject(session?.user?.app_metadata),
+    readLibrarianHintFromObject(session?.user?.user_metadata)
+  ].filter(v => v !== null);
+  if (sessionHints.length) isLibrarian = sessionHints.includes(true);
 
   try {
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` }
-    });
-    if (!userRes.ok) return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
-    const user = await userRes.json();
-    let isLibrarian = false;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_librarian')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile?.is_librarian === true) isLibrarian = true;
+  } catch (e) {}
 
-    const sessionHints = [
-      readLibrarianHintFromObject(session),
-      readLibrarianHintFromObject(session?.user),
-      readLibrarianHintFromObject(session?.user?.app_metadata),
-      readLibrarianHintFromObject(session?.user?.user_metadata),
-      readLibrarianHintFromObject(user),
-      readLibrarianHintFromObject(user?.app_metadata),
-      readLibrarianHintFromObject(user?.user_metadata)
-    ].filter(v => v !== null);
-    if (sessionHints.length) isLibrarian = sessionHints.includes(true);
+  const accessContext = await loadAuthenticatedLibraryContext(session.access_token);
+  if (accessContext?.role === 'librarian') isLibrarian = true;
 
-    const accessContext = await loadAuthenticatedLibraryContext(session.access_token);
-    if (accessContext?.role === 'librarian') isLibrarian = true;
-
-    return {
-      user,
-      isLibrarian,
-      accessToken: session.access_token,
-      tokenRaw,
-      library_id: accessContext?.library_id ?? null,
-      library_slug: accessContext?.library_slug || '',
-      library_name: accessContext?.library_name || '',
-      default_library_id: accessContext?.default_library_id ?? null,
-      default_library_slug: accessContext?.default_library_slug || '',
-      default_library_name: accessContext?.default_library_name || ''
-    };
-  } catch (e) {
-    return { user: null, isLibrarian: false, accessToken: null, tokenRaw: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
-  }
+  return {
+    user,
+    isLibrarian,
+    accessToken: session.access_token,
+    library_id: accessContext?.library_id ?? null,
+    library_slug: accessContext?.library_slug || '',
+    library_name: accessContext?.library_name || '',
+    default_library_id: accessContext?.default_library_id ?? null,
+    default_library_slug: accessContext?.default_library_slug || '',
+    default_library_name: accessContext?.default_library_name || ''
+  };
 }
 async function handleContaClick() {
   contaBtn.disabled = true;
@@ -3280,19 +3241,16 @@ async function handleContaClick() {
       location.assign(buildCadastroUrl(location.href));
       return;
     }
-    persistSessionForNextPage(state.tokenRaw, null);
     location.assign(state.isLibrarian ? PAINEL_URL : CONTA_URL);
   } finally {
     contaBtn.disabled = false;
   }
 }
-function clearStoredSession() {
-  try { sessionStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
-  try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
-}
-function handleLoginClick() {
+async function handleLoginClick() {
   if (authState?.user) {
-    clearStoredSession();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
     location.assign(`${location.pathname}${location.search}${location.hash}`);
     return;
   }

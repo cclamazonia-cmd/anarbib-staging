@@ -559,7 +559,7 @@
         </div>
       </div>
       <nav class="quick-nav" aria-label="Navegação rápida">
-        <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogo(s)</a>
+        <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogos</a>
         <a class="button secondary" id="btnNavLivro" href="livro.html">Livro</a>
         <a class="button secondary" id="btnNavConta" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html">Minha conta</a>
         <a class="button secondary" id="btnNavManual" href="https://github.com/cclamazonia-cmd/anarbib-staging/blob/main/Manual_do_AnarBib.pdf">Manual</a>
@@ -668,15 +668,6 @@
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim()
     };
-    const SUPABASE_PROJECT_REF = (() => {
-      try {
-        return new URL(supabase.supabaseUrl).hostname.split(".")[0] || "uflwmikiyjfnikiphtcp";
-      } catch (_) {
-        return "uflwmikiyjfnikiphtcp";
-      }
-    })();
-    const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
-    const LEGACY_AUTH_STORAGE_KEY = "sb-asptfmokzykwzlshsncw-auth-token";
     const LOGO_BASE = `${REPO_BASE}/assets/img/libraries`;
     const RAW_LOGO_BASE = `${RAW_REPO_BASE}/assets/img/libraries`;
     const LOCAL_LOGO_ASSETS = {
@@ -752,40 +743,6 @@
       return url.toString();
     }
 
-    function parseStoredSession(tokenRaw) {
-      if (!tokenRaw) return null;
-      try {
-        const parsed = JSON.parse(tokenRaw);
-        if (parsed?.access_token) return parsed;
-        if (parsed?.currentSession?.access_token) return parsed.currentSession;
-        if (parsed?.data?.session?.access_token) return parsed.data.session;
-        if (Array.isArray(parsed) && parsed[0]?.access_token) return parsed[0];
-      } catch (_) {}
-      return null;
-    }
-
-    function readStoredSession() {
-      const keys = [AUTH_STORAGE_KEY, LEGACY_AUTH_STORAGE_KEY];
-      for (const key of keys) {
-        let tokenRaw = "";
-        try { tokenRaw = sessionStorage.getItem(key) || ""; } catch (_) {}
-        if (!tokenRaw) {
-          try { tokenRaw = localStorage.getItem(key) || ""; } catch (_) {}
-        }
-        const session = parseStoredSession(tokenRaw);
-        if (session) return { tokenRaw, session };
-      }
-      return { tokenRaw: "", session: null };
-    }
-
-    function persistSessionForNextPage(tokenRaw, session) {
-      const raw = tokenRaw || (session ? JSON.stringify(session) : "");
-      if (!raw) return;
-      try { sessionStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
-      try { localStorage.setItem(AUTH_STORAGE_KEY, raw); } catch (_) {}
-    }
-
-
     function uniqueList(values = []) {
       return Array.from(new Set(values.filter(Boolean)));
     }
@@ -860,35 +817,13 @@
       setLogoState("anarbibLogoImg", "anarbibLogoFallback", anarbibLogo, "Logótipo da rede AnarBib");
     }
 
-    async function getSessionWithFallback() {
+    async function getCurrentSession() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        persistSessionForNextPage("", session);
-        return session;
-      }
-
-      const stored = readStoredSession();
-      if (!stored.session?.access_token) return null;
-
-      if (stored.session?.refresh_token && typeof supabase?.auth?.setSession === "function") {
-        try {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: stored.session.access_token,
-            refresh_token: stored.session.refresh_token
-          });
-          if (!error && data?.session?.access_token) {
-            persistSessionForNextPage(stored.tokenRaw, data.session);
-            return data.session;
-          }
-        } catch (_) {}
-      }
-
-      persistSessionForNextPage(stored.tokenRaw, stored.session);
-      return stored.session;
+      return session || null;
     }
 
     async function setupNavButtons() {
-      const session = await getSessionWithFallback();
+      const session = await getCurrentSession();
       const loginBtn = $("btnLogin");
       const contaBtn = $("btnNavConta");
 
@@ -959,7 +894,7 @@
     }
 
     async function ensureSession() {
-      const session = await getSessionWithFallback();
+      const session = await getCurrentSession();
       if (!session?.access_token) {
         $("btnLogin").classList.remove("hidden");
         $("btnLogin").href = buildCadastroUrl(location.href);
@@ -1226,7 +1161,7 @@
       let bootSession = null;
       try {
         bootSession = await withTimeout(
-          getSessionWithFallback(),
+          getCurrentSession(),
           8000,
           "A sessão demorou demais para responder."
         );
