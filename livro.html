@@ -250,7 +250,7 @@
       AUTHOR_PAGE_VERSION: '20260313-1',
     };
 
-    document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
+    document.getElementById("btnCatalogo").href = getCatalogReturnUrlFromUrl();
 
     const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
@@ -288,6 +288,35 @@
       return u.toString();
     }
 
+
+    function getCatalogReturnUrlFromUrl() {
+      try {
+        const raw = new URL(location.href).searchParams.get("return_to");
+        if (!raw) return ROUTES.CATALOGO;
+        const fallback = new URL(ROUTES.CATALOGO, location.origin);
+        const candidate = new URL(raw, location.origin);
+        if (candidate.origin !== fallback.origin) return ROUTES.CATALOGO;
+        if (candidate.pathname !== fallback.pathname) return ROUTES.CATALOGO;
+        return candidate.toString();
+      } catch (_) {
+        return ROUTES.CATALOGO;
+      }
+    }
+
+    function normalizeBibRefValue(value) {
+      return String(value || "").trim();
+    }
+
+    function hasActiveReservationForBibRef(bibRef) {
+      const key = normalizeBibRefValue(bibRef);
+      return !!(key && currentActiveReservationBibRefs.has(key));
+    }
+
+    function isDuplicateReservaErrorMessage(message) {
+      const raw = String(message || "").toLowerCase();
+      return raw.includes("duplicate") || raw.includes("already") || raw.includes("unique") || raw.includes("ja existe");
+    }
+
     document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
 
     const DEFAULT_SERVICE_MESSAGES = {
@@ -311,6 +340,7 @@
     };
 
     let publicServiceState = null;
+    let currentActiveReservationBibRefs = new Set();
     let currentBookAccessState = {
       key: "",
       label: "",
@@ -328,8 +358,6 @@
       librarySlug: "",
       libraryName: ""
     };
-    let currentResolvedLibraryContext = { libraryId: "", librarySlug: "", libraryName: "" };
-    let currentSessionCatalogRow = null;
 
 
     function setReserveButtonState(buttonState = {}) {
@@ -384,82 +412,6 @@
       return null;
     }
 
-    function normalizeSessionStatusHint(value) {
-      const hint = normalizeLoose(value);
-      if (!hint) return "";
-      if (["available", "disponivel", "disponivel agora"].includes(hint)) return "available";
-      if (["unavailable now", "unavailable_now", "unavailable", "indisponivel no momento", "indisponivel_now", "indisponivel"].includes(hint)) return "unavailable_now";
-      if (["not for you", "not_for_you", "unavailable for you", "unavailable_for_you", "indisponivel para voce", "indisponivel_para_voce", "no session holding", "no_session_holding"].includes(hint)) return "not_for_you";
-      if (["other library", "other_library", "present elsewhere", "present_elsewhere", "presente em outra biblioteca", "presente_em_outra_biblioteca", "excluded by filter", "excluded_by_filter"].includes(hint)) return "other_library";
-      if (["local only", "local_only", "consultavel no lugar", "consultavel_no_lugar", "consultation only", "consultation_only", "in place only", "in_place_only", "non loanable", "non_loanable"].includes(hint)) return "local_only";
-      if (["check", "check availability", "check_availability", "verificar", "disponibilidade a verificar"].includes(hint)) return "check";
-      return "";
-    }
-
-    function pickSessionCatalogRow(rows = [], libraryContext = {}, bookRow = {}) {
-      const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
-      if (!list.length) return null;
-
-      const explicitScope = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName)
-      };
-      const resolvedScope = {
-        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName)
-      };
-      const sessionScope = {
-        libraryId: firstNonEmptyString(currentUserContext?.libraryId),
-        librarySlug: firstNonEmptyString(currentUserContext?.librarySlug),
-        libraryName: firstNonEmptyString(currentUserContext?.libraryName)
-      };
-
-      const matchRow = (scope) => {
-        if (!(scope?.libraryId || scope?.librarySlug || scope?.libraryName)) return null;
-        return list.find((row) => librariesMatch({
-          libraryId: firstNonEmptyString(row?.library_id),
-          librarySlug: firstNonEmptyString(row?.library_slug),
-          libraryName: firstNonEmptyString(row?.library_name, row?.biblioteca)
-        }, scope)) || null;
-      };
-
-      return matchRow(resolvedScope)
-        || matchRow(explicitScope)
-        || matchRow(sessionScope)
-        || list[0]
-        || null;
-    }
-
-    async function fetchSessionCatalogRowsByBibRef(bibRef) {
-      const cleanRef = String(bibRef || "").trim();
-      if (!cleanRef) return [];
-
-      const attempts = [
-        () => apiFrom("api", "catalog_books_public_session_v1").select("*").eq("bib_ref", cleanRef).limit(50),
-        () => supabase.from("api.catalog_books_public_session_v1").select("*").eq("bib_ref", cleanRef).limit(50)
-      ];
-
-      for (const run of attempts) {
-        try {
-          const { data, error } = await run();
-          if (!error && Array.isArray(data)) return data;
-        } catch (_) {}
-      }
-
-      return [];
-    }
-
-    async function loadSessionScopedBookState(bibRef, libraryContext = {}, bookRow = {}) {
-      currentSessionCatalogRow = null;
-      if (!currentUserContext?.isLoggedIn) return null;
-      const rows = await fetchSessionCatalogRowsByBibRef(bibRef);
-      const picked = pickSessionCatalogRow(rows, libraryContext, bookRow);
-      currentSessionCatalogRow = picked || null;
-      return currentSessionCatalogRow;
-    }
-
     function computeBookAccessState(bookRow = {}, libraryContext = {}) {
       const loanable = bookRow?.loanable !== false;
 
@@ -484,15 +436,20 @@
         };
       }
 
-      const sessionHolding = getSessionHoldingForBook(bookRow);
-      const sessionCatalogRow = currentSessionCatalogRow || null;
-      const sessionHint = normalizeSessionStatusHint(sessionCatalogRow?.session_status_hint);
-      const sessionHasHolding = typeof sessionCatalogRow?.session_has_holding === "boolean"
-        ? sessionCatalogRow.session_has_holding
-        : null;
-      const hasSessionHolding = sessionHasHolding === true || !!sessionHolding;
+      if (hasActiveReservationForBibRef(bookRow?.bib_ref)) {
+        return {
+          key: "already_reserved",
+          label: "Já reservado na sua conta",
+          cls: "ok",
+          canReserve: false,
+          allowLoginReserve: false,
+          reserveTitle: "Já reservado na sua conta"
+        };
+      }
 
-      if (sessionHint === "not_for_you" || (!hasSessionHolding && sessionHasHolding !== true)) {
+      const sessionHolding = getSessionHoldingForBook(bookRow);
+      const hasSessionHolding = !!sessionHolding;
+      if (!hasSessionHolding) {
         return {
           key: "not_for_you",
           label: "Indisponível para você",
@@ -503,20 +460,15 @@
         };
       }
 
-      const effectivePageContext = {
-        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId, libraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug, libraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName, libraryContext?.libraryName)
-      };
-      const explicitContextActive = !!(effectivePageContext?.libraryId || effectivePageContext?.librarySlug || effectivePageContext?.libraryName);
+      const explicitContextActive = !!(libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName);
       const sessionScope = {
         libraryId: currentUserContext?.libraryId,
         librarySlug: currentUserContext?.librarySlug,
         libraryName: currentUserContext?.libraryName
       };
-      const contextMatchesSession = !explicitContextActive || librariesMatch(effectivePageContext, sessionScope);
+      const contextMatchesSession = !explicitContextActive || librariesMatch(libraryContext, sessionScope);
 
-      if (sessionHint === "other_library" || !contextMatchesSession) {
+      if (!contextMatchesSession) {
         return {
           key: "other_library",
           label: "Presente em outra biblioteca",
@@ -527,8 +479,7 @@
         };
       }
 
-      const effectiveLoanable = sessionCatalogRow?.loanable !== false && sessionHolding?.loanable !== false && loanable;
-      if (sessionHint === "local_only" || !effectiveLoanable) {
+      if (sessionHolding?.loanable === false || !loanable) {
         return {
           key: "local_only",
           label: "Consultável no lugar",
@@ -540,35 +491,8 @@
       }
 
       const sessionExemplaresTotal = normalizeCount(
-        sessionCatalogRow?.session_exemplares_total
-        ?? sessionHolding?.session_exemplares_total
-        ?? sessionHolding?.exemplares_total
-        ?? bookRow?.session_exemplares_total
-        ?? bookRow?.exemplares_total
-        ?? 0
+        sessionHolding?.session_exemplares_total ?? sessionHolding?.exemplares_total ?? bookRow?.session_exemplares_total ?? bookRow?.exemplares_total ?? 0
       );
-
-      if (sessionHint === "available") {
-        return {
-          key: "available",
-          label: "Disponível",
-          cls: "ok",
-          canReserve: true,
-          allowLoginReserve: true,
-          reserveTitle: "Reservar este livro"
-        };
-      }
-
-      if (sessionHint === "unavailable_now") {
-        return {
-          key: "unavailable_now",
-          label: "Indisponível no momento",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Indisponível no momento"
-        };
-      }
 
       if (sessionExemplaresTotal > 0) {
         return {
@@ -726,22 +650,10 @@
     }
 
     function resolveBookPageLibraryScope(bookRow = {}, libraryContext = {}) {
-      const explicit = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName)
-      };
-      if (explicit.libraryId || explicit.librarySlug || explicit.libraryName) return explicit;
-
-      const sessionHolding = getSessionHoldingForBook(bookRow);
-      if (sessionHolding) {
-        return buildLibraryScopeFromHolding(sessionHolding);
-      }
-
       const direct = {
-        libraryId: firstNonEmptyString(bookRow?.library_id),
-        librarySlug: firstNonEmptyString(bookRow?.library_slug),
-        libraryName: firstNonEmptyString(bookRow?.library_name, bookRow?.biblioteca)
+        libraryId: firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca)
       };
       if (direct.libraryId || direct.librarySlug || direct.libraryName) return direct;
 
@@ -1255,11 +1167,7 @@
         params.set("id", id);
         params.set("author_id", id);
       }
-      const libraryContext = {
-        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId, getLibraryContextFromUrl()?.libraryId),
-        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug, getLibraryContextFromUrl()?.librarySlug),
-        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName, getLibraryContextFromUrl()?.libraryName)
-      };
+      const libraryContext = getLibraryContextFromUrl();
       if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
       if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
       if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
@@ -1446,6 +1354,28 @@
       return null;
     }
 
+    async function loadCurrentActiveReservationBibRefs() {
+      currentActiveReservationBibRefs = new Set();
+      if (!currentUserContext?.isLoggedIn) {
+        applyPublicServiceState();
+        return;
+      }
+      try {
+        const { data, error } = await apiFrom("api", "my_reservations_active")
+          .select("bib_ref");
+        if (!error && Array.isArray(data)) {
+          currentActiveReservationBibRefs = new Set(
+            data
+              .map((row) => normalizeBibRefValue(row?.bib_ref))
+              .filter(Boolean)
+          );
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao carregar reservas ativas do usuário", err);
+      }
+      applyPublicServiceState();
+    }
+
     async function setupContaButton() {
       const btnConta = $("btnConta");
       const btnEntrar = $("btnEntrar");
@@ -1580,18 +1510,38 @@
       });
 
       if (error) {
+        if (isDuplicateReservaErrorMessage(error.message)) {
+          currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+          setReserveButtonState({
+            key: "already_reserved",
+            label: "Já reservado na sua conta",
+            cls: "ok",
+            canReserve: false,
+            allowLoginReserve: false,
+            reserveTitle: "Já reservado na sua conta"
+          });
+          setStatus("Este livro já está reservado na sua conta.", "ok");
+          return;
+        }
         setStatus("Não foi possível reservar: " + error.message, "warn");
         return;
       }
 
+      currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+      setReserveButtonState({
+        key: "already_reserved",
+        label: "Já reservado na sua conta",
+        cls: "ok",
+        canReserve: false,
+        allowLoginReserve: false,
+        reserveTitle: "Já reservado na sua conta"
+      });
       setStatus("Reserva registrada.", "ok");
     }
 
     async function loadBook() {
       const bib_ref = getBibRefFromUrl();
       const libraryContext = getLibraryContextFromUrl();
-      currentResolvedLibraryContext = { libraryId: "", librarySlug: "", libraryName: "" };
-      currentSessionCatalogRow = null;
 
       if (!bib_ref) {
         $("title").textContent = "Livro não encontrado";
@@ -1781,8 +1731,6 @@
       if (localLibraryName) libraryContext.libraryName = localLibraryName;
       if (!libraryContext.libraryId && colLibraryId && data[colLibraryId] != null) libraryContext.libraryId = String(data[colLibraryId]).trim();
       if (!libraryContext.librarySlug && colLibrarySlug && data[colLibrarySlug] != null) libraryContext.librarySlug = String(data[colLibrarySlug]).trim();
-      currentResolvedLibraryContext = resolveBookPageLibraryScope(data, libraryContext);
-
       let cover = colCover ? (data[colCover] || "") : "";
 
       if (!cover) {
@@ -1932,9 +1880,8 @@
       const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
       setDigitalAvailability(hasDigitalAvailability);
       await loadReaderScopedServiceChip(data, libraryContext);
-      await loadSessionScopedBookState(bib_ref, currentResolvedLibraryContext, data);
 
-      const accessState = computeBookAccessState(data, currentResolvedLibraryContext);
+      const accessState = computeBookAccessState(data, libraryContext);
       setStatus(accessState.label, accessState.cls);
       setReserveButtonState(accessState);
 
@@ -1990,6 +1937,7 @@
     }
 
     await setupContaButton();
+    await loadCurrentActiveReservationBibRefs();
     applyPublicServiceState();
     await loadBook();
   </script>

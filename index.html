@@ -1066,6 +1066,7 @@ let sortDir = 'asc';
 let authState = { user: null, isLibrarian: false, accessToken: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
 let serviceState = null;
 let selectedLibraryKeys = new Set();
+let activeReservedBibRefs = new Set();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
 let lastVisibleWindowKey = '';
@@ -1407,6 +1408,67 @@ function getLibraryLabelsFromRows() {
 function getSelectedLibraryLabels() {
   const labelMap = new Map(getLibraryLabelsFromRows().map(item => [item.key, item.label]));
   return [...selectedLibraryKeys].map(key => labelMap.get(key)).filter(Boolean);
+}
+
+function normalizeBibRefValue(value) {
+  return String(value || '').trim();
+}
+function hasActiveReservationBibRef(bibRef) {
+  const key = normalizeBibRefValue(bibRef);
+  return !!(key && activeReservedBibRefs.has(key));
+}
+function getSingleSelectedLibraryLabel() {
+  if (libraryAllExplicitlySelected || selectedLibraryKeys.size !== 1) return '';
+  const labels = getSelectedLibraryLabels();
+  return labels.length === 1 ? labels[0] : '';
+}
+function resolveExplicitViewLibraryContext(row) {
+  const selectedLabel = getSingleSelectedLibraryLabel();
+  const isMultiLibrary = Array.isArray(row?._holdingLibraries)
+    ? row._holdingLibraries.length > 1
+    : !!row?._isMultiLibrary;
+
+  if (selectedLabel) {
+    const selectedKey = getLibraryKey(selectedLabel);
+    if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
+      const match = row._holdingLibrariesInfo.find((item) => {
+        const label = canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref);
+        return label && getLibraryKey(label) === selectedKey;
+      });
+      if (match) {
+        return {
+          library_id: match.library_id ?? '',
+          library_slug: firstNonEmptyString(match.library_slug),
+          library_name: firstNonEmptyString(match.library_name, selectedLabel)
+        };
+      }
+    }
+
+    const rowLabel = canonicalizeLibraryLabel(firstNonEmptyString(row?.library_name, row?.library_slug, row?.biblioteca), row?.bib_ref);
+    if (rowLabel && getLibraryKey(rowLabel) === selectedKey) {
+      return {
+        library_id: row?.library_id ?? '',
+        library_slug: firstNonEmptyString(row?.library_slug),
+        library_name: firstNonEmptyString(row?.library_name, row?.biblioteca, selectedLabel)
+      };
+    }
+
+    return {
+      library_id: '',
+      library_slug: '',
+      library_name: selectedLabel
+    };
+  }
+
+  if (!isMultiLibrary) {
+    return {
+      library_id: row?.library_id ?? '',
+      library_slug: firstNonEmptyString(row?.library_slug),
+      library_name: firstNonEmptyString(row?.library_name, row?.biblioteca)
+    };
+  }
+
+  return { library_id: '', library_slug: '', library_name: '' };
 }
 function updateLibraryFilterSummary() {
   const labels = getSelectedLibraryLabels();
@@ -1881,14 +1943,11 @@ function buildAuthorHref(authorId) {
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
-  const isMultiLibrary = Array.isArray(row?._holdingLibraries)
-    ? row._holdingLibraries.length > 1
-    : !!row?._isMultiLibrary;
-  if (!isMultiLibrary) {
-    if (row?.library_id) url.searchParams.set('library_id', String(row.library_id));
-    if (row?.library_slug) url.searchParams.set('library_slug', String(row.library_slug));
-    if (row?.library_name) url.searchParams.set('library_name', String(row.library_name));
-  }
+  const explicitViewContext = resolveExplicitViewLibraryContext(row);
+  if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
+  if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
+  if (explicitViewContext?.library_name) url.searchParams.set('library_name', String(explicitViewContext.library_name));
+  url.searchParams.set('return_to', location.href);
   return url.toString();
 }
 function normalizeAliasKey(value) {
@@ -2105,15 +2164,12 @@ function getAuthorRelationEntriesForRow(row, authorRelations) {
 }
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
-  if (row?.bib_ref) url.searchParams.set('ref', row.bib_ref);
-  const isMultiLibrary = Array.isArray(row?._holdingLibraries)
-    ? row._holdingLibraries.length > 1
-    : !!row?._isMultiLibrary;
-  if (!isMultiLibrary) {
-    if (row?.library_id) url.searchParams.set('library_id', row.library_id);
-    if (row?.library_slug) url.searchParams.set('library_slug', row.library_slug);
-    if (row?.library_name) url.searchParams.set('library_name', row.library_name);
-  }
+  if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
+  const explicitViewContext = resolveExplicitViewLibraryContext(row);
+  if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
+  if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
+  if (explicitViewContext?.library_name) url.searchParams.set('library_name', String(explicitViewContext.library_name));
+  url.searchParams.set('return_to', location.href);
   return url.toString();
 }
 function prepareRows() {
@@ -2479,7 +2535,7 @@ async function loadPublicServiceState() {
 }
 function buildReservationMarkup(r) {
   const status = r._status;
-  if (r._reserveDone) {
+  if (r._reserveDone || hasActiveReservationBibRef(r.bib_ref)) {
     return '<div class="reserve-slot"><span class="status-badge status-available">Reservado</span></div>';
   }
   if (status.key === 'local') {
@@ -2500,11 +2556,15 @@ function buildReservationMarkup(r) {
   return `<div class="reserve-slot"><button class="btn-inline reserve-btn" type="button" data-bib-ref="${encodeURIComponent(r.bib_ref)}">Reservar</button></div>`;
 }
 
+function isDuplicateReservaMessage(msg) {
+  const s = normalize(msg || '');
+  return !!(s && (s.includes('duplicate') || s.includes('already') || s.includes('unique') || s.includes('ja existe')));
+}
 function mapReservaError(msg) {
   const s = normalize(msg || '');
   if (!s) return 'Não foi possível registrar a reserva agora.';
   if (s.includes('temporariamente fechadas') || (s.includes('reserva') && s.includes('fechad'))) return 'As novas reservas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.';
-  if (s.includes('duplicate') || s.includes('already') || s.includes('unique') || s.includes('ja existe')) return 'Este livro já está reservado na sua conta.';
+  if (isDuplicateReservaMessage(s)) return 'Este livro já está reservado na sua conta.';
   if (s.includes('permission denied') || s.includes('row-level security') || s.includes('42501')) return 'Sua sessão não tem permissão para reservar agora. Entre novamente e tente outra vez.';
   if (s.includes('jwt') || s.includes('token') || s.includes('auth') || s.includes('session')) return 'Sua sessão expirou. Entre novamente para reservar.';
   if (s.includes('network') || s.includes('fetch')) return 'Falha de conexão ao registrar a reserva.';
@@ -2540,7 +2600,7 @@ async function createReservaFromCatalog(bibRef) {
       const parsed = JSON.parse(text);
       message = parsed?.message || parsed?.error || JSON.stringify(parsed);
     } catch (e) {}
-    return { ok: false, message: mapReservaError(message) };
+    return { ok: false, message: mapReservaError(message), alreadyReserved: isDuplicateReservaMessage(message) };
   }
   return { ok: true };
 }
@@ -3108,6 +3168,31 @@ async function fetchAuthenticatedRestRows(path, accessToken) {
   const text = await res.text();
   return text ? JSON.parse(text) : [];
 }
+
+async function loadActiveReservedBibRefs() {
+  activeReservedBibRefs = new Set();
+  if (!authState?.user || !authState?.accessToken) return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/my_reservations_active?select=${encodeURIComponent('bib_ref')}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${authState.accessToken}`,
+        Accept: 'application/json',
+        'Accept-Profile': 'api',
+        'Content-Profile': 'api'
+      }
+    });
+    if (!res.ok) return;
+    const body = await res.text();
+    const data = body ? JSON.parse(body) : [];
+    if (!Array.isArray(data)) return;
+    activeReservedBibRefs = new Set(
+      data
+        .map((row) => normalizeBibRefValue(row?.bib_ref))
+        .filter(Boolean)
+    );
+  } catch (e) {}
+}
 async function loadAuthenticatedLibraryContext(accessToken) {
   if (!accessToken) return null;
   try {
@@ -3300,11 +3385,19 @@ async function handleResultActions(e) {
     try {
       const result = await createReservaFromCatalog(bibRef);
       if (!result.ok) {
+        if (result.alreadyReserved) {
+          activeReservedBibRefs.add(normalizeBibRefValue(bibRef));
+          const targetRow = rows.find(r => String(r.bib_ref || '') === String(bibRef));
+          if (targetRow) targetRow._reserveDone = true;
+          render();
+          return;
+        }
         alert(result.message);
         reserveBtn.textContent = prev;
         reserveBtn.disabled = false;
         return;
       }
+      activeReservedBibRefs.add(normalizeBibRefValue(bibRef));
       const targetRow = rows.find(r => String(r.bib_ref || '') === String(bibRef));
       if (targetRow) targetRow._reserveDone = true;
       render();
@@ -3350,6 +3443,7 @@ document.addEventListener('keydown', (e) => {
   bindTableJumpControls();
   authState = await getCurrentUserAndRole();
   updateLoginButtonState();
+  await loadActiveReservedBibRefs();
   await loadPublicServiceState();
   rows = await loadRowsFromSupabase();
   prepareRows();
