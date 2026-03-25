@@ -328,11 +328,7 @@
       librarySlug: "",
       libraryName: ""
     };
-    let currentResolvedLibraryContext = {
-      libraryId: "",
-      librarySlug: "",
-      libraryName: ""
-    };
+    let currentResolvedLibraryContext = { libraryId: "", librarySlug: "", libraryName: "" };
     let currentSessionCatalogRow = null;
 
 
@@ -389,34 +385,83 @@
     }
 
     function normalizeSessionStatusHint(value) {
-      const raw = normalizeLoose(value).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-      if (!raw) return "";
+      const hint = normalizeLoose(value);
+      if (!hint) return "";
+      if (["available", "disponivel", "disponivel agora"].includes(hint)) return "available";
+      if (["unavailable now", "unavailable_now", "unavailable", "indisponivel no momento", "indisponivel_now", "indisponivel"].includes(hint)) return "unavailable_now";
+      if (["not for you", "not_for_you", "unavailable for you", "unavailable_for_you", "indisponivel para voce", "indisponivel_para_voce", "no session holding", "no_session_holding"].includes(hint)) return "not_for_you";
+      if (["other library", "other_library", "present elsewhere", "present_elsewhere", "presente em outra biblioteca", "presente_em_outra_biblioteca", "excluded by filter", "excluded_by_filter"].includes(hint)) return "other_library";
+      if (["local only", "local_only", "consultavel no lugar", "consultavel_no_lugar", "consultation only", "consultation_only", "in place only", "in_place_only", "non loanable", "non_loanable"].includes(hint)) return "local_only";
+      if (["check", "check availability", "check_availability", "verificar", "disponibilidade a verificar"].includes(hint)) return "check";
+      return "";
+    }
 
-      const map = {
-        available: "available",
-        disponivel: "available",
-        disponivel_para_voce: "available",
-        unavailable_now: "unavailable_now",
-        indisponivel_no_momento: "unavailable_now",
-        local_only: "local_only",
-        consulta_local: "local_only",
-        consultavel_no_lugar: "local_only",
-        not_for_you: "not_for_you",
-        indisponivel_para_voce: "not_for_you",
-        other_library: "other_library",
-        presente_em_outra_biblioteca: "other_library",
-        check: "check",
-        disponibilidade_a_verificar: "check"
+    function pickSessionCatalogRow(rows = [], libraryContext = {}, bookRow = {}) {
+      const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+      if (!list.length) return null;
+
+      const explicitScope = {
+        libraryId: firstNonEmptyString(libraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName)
+      };
+      const resolvedScope = {
+        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName)
+      };
+      const sessionScope = {
+        libraryId: firstNonEmptyString(currentUserContext?.libraryId),
+        librarySlug: firstNonEmptyString(currentUserContext?.librarySlug),
+        libraryName: firstNonEmptyString(currentUserContext?.libraryName)
       };
 
-      return map[raw] || "";
+      const matchRow = (scope) => {
+        if (!(scope?.libraryId || scope?.librarySlug || scope?.libraryName)) return null;
+        return list.find((row) => librariesMatch({
+          libraryId: firstNonEmptyString(row?.library_id),
+          librarySlug: firstNonEmptyString(row?.library_slug),
+          libraryName: firstNonEmptyString(row?.library_name, row?.biblioteca)
+        }, scope)) || null;
+      };
+
+      return matchRow(explicitScope)
+        || matchRow(resolvedScope)
+        || matchRow(sessionScope)
+        || list[0]
+        || null;
+    }
+
+    async function fetchSessionCatalogRowsByBibRef(bibRef) {
+      const cleanRef = String(bibRef || "").trim();
+      if (!cleanRef) return [];
+
+      const attempts = [
+        () => apiFrom("api", "catalog_books_public_session_v1").select("*").eq("bib_ref", cleanRef).limit(50),
+        () => supabase.from("api.catalog_books_public_session_v1").select("*").eq("bib_ref", cleanRef).limit(50)
+      ];
+
+      for (const run of attempts) {
+        try {
+          const { data, error } = await run();
+          if (!error && Array.isArray(data)) return data;
+        } catch (_) {}
+      }
+
+      return [];
+    }
+
+    async function loadSessionScopedBookState(bibRef, libraryContext = {}, bookRow = {}) {
+      currentSessionCatalogRow = null;
+      if (!currentUserContext?.isLoggedIn) return null;
+      const rows = await fetchSessionCatalogRowsByBibRef(bibRef);
+      const picked = pickSessionCatalogRow(rows, libraryContext, bookRow);
+      currentSessionCatalogRow = picked || null;
+      return currentSessionCatalogRow;
     }
 
     function computeBookAccessState(bookRow = {}, libraryContext = {}) {
-      const sessionCatalogRow = currentSessionCatalogRow && typeof currentSessionCatalogRow === "object"
-        ? currentSessionCatalogRow
-        : null;
-      const loanable = (sessionCatalogRow?.loanable ?? bookRow?.loanable) !== false;
+      const loanable = bookRow?.loanable !== false;
 
       if (!currentUserContext?.isLoggedIn) {
         if (!loanable) {
@@ -440,12 +485,14 @@
       }
 
       const sessionHolding = getSessionHoldingForBook(bookRow);
-      const sessionHasHoldingHint = typeof sessionCatalogRow?.session_has_holding === "boolean"
+      const sessionCatalogRow = currentSessionCatalogRow || null;
+      const sessionHint = normalizeSessionStatusHint(sessionCatalogRow?.session_status_hint);
+      const sessionHasHolding = typeof sessionCatalogRow?.session_has_holding === "boolean"
         ? sessionCatalogRow.session_has_holding
         : null;
-      const hasSessionHolding = sessionHasHoldingHint !== null ? sessionHasHoldingHint : !!sessionHolding;
+      const hasSessionHolding = sessionHasHolding === true || !!sessionHolding;
 
-      if (!hasSessionHolding) {
+      if (sessionHint === "not_for_you" || (!hasSessionHolding && sessionHasHolding !== true)) {
         return {
           key: "not_for_you",
           label: "Indisponível para você",
@@ -464,7 +511,7 @@
       };
       const contextMatchesSession = !explicitContextActive || librariesMatch(libraryContext, sessionScope);
 
-      if (!contextMatchesSession) {
+      if (sessionHint === "other_library" || !contextMatchesSession) {
         return {
           key: "other_library",
           label: "Presente em outra biblioteca",
@@ -475,9 +522,8 @@
         };
       }
 
-      const normalizedStatusHint = normalizeSessionStatusHint(sessionCatalogRow?.session_status_hint ?? bookRow?.session_status_hint);
-
-      if (sessionHolding?.loanable === false || !loanable || normalizedStatusHint === "local_only") {
+      const effectiveLoanable = sessionCatalogRow?.loanable !== false && sessionHolding?.loanable !== false && loanable;
+      if (sessionHint === "local_only" || !effectiveLoanable) {
         return {
           key: "local_only",
           label: "Consultável no lugar",
@@ -485,28 +531,6 @@
           canReserve: false,
           allowLoginReserve: false,
           reserveTitle: "Consulta local"
-        };
-      }
-
-      if (normalizedStatusHint === "available") {
-        return {
-          key: "available",
-          label: "Disponível",
-          cls: "ok",
-          canReserve: true,
-          allowLoginReserve: true,
-          reserveTitle: "Reservar este livro"
-        };
-      }
-
-      if (normalizedStatusHint === "unavailable_now") {
-        return {
-          key: "unavailable_now",
-          label: "Indisponível no momento",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Indisponível no momento"
         };
       }
 
@@ -518,6 +542,28 @@
         ?? bookRow?.exemplares_total
         ?? 0
       );
+
+      if (sessionHint === "available") {
+        return {
+          key: "available",
+          label: "Disponível",
+          cls: "ok",
+          canReserve: true,
+          allowLoginReserve: true,
+          reserveTitle: "Reservar este livro"
+        };
+      }
+
+      if (sessionHint === "unavailable_now") {
+        return {
+          key: "unavailable_now",
+          label: "Indisponível no momento",
+          cls: "warn",
+          canReserve: false,
+          allowLoginReserve: false,
+          reserveTitle: "Indisponível no momento"
+        };
+      }
 
       if (sessionExemplaresTotal > 0) {
         return {
@@ -801,78 +847,6 @@
 
     async function loadReaderScopedServiceChip(bookRow = {}, libraryContext = {}) {
       await loadBookServiceState(bookRow, libraryContext);
-    }
-
-    async function fetchSessionCatalogRowsByBibRef(bibRef) {
-      if (!bibRef) return [];
-
-      try {
-        const apiClient = typeof supabase?.schema === "function"
-          ? supabase.schema("api")
-          : supabase;
-        const { data, error } = await apiClient
-          .from("catalog_books_public_session_v1")
-          .select("*")
-          .eq("bib_ref", bibRef)
-          .limit(50);
-
-        if (!error && Array.isArray(data)) return data;
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar api.catalog_books_public_session_v1 via schema(api)", err);
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("api.catalog_books_public_session_v1")
-          .select("*")
-          .eq("bib_ref", bibRef)
-          .limit(50);
-
-        if (!error && Array.isArray(data)) return data;
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar api.catalog_books_public_session_v1 via nome qualificado", err);
-      }
-
-      return [];
-    }
-
-    async function loadSessionScopedBookState(bibRef, libraryContext = {}, bookRow = {}) {
-      currentSessionCatalogRow = null;
-
-      if (!currentUserContext?.isLoggedIn || !bibRef) {
-        return null;
-      }
-
-      const rows = await fetchSessionCatalogRowsByBibRef(bibRef);
-      if (!rows.length) return null;
-
-      const sessionScope = {
-        libraryId: currentUserContext?.libraryId,
-        librarySlug: currentUserContext?.librarySlug,
-        libraryName: currentUserContext?.libraryName
-      };
-
-      const pickRowByLibraryScope = (scope = {}) => rows.find((row) => librariesMatch({
-        libraryId: firstNonEmptyString(row?.library_id),
-        librarySlug: firstNonEmptyString(row?.library_slug),
-        libraryName: firstNonEmptyString(row?.library_name, row?.biblioteca)
-      }, scope)) || null;
-
-      currentSessionCatalogRow = rows.find((row) => row?.session_has_holding === true)
-        || pickRowByLibraryScope(sessionScope)
-        || (rows.length === 1 ? rows[0] : null);
-
-      if (currentSessionCatalogRow && currentSessionCatalogRow.session_exemplares_total == null) {
-        const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, sessionScope);
-        if (matchedHolding?.session_exemplares_total != null || matchedHolding?.exemplares_total != null) {
-          currentSessionCatalogRow = {
-            ...currentSessionCatalogRow,
-            session_exemplares_total: matchedHolding?.session_exemplares_total ?? matchedHolding?.exemplares_total
-          };
-        }
-      }
-
-      return currentSessionCatalogRow;
     }
 
     async function getDigitalAvailabilityForBibRef(bib_ref, bookRow = null) {
@@ -1264,9 +1238,11 @@
         params.set("id", id);
         params.set("author_id", id);
       }
-      const libraryContext = (currentResolvedLibraryContext?.libraryId || currentResolvedLibraryContext?.librarySlug || currentResolvedLibraryContext?.libraryName)
-        ? currentResolvedLibraryContext
-        : getLibraryContextFromUrl();
+      const libraryContext = {
+        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId, getLibraryContextFromUrl()?.libraryId),
+        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug, getLibraryContextFromUrl()?.librarySlug),
+        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName, getLibraryContextFromUrl()?.libraryName)
+      };
       if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
       if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
       if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
@@ -1597,11 +1573,7 @@
     async function loadBook() {
       const bib_ref = getBibRefFromUrl();
       const libraryContext = getLibraryContextFromUrl();
-      currentResolvedLibraryContext = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName)
-      };
+      currentResolvedLibraryContext = { libraryId: "", librarySlug: "", libraryName: "" };
       currentSessionCatalogRow = null;
 
       if (!bib_ref) {
@@ -1792,11 +1764,8 @@
       if (localLibraryName) libraryContext.libraryName = localLibraryName;
       if (!libraryContext.libraryId && colLibraryId && data[colLibraryId] != null) libraryContext.libraryId = String(data[colLibraryId]).trim();
       if (!libraryContext.librarySlug && colLibrarySlug && data[colLibrarySlug] != null) libraryContext.librarySlug = String(data[colLibrarySlug]).trim();
-      currentResolvedLibraryContext = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName, localLibraryName)
-      };
+      currentResolvedLibraryContext = resolveBookPageLibraryScope(data, libraryContext);
+
       let cover = colCover ? (data[colCover] || "") : "";
 
       if (!cover) {
