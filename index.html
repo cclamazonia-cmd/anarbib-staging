@@ -1323,10 +1323,7 @@ function getStatusInfo(r) {
   }
 
   if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (Number(r?.exemplares_total ?? r?.available_count ?? 0) > 0) {
-    return { key: 'available', label: 'Disponível', cls: 'status-available' };
-  }
-  return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+  return { key: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
 }
 function parseQuery(raw) {
   const out = { tokens: [], phrases: [] };
