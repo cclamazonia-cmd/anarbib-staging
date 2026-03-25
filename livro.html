@@ -425,8 +425,8 @@
         }, scope)) || null;
       };
 
-      return matchRow(explicitScope)
-        || matchRow(resolvedScope)
+      return matchRow(resolvedScope)
+        || matchRow(explicitScope)
         || matchRow(sessionScope)
         || list[0]
         || null;
@@ -504,9 +504,9 @@
       }
 
       const effectivePageContext = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId, currentResolvedLibraryContext?.libraryId),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug, currentResolvedLibraryContext?.librarySlug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName, currentResolvedLibraryContext?.libraryName)
+        libraryId: firstNonEmptyString(currentResolvedLibraryContext?.libraryId, libraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(currentResolvedLibraryContext?.librarySlug, libraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(currentResolvedLibraryContext?.libraryName, libraryContext?.libraryName)
       };
       const explicitContextActive = !!(effectivePageContext?.libraryId || effectivePageContext?.librarySlug || effectivePageContext?.libraryName);
       const sessionScope = {
@@ -726,10 +726,22 @@
     }
 
     function resolveBookPageLibraryScope(bookRow = {}, libraryContext = {}) {
+      const explicit = {
+        libraryId: firstNonEmptyString(libraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName)
+      };
+      if (explicit.libraryId || explicit.librarySlug || explicit.libraryName) return explicit;
+
+      const sessionHolding = getSessionHoldingForBook(bookRow);
+      if (sessionHolding) {
+        return buildLibraryScopeFromHolding(sessionHolding);
+      }
+
       const direct = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca)
+        libraryId: firstNonEmptyString(bookRow?.library_id),
+        librarySlug: firstNonEmptyString(bookRow?.library_slug),
+        libraryName: firstNonEmptyString(bookRow?.library_name, bookRow?.biblioteca)
       };
       if (direct.libraryId || direct.librarySlug || direct.libraryName) return direct;
 
@@ -974,7 +986,6 @@
     function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}) {
       const viewerUrl = new URL("ler.html", location.href);
       viewerUrl.searchParams.set("ref", bib_ref);
-      if (bookRow?.titulo) viewerUrl.searchParams.set("title", bookRow.titulo);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
       const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
       const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
@@ -1921,9 +1932,9 @@
       const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
       setDigitalAvailability(hasDigitalAvailability);
       await loadReaderScopedServiceChip(data, libraryContext);
-      await loadSessionScopedBookState(bib_ref, libraryContext, data);
+      await loadSessionScopedBookState(bib_ref, currentResolvedLibraryContext, data);
 
-      const accessState = computeBookAccessState(data, libraryContext);
+      const accessState = computeBookAccessState(data, currentResolvedLibraryContext);
       setStatus(accessState.label, accessState.cls);
       setReserveButtonState(accessState);
 
