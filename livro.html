@@ -102,6 +102,7 @@
     .digital-access{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}
     .digital-access-label{font-size:.92rem;color:var(--muted);font-weight:700}
     .digital-chip{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);font-size:.88rem;font-weight:800;line-height:1.2}
+    .digital-attribution{margin-top:8px;font-size:.9rem;color:var(--muted);line-height:1.35}
     .digital-chip.yes{background:rgba(34,197,94,.18);color:#d8ffe2;border-color:rgba(34,197,94,.35)}
     .digital-chip.no{background:rgba(251,191,36,.18);color:#fff2cc;border-color:rgba(251,191,36,.35)}
     .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
@@ -224,6 +225,7 @@
             <span class="digital-chip no" id="digitalChip">NÃO</span>
             <button class="btn primary" id="btnLer" type="button" style="display:none">Ler</button>
           </div>
+          <div class="digital-attribution" id="digitalAttributionLine" style="display:none"></div>
 
           <div class="actions">
             <button class="btn primary" id="btnReservar" type="button">Reservar este livro</button>
@@ -358,6 +360,7 @@
       librarySlug: "",
       libraryName: ""
     };
+    let currentDigitalAsset = null;
 
 
     function setReserveButtonState(buttonState = {}) {
@@ -551,7 +554,7 @@
       el.style.display = txt ? "" : "none";
     }
 
-    function setDigitalAvailability(canReadOnline) {
+    function setDigitalAvailability(canReadOnline, options = {}) {
       const chip = $("digitalChip");
       const btnLer = $("btnLer");
       if (!chip || !btnLer) return;
@@ -561,6 +564,31 @@
       chip.classList.toggle("yes", yes);
       chip.classList.toggle("no", !yes);
       btnLer.style.display = yes ? "inline-flex" : "none";
+      btnLer.textContent = String(options?.buttonLabel || "Ler").trim() || "Ler";
+      btnLer.title = String(options?.buttonTitle || "").trim();
+    }
+
+    function formatDigitalAttribution(asset = null) {
+      if (!asset || typeof asset !== "object") return "";
+      const pieces = [];
+      const attribution = String(asset.attribution_text || "").trim();
+      const sourceName = String(asset.source_name || "").trim();
+      const sourceUrl = String(asset.source_url || "").trim();
+      const rightsStatus = String(asset.rights_status || "").trim();
+
+      if (attribution) pieces.push(attribution);
+      else if (sourceName) pieces.push(`Fonte: ${sourceName}`);
+      if (sourceUrl) pieces.push(sourceUrl);
+      if (rightsStatus) pieces.push(`Direitos: ${rightsStatus}`);
+      return pieces.join(" · ");
+    }
+
+    function setDigitalAttributionLine(asset = null) {
+      const el = $("digitalAttributionLine");
+      if (!el) return;
+      const txt = formatDigitalAttribution(asset);
+      el.textContent = txt;
+      el.style.display = txt ? "" : "none";
     }
 
     function extractHoldingLibraryNames(raw) {
@@ -813,6 +841,39 @@
       return false;
     }
 
+    async function getPrimaryPublicDigitalAsset(bookId) {
+      const id = Number(bookId);
+      if (!Number.isFinite(id) || id <= 0) return null;
+
+      try {
+        const { data, error } = await supabase.rpc("get_book_primary_public_digital_asset", {
+          p_book_id: id
+        });
+
+        if (error) {
+          console.warn("AnarBib livro: falha ao consultar asset digital público principal", error);
+          return null;
+        }
+
+        const row = Array.isArray(data)
+          ? (data[0] || null)
+          : (data && typeof data === "object" ? data : null);
+
+        if (!row?.asset_id) return null;
+        return {
+          asset_id: Number(row.asset_id),
+          language_code: String(row.language_code || "").trim(),
+          source_name: String(row.source_name || "").trim(),
+          source_url: String(row.source_url || "").trim(),
+          attribution_text: String(row.attribution_text || "").trim(),
+          rights_status: String(row.rights_status || "").trim()
+        };
+      } catch (err) {
+        console.warn("AnarBib livro: exceção ao consultar asset digital público principal", err);
+        return null;
+      }
+    }
+
     async function getLibraryLineForBibRef(bib_ref, bookRow = null, libraryContext = {}) {
   const localContextRequested = !!(libraryContext?.libraryId || libraryContext?.librarySlug);
   const preferredLocal = firstNonEmptyString(
@@ -898,7 +959,23 @@
     function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}) {
       const viewerUrl = new URL("ler.html", location.href);
       viewerUrl.searchParams.set("ref", bib_ref);
-      if (bookRow?.titulo) viewerUrl.searchParams.set("title", bookRow.titulo);
+      const title = firstNonEmptyString(bookRow?.titulo, bookRow?.title);
+      if (title) viewerUrl.searchParams.set("title", title);
+      const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
+      const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
+      const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
+      if (libraryId) viewerUrl.searchParams.set("library_id", libraryId);
+      if (librarySlug) viewerUrl.searchParams.set("library_slug", librarySlug);
+      if (libraryName) viewerUrl.searchParams.set("library_name", libraryName);
+      return viewerUrl.toString();
+    }
+
+    function buildPublicAssetLerUrl(assetId, bib_ref, bookRow = null, libraryContext = {}) {
+      const viewerUrl = new URL("ler.html", location.href);
+      viewerUrl.searchParams.set("asset_id", String(assetId));
+      if (bib_ref) viewerUrl.searchParams.set("ref", bib_ref);
+      const title = firstNonEmptyString(bookRow?.titulo, bookRow?.title);
+      if (title) viewerUrl.searchParams.set("title", title);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
       const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
       const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
@@ -1878,17 +1955,33 @@
         $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
 
-      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
-      setDigitalAvailability(hasDigitalAvailability);
+      const publicDigitalAsset = await getPrimaryPublicDigitalAsset(data?.id);
+      currentDigitalAsset = publicDigitalAsset;
+      const hasRestrictedDigitalAvailability = publicDigitalAsset ? false : await getDigitalAvailabilityForBibRef(bib_ref, data);
+      const hasDigitalAvailability = !!publicDigitalAsset || !!hasRestrictedDigitalAvailability;
+      setDigitalAvailability(hasDigitalAvailability, publicDigitalAsset ? {
+        buttonLabel: "Ler",
+        buttonTitle: "Abrir exemplar digital público"
+      } : {
+        buttonLabel: "Ler",
+        buttonTitle: "Abrir leitura autorizada"
+      });
+      setDigitalAttributionLine(publicDigitalAsset);
       await loadReaderScopedServiceChip(data, libraryContext);
 
       const accessState = computeBookAccessState(data, libraryContext);
       setStatus(accessState.label, accessState.cls);
       setReserveButtonState(accessState);
 
-      $("btnLer").addEventListener("click", async () => {
-        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
+      $("btnLer").onclick = async () => {
         if (!hasDigitalAvailability) return;
+
+        if (publicDigitalAsset?.asset_id) {
+          location.assign(buildPublicAssetLerUrl(publicDigitalAsset.asset_id, bib_ref, data, libraryContext));
+          return;
+        }
+
+        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
 
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -1932,7 +2025,7 @@
           console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
           setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
         }
-      });
+      };
 
       $("btnReservar").addEventListener("click", () => reserve(bib_ref));
     }

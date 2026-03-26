@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AnarBib – leitor pdf</title>
   <meta name="theme-color" content="#7a0b14" />
-  <meta name="description" content="Leitor PDF restrito do AnarBib." />
+  <meta name="description" content="Leitor PDF do AnarBib." />
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
@@ -555,7 +555,7 @@
         <div class="top-nav-mark" aria-hidden="true"><img data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;" /></div>
         <div class="top-nav-copy">
           <strong>AnarBib</strong>
-          <span>Leitor PDF · navegação rápida</span>
+          <span>Leitor PDF · acesso público e restrito</span>
         </div>
       </div>
       <nav class="quick-nav" aria-label="Navegação rápida">
@@ -571,6 +571,7 @@
         <div class="hero-copy">
           <h1>Leitor PDF</h1>
           <p id="subline">Preparando a leitura…</p>
+          <p id="assetMetaLine" class="hidden" style="margin:8px 0 0;color:rgba(255,255,255,.92);font-size:.92rem;line-height:1.35"></p>
         </div>
         <div class="logo-reserve" aria-label="Logótipos da biblioteca e da rede">
           <div class="logo-slot" id="readerLibraryLogoSlot" aria-label="Logótipo da biblioteca do leitor">
@@ -662,8 +663,10 @@
     const PDFJS_WORKER = "./vendor/pdfjs/build/pdf.worker.mjs";
 
     const params = new URLSearchParams(location.search);
-    const bibRef = (params.get("ref") || "").trim();
-    const bookTitle = (params.get("title") || "").trim();
+    const assetIdParam = (params.get("asset_id") || "").trim();
+    const assetId = /^\d+$/.test(assetIdParam) ? Number(assetIdParam) : null;
+    let bibRef = (params.get("ref") || "").trim();
+    let bookTitle = (params.get("title") || "").trim();
     const libraryContext = {
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim()
@@ -675,7 +678,7 @@
       blmf: [`${LOGO_BASE}/blmf/logo-blmf.png`, `${RAW_LOGO_BASE}/blmf/logo-blmf.png`, "./assets/img/libraries/blmf/logo-blmf.png"],
       btl: [`${LOGO_BASE}/btl/logo-btl.png`, `${RAW_LOGO_BASE}/btl/logo-btl.png`, "./assets/img/libraries/btl/logo-btl.png"],
     };
-    const storageKey = bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default";
+    const storageKey = assetId ? `anarbib:ler:asset:${assetId}` : (bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default");
 
     const state = {
       scale: 1.15,
@@ -741,6 +744,43 @@
       if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);
       if (libraryContext.librarySlug) url.searchParams.set("library_slug", libraryContext.librarySlug);
       return url.toString();
+    }
+
+    function setAssetMetaLine(message = "") {
+      const el = $("assetMetaLine");
+      if (!el) return;
+      const txt = String(message || "").trim();
+      el.textContent = txt;
+      el.classList.toggle("hidden", !txt);
+    }
+
+    function refreshReaderHeadings() {
+      $("chipRef").innerHTML = bibRef
+        ? `<strong>Ref.</strong> ${bibRef}`
+        : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`);
+      $("btnBackBook").href = buildBookUrl();
+      $("btnNavLivro").href = buildBookUrl();
+      $("subline").textContent = bibRef
+        ? `Abrindo ${bookTitle || bibRef}.`
+        : (assetId ? `Abrindo ${bookTitle || `asset ${assetId}`}.` : "Falta a referência do livro.");
+      $("sheetSub").textContent = bibRef
+        ? `Leitura de ${bookTitle || bibRef}.`
+        : (assetId ? `Leitura de ${bookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro.");
+    }
+
+    function formatPublicAssetMeta(asset = null) {
+      if (!asset || typeof asset !== "object") return "";
+      const parts = [];
+      const attribution = String(asset.attribution_text || "").trim();
+      const sourceName = String(asset.source_name || "").trim();
+      const sourceUrl = String(asset.source_url || "").trim();
+      const rightsStatus = String(asset.rights_status || "").trim();
+
+      if (attribution) parts.push(attribution);
+      else if (sourceName) parts.push(`Fonte: ${sourceName}`);
+      if (sourceUrl) parts.push(sourceUrl);
+      if (rightsStatus) parts.push(`Direitos: ${rightsStatus}`);
+      return parts.join(" · ");
     }
 
     function uniqueList(values = []) {
@@ -948,6 +988,106 @@
       throw new Error("O exemplar digital existe, mas a leitura está reservada a contas ativas com acesso autorizado.");
     }
 
+    async function getPublicAssetById(pAssetId) {
+      const id = Number(pAssetId);
+      if (!Number.isFinite(id) || id <= 0) {
+        throw new Error("Asset digital inválido.");
+      }
+
+      const { data, error } = await supabase.rpc("get_public_digital_asset_by_id", {
+        p_asset_id: id
+      });
+
+      if (error) {
+        throw new Error(error.message || "Não foi possível localizar o exemplar digital público.");
+      }
+
+      const row = Array.isArray(data)
+        ? (data[0] || null)
+        : (data && typeof data === "object" ? data : null);
+
+      if (!row?.asset_id || !row?.storage_bucket || !row?.storage_path) {
+        throw new Error("Exemplar digital público não encontrado ou indisponível.");
+      }
+
+      return row;
+    }
+
+    async function fetchBookMetaById(bookId) {
+      const id = Number(bookId);
+      if (!Number.isFinite(id) || id <= 0) return null;
+
+      try {
+        const { data, error } = await supabase
+          .from("v_book_detail_public_v2")
+          .select("id,bib_ref,titulo,library_id,library_slug")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (!error && data) return data;
+      } catch (_) {}
+
+      try {
+        const { data, error } = await supabase
+          .from("books")
+          .select("id,bib_ref,titulo")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (!error && data) return data;
+      } catch (_) {}
+
+      return null;
+    }
+
+    function buildPublicStorageUrl(bucket, path) {
+      const bucketName = String(bucket || "").trim();
+      const objectPath = String(path || "").trim().replace(/^\/+/, "");
+      if (!bucketName || !objectPath) return "";
+      try {
+        const { data } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
+        return String(data?.publicUrl || "").trim();
+      } catch (_) {
+        return "";
+      }
+    }
+
+    async function downloadPublicAssetBlob(pAssetId) {
+      const asset = await getPublicAssetById(pAssetId);
+      const bookMeta = asset?.book_id ? await fetchBookMetaById(asset.book_id) : null;
+
+      if (!bibRef && bookMeta?.bib_ref) bibRef = String(bookMeta.bib_ref || "").trim();
+      if (!bookTitle && bookMeta?.titulo) bookTitle = String(bookMeta.titulo || "").trim();
+      if (!libraryContext.libraryId && bookMeta?.library_id) libraryContext.libraryId = String(bookMeta.library_id || "").trim();
+      if (!libraryContext.librarySlug && bookMeta?.library_slug) libraryContext.librarySlug = String(bookMeta.library_slug || "").trim();
+
+      refreshReaderHeadings();
+      setAssetMetaLine(formatPublicAssetMeta(asset));
+
+      const publicUrl = buildPublicStorageUrl(asset.storage_bucket, asset.storage_path);
+      if (!publicUrl) {
+        throw new Error("Não foi possível resolver a URL pública do PDF.");
+      }
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const response = await fetch(publicUrl, { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar o PDF público (${response.status}).`);
+        }
+        return await response.blob();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          throw new Error("A leitura pública demorou demais para responder.");
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+
     async function loadPdfJs() {
       try {
         const pdfjsLib = await import(PDFJS_MAIN);
@@ -1150,12 +1290,9 @@
       loadPrefs();
       applyTheme();
       document.title = "AnarBib – leitor pdf";
-      $("chipRef").innerHTML = `<strong>Ref.</strong> ${bibRef || "—"}`;
-      $("btnBackBook").href = buildBookUrl();
-      $("btnNavLivro").href = buildBookUrl();
+      refreshReaderHeadings();
       $("btnLogin").href = buildCadastroUrl();
-      $("subline").textContent = bibRef ? `Abrindo ${bookTitle || bibRef}.` : "Falta a referência do livro.";
-      $("sheetSub").textContent = bibRef ? `Leitura de ${bookTitle || bibRef}.` : "Abra esta página a partir da ficha do livro.";
+      setAssetMetaLine("");
       setStatus("Preparando a leitura…", "warn");
 
       let bootSession = null;
@@ -1176,7 +1313,7 @@
         console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
       });
 
-      if (!bibRef) {
+      if (!assetId && !bibRef) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
         return;
       }
@@ -1186,7 +1323,9 @@
 
       try {
         const pdfjsLib = await loadPdfJs();
-        const blob = await downloadPdfBlob(bibRef);
+        const blob = assetId
+          ? await downloadPublicAssetBlob(assetId)
+          : await downloadPdfBlob(bibRef);
 
         if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
 
