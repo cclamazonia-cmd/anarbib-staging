@@ -49,17 +49,12 @@
       background: transparent;
     }
 
-    body::before { opacity: 0.70; }
-
     a { color: inherit; }
 
     .wrap {
-      max-width: var(--brand-container-max-width, 1680px);
-      width: 100%;
+      max-width: 1680px;
       margin: 0 auto;
       padding: 24px;
-      position: relative;
-      z-index: 0;
     }
 
     .topbar {
@@ -123,13 +118,7 @@
     }
 
     .hero {
-      max-width: var(--brand-hero-max-width, 1680px);
-      width: 100%;
-      background-color: var(--brand-color-secondary, #111111);
-      background-image: var(--brand-hero-overlay), var(--brand-panel-bg-image);
-      background-position: center center;
-      background-size: cover;
-      background-repeat: no-repeat;
+      background: linear-gradient(135deg, var(--red-2), var(--red));
       border: 1px solid var(--line);
       border-radius: 22px;
       padding: 18px;
@@ -2201,7 +2190,6 @@
       },
       bnLookup: null,
       queueSelection: new Set(),
-      lastConfirmedCatalogUserId: null,
     };
 
     const el = (id) => document.getElementById(id);
@@ -3530,30 +3518,96 @@
     }
 
     let catalogacaoRefreshPromise = null;
+    let lastConfirmedCatalogUserId = '';
 
     function getActiveCatalogacaoTab() {
       return document.querySelector('.panel.active')?.id || getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getAvailableCatalogacaoTabs()[0] || 'batchesPanel';
     }
 
+    function setRolePill(text, kind = 'warn') {
+      refs.rolePill.textContent = text;
+      refs.rolePill.className = `pill ${kind}`;
+    }
+
+    function hasConfirmedCatalogAccessForCurrentSession() {
+      const currentUserId = state.session?.user?.id || '';
+      return !!(currentUserId && currentUserId === lastConfirmedCatalogUserId && state.isLibrarian);
+    }
+
     async function refreshCatalogacaoForActiveTab() {
-      await requireSession();
-      await loadProfile();
-      await loadBatches();
-
       const activeTab = getActiveCatalogacaoTab();
-      if (activeTab === 'queuePanel') {
-        await loadQueue();
-      } else if (activeTab === 'batchesPanel') {
-        await loadBatches();
-      } else if (activeTab === 'catalogPanel') {
-        await loadCatalog();
-      }
-
+      const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+      setTab(activeTab);
       updateStats();
+      return { batchesResult, queueResult, catalogResult };
+    }
+
+    async function runCatalogacaoRefresh({ showSuccess = false } = {}) {
+      if (catalogacaoRefreshPromise) return catalogacaoRefreshPromise;
+      catalogacaoRefreshPromise = (async () => {
+        refs.userEmail.textContent = 'Verificando sessão…';
+        setRolePill('Verificando acesso…', 'warn');
+        clearMessage(refs.globalMessage);
+
+        await requireSession();
+        const accessState = await loadProfile({ softFail: true });
+
+        if (!state.isLibrarian) {
+          if (accessState?.status === 'restricted') {
+            showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+            throw new Error('Usuário sem permissão bibliotecária.');
+          }
+          if (showSuccess) {
+            showMessage(refs.globalMessage, 'Sessão ativa, mas o acesso bibliotecário ainda não pôde ser reconfirmado. Tente Atualizar de novo em alguns instantes.', 'info');
+          }
+          return { ok: false, pending: true };
+        }
+
+        const { batchesResult, queueResult, catalogResult } = await refreshCatalogacaoForActiveTab();
+        updateLoginButton();
+
+        const failedSources = [];
+        if (batchesResult?.ok === false) failedSources.push('lotes');
+        if (queueResult?.ok === false) failedSources.push('fila editorial');
+        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+
+        if (failedSources.length) {
+          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        } else if (showSuccess) {
+          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+        }
+
+        return { ok: failedSources.length === 0, failedSources };
+      })().catch(error => {
+        updateLoginButton();
+        console.error(error);
+        if (!state.session?.user?.id) {
+          setRolePill('Faça login para usar a catalogação', 'danger');
+        } else if (String(error?.message || '').includes('permissão bibliotecária')) {
+          setRolePill('Acesso restrito', 'danger');
+        } else if (hasConfirmedCatalogAccessForCurrentSession()) {
+          setRolePill('Sessão ativa · reconfirmando acesso…', 'warn');
+          if (showSuccess) {
+            showMessage(refs.globalMessage, 'Sessão ativa, mas a reconfirmação do acesso falhou agora. Os dados anteriores foram mantidos.', 'info');
+          }
+          return { ok: false, stale: true, error };
+        } else {
+          setRolePill('Sessão ativa · acesso ainda não reconfirmado', 'warn');
+          if (state.session?.user?.id && showSuccess) {
+            showMessage(refs.globalMessage, 'Sessão ativa, mas ainda não foi possível reconfirmar o acesso bibliotecário.', 'info');
+          }
+        }
+        throw error;
+      }).finally(() => {
+        catalogacaoRefreshPromise = null;
+      });
+      return catalogacaoRefreshPromise;
     }
 
     async function refreshCatalogacaoView() {
-      return runCatalogacaoRefresh({ showSuccess: false, reason: 'view' });
+      return runCatalogacaoRefresh();
     }
 
     function openActiveDraftsView() {
@@ -3600,7 +3654,7 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         setTab(btn.dataset.tab);
-        await refreshCatalogacaoForActiveTab();
+        await refreshCatalogacaoView();
       });
     });
 
@@ -4816,34 +4870,23 @@
       }
     }
 
-    function setRolePill(text, variant = 'warn') {
-      refs.rolePill.textContent = text;
-      refs.rolePill.className = `pill ${variant}`;
-    }
-
-    function getCurrentSessionUserId() {
-      return state.session?.user?.id || null;
-    }
-
     async function getCurrentSession() {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
       return data?.session || null;
     }
 
-    async function requireSession({ silent = false } = {}) {
+    async function requireSession() {
       const session = await getCurrentSession();
       state.session = session;
       if (!state.session?.user?.id) {
         state.profile = null;
         state.isLibrarian = false;
-        state.lastConfirmedCatalogUserId = null;
+        lastConfirmedCatalogUserId = '';
         refs.userEmail.textContent = 'Sem sessão';
         setRolePill('Faça login para usar a catalogação', 'danger');
         updateLoginButton();
-        if (!silent) {
-          showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
-        }
+        showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
@@ -4887,56 +4930,51 @@
     }
 
     async function loadProfile({ softFail = false } = {}) {
-      const userId = getCurrentSessionUserId();
+      const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      let data = null;
-      try {
-        data = await fetchAccessRecord(userId);
-      } catch (error) {
-        console.warn('loadProfile failed:', error);
-      }
+      const previousProfile = state.profile && String(state.profile.user_id || state.profile.id || '') === String(userId)
+        ? state.profile
+        : null;
+      const data = await fetchAccessRecord(userId);
+      const fallbackProfile = previousProfile || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
 
+      state.profile = data || fallbackProfile;
+      refs.userEmail.textContent = state.profile?.email || state.session?.user?.email || 'Usuário autenticado';
       updateLoginButton();
 
       if (data?.can_access_catalogacao === true) {
         state.profile = data;
         state.isLibrarian = true;
-        state.lastConfirmedCatalogUserId = userId;
+        lastConfirmedCatalogUserId = userId;
         refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
         setRolePill('Acesso bibliotecário confirmado', 'ok');
         clearMessage(refs.globalMessage);
-        return { ok: true, confirmed: true, cached: false, data };
+        return { status: 'confirmed', profile: data };
       }
 
       if (data) {
-        state.profile = data;
         state.isLibrarian = false;
         setRolePill('Acesso restrito', 'danger');
-        showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
-        throw new Error('Usuário sem permissão bibliotecária.');
+        if (!softFail) {
+          showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+          throw new Error('Usuário sem permissão bibliotecária.');
+        }
+        return { status: 'restricted', profile: data };
       }
 
-      state.profile = (state.profile && state.profile.user_id === userId)
-        ? state.profile
-        : { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-
-      const hasCachedConfirmation = state.lastConfirmedCatalogUserId === userId;
-      state.isLibrarian = hasCachedConfirmation;
-
-      if (hasCachedConfirmation) {
+      if (lastConfirmedCatalogUserId === userId) {
+        state.isLibrarian = true;
         setRolePill('Sessão ativa · reconfirmando acesso…', 'warn');
-        clearMessage(refs.globalMessage);
-      } else {
-        setRolePill('Sessão ativa · confirmando acesso…', 'warn');
-        showMessage(refs.globalMessage, 'Sessão ativa. Ainda estamos confirmando o acesso bibliotecário.', 'info');
+        return { status: 'stale-confirmed', profile: fallbackProfile };
       }
 
-      if (softFail) {
-        return { ok: false, confirmed: false, cached: hasCachedConfirmation, transient: true };
+      state.isLibrarian = false;
+      setRolePill('Sessão ativa · acesso ainda não reconfirmado', 'warn');
+      if (!softFail) {
+        showMessage(refs.globalMessage, 'Sua sessão está ativa, mas o acesso bibliotecário ainda não pôde ser reconfirmado.', 'info');
       }
-
-      throw new Error('Não foi possível confirmar o acesso agora.');
+      return { status: 'pending', profile: fallbackProfile };
     }
 
     async function loadBatches() {
@@ -5092,99 +5130,8 @@
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    async function runCatalogacaoRefresh({ showSuccess = false, reason = 'manual' } = {}) {
-      if (catalogacaoRefreshPromise) return catalogacaoRefreshPromise;
-
-      catalogacaoRefreshPromise = (async () => {
-        refs.userEmail.textContent = 'Verificando sessão…';
-        setRolePill('Verificando acesso…', 'warn');
-        clearMessage(refs.globalMessage);
-
-        const currentTab = getActiveCatalogacaoTab();
-        let profileState = { confirmed: false, cached: false, transient: false };
-
-        try {
-          await requireSession({ silent: reason === 'auth' });
-          profileState = await loadProfile({ softFail: true });
-
-          const [batchesResult, queueResult, catalogResult] = await Promise.all([
-            loadBatches(),
-            loadQueue(),
-            loadCatalog(),
-          ]);
-
-          if (!profileState.confirmed && (batchesResult?.ok || queueResult?.ok || catalogResult?.ok)) {
-            state.isLibrarian = true;
-            state.lastConfirmedCatalogUserId = getCurrentSessionUserId();
-            setRolePill('Acesso bibliotecário confirmado', 'ok');
-            clearMessage(refs.globalMessage);
-            profileState = { ...profileState, confirmed: true, operational: true };
-          }
-
-          setTab(currentTab);
-          if (refs.labelBatchPreviewId?.value) {
-            try {
-              await loadLabelSheetPreview();
-            } catch (labelError) {
-              console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-            }
-          }
-          updateStats();
-          updateLoginButton();
-
-          const failedSources = [];
-          if (batchesResult?.ok === false) failedSources.push('lotes');
-          if (queueResult?.ok === false) failedSources.push('fila editorial');
-          if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
-          if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
-          if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
-
-          if (failedSources.length) {
-            if (profileState.transient && !profileState.confirmed && !profileState.cached) {
-              showMessage(refs.globalMessage, 'Sessão ativa. Ainda estamos confirmando o acesso bibliotecário e alguns dados podem demorar a aparecer.', 'info');
-            } else {
-              showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-            }
-          } else if (showSuccess) {
-            showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-          }
-
-          return { ok: failedSources.length === 0, profileState, reason };
-        } catch (error) {
-          updateLoginButton();
-          console.error(error);
-
-          if (!state.session?.user?.id) {
-            setRolePill('Faça login para usar a catalogação', 'danger');
-          } else if (error?.message === 'Usuário sem permissão bibliotecária.') {
-            state.isLibrarian = false;
-            setRolePill('Acesso restrito', 'danger');
-          } else if (state.lastConfirmedCatalogUserId === getCurrentSessionUserId()) {
-            state.isLibrarian = true;
-            setRolePill('Sessão ativa · reconfirmando acesso…', 'warn');
-            showMessage(refs.globalMessage, 'Sessão ativa. Ainda estamos reconfirmando o acesso bibliotecário.', 'info');
-            return { ok: false, profileState: { confirmed: false, cached: true, transient: true }, reason };
-          } else {
-            setRolePill('Sessão ativa · confirmando acesso…', 'warn');
-            if (state.session?.user?.id) {
-              showMessage(refs.globalMessage, 'Sessão ativa. Ainda estamos confirmando o acesso bibliotecário.', 'info');
-            }
-          }
-
-          if (state.session?.user?.id && error?.message && error.message !== 'Sem sessão') {
-            console.warn('runCatalogacaoRefresh:', error.message);
-          }
-          return { ok: false, error, reason };
-        } finally {
-          catalogacaoRefreshPromise = null;
-        }
-      })();
-
-      return catalogacaoRefreshPromise;
-    }
-
     async function refreshAll(showSuccess = false) {
-      return runCatalogacaoRefresh({ showSuccess, reason: showSuccess ? 'manual-success' : 'manual' });
+      return runCatalogacaoRefresh({ showSuccess });
     }
 
     async function saveDraft(table, payload, messageTarget, successText) {
@@ -7630,12 +7577,12 @@
       }
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      state.session = session || null;
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      state.session = session;
       if (!session) {
         state.profile = null;
         state.isLibrarian = false;
-        state.lastConfirmedCatalogUserId = null;
+        lastConfirmedCatalogUserId = '';
         refs.userEmail.textContent = 'Sem sessão';
         setRolePill('Faça login para usar a catalogação', 'danger');
         updateLoginButton();
@@ -7643,8 +7590,14 @@
       }
 
       refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
+      setRolePill('Verificando acesso…', 'warn');
       updateLoginButton();
-      void runCatalogacaoRefresh({ showSuccess: false, reason: `auth:${_event || 'change'}` });
+
+      try {
+        await refreshCatalogacaoView();
+      } catch (error) {
+        console.warn('Auth state refresh failed:', error);
+      }
     });
 
     window.addEventListener('hashchange', () => {
@@ -7660,7 +7613,7 @@
     renderLabelSheet([], '');
     renderTrash();
     updateLoginButton();
-    void runCatalogacaoRefresh({ showSuccess: false, reason: 'init' });
+    refreshCatalogacaoView();
   </script>
 </body>
 </html>
