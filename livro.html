@@ -805,38 +805,8 @@
     }
 
     async function getDigitalAvailabilityForBibRef(bib_ref, bookRow = null) {
-      if (bookRow && typeof bookRow?.has_online_reading === "boolean") {
-        return !!bookRow.has_online_reading;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("v_book_detail_public_v2")
-          .select("has_online_reading")
-          .eq("bib_ref", bib_ref)
-          .maybeSingle();
-
-        if (!error && data) {
-          return !!data?.has_online_reading;
-        }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar exemplar digital na v_book_detail_public_v2", err);
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("v_books_public")
-          .select("has_online_reading")
-          .eq("bib_ref", bib_ref)
-          .limit(1);
-
-        if (!error && Array.isArray(data) && data.length) {
-          return !!data[0]?.has_online_reading;
-        }
-      } catch (err) {
-        console.warn("AnarBib livro: falha ao consultar exemplar digital na v_books_public", err);
-      }
-      return false;
+      const access = await resolvePublicDigitalAccess(bookRow || {}, bib_ref, firstNonEmptyString(bookRow?.pdf_url, bookRow?.pdf, bookRow?.arquivo_pdf, bookRow?.link_pdf, bookRow?.url));
+      return !!access?.hasDigitalAvailability;
     }
 
     function parsePublicStorageLocation(rawValue) {
@@ -859,12 +829,25 @@
       return null;
     }
 
+    function buildPublicStorageUrl(bucket, path) {
+      const bucketName = String(bucket || "").trim();
+      const objectPath = String(path || "").trim().replace(/^\/+/, "");
+      if (!bucketName || !objectPath) return "";
+      try {
+        const { data } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
+        return String(data?.publicUrl || "").trim();
+      } catch (_) {
+        return "";
+      }
+    }
+
     async function resolvePublicDigitalAccess(bookRow = {}, bibRef = "", pdfValue = "") {
       const access = {
         hasDigitalAvailability: false,
         assetId: "",
         previewBucket: "",
-        previewPath: ""
+        previewPath: "",
+        previewUrl: ""
       };
 
       const publishedBookId = Number(bookRow?.book_id || bookRow?.id || 0);
@@ -881,6 +864,7 @@
             if (row?.storage_bucket && row?.storage_path) {
               access.previewBucket = String(row.storage_bucket).trim();
               access.previewPath = String(row.storage_path).trim();
+              access.previewUrl = buildPublicStorageUrl(access.previewBucket, access.previewPath);
               access.hasDigitalAvailability = !!(access.previewBucket && access.previewPath);
               if (access.hasDigitalAvailability) return access;
             }
@@ -894,11 +878,17 @@
       if (parsedLocation) {
         access.previewBucket = parsedLocation.bucket;
         access.previewPath = parsedLocation.path;
+        access.previewUrl = buildPublicStorageUrl(access.previewBucket, access.previewPath) || String(pdfValue || "").trim();
         access.hasDigitalAvailability = true;
         return access;
       }
 
-      access.hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bibRef, bookRow);
+      if (/^https?:\/\//i.test(String(pdfValue || "").trim())) {
+        access.previewUrl = String(pdfValue || "").trim();
+        access.hasDigitalAvailability = true;
+        return access;
+      }
+
       return access;
     }
 
@@ -1969,14 +1959,14 @@
       setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
       setPill("heroExemplaresChip", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
 
-      if (pdf) {
+      const digitalAccess = await resolvePublicDigitalAccess(data, bib_ref, pdf);
+      const directPdfUrl = digitalAccess.previewUrl || String(pdf || "").trim();
+      if (directPdfUrl) {
         $("btnAbrirPdf").style.display = "inline-flex";
-        $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
+        $("btnAbrirPdf").addEventListener("click", () => location.assign(directPdfUrl));
       }
 
-      const publicDigitalAccess = await resolvePublicDigitalAccess(data, bib_ref, pdf);
-      const hasDigitalAvailability = !!publicDigitalAccess?.hasDigitalAvailability;
-      setDigitalAvailability(hasDigitalAvailability);
+      setDigitalAvailability(digitalAccess.hasDigitalAvailability);
       await loadReaderScopedServiceChip(data, libraryContext);
 
       const accessState = computeBookAccessState(data, libraryContext);
@@ -1984,10 +1974,10 @@
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
-        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, publicDigitalAccess);
-        if (!hasDigitalAvailability) return;
+        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, digitalAccess);
+        if (!digitalAccess.hasDigitalAvailability) return;
 
-        if (publicDigitalAccess?.assetId || (publicDigitalAccess?.previewBucket && publicDigitalAccess?.previewPath)) {
+        if (digitalAccess.assetId || digitalAccess.previewBucket || digitalAccess.previewPath || digitalAccess.previewUrl) {
           location.assign(targetLerUrl);
           return;
         }
