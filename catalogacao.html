@@ -155,6 +155,42 @@
       align-items: center;
     }
 
+    .mode-switch {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .mode-switch-label {
+      color: #ffe3e7;
+      font-size: .92rem;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+
+    .mode-switch-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mode-switch .button.is-mode-active {
+      background: linear-gradient(135deg, var(--red-2), var(--red));
+      border-color: transparent;
+      color: #fff;
+    }
+
+    body[data-catalog-mode="simple"] .mode-complete-only {
+      display: none !important;
+    }
+
     .button,
     .tab-btn,
     .action-link,
@@ -1283,6 +1319,14 @@
         <button id="loginBtn" class="button primary">Fazer login</button>
         <button id="refreshAllBtn" class="button secondary">Atualizar</button>
       </div>
+      <div class="mode-switch" aria-label="Profundidade da ficha">
+        <span class="mode-switch-label">Modo da ficha</span>
+        <div class="mode-switch-buttons" role="group" aria-label="Escolha o nível de profundidade da ficha">
+          <button id="catalogModeSimpleBtn" type="button" class="button small secondary" aria-pressed="false">Interface simples</button>
+          <button id="catalogModeCompleteBtn" type="button" class="button small secondary" aria-pressed="false">Interface completa</button>
+        </div>
+        <span id="catalogModeHint" class="small">Neste primeiro passo, o toggle atua sobre Fichas de livros e Fichas de autores sem alterar dados já salvos.</span>
+      </div>
     </section>
 
     <div id="globalMessage" class="message"></div>
@@ -1347,7 +1391,7 @@
               <button id="uploadBookCoverBtn" class="button secondary">Enviar capa</button>
               <button id="clearBookCoverBtn" class="button ghost">Remover caminho</button>
             </div>
-            <div class="field" style="margin-top:12px;">
+            <div class="field mode-complete-only" style="margin-top:12px;">
               <label for="bookCoverPath">Caminho da capa</label>
               <input id="bookCoverPath" type="text" placeholder="books/0000123/front.jpg" />
             </div>
@@ -1358,7 +1402,7 @@
             <input type="hidden" id="bookPublishedId" />
             <input type="hidden" id="bookAction" value="create" />
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="bookBibRef">Referência</label>
               <input id="bookBibRef" type="text" placeholder="0000123" />
               <small>Para ficha nova, pode deixar em branco que o sistema gera depois.</small>
@@ -1402,7 +1446,7 @@
               </div>
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="bookEdition">Edição</label>
               <input id="bookEdition" type="text" placeholder="2. ed." />
             </div>
@@ -1412,7 +1456,7 @@
               <input id="bookPublisher" type="text" />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="bookCollection">Coleção</label>
               <input id="bookCollection" type="text" placeholder="Coleção / série editorial" />
             </div>
@@ -1510,12 +1554,12 @@
               <input id="bookLanguage" type="text" placeholder="Português" />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="bookPages">Páginas</label>
               <input id="bookPages" type="number" min="1" />
             </div>
 
-            <div class="field" style="grid-column: span 3;">
+            <div class="field mode-complete-only" style="grid-column: span 3;">
               <div class="book-quick-label-preview">
                 <div class="book-quick-label-top">
                   <h4 class="autofill-panel-title">Prévia rápida da etiqueta de cote</h4>
@@ -1551,7 +1595,7 @@
               <small>Preencha manualmente ou aplique abaixo as sugestões da BN. Nada é gravado automaticamente sem sua ação.</small>
             </div>
 
-            <div class="field" style="grid-column: span 3;">
+            <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookMarcJson">Estrutura bibliográfica em JSON</label>
               <textarea id="bookMarcJson" placeholder='{"245":{"a":"Título"},"100":{"a":"Autor"}}'></textarea>
               <small>Opcional. Pode ser preenchido depois. O formulário principal continua em português claro.</small>
@@ -1606,7 +1650,7 @@
               <button id="uploadAuthorPhotoBtn" class="button secondary">Enviar foto</button>
               <button id="clearAuthorPhotoBtn" class="button ghost">Remover caminho</button>
             </div>
-            <div class="field" style="margin-top:12px;">
+            <div class="field mode-complete-only" style="margin-top:12px;">
               <label for="authorPhotoPath">Caminho da foto</label>
               <input id="authorPhotoPath" type="text" placeholder="autor/profile.jpg" />
             </div>
@@ -1627,7 +1671,7 @@
               <input id="authorPreferredName" type="text" placeholder="Osvaldo BAYER" required />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorSortName">Nome para ordenação</label>
               <input id="authorSortName" class="author-sort-lock" type="text" placeholder="BAYER, Osvaldo" readonly aria-readonly="true" />
               <small>Preenchido automaticamente a partir do campo “Nome SOBRENOME”.</small>
@@ -1675,12 +1719,12 @@
               <input id="authorCountry" type="text" placeholder="Brasil" />
             </div>
 
-            <div class="form-flow-break">
+            <div class="form-flow-break mode-complete-only">
               <strong>Fontes e identificadores</strong>
               <span>Registre a origem da informação e os identificadores de autoridade quando existirem.</span>
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorSourceKind">Tipo de fonte</label>
               <select id="authorSourceKind">
                 <option value="">Sem indicação</option>
@@ -1692,27 +1736,27 @@
               </select>
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorSourceLabel">Fonte informada</label>
               <input id="authorSourceLabel" type="text" placeholder="VIAF, BnF, site da editora…" />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorSourceUrl">Link da fonte</label>
               <input id="authorSourceUrl" type="url" placeholder="https://..." />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorVIAF">VIAF</label>
               <input id="authorVIAF" type="text" />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorISNI">ISNI</label>
               <input id="authorISNI" type="text" />
             </div>
 
-            <div class="field">
+            <div class="field mode-complete-only">
               <label for="authorWikidata">Wikidata</label>
               <input id="authorWikidata" type="text" placeholder="Q12345" />
             </div>
@@ -2190,6 +2234,7 @@
       },
       bnLookup: null,
       queueSelection: new Set(),
+      catalogacaoMode: 'simple',
     };
 
     const el = (id) => document.getElementById(id);
@@ -2199,6 +2244,9 @@
       userEmail: el('userEmail'),
       rolePill: el('rolePill'),
       loginBtn: el('loginBtn'),
+      catalogModeSimpleBtn: el('catalogModeSimpleBtn'),
+      catalogModeCompleteBtn: el('catalogModeCompleteBtn'),
+      catalogModeHint: el('catalogModeHint'),
       bookMessage: el('bookMessage'),
       authorMessage: el('authorMessage'),
       exemplarMessage: el('exemplarMessage'),
@@ -3457,6 +3505,45 @@
         return;
       }
       setLabelDraftVisualState(labelDraftStableState || (el('exemplarDraftId').value ? 'saved' : 'new'));
+    }
+
+    const CATALOGACAO_MODE_STORAGE_KEY = 'catalogacaoInterfaceMode';
+
+    function getStoredCatalogacaoMode() {
+      try {
+        const saved = window.localStorage?.getItem(CATALOGACAO_MODE_STORAGE_KEY) || '';
+        return ['simple', 'complete'].includes(saved) ? saved : '';
+      } catch {
+        return '';
+      }
+    }
+
+    function applyCatalogacaoMode(mode = 'simple') {
+      const nextMode = mode === 'complete' ? 'complete' : 'simple';
+      state.catalogacaoMode = nextMode;
+      document.body.setAttribute('data-catalog-mode', nextMode);
+      if (refs.catalogModeSimpleBtn) {
+        const active = nextMode === 'simple';
+        refs.catalogModeSimpleBtn.classList.toggle('is-mode-active', active);
+        refs.catalogModeSimpleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
+      if (refs.catalogModeCompleteBtn) {
+        const active = nextMode === 'complete';
+        refs.catalogModeCompleteBtn.classList.toggle('is-mode-active', active);
+        refs.catalogModeCompleteBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
+      if (refs.catalogModeHint) {
+        refs.catalogModeHint.textContent = nextMode === 'simple'
+          ? 'Modo simples ativo: Fichas de livros e Fichas de autores mostram só o núcleo de trabalho cotidiano.'
+          : 'Modo completo ativo: Fichas de livros e Fichas de autores mostram também os campos técnicos e avançados.';
+      }
+    }
+
+    function setCatalogacaoMode(mode = 'simple') {
+      applyCatalogacaoMode(mode);
+      try {
+        window.localStorage?.setItem(CATALOGACAO_MODE_STORAGE_KEY, state.catalogacaoMode);
+      } catch {}
     }
 
     const CATALOGACAO_TAB_STORAGE_KEY = 'catalogacaoActiveTab';
@@ -7277,6 +7364,13 @@
       }
     });
 
+    if (refs.catalogModeSimpleBtn) {
+      refs.catalogModeSimpleBtn.addEventListener('click', () => setCatalogacaoMode('simple'));
+    }
+    if (refs.catalogModeCompleteBtn) {
+      refs.catalogModeCompleteBtn.addEventListener('click', () => setCatalogacaoMode('complete'));
+    }
+
     el('refreshAllBtn').addEventListener('click', () => refreshAll(true));
     el('refreshQueueBtn').addEventListener('click', loadQueue);
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
@@ -7564,6 +7658,7 @@
       if (hashTab) setTab(hashTab);
     });
 
+    applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
     setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
     resetBookForm();
     resetAuthorForm();
