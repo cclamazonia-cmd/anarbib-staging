@@ -25,7 +25,7 @@
   <script src="./assets/js/theme-loader.js" defer></script>
   <style>
     :root {
-      --bg: var(--brand-color-secondary, #0b0b0b);
+      --bg: var(--brand-color-secondary, #111111);
       --panel: var(--brand-panel-bg, rgba(10,10,10,.90));
       --panel-2: var(--brand-panel-bg, rgba(16,16,16,.86));
       --line: var(--brand-panel-border, rgba(255,255,255,.10));
@@ -93,12 +93,13 @@
       filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
     }
 
-    .topbar-actions,
     .hero-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: flex-start;
+      margin-top: 10px;
     }
 
     .btn {
@@ -132,8 +133,8 @@
     .hero {
       width: calc(100% + (2 * var(--wrap-pad)));
       max-width: none;
-      border: 1px solid var(--line);
       background: linear-gradient(135deg, var(--red-2), var(--bg));
+      border: 1px solid var(--line);
       border-radius: 0 0 22px 22px;
       padding: 18px;
       box-shadow: var(--shadow);
@@ -159,15 +160,25 @@
       max-width: 980px;
     }
 
-    .hero-actions {
-      margin-top: 10px;
-    }
-
     .hero-actions .btn {
       min-height: 0;
       padding: 10px 12px;
       font-size: .95rem;
       width: auto;
+    }
+
+    .hero-actions .btn:visited {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .hero-actions-separator {
+      width: 1px;
+      align-self: stretch;
+      min-height: 32px;
+      background: rgba(255,255,255,.14);
+      border-radius: 999px;
+      flex: 0 0 1px;
     }
 
     .toolbar {
@@ -198,6 +209,15 @@
 
     .toolbar-actions-main {
       justify-content: flex-end;
+    }
+
+    .toolbar-actions-status,
+    .toolbar-actions-main {
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(179,0,24,.12), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
     }
 
     .mode-switch {
@@ -253,13 +273,6 @@
       text-decoration: none;
       font-weight: 600;
       transition: .18s ease;
-    }
-
-    .toolbar-actions .button,
-    .toolbar-actions .action-link {
-      min-height: 48px;
-      padding: 12px 16px;
-      font-size: .95rem;
     }
 
     .button:hover,
@@ -356,7 +369,7 @@
     .stat {
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 18px;
-      background: linear-gradient(180deg, rgba(179,0,24,.10), rgba(255,255,255,.03));
+      background: var(--panel);
       box-shadow: var(--shadow);
       padding: 16px;
     }
@@ -398,7 +411,7 @@
       justify-content: space-between;
       gap: 12px;
       padding: 16px 18px;
-      background: linear-gradient(180deg, #1a1a1a, #121212);
+      background: linear-gradient(180deg, rgba(38,6,10,.96), rgba(18,18,18,.96));
       border-bottom: 1px solid rgba(255,255,255,.06);
       flex-wrap: wrap;
     }
@@ -419,7 +432,6 @@
 
     .panel-body {
       padding: 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.015));
     }
 
     .tabs {
@@ -427,11 +439,6 @@
       flex-wrap: wrap;
       gap: 8px;
       margin: 0 0 18px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: linear-gradient(180deg, rgba(179,0,24,.12), rgba(255,255,255,.03));
-      box-shadow: var(--shadow);
     }
 
     .tabs .tab-btn-separator {
@@ -463,12 +470,14 @@
       display: grid;
       grid-template-columns: 340px minmax(0, 1fr);
       gap: 16px;
+      align-items: start;
     }
 
     .card {
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 18px;
-      background: rgba(255,255,255,.02);
+      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
       padding: 14px;
     }
 
@@ -494,6 +503,7 @@
       border-radius: 18px;
       background: linear-gradient(180deg, rgba(179,0,24,.14), rgba(255,255,255,.03));
       border: 1px solid rgba(255,255,255,.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
 
     .field label {
@@ -799,6 +809,10 @@
     .table-wrap {
       overflow: auto;
       max-height: 72vh;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: rgba(255,255,255,.02);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
     }
 
     table {
@@ -1230,6 +1244,20 @@
       }
     }
 
+    @media (max-width: 640px) {
+      .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
+      .hero-actions { justify-content: flex-start; }
+      .hero-actions .btn { width: 100%; }
+      .hero-actions-separator { display: none; }
+      .toolbar-meta {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .toolbar-actions-main {
+        justify-content: flex-start;
+      }
+    }
+
     @media (max-width: 760px) {
       .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
       .table-wrap { max-height: none; }
@@ -1365,7 +1393,9 @@
       <div class="hero-actions">
         <a class="btn" id="btnPainel" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html">Voltar ao painel</a>
         <a class="btn" id="btnCatalogoTop" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html/">Voltar ao catálogo</a>
+        <span class="hero-actions-separator" aria-hidden="true"></span>
         <a class="btn" id="btnCadastroTop" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html">Cadastro</a>
+        <span class="hero-actions-separator" aria-hidden="true"></span>
         <a class="btn" id="btnManualTop" href="https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual do AnarBib</a>
       </div>
     </section>
@@ -2297,15 +2327,6 @@
       bnLookup: null,
       queueSelection: new Set(),
       catalogacaoMode: 'simple',
-      catalogRefs: {
-        object_types: [],
-        responsibility_roles: [],
-        acquisition_modes: [],
-        mutualization_statuses: [],
-        location_levels: [],
-        partner_sources: [],
-        import_formats: [],
-      },
     };
 
     const el = (id) => document.getElementById(id);
@@ -4305,86 +4326,20 @@
       showMessage(refs.bookMessage, 'Busca de ISSN aberta no Portal ISSN.', 'info');
     }
 
-    const DEFAULT_BOOK_TYPE_OPTIONS = [
-      { slug: 'livro', label: 'Livro' },
-      { slug: 'periodico', label: 'Periódico' },
-      { slug: 'brochura', label: 'Brochura' },
-      { slug: 'outro', label: 'Outro' },
-    ];
-
-    const DEFAULT_CONTRIBUTOR_ROLE_OPTIONS = [
-      { slug: 'autor', label: 'Autor(a)' },
-      { slug: 'coautor', label: 'Coautor(a)' },
-      { slug: 'organizacao', label: 'Coletivo' },
-      { slug: 'organizador', label: 'Organizador(a)' },
-      { slug: 'tradutor', label: 'Tradutor(a)' },
-      { slug: 'ilustrador', label: 'Ilustrador(a)' },
-      { slug: 'prefaciador', label: 'Prefácio' },
-      { slug: 'coordenador', label: 'Coordenação' },
-      { slug: 'editor', label: 'Editor(a)' },
-      { slug: 'outro', label: 'Outro' },
-    ];
-
-    function getCatalogRefOptions(key, fallback = []) {
-      const source = Array.isArray(state.catalogRefs?.[key]) ? state.catalogRefs[key] : [];
-      const normalized = source
-        .filter(item => item?.slug && item?.label)
-        .map(item => ({ slug: String(item.slug), label: String(item.label) }));
-      return normalized.length ? normalized : fallback;
-    }
-
-    function renderSelectOptions(selectNode, options = [], selectedValue = '') {
-      if (!selectNode) return;
-      const normalized = options
-        .filter(item => item?.slug && item?.label)
-        .map(item => ({ slug: String(item.slug), label: String(item.label) }));
-      const selected = String(selectedValue || '');
-      if (selected && !normalized.some(item => item.slug === selected)) {
-        normalized.push({ slug: selected, label: selected });
-      }
-      selectNode.innerHTML = normalized.map(item => `<option value="${sanitize(item.slug)}" ${item.slug === selected ? 'selected' : ''}>${sanitize(item.label)}</option>`).join('');
-    }
-
-    function renderBookTypeOptions(selectedValue = '') {
-      renderSelectOptions(el('bookType'), getCatalogRefOptions('object_types', DEFAULT_BOOK_TYPE_OPTIONS), selectedValue || 'livro');
-    }
-
-    function getContributorRoleSelectOptions() {
-      return getCatalogRefOptions('responsibility_roles', DEFAULT_CONTRIBUTOR_ROLE_OPTIONS);
-    }
-
-    function refreshContributorRoleSelects() {
-      const roleOptions = getContributorRoleSelectOptions();
-      refs.bookContributorsWrap.querySelectorAll('.contrib-role').forEach(selectNode => {
-        const selected = selectNode.value || 'autor';
-        renderSelectOptions(selectNode, roleOptions, selected);
-      });
-    }
-
-    async function loadCatalogacaoReferences() {
-      if (!state.session?.user?.id || !state.isLibrarian) return;
-      try {
-        const { data, error } = await supabase.rpc('catalogacao_reference_data');
-        if (error) throw error;
-        const payload = (data && typeof data === 'object') ? data : {};
-        state.catalogRefs = {
-          object_types: Array.isArray(payload.object_types) ? payload.object_types : [],
-          responsibility_roles: Array.isArray(payload.responsibility_roles) ? payload.responsibility_roles : [],
-          acquisition_modes: Array.isArray(payload.acquisition_modes) ? payload.acquisition_modes : [],
-          mutualization_statuses: Array.isArray(payload.mutualization_statuses) ? payload.mutualization_statuses : [],
-          location_levels: Array.isArray(payload.location_levels) ? payload.location_levels : [],
-          partner_sources: Array.isArray(payload.partner_sources) ? payload.partner_sources : [],
-          import_formats: Array.isArray(payload.import_formats) ? payload.import_formats : [],
-        };
-        renderBookTypeOptions(el('bookType')?.value || 'livro');
-        refreshContributorRoleSelects();
-      } catch (error) {
-        console.warn('Não foi possível carregar os novos referenciais da catalogação. Seguindo com o fallback local.', error);
-      }
-    }
-
     function contributorRoleOptions(selected = 'autor') {
-      return getContributorRoleSelectOptions().map(({ slug, label }) => `<option value="${sanitize(slug)}" ${slug === selected ? 'selected' : ''}>${sanitize(label)}</option>`).join('');
+      const roles = [
+        ['autor', 'Autor(a)'],
+        ['coautor', 'Coautor(a)'],
+        ['organizacao', 'Coletivo'],
+        ['organizador', 'Organizador(a)'],
+        ['tradutor', 'Tradutor(a)'],
+        ['ilustrador', 'Ilustrador(a)'],
+        ['prefaciador', 'Prefácio'],
+        ['coordenador', 'Coordenação'],
+        ['editor', 'Editor(a)'],
+        ['outro', 'Outro'],
+      ];
+      return roles.map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`).join('');
     }
 
     function createEmptyContributor(position = 1, role = 'autor') {
@@ -4574,7 +4529,7 @@
         refs.bookISSNField.style.borderColor = 'rgba(29,78,216,.38)';
         refs.bookISBNField.style.opacity = '.72';
       } else {
-        refs.bookMaterialHint.textContent = 'Materiais não periódicos podem ser marcados conforme o uso interno.';
+        refs.bookMaterialHint.textContent = 'Livros e brochuras podem ser marcados conforme o uso interno.';
         refs.bookISSNField.style.borderColor = '';
         refs.bookISBNField.style.opacity = '1';
       }
@@ -4841,7 +4796,7 @@
       el('bookDraftId').value = '';
       el('bookPublishedId').value = '';
       el('bookAction').value = 'create';
-      renderBookTypeOptions('livro');
+      el('bookType').value = 'livro';
       el('bookLoanable').value = 'true';
       el('bookMarcJson').value = '';
       el('bookCollection').value = '';
@@ -5275,7 +5230,6 @@
         clearMessage(refs.globalMessage);
         await requireSession();
         await loadProfile();
-        await loadCatalogacaoReferences();
         const currentTab = getActiveCatalogacaoTab();
         const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
         setTab(currentTab);
@@ -5362,7 +5316,7 @@
       el('bookAction').value = enriched.action || 'create';
       el('bookBatchId').value = enriched.batch_id || '';
       el('bookBibRef').value = enriched.bib_ref || '';
-      renderBookTypeOptions(enriched.tipo_material || 'livro');
+      el('bookType').value = enriched.tipo_material || 'livro';
       el('bookTitle').value = enriched.titulo || '';
       el('bookSubtitle').value = enriched.subtitulo || '';
       el('bookAuthor').value = enriched.autor || '';
@@ -7784,15 +7738,6 @@
       } else {
         state.profile = null;
         state.isLibrarian = false;
-        state.catalogRefs = {
-          object_types: [],
-          responsibility_roles: [],
-          acquisition_modes: [],
-          mutualization_statuses: [],
-          location_levels: [],
-          partner_sources: [],
-          import_formats: [],
-        };
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
