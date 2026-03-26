@@ -220,13 +220,6 @@ a { color: inherit; }
   background: linear-gradient(135deg, rgba(225,29,47,.92), rgba(179,0,24,.92));
   border-color: rgba(255,255,255,.22);
 }
-.mini-action-clear {
-  border-color: rgba(225,29,47,.45);
-  background: linear-gradient(135deg, rgba(179,0,24,.18), rgba(255,255,255,.04));
-}
-.mini-action-clear:hover {
-  border-color: rgba(225,29,47,.8);
-}
 .filters-grid {
   display:grid;
   grid-template-columns: minmax(340px,1.45fr) minmax(250px,1.05fr) minmax(250px,1.05fr) minmax(230px,.9fr);
@@ -395,6 +388,16 @@ a { color: inherit; }
   justify-content:center;
   border-radius:14px;
   text-decoration:none;
+}
+.field-clear {
+  justify-content:flex-end;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+}
+.field-clear .field-label {
+  color: rgba(255,255,255,.72);
+}
+.field-clear .button {
+  width: 100%;
 }
 
 .service-banner{
@@ -894,7 +897,7 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
     </div>
     <div class="hero-actions">
       <button id="pdfBtn" class="button" type="button">Exportar PDF</button>
-      <a id="csvAdvancedLink" class="action-link" href="#" role="button">Exportar CSV</a>
+      <a id="csvAdvancedLink" class="button secondary" href="#" role="button">Exportar CSV</a>
       <span class="hero-actions-separator" aria-hidden="true"></span>
       <button id="contaBtn" class="button secondary" type="button">Conta</button>
       <button id="loginBtn" class="button secondary" type="button">Login</button>
@@ -922,13 +925,11 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <input id="yearFilter" class="input" type="search" autocomplete="off" placeholder="Ex.: 1984 ou intervalo 1917-1921">
       </div>
       <div class="field">
-        <label class="field-label" for="availabilityFilter">Disponibilidade</label>
-        <select id="availabilityFilter" class="select">
-          <option value="all">Todas</option>
-          <option value="available">Mostrar só “Disponível agora”</option>
-          <option value="local">Consultável no lugar</option>
-          <option value="unavailable">Indisponível</option>
-        </select>
+        <label class="field-label" for="availabilityFilterToggle">Disponibilidade</label>
+        <details id="availabilityFilterDetails" class="multi-select" role="group">
+          <summary id="availabilityFilterToggle" class="multi-select-summary">Todas as disponibilidades</summary>
+          <div id="availabilityFilterMenu" class="multi-select-menu" aria-label="Filtrar por disponibilidade"></div>
+        </details>
       </div>
       <div class="field">
         <label class="field-label" for="sortSelect">Ordenar por (relevância, etc.)</label>
@@ -949,13 +950,16 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <div id="libraryFilterMenu" class="multi-select-menu" aria-label="Filtrar por bibliotecas"></div>
         </details>
       </div>
+      <div class="field field-clear">
+        <label class="field-label" for="clearBtn">Limpar tudo</label>
+        <button id="clearBtn" class="button secondary" type="button">Limpar filtros</button>
+      </div>
     </div>
     <div class="toolbar-meta">
       <div id="activeFilters" class="active-filters" hidden aria-live="polite"></div>
       <div class="view-controls">
         <button id="copySearchBtn" class="mini-action" type="button">Copiar busca em link</button>
         <button id="compactToggleBtn" class="mini-action" type="button" aria-pressed="false">Modo compacto</button>
-        <button id="clearBtn" class="mini-action mini-action-clear" type="button">Limpar filtros</button>
       </div>
     </div>
   </section>
@@ -1067,6 +1071,8 @@ let catalogSourceVariant = 'legacy';
 let personalizedAvailabilityReady = false;
 let serviceState = null;
 let selectedLibraryKeys = new Set();
+let selectedAvailabilityKeys = new Set();
+let availabilityAllExplicitlySelected = false;
 let activeReservedBibRefs = new Set();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
@@ -1077,6 +1083,17 @@ let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
+const AVAILABILITY_FILTER_ALL_VALUE = '__all__';
+const AVAILABILITY_FILTER_OPTIONS = [
+  { key: 'available', label: 'Disponível para reserva' },
+  { key: 'local', label: 'Consultável no lugar' },
+  { key: 'unavailable_user', label: 'Indisponível para você' },
+  { key: 'unavailable_other_library', label: 'Presente em outra biblioteca' },
+  { key: 'unavailable_now', label: 'Indisponível no momento' },
+  { key: 'check', label: 'Disponibilidade a verificar' }
+];
+const FILTER_SESSION_STORAGE_KEY = 'anarbib:index:filter-state';
+const FILTER_AUTH_MARKER_STORAGE_KEY = 'anarbib:index:filter-auth-marker';
 
 const tbody = document.getElementById('tbody');
 const mobileResults = document.getElementById('mobileResults');
@@ -1085,7 +1102,9 @@ const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
 const sortSelect = document.getElementById('sortSelect');
-const availabilityFilter = document.getElementById('availabilityFilter');
+const availabilityFilterDetails = document.getElementById('availabilityFilterDetails');
+const availabilityFilterMenu = document.getElementById('availabilityFilterMenu');
+const availabilityFilterToggle = document.getElementById('availabilityFilterToggle');
 const libraryFilterDetails = document.getElementById('libraryFilterDetails');
 const libraryFilterMenu = document.getElementById('libraryFilterMenu');
 const libraryFilterToggle = document.getElementById('libraryFilterToggle');
@@ -1245,9 +1264,9 @@ function getRowLibraryCandidates(row) {
 function mapSessionStatusHintToStatus(hint) {
   const normalized = normalize(hint);
   if (!normalized) return null;
-  if (normalized.includes('indisponivel_para_voce')) return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
-  if (normalized.includes('consultavel_no_local')) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (normalized.includes('no_acervo_da_sua_biblioteca')) return { key: 'available', label: 'Disponível', cls: 'status-available' };
+  if (normalized.includes('indisponivel_para_voce')) return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
+  if (normalized.includes('consultavel_no_local')) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+  if (normalized.includes('no_acervo_da_sua_biblioteca')) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
   return null;
 }
 function rowMatchesSelectedLibraries(row) {
@@ -1301,12 +1320,12 @@ function getStatusInfo(r) {
   if (hasScopedLibrary) {
     const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
     if (!localRows.length) {
-      return { key: 'unavailable', label: 'Indisponível para você', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
     }
 
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
-      return { key: 'unavailable', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
     }
 
     const hintedStatus = localRows
@@ -1315,17 +1334,17 @@ function getStatusInfo(r) {
     if (hintedStatus) return hintedStatus;
 
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
 
     const localAvailable = localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? item?.available_count ?? 0) > 0)
       || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_exemplares_total ?? r?.exemplares_total ?? r?.available_count ?? 0) > 0);
-    if (localAvailable) return { key: 'available', label: 'Disponível', cls: 'status-available' };
+    if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
 
-    return { key: 'unavailable', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
   }
 
-  if (r.loanable === false) return { key: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  return { key: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
+  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
 }
 function parseQuery(raw) {
   const out = { tokens: [], phrases: [] };
@@ -1496,17 +1515,13 @@ function setSelectedLibrariesFromParam(rawValue) {
   libraryAllExplicitlySelected = false;
   const values = String(rawValue || '').split('|').map(v => normalize(decodeURIComponent(v))).filter(Boolean);
   if (!values.length) return;
-  const options = getLibraryLabelsFromRows();
-  const optionKeys = new Set(options.map(item => item.key));
   for (const value of values) {
     if (value === normalize(LIBRARY_FILTER_ALL_VALUE)) {
       selectedLibraryKeys.clear();
       libraryAllExplicitlySelected = true;
       return;
     }
-    for (const key of optionKeys) {
-      if (value === key) selectedLibraryKeys.add(key);
-    }
+    selectedLibraryKeys.add(value);
   }
 }
 function serializeSelectedLibraries() {
@@ -1559,13 +1574,94 @@ function resolveLibraryLabel(row, librarySupplementMap) {
     supplement?.biblioteca_name
   ), row?.bib_ref || '');
 }
-function getAvailabilityLabel(value) {
-  switch (value) {
-    case 'available': return 'Disponível';
-    case 'local': return 'Consultável no lugar';
-    case 'unavailable': return 'Indisponível';
-    default: return 'Todas';
+function getAvailabilityOptionLabel(value) {
+  return AVAILABILITY_FILTER_OPTIONS.find((item) => item.key === value)?.label || 'Todas as disponibilidades';
+}
+function getAvailabilityFilterKey(status) {
+  return status?.filterKey || status?.key || '';
+}
+function getSelectedAvailabilityLabels() {
+  return AVAILABILITY_FILTER_OPTIONS
+    .filter((item) => selectedAvailabilityKeys.has(item.key))
+    .map((item) => item.label);
+}
+function updateAvailabilityFilterSummary() {
+  const labels = getSelectedAvailabilityLabels();
+  if (availabilityAllExplicitlySelected || !labels.length) {
+    availabilityFilterToggle.textContent = 'Todas as disponibilidades';
+    return;
   }
+  if (labels.length === 1) {
+    availabilityFilterToggle.textContent = labels[0];
+    return;
+  }
+  availabilityFilterToggle.textContent = `${labels.length} disponibilidades selecionadas`;
+}
+function renderAvailabilityFilterOptions() {
+  const html = [
+    `<label class="multi-select-option"><input type="checkbox" value="${AVAILABILITY_FILTER_ALL_VALUE}" ${availabilityAllExplicitlySelected ? 'checked' : ''}> <span>todas</span></label>`,
+    ...AVAILABILITY_FILTER_OPTIONS.map((item) => `<label class="multi-select-option"><input type="checkbox" value="${escapeHTML(item.key)}" ${selectedAvailabilityKeys.has(item.key) ? 'checked' : ''}> <span>${escapeHTML(item.label)}</span></label>`)
+  ].join('');
+  availabilityFilterMenu.innerHTML = html;
+  updateAvailabilityFilterSummary();
+}
+function setSelectedAvailabilityFromParam(rawValue) {
+  selectedAvailabilityKeys = new Set();
+  availabilityAllExplicitlySelected = false;
+  const values = String(rawValue || '').split('|').map(v => normalize(decodeURIComponent(v))).filter(Boolean);
+  if (!values.length) return;
+  const optionKeys = new Set(AVAILABILITY_FILTER_OPTIONS.map(item => item.key));
+  for (const value of values) {
+    if (value === normalize(AVAILABILITY_FILTER_ALL_VALUE)) {
+      selectedAvailabilityKeys.clear();
+      availabilityAllExplicitlySelected = true;
+      return;
+    }
+    if (optionKeys.has(value)) selectedAvailabilityKeys.add(value);
+  }
+}
+function serializeSelectedAvailability() {
+  if (availabilityAllExplicitlySelected) return encodeURIComponent(AVAILABILITY_FILTER_ALL_VALUE);
+  return [...selectedAvailabilityKeys].map(key => encodeURIComponent(key)).join('|');
+}
+function rowMatchesSelectedAvailability(row) {
+  if (availabilityAllExplicitlySelected || !selectedAvailabilityKeys.size) return true;
+  const key = getAvailabilityFilterKey(row?._status);
+  return !!(key && selectedAvailabilityKeys.has(key));
+}
+function getStoredFilterState() {
+  try {
+    const raw = sessionStorage.getItem(FILTER_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+function saveFilterStateToSession() {
+  try {
+    sessionStorage.setItem(FILTER_SESSION_STORAGE_KEY, JSON.stringify(getFilterState()));
+  } catch (e) {}
+}
+function clearStoredFilterState() {
+  try {
+    sessionStorage.removeItem(FILTER_SESSION_STORAGE_KEY);
+    sessionStorage.removeItem(FILTER_AUTH_MARKER_STORAGE_KEY);
+  } catch (e) {}
+}
+function getCurrentAuthFilterMarker() {
+  return authState?.user?.id ? `user:${authState.user.id}` : 'anon';
+}
+function syncStoredFilterStateWithAuth() {
+  const marker = getCurrentAuthFilterMarker();
+  try {
+    const previousMarker = sessionStorage.getItem(FILTER_AUTH_MARKER_STORAGE_KEY);
+    if (previousMarker && previousMarker !== marker && previousMarker !== 'anon' && marker === 'anon') {
+      sessionStorage.removeItem(FILTER_SESSION_STORAGE_KEY);
+    }
+    sessionStorage.setItem(FILTER_AUTH_MARKER_STORAGE_KEY, marker);
+  } catch (e) {}
 }
 function getSortLabel(key = sortKey, dir = sortDir) {
   const labels = {
@@ -1587,7 +1683,7 @@ function getFilterState() {
     author: (authorFilter.value || '').trim(),
     publisher: (publisherFilter.value || '').trim(),
     year: (yearFilter.value || '').trim(),
-    availability: availabilityFilter.value || 'all',
+    availability: serializeSelectedAvailability(),
     libraries: serializeSelectedLibraries(),
     sort: sortKey,
     dir: sortDir,
@@ -1627,7 +1723,8 @@ function buildActiveFilterItems() {
   if (state.author) items.push({ key: 'author', label: 'Autor(a)', value: state.author });
   if (state.publisher) items.push({ key: 'publisher', label: 'Editora', value: state.publisher });
   if (state.year) items.push({ key: 'year', label: 'Ano', value: state.year });
-  if (state.availability !== 'all') items.push({ key: 'availability', label: 'Disponibilidade', value: getAvailabilityLabel(state.availability) });
+  if (availabilityAllExplicitlySelected) items.push({ key: 'availability', label: 'Disponibilidade', value: 'todas' });
+  else if (selectedAvailabilityKeys.size) items.push({ key: 'availability', label: 'Disponibilidade', value: getSelectedAvailabilityLabels().join(', ') });
   if (libraryAllExplicitlySelected) items.push({ key: 'libraries', label: 'Bibliotecas', value: 'todas' });
   else if (selectedLibraryKeys.size) items.push({ key: 'libraries', label: 'Bibliotecas', value: getSelectedLibraryLabels().join(', ') });
   if (state.sort !== 'relevance') items.push({ key: 'sort', label: 'Ordenação', value: getSortLabel(state.sort, state.dir).replace(/^Ordenação:\s*/, '') });
@@ -1681,25 +1778,35 @@ function syncStateToUrl() {
   else url.searchParams.delete('compact');
   history.replaceState(null, '', url.toString());
 }
-function restoreStateFromUrl() {
+function restoreFilterState() {
   const url = new URL(location.href);
-  search.value = url.searchParams.get('q') || '';
-  authorFilter.value = url.searchParams.get('author') || '';
-  publisherFilter.value = url.searchParams.get('publisher') || '';
-  yearFilter.value = url.searchParams.get('year') || '';
-  const availabilityFromUrl = url.searchParams.get('availability') || 'all';
-  availabilityFilter.value = ['all','available','local','unavailable'].includes(availabilityFromUrl) ? availabilityFromUrl : 'all';
-  setSelectedLibrariesFromParam(url.searchParams.get('libraries') || '');
-  const sortFromUrl = url.searchParams.get('sort') || 'relevance';
-  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
-  sortDir = url.searchParams.get('dir') || 'asc';
+  const hasExplicitUrlState = ['q','author','publisher','year','availability','libraries','sort','dir','compact'].some((key) => url.searchParams.has(key));
+  const stored = hasExplicitUrlState ? null : getStoredFilterState();
+  const source = stored && typeof stored === 'object' ? stored : null;
+
+  search.value = hasExplicitUrlState ? (url.searchParams.get('q') || '') : (source?.q || '');
+  authorFilter.value = hasExplicitUrlState ? (url.searchParams.get('author') || '') : (source?.author || '');
+  publisherFilter.value = hasExplicitUrlState ? (url.searchParams.get('publisher') || '') : (source?.publisher || '');
+  yearFilter.value = hasExplicitUrlState ? (url.searchParams.get('year') || '') : (source?.year || '');
+
+  const availabilityValue = hasExplicitUrlState ? (url.searchParams.get('availability') || '') : (source?.availability || '');
+  setSelectedAvailabilityFromParam(availabilityValue);
+
+  const libraryValue = hasExplicitUrlState ? (url.searchParams.get('libraries') || '') : (source?.libraries || '');
+  setSelectedLibrariesFromParam(libraryValue);
+
+  const sortFromState = hasExplicitUrlState ? (url.searchParams.get('sort') || 'relevance') : (source?.sort || 'relevance');
+  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','status'].includes(sortFromState) ? sortFromState : 'relevance';
+  sortDir = hasExplicitUrlState ? (url.searchParams.get('dir') || 'asc') : (source?.dir || 'asc');
   sortSelect.value = sortKey;
   if (!['asc','desc'].includes(sortDir)) sortDir = 'asc';
-  const compactFromUrl = url.searchParams.get('compact');
+
+  const compactFromUrl = hasExplicitUrlState ? url.searchParams.get('compact') : null;
   const compactStored = (() => {
     try { return localStorage.getItem('blmf_catalog_compact') === '1'; } catch (e) { return false; }
   })();
-  setCompactMode(compactFromUrl === '1' || (compactFromUrl === null && compactStored), false);
+  const compactFromSession = source?.compact === true;
+  setCompactMode(compactFromUrl === '1' || (compactFromUrl === null && (compactFromSession || compactStored)), false);
 }
 async function copyText(textToCopy) {
   try {
@@ -1747,8 +1854,14 @@ function clearSingleFilter(key) {
   else if (key === 'author') authorFilter.value = '';
   else if (key === 'publisher') publisherFilter.value = '';
   else if (key === 'year') yearFilter.value = '';
-  else if (key === 'availability') availabilityFilter.value = 'all';
-  else if (key === 'libraries') selectedLibraryKeys.clear();
+  else if (key === 'availability') {
+    selectedAvailabilityKeys.clear();
+    availabilityAllExplicitlySelected = false;
+  }
+  else if (key === 'libraries') {
+    selectedLibraryKeys.clear();
+    libraryAllExplicitlySelected = false;
+  }
   else if (key === 'sort') {
     sortKey = 'relevance';
     sortDir = 'asc';
@@ -2818,7 +2931,6 @@ function groupCatalogRows(items) {
 }
 function currentRows() {
   lastQuery = parseQuery(search.value || '');
-  const availabilityValue = availabilityFilter.value || 'all';
   const filteredRaw = rows.filter((r) => {
     const queryMatch = scoreRow(r, lastQuery);
     r._score = queryMatch.score || 0;
@@ -2835,8 +2947,8 @@ function currentRows() {
     filtered = filtered.filter(rowMatchesSelectedLibraries);
   }
 
-  if (availabilityValue !== 'all') {
-    filtered = filtered.filter((r) => r._status?.key === availabilityValue);
+  if (!availabilityAllExplicitlySelected && selectedAvailabilityKeys.size) {
+    filtered = filtered.filter((r) => rowMatchesSelectedAvailability(r));
   }
 
   const statusRank = { available: 0, local: 1, unavailable: 2, check: 3 };
@@ -2900,10 +3012,12 @@ function render() {
   tbody.innerHTML = '';
   mobileResults.innerHTML = '';
   updateStats(filtered, visibleRows.length);
+  renderAvailabilityFilterOptions();
   renderLibraryFilterOptions();
   renderActiveFilters();
   paintHeaderSort();
   syncStateToUrl();
+  saveFilterStateToSession();
   empty.hidden = filtered.length !== 0;
 
   for (const r of visibleRows) {
@@ -3051,7 +3165,8 @@ function clearFilters() {
   authorFilter.value = '';
   publisherFilter.value = '';
   yearFilter.value = '';
-  availabilityFilter.value = 'all';
+  selectedAvailabilityKeys.clear();
+  availabilityAllExplicitlySelected = false;
   selectedLibraryKeys.clear();
   libraryAllExplicitlySelected = false;
   sortKey = 'relevance';
@@ -3163,18 +3278,18 @@ async function loadAuthenticatedLibraryContext(accessToken) {
 
   return null;
 }
-function updateLoginButtonState() {
-  if (!loginBtn) return;
-  const loggedIn = !!authState?.user;
-  loginBtn.disabled = false;
-  loginBtn.classList.remove('is-disabled');
-  loginBtn.setAttribute('aria-disabled', 'false');
-  loginBtn.textContent = loggedIn ? 'Logout' : 'Login';
-  loginBtn.title = loggedIn ? 'Sair' : 'Entrar';
+function updateTopbarButtonsState() {
+  if (loginBtn) {
+    const loggedIn = !!authState?.user;
+    loginBtn.disabled = false;
+    loginBtn.classList.remove('is-disabled');
+    loginBtn.setAttribute('aria-disabled', 'false');
+    loginBtn.textContent = loggedIn ? 'Logout' : 'Login';
+    loginBtn.title = loggedIn ? 'Sair' : 'Entrar';
+  }
   if (contaBtn) {
-    const isLibrarian = !!authState?.user && !!authState?.isLibrarian;
-    contaBtn.textContent = isLibrarian ? 'Painel' : 'Conta';
-    contaBtn.title = isLibrarian ? 'Abrir o painel de gestão' : 'Abrir a conta';
+    contaBtn.textContent = authState?.isLibrarian ? 'Painel' : 'Conta';
+    contaBtn.title = authState?.isLibrarian ? 'Abrir painel de gestão' : 'Abrir minha conta';
   }
 }
 
@@ -3234,10 +3349,14 @@ async function handleContaClick() {
 }
 async function handleLoginClick() {
   if (authState?.user) {
+    clearStoredFilterState();
     try {
       await supabase.auth.signOut();
     } catch (e) {}
-    location.assign(`${location.pathname}${location.search}${location.hash}`);
+    const cleanUrl = new URL(location.href);
+    cleanUrl.search = '';
+    cleanUrl.hash = '';
+    location.assign(cleanUrl.toString());
     return;
   }
   location.assign(buildCadastroUrl(location.href));
@@ -3246,7 +3365,24 @@ search.addEventListener('input', debouncedRender);
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
 yearFilter.addEventListener('input', render);
-availabilityFilter.addEventListener('change', render);
+availabilityFilterMenu.addEventListener('change', (e) => {
+  const input = e.target.closest('input[type="checkbox"]');
+  if (!input) return;
+  const value = normalize(input.value || '');
+  if (value === normalize(AVAILABILITY_FILTER_ALL_VALUE)) {
+    availabilityAllExplicitlySelected = input.checked;
+    if (input.checked) selectedAvailabilityKeys.clear();
+  } else if (input.checked) {
+    availabilityAllExplicitlySelected = false;
+    selectedAvailabilityKeys.add(value);
+  } else {
+    selectedAvailabilityKeys.delete(value);
+  }
+  render();
+});
+availabilityFilterDetails.addEventListener('toggle', () => {
+  if (availabilityFilterDetails.open) renderAvailabilityFilterOptions();
+});
 libraryFilterMenu.addEventListener('change', (e) => {
   const input = e.target.closest('input[type="checkbox"]');
   if (!input) return;
@@ -3266,6 +3402,9 @@ libraryFilterDetails.addEventListener('toggle', () => {
   if (libraryFilterDetails.open) renderLibraryFilterOptions();
 });
 document.addEventListener('click', (e) => {
+  if (availabilityFilterDetails.open && !availabilityFilterDetails.contains(e.target)) {
+    availabilityFilterDetails.open = false;
+  }
   if (!libraryFilterDetails.open) return;
   if (libraryFilterDetails.contains(e.target)) return;
   libraryFilterDetails.open = false;
@@ -3376,11 +3515,12 @@ document.addEventListener('keydown', (e) => {
   }
 });
 (async function init() {
-  restoreStateFromUrl();
   bindFloatingXScroll();
   bindTableJumpControls();
   authState = await getCurrentUserAndRole();
-  updateLoginButtonState();
+  syncStoredFilterStateWithAuth();
+  restoreFilterState();
+  updateTopbarButtonsState();
   await loadActiveReservedBibRefs();
   await loadPublicServiceState();
   rows = await loadRowsFromSupabase();
