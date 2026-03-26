@@ -1747,6 +1747,79 @@
               <small>Nesta fase, este bloco fica guardado no JSON bibliográfico para não quebrar o fluxo atual, enquanto a camada backend nativa ainda não foi aberta.</small>
             </div>
 
+            <div class="form-flow-break">
+              <strong>Exemplar digital / leitura</strong>
+              <span>Vincule aqui um PDF já presente no Storage. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
+            </div>
+
+            <input type="hidden" id="bookDigitalDraftResourceId" value="" />
+
+            <div class="field" style="grid-column: span 3;">
+              <div class="section-block">
+                <div class="inline">
+                  <div>
+                    <h4 class="section-title">PDF vinculado</h4>
+                    <div class="hint">MVP: vincule manualmente um PDF já enviado a um bucket. O envio direto pelo formulário pode vir depois.</div>
+                  </div>
+                  <div class="row-actions">
+                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
+                    <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
+                    <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
+                  </div>
+                </div>
+
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalLanguageCode">Idioma do arquivo</label>
+                    <input id="bookDigitalLanguageCode" type="text" placeholder="pt / es / fr" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalBucket">Bucket</label>
+                    <input id="bookDigitalBucket" type="text" placeholder="pdf-publico ou pdf-restrito" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalPath">Caminho do arquivo</label>
+                    <input id="bookDigitalPath" type="text" placeholder="colecao/arquivo.pdf" />
+                  </div>
+
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalSourceName">Fonte</label>
+                    <input id="bookDigitalSourceName" type="text" placeholder="gallica.bnf.fr / Bibliothèque nationale de France" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookDigitalSourceUrl">URL da fonte</label>
+                    <input id="bookDigitalSourceUrl" type="url" placeholder="https://..." />
+                  </div>
+
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookDigitalAttributionText">Fonte / atribuição</label>
+                    <input id="bookDigitalAttributionText" type="text" placeholder="Fonte: gallica.bnf.fr / Bibliothèque nationale de France" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalRightsStatus">Situação de direitos</label>
+                    <input id="bookDigitalRightsStatus" type="text" placeholder="dominio_publico" />
+                  </div>
+                </div>
+
+                <div class="inline" style="margin-top:12px; gap:18px; flex-wrap:wrap; align-items:flex-start;">
+                  <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
+                    <input id="bookDigitalIsPublic" type="checkbox" />
+                    <span>Disponibilizar ao público</span>
+                  </label>
+                  <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
+                    <input id="bookDigitalIsPrimary" type="checkbox" checked />
+                    <span>PDF principal desta ficha</span>
+                  </label>
+                  <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
+                    <input id="bookDigitalBibliographicMatch" type="checkbox" />
+                    <span>Correspondência bibliográfica validada</span>
+                  </label>
+                </div>
+
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF vinculado neste rascunho.</div>
+              </div>
+            </div>
+
             <div class="field" style="grid-column: span 3;">
               <label for="bookNotes">Notas</label>
               <textarea id="bookNotes" placeholder="Observações bibliográficas, estado do exemplar-matriz, notas internas…"></textarea>
@@ -2488,6 +2561,7 @@
       bookMaterialHint: el('bookMaterialHint'),
       bookContributorsWrap: el('bookContributorsWrap'),
       bookResponsibilityExtraWrap: el('bookResponsibilityExtraWrap'),
+      bookDigitalLinkedSummary: el('bookDigitalLinkedSummary'),
       bookCoverFileName: el('bookCoverFileName'),
       authorPhotoFileName: el('authorPhotoFileName'),
       labelBatchPreviewId: el('labelBatchPreviewId'),
@@ -3674,6 +3748,17 @@
         importFormat: el('bookImportFormat').value || '',
         importMethod: el('bookImportMethod').value || '',
         provenanceNote: el('bookProvenanceNote').value.trim(),
+        digitalDraftResourceId: el('bookDigitalDraftResourceId').value || '',
+        digitalLanguageCode: el('bookDigitalLanguageCode').value.trim(),
+        digitalBucket: el('bookDigitalBucket').value.trim(),
+        digitalPath: el('bookDigitalPath').value.trim(),
+        digitalSourceName: el('bookDigitalSourceName').value.trim(),
+        digitalSourceUrl: el('bookDigitalSourceUrl').value.trim(),
+        digitalAttributionText: el('bookDigitalAttributionText').value.trim(),
+        digitalRightsStatus: el('bookDigitalRightsStatus').value.trim(),
+        digitalIsPublic: !!el('bookDigitalIsPublic').checked,
+        digitalIsPrimary: !!el('bookDigitalIsPrimary').checked,
+        digitalBibliographicMatch: !!el('bookDigitalBibliographicMatch').checked,
         place: el('bookPlace').value.trim(),
         year: el('bookYear').value.trim(),
         isbn: el('bookISBN').value.trim(),
@@ -3708,6 +3793,177 @@
         return;
       }
       setBookDraftVisualState(bookDraftStableState || (el('bookDraftId').value ? 'saved' : 'new'));
+    }
+
+
+    function getBookDigitalAccessScopeLabel(isPublic) {
+      return isPublic ? 'Público' : 'Conta ativa';
+    }
+
+    function fillBookDigitalResourceFields(record = null) {
+      el('bookDigitalDraftResourceId').value = record?.id || '';
+      el('bookDigitalLanguageCode').value = record?.language_code || '';
+      el('bookDigitalBucket').value = record?.storage_bucket || '';
+      el('bookDigitalPath').value = record?.storage_path || '';
+      el('bookDigitalSourceName').value = record?.source_name || '';
+      el('bookDigitalSourceUrl').value = record?.source_url || '';
+      el('bookDigitalAttributionText').value = record?.attribution_text || '';
+      el('bookDigitalRightsStatus').value = record?.rights_status || '';
+      el('bookDigitalIsPublic').checked = String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico';
+      el('bookDigitalIsPrimary').checked = record ? !!record.is_primary : true;
+      el('bookDigitalBibliographicMatch').checked = !!record?.bibliographic_match_validated;
+      updateBookDigitalResourceSummary(record);
+    }
+
+    function resetBookDigitalResourceFields() {
+      fillBookDigitalResourceFields(null);
+    }
+
+    function updateBookDigitalResourceSummary(record = null) {
+      const bucket = record?.storage_bucket || el('bookDigitalBucket').value.trim();
+      const path = record?.storage_path || el('bookDigitalPath').value.trim();
+      const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
+      const isPublic = record ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico') : !!el('bookDigitalIsPublic').checked;
+      const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
+      const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
+      if (!bucket || !path) {
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF vinculado neste rascunho.';
+        return;
+      }
+      refs.bookDigitalLinkedSummary.textContent = `PDF vinculado: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+    }
+
+    async function loadBookDraftDigitalResource(draftId) {
+      resetBookDigitalResourceFields();
+      if (!draftId) return null;
+      const { data, error } = await supabase
+        .from('book_draft_digital_resources')
+        .select('*')
+        .eq('book_draft_id', Number(draftId))
+        .order('is_primary', { ascending: false })
+        .order('id', { ascending: true })
+        .limit(1);
+      if (error) throw error;
+      const record = Array.isArray(data) && data.length ? data[0] : null;
+      fillBookDigitalResourceFields(record);
+      return record;
+    }
+
+    function buildBookDraftDigitalResourcePayload(draftId) {
+      const resourceId = el('bookDigitalDraftResourceId').value || '';
+      const languageCode = el('bookDigitalLanguageCode').value.trim();
+      const storageBucket = el('bookDigitalBucket').value.trim();
+      const storagePath = el('bookDigitalPath').value.trim();
+      const sourceName = el('bookDigitalSourceName').value.trim();
+      const sourceUrl = el('bookDigitalSourceUrl').value.trim();
+      const attributionText = el('bookDigitalAttributionText').value.trim();
+      const rightsStatus = el('bookDigitalRightsStatus').value.trim();
+      const isPublic = !!el('bookDigitalIsPublic').checked;
+      const isPrimary = !!el('bookDigitalIsPrimary').checked;
+      const bibliographicMatchValidated = !!el('bookDigitalBibliographicMatch').checked;
+      const hasAnyValue = [languageCode, storageBucket, storagePath, sourceName, sourceUrl, attributionText, rightsStatus].some(Boolean);
+
+      if (!hasAnyValue) {
+        return { mode: 'empty', resourceId: resourceId || '' };
+      }
+
+      if (!storageBucket || !storagePath) {
+        throw new Error('Para vincular um PDF, informe o bucket e o caminho do arquivo.');
+      }
+
+      return {
+        mode: resourceId ? 'update' : 'insert',
+        resourceId,
+        payload: {
+          book_draft_id: Number(draftId),
+          resource_type: isPublic ? 'pdf_publico' : 'pdf_restrito',
+          usage_type: 'leitura_online',
+          access_scope: isPublic ? 'publico' : 'conta_ativa',
+          status: 'draft',
+          is_active: true,
+          storage_bucket: storageBucket,
+          storage_path: storagePath,
+          mime_type: 'application/pdf',
+          language_code: languageCode || null,
+          source_name: sourceName || null,
+          source_url: sourceUrl || null,
+          attribution_text: attributionText || null,
+          rights_status: rightsStatus || null,
+          is_primary: isPrimary,
+          bibliographic_match_validated: bibliographicMatchValidated,
+          label: attributionText || sourceName || 'PDF vinculado',
+        }
+      };
+    }
+
+    async function saveBookDraftDigitalResource(draftId) {
+      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de vincular o PDF.');
+      const normalized = buildBookDraftDigitalResourcePayload(draftId);
+      if (normalized.mode === 'empty') {
+        if (normalized.resourceId) {
+          const { error } = await supabase.from('book_draft_digital_resources').delete().eq('id', Number(normalized.resourceId));
+          if (error) throw error;
+        }
+        fillBookDigitalResourceFields(null);
+        return null;
+      }
+
+      if (normalized.mode === 'update') {
+        const { payload } = normalized;
+        delete payload.book_draft_id;
+        const { data, error } = await supabase
+          .from('book_draft_digital_resources')
+          .update(payload)
+          .eq('id', Number(normalized.resourceId))
+          .select()
+          .single();
+        if (error) throw error;
+        fillBookDigitalResourceFields(data);
+        return data;
+      }
+
+      const { data, error } = await supabase
+        .from('book_draft_digital_resources')
+        .insert(normalized.payload)
+        .select()
+        .single();
+      if (error) throw error;
+      fillBookDigitalResourceFields(data);
+      return data;
+    }
+
+    async function openBookDigitalPdfFromForm() {
+      const bucket = el('bookDigitalBucket').value.trim();
+      const path = el('bookDigitalPath').value.trim();
+      if (!bucket || !path) throw new Error('Informe o bucket e o caminho do PDF para abri-lo.');
+      const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
+      let resolvedUrl = signedData?.signedUrl || '';
+      if (!resolvedUrl) {
+        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+        resolvedUrl = publicData?.publicUrl || '';
+      }
+      if (signedError && !resolvedUrl) throw signedError;
+      if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este PDF.');
+      window.open(resolvedUrl, '_blank', 'noopener');
+    }
+
+    async function openBookDigitalReaderFromForm() {
+      const viewerUrl = new URL('ler.html', location.href);
+      const publishedBookId = Number(el('bookPublishedId').value || 0);
+      const bibRef = el('bookBibRef').value.trim();
+      const isPublic = !!el('bookDigitalIsPublic').checked;
+      if (isPublic) {
+        if (!publishedBookId) throw new Error('Publique a ficha primeiro para abrir este PDF público no leitor.');
+        const { data, error } = await supabase.rpc('get_book_primary_public_digital_asset', { p_book_id: publishedBookId });
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row?.asset_id) throw new Error('Ainda não existe um PDF público principal publicado para esta ficha.');
+        viewerUrl.searchParams.set('asset_id', String(row.asset_id));
+      } else {
+        if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
+        viewerUrl.searchParams.set('ref', bibRef);
+      }
+      window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
 
     function serializeAuthorFormState() {
@@ -4464,13 +4720,19 @@
         clearIsbnLookupResult();
         showMessage(refs.bookMessage, 'Consultando a Biblioteca Nacional…', 'info');
         try {
-          const { data, error } = await supabase.functions.invoke('bn_isbn_lookup', {
+          const invoked = await supabase.functions.invoke('bn_isbn_lookup', {
             body: { isbn, debug: false },
           });
-          const status = Number(error?.context?.status || 200);
-          if (error || !data?.ok) {
-            const message = data?.error || data?.message || error?.message || 'A busca na Biblioteca Nacional falhou.';
-            if (looksLikeBnNotFound({ status }, data, message)) {
+          const response = { ok: !invoked.error, status: invoked.error?.context?.status || 200 };
+          const data = invoked.data || null;
+          if (invoked.error && !data) {
+            throw invoked.error;
+          }
+          
+          
+          if (!response.ok || !data?.ok) {
+            const message = data?.error || data?.message || 'A busca na Biblioteca Nacional falhou.';
+            if (looksLikeBnNotFound(response, data, message)) {
               renderIsbnLookupResult({ ok: true, total: 0, results: [] }, isbn);
               showMessage(refs.bookMessage, 'ISBN não encontrado na base da Biblioteca Nacional.', 'info');
               return;
@@ -4889,6 +5151,7 @@
       const materialType = el('bookType').value;
       const collectionValue = el('bookCollection').value.trim();
       const subjectsValue = el('bookSubjects').value.trim();
+      updateBookDigitalResourceSummary();
       const acquisitionBridge = {
         acquisition_mode: el('bookAcquisitionMode').value || '',
         acquisition_date: el('bookAcquisitionDate').value || '',
@@ -5040,6 +5303,7 @@
       el('bookImportFormat').value = '';
       el('bookImportMethod').value = '';
       el('bookProvenanceNote').value = '';
+      resetBookDigitalResourceFields();
       el('bookCoverPath').value = '';
       el('bookCoverFile').value = '';
       refs.bookCoverFileName.textContent = 'Nenhum arquivo selecionado';
@@ -5187,6 +5451,12 @@
         syncBookDraftVisualState();
         updateBookQuickLabelPreview();
       });
+    });
+
+
+    ['bookDigitalLanguageCode','bookDigitalBucket','bookDigitalPath','bookDigitalSourceName','bookDigitalSourceUrl','bookDigitalAttributionText','bookDigitalRightsStatus','bookDigitalIsPublic','bookDigitalIsPrimary','bookDigitalBibliographicMatch'].forEach(id => {
+      el(id).addEventListener('input', updateBookDigitalResourceSummary);
+      el(id).addEventListener('change', updateBookDigitalResourceSummary);
     });
 
     el('bookPlace').addEventListener('blur', () => {
@@ -5580,6 +5850,7 @@
       el('bookImportFormat').value = provenanceBridge.import_format || '';
       el('bookImportMethod').value = provenanceBridge.import_method || '';
       el('bookProvenanceNote').value = provenanceBridge.provenance_note || '';
+      await loadBookDraftDigitalResource(enriched.id);
       el('bookPlace').value = normalizeBrazilianPublicationPlace(enriched.local_publicacao || '');
       el('bookYear').value = enriched.ano || '';
       el('bookISBN').value = enriched.isbn || '';
@@ -7320,6 +7591,38 @@
       setPreviewImage(refs.bookCoverPreview, '', 'covers');
     });
 
+
+    el('openBookDigitalPdfBtn').addEventListener('click', async () => {
+      try {
+        await openBookDigitalPdfFromForm();
+      } catch (error) {
+        showMessage(refs.bookMessage, error.message, 'error');
+      }
+    });
+
+    el('openBookDigitalReaderBtn').addEventListener('click', async () => {
+      try {
+        await openBookDigitalReaderFromForm();
+      } catch (error) {
+        showMessage(refs.bookMessage, error.message, 'error');
+      }
+    });
+
+    el('unlinkBookDigitalBtn').addEventListener('click', async () => {
+      try {
+        const resourceId = el('bookDigitalDraftResourceId').value || '';
+        if (resourceId) {
+          const { error } = await supabase.from('book_draft_digital_resources').delete().eq('id', Number(resourceId));
+          if (error) throw error;
+        }
+        resetBookDigitalResourceFields();
+        syncBookDraftVisualState();
+        showMessage(refs.bookMessage, 'PDF desvinculado deste rascunho.', 'ok');
+      } catch (error) {
+        showMessage(refs.bookMessage, error.message, 'error');
+      }
+    });
+
     el('clearAuthorPhotoBtn').addEventListener('click', () => {
       el('authorPhotoPath').value = '';
       setPreviewImage(refs.authorPhotoPreview, '', 'authors');
@@ -7332,13 +7635,22 @@
         const payload = await reuseExistingDraftIdIfNeeded('book_drafts', getBookDraftPayload(), 'published_book_id');
         if (!payload.titulo) throw new Error('Informe o título do livro.');
         const saved = await saveDraft('book_drafts', payload, refs.bookMessage, 'Rascunho de livro salvo com sucesso.');
+        const warnings = [];
         try {
           await saveBookDraftContributors(saved.id);
-          await fillBookForm(saved);
-          showMessage(refs.bookMessage, 'Rascunho de livro salvo com sucesso.', 'ok');
         } catch (contributorsError) {
-          await fillBookForm(saved);
-          showMessage(refs.bookMessage, `Rascunho salvo, mas não consegui gravar os autores múltiplos: ${contributorsError.message}`, 'error');
+          warnings.push(`não consegui gravar os autores múltiplos: ${contributorsError.message}`);
+        }
+        try {
+          await saveBookDraftDigitalResource(saved.id);
+        } catch (digitalError) {
+          warnings.push(`não consegui gravar o PDF vinculado: ${digitalError.message}`);
+        }
+        await fillBookForm(saved);
+        if (warnings.length) {
+          showMessage(refs.bookMessage, `Rascunho salvo, mas ${warnings.join(' ; ')}.`, 'error');
+        } else {
+          showMessage(refs.bookMessage, 'Rascunho de livro salvo com sucesso.', 'ok');
         }
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
