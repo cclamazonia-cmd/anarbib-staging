@@ -665,6 +665,8 @@
     const params = new URLSearchParams(location.search);
     const assetIdParam = (params.get("asset_id") || "").trim();
     const assetId = /^\d+$/.test(assetIdParam) ? Number(assetIdParam) : null;
+    const publicBucketParam = (params.get("public_bucket") || "").trim();
+    const publicPathParam = (params.get("public_path") || "").trim();
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
     const libraryContext = {
@@ -781,6 +783,15 @@
       if (sourceUrl) parts.push(sourceUrl);
       if (rightsStatus) parts.push(`Direitos: ${rightsStatus}`);
       return parts.join(" · ");
+    }
+
+    function getPreviewPublicAssetMeta() {
+      return {
+        attribution_text: String(params.get("public_attribution") || "").trim(),
+        source_name: String(params.get("public_source_name") || "").trim(),
+        source_url: String(params.get("public_source_url") || "").trim(),
+        rights_status: String(params.get("public_rights_status") || "").trim()
+      };
     }
 
     function uniqueList(values = []) {
@@ -1088,6 +1099,40 @@
       }
     }
 
+    async function downloadPublicPreviewBlob(bucket, path) {
+      const bucketName = String(bucket || "").trim();
+      const objectPath = String(path || "").trim().replace(/^\/+/, "");
+      if (!bucketName || !objectPath) {
+        throw new Error("Bucket ou caminho ausente para a pré-visualização pública do PDF.");
+      }
+
+      refreshReaderHeadings();
+      setAssetMetaLine(formatPublicAssetMeta(getPreviewPublicAssetMeta()));
+
+      const publicUrl = buildPublicStorageUrl(bucketName, objectPath);
+      if (!publicUrl) {
+        throw new Error("Não foi possível resolver a URL pública do PDF.");
+      }
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const response = await fetch(publicUrl, { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar o PDF público (${response.status}).`);
+        }
+        return await response.blob();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          throw new Error("A leitura pública demorou demais para responder.");
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+
     async function loadPdfJs() {
       try {
         const pdfjsLib = await import(PDFJS_MAIN);
@@ -1313,7 +1358,7 @@
         console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
       });
 
-      if (!assetId && !bibRef) {
+      if (!assetId && !(publicBucketParam && publicPathParam) && !bibRef) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
         return;
       }
@@ -1325,7 +1370,9 @@
         const pdfjsLib = await loadPdfJs();
         const blob = assetId
           ? await downloadPublicAssetBlob(assetId)
-          : await downloadPdfBlob(bibRef);
+          : ((publicBucketParam && publicPathParam)
+              ? await downloadPublicPreviewBlob(publicBucketParam, publicPathParam)
+              : await downloadPdfBlob(bibRef));
 
         if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
 
