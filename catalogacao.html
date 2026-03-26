@@ -52,11 +52,32 @@
     a { color: inherit; }
 
     .wrap {
-      --wrap-pad: 24px;
-      max-width: none;
-      width: 100%;
-      margin: 0;
-      padding: var(--wrap-pad);
+      position: relative;
+      isolation: isolate;
+      max-width: 1680px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .wrap::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      z-index: 0;
+      pointer-events: none;
+      border-radius: 26px;
+      background-image: var(--brand-panel-bg-image, var(--brand-bg-image, none));
+      background-position: var(--brand-panel-bg-position, var(--brand-bg-position, center center));
+      background-size: var(--brand-panel-bg-size, var(--brand-bg-size, cover));
+      background-repeat: no-repeat;
+      opacity: .72;
+      mix-blend-mode: soft-light;
+      filter: saturate(.98) contrast(1.02);
+    }
+
+    .wrap > * {
+      position: relative;
+      z-index: 1;
     }
 
     .topbar {
@@ -74,16 +95,7 @@
       gap: 12px;
     }
 
-    .hero-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-width: 0;
-      flex: 1 1 420px;
-    }
-
-    .logo,
-    .topbar-logo {
+    .logo {
       height: 64px;
       width: auto;
       max-width: 170px;
@@ -93,13 +105,11 @@
       filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
     }
 
-    .hero-actions {
+    .topbar-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: flex-start;
-      margin-top: 10px;
     }
 
     .btn {
@@ -131,68 +141,33 @@
     }
 
     .hero {
-      width: calc(100% + (2 * var(--wrap-pad)));
-      max-width: none;
-      background: linear-gradient(135deg, var(--red-2), var(--bg));
+      background: linear-gradient(135deg, var(--red-2), var(--red));
       border: 1px solid var(--line);
-      border-radius: 0 0 22px 22px;
+      border-radius: 22px;
       padding: 18px;
       box-shadow: var(--shadow);
       margin-bottom: 16px;
-      margin-left: calc(-1 * var(--wrap-pad));
-      margin-right: calc(-1 * var(--wrap-pad));
-      border-left: none;
-      border-right: none;
     }
 
     .hero h1 {
       margin: 0 0 6px;
-      font-size: clamp(1.8rem, 3vw, 3rem);
-      line-height: 1.05;
+      font-size: 1.5rem;
+      line-height: 1.1;
       font-family: var(--brand-font-heading, var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif));
     }
 
     .hero p {
       margin: 0;
       color: rgba(255,255,255,.92);
-      font-size: 1rem;
+      font-size: .98rem;
       line-height: 1.35;
       max-width: 980px;
-    }
-
-    .hero-actions .btn {
-      min-height: 0;
-      padding: 10px 12px;
-      font-size: .95rem;
-      width: auto;
-    }
-
-    .hero-actions .btn:visited {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .hero-actions-separator {
-      width: 1px;
-      align-self: stretch;
-      min-height: 32px;
-      background: rgba(255,255,255,.14);
-      border-radius: 999px;
-      flex: 0 0 1px;
     }
 
     .toolbar {
       margin-bottom: 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-    }
-
-    .toolbar-meta {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
       gap: 12px;
     }
 
@@ -203,23 +178,6 @@
       align-items: center;
     }
 
-    .toolbar-actions-status {
-      flex: 1 1 360px;
-    }
-
-    .toolbar-actions-main {
-      justify-content: flex-end;
-    }
-
-    .toolbar-actions-status,
-    .toolbar-actions-main {
-      padding: 12px 14px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: linear-gradient(180deg, rgba(179,0,24,.12), rgba(255,255,255,.03));
-      box-shadow: var(--shadow);
-    }
-
     .mode-switch {
       display: flex;
       flex-wrap: wrap;
@@ -228,7 +186,7 @@
       padding: 12px 14px;
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,.10);
-      background: linear-gradient(180deg, rgba(179,0,24,.12), rgba(255,255,255,.03));
+      background: var(--panel);
       box-shadow: var(--shadow);
     }
 
@@ -411,7 +369,7 @@
       justify-content: space-between;
       gap: 12px;
       padding: 16px 18px;
-      background: linear-gradient(180deg, rgba(38,6,10,.96), rgba(18,18,18,.96));
+      background: linear-gradient(180deg, #1a1a1a, #121212);
       border-bottom: 1px solid rgba(255,255,255,.06);
       flex-wrap: wrap;
     }
@@ -470,14 +428,12 @@
       display: grid;
       grid-template-columns: 340px minmax(0, 1fr);
       gap: 16px;
-      align-items: start;
     }
 
     .card {
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+      background: rgba(255,255,255,.02);
       padding: 14px;
     }
 
@@ -503,7 +459,6 @@
       border-radius: 18px;
       background: linear-gradient(180deg, rgba(179,0,24,.14), rgba(255,255,255,.03));
       border: 1px solid rgba(255,255,255,.12);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
 
     .field label {
@@ -809,10 +764,6 @@
     .table-wrap {
       overflow: auto;
       max-height: 72vh;
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 18px;
-      background: rgba(255,255,255,.02);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
     }
 
     table {
@@ -1235,8 +1186,7 @@
     }
 
     @media (max-width: 980px) {
-      .logo,
-      .topbar-logo { width: auto; max-width: 118px; height: 56px; }
+      .logo { width: auto; max-width: 118px; height: 56px; }
       .grid.cols-2,
       .grid.cols-4,
       .statusbar {
@@ -1244,22 +1194,8 @@
       }
     }
 
-    @media (max-width: 640px) {
-      .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
-      .hero-actions { justify-content: flex-start; }
-      .hero-actions .btn { width: 100%; }
-      .hero-actions-separator { display: none; }
-      .toolbar-meta {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .toolbar-actions-main {
-        justify-content: flex-start;
-      }
-    }
-
     @media (max-width: 760px) {
-      .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
+      .wrap { padding: 14px; }
       .table-wrap { max-height: none; }
       table { min-width: 820px; }
       .tabs .tab-btn-separator {
@@ -1378,38 +1314,40 @@
       table-layout: auto;
     }
 
+    @media (max-width: 780px) {
+      .wrap::before {
+        opacity: .58;
+        background-position: center top;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div class="wrap">
-    <section class="hero">
-      <div class="topbar">
-        <div class="hero-copy">
-          <h1>Catalogação - ANARBIB</h1>
-          <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
-        </div>
-        <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
       </div>
-      <div class="hero-actions">
+      <div class="topbar-actions">
         <a class="btn" id="btnPainel" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html">Voltar ao painel</a>
         <a class="btn" id="btnCatalogoTop" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html/">Voltar ao catálogo</a>
-        <span class="hero-actions-separator" aria-hidden="true"></span>
         <a class="btn" id="btnCadastroTop" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html">Cadastro</a>
-        <span class="hero-actions-separator" aria-hidden="true"></span>
         <a class="btn" id="btnManualTop" href="https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual do AnarBib</a>
       </div>
+    </div>
+
+    <section class="hero">
+      <h1>Catalogação - ANARBIB</h1>
+      <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
     </section>
 
     <section class="toolbar">
-      <div class="toolbar-meta">
-        <div class="toolbar-actions toolbar-actions-status">
-          <span id="userEmail" class="pill info">Sem sessão</span>
-          <span id="rolePill" class="pill warn">Verificando acesso…</span>
-        </div>
-        <div class="toolbar-actions toolbar-actions-main">
-          <button id="loginBtn" class="button primary">Fazer login</button>
-          <button id="refreshAllBtn" class="button secondary">Atualizar</button>
-        </div>
+      <div class="toolbar-actions">
+        <span id="userEmail" class="pill info">Sem sessão</span>
+        <span id="rolePill" class="pill warn">Verificando acesso…</span>
+        <button id="loginBtn" class="button primary">Fazer login</button>
+        <button id="refreshAllBtn" class="button secondary">Atualizar</button>
       </div>
       <div class="mode-switch" aria-label="Profundidade da ficha">
         <span class="mode-switch-label">Modo da ficha</span>
@@ -1674,72 +1612,6 @@
                 <option value="false">Somente consulta</option>
               </select>
               <small id="bookMaterialHint" class="material-note">Livros e brochuras podem ser marcados conforme o uso interno.</small>
-            </div>
-
-            <div class="form-flow-break">
-              <strong>Aquisição, proveniência e pertencimento</strong>
-              <span>Registre como o item entrou, de onde vieram os metadados e como ele pode circular no futuro, sem confundir isso com um empréstimo inter-bibs já operacional.</span>
-            </div>
-
-            <div class="field">
-              <label for="bookAcquisitionMode">Modo de entrada</label>
-              <select id="bookAcquisitionMode"></select>
-            </div>
-
-            <div class="field">
-              <label for="bookAcquisitionDate">Data de entrada</label>
-              <input id="bookAcquisitionDate" type="date" />
-            </div>
-
-            <div class="field">
-              <label for="bookMutualizationStatus">Situação na rede</label>
-              <select id="bookMutualizationStatus"></select>
-            </div>
-
-            <div class="field">
-              <label for="bookOwnerLibrary">Biblioteca proprietária</label>
-              <input id="bookOwnerLibrary" type="text" placeholder="BLMF - Belém do Pará" />
-            </div>
-
-            <div class="field">
-              <label for="bookHolderLibrary">Biblioteca detentora atual</label>
-              <input id="bookHolderLibrary" type="text" placeholder="BLMF - Belém do Pará" />
-            </div>
-
-            <div class="field">
-              <label for="bookAcquisitionSourceLabel">Doador(a) / origem imediata</label>
-              <input id="bookAcquisitionSourceLabel" type="text" placeholder="Doação de compa, compra, lote parceiro, acervo transferido…" />
-            </div>
-
-            <div class="field mode-complete-only">
-              <label for="bookPartnerSource">Fonte parceira</label>
-              <select id="bookPartnerSource"></select>
-            </div>
-
-            <div class="field mode-complete-only">
-              <label for="bookSourceRecordId">ID do registro de origem</label>
-              <input id="bookSourceRecordId" type="text" placeholder="ID externo / controle do parceiro" />
-            </div>
-
-            <div class="field mode-complete-only">
-              <label for="bookSourceRecordUrl">URL do registro de origem</label>
-              <input id="bookSourceRecordUrl" type="url" placeholder="https://..." />
-            </div>
-
-            <div class="field mode-complete-only">
-              <label for="bookImportFormat">Formato de importação</label>
-              <select id="bookImportFormat"></select>
-            </div>
-
-            <div class="field mode-complete-only">
-              <label for="bookImportMethod">Modo de importação</label>
-              <select id="bookImportMethod"></select>
-            </div>
-
-            <div class="field mode-complete-only" style="grid-column: span 3;">
-              <label for="bookProvenanceNote">Nota de proveniência</label>
-              <textarea id="bookProvenanceNote" placeholder="Ex.: registro retomado do CSL Milano, corrigido localmente a partir do exemplar em mãos; lote de doação; importação semi-automática validada pela biblioteca."></textarea>
-              <small>Nesta fase, este bloco fica guardado no JSON bibliográfico para não quebrar o fluxo atual, enquanto a camada backend nativa ainda não foi aberta.</small>
             </div>
 
             <div class="field" style="grid-column: span 3;">
@@ -2393,51 +2265,10 @@
       bnLookup: null,
       queueSelection: new Set(),
       catalogacaoMode: 'simple',
+      lastAccessConfirmedAt: 0,
+      lastRefreshAt: 0,
+      lastRefreshReason: '',
     };
-
-    const BOOK_ACQUISITION_MODE_OPTIONS = [
-      ['purchase', 'Compra'],
-      ['donation', 'Doação'],
-      ['exchange', 'Troca'],
-      ['deposit', 'Depósito'],
-      ['transfer', 'Transferência'],
-      ['long_loan', 'Empréstimo longo'],
-      ['external_import', 'Importação externa'],
-    ];
-
-    const BOOK_MUTUALIZATION_STATUS_OPTIONS = [
-      ['local_only', 'Local somente'],
-      ['network_visible', 'Visível na rede'],
-      ['mutualizable', 'Mutualizável'],
-      ['consultation_only', 'Consulta no local'],
-    ];
-
-    const BOOK_PARTNER_SOURCE_OPTIONS = [
-      ['bn', 'Biblioteca Nacional'],
-      ['csl_milano', 'CSL Milano'],
-      ['cira_lausanne', 'CIRA Lausanne'],
-      ['rebal', 'RebAL'],
-      ['ficedl', 'FICEDL'],
-      ['worldcat', 'WorldCat / OCLC'],
-      ['other_partner', 'Outro parceiro'],
-    ];
-
-    const BOOK_IMPORT_FORMAT_OPTIONS = [
-      ['unimarc_iso2709', 'UNIMARC ISO2709'],
-      ['marc21', 'MARC21'],
-      ['dc_xml', 'Dublin Core XML'],
-      ['ead_2002_xml', 'EAD 2002 XML'],
-      ['csv', 'CSV'],
-      ['json', 'JSON'],
-      ['manual', 'Entrada manual'],
-    ];
-
-    const BOOK_IMPORT_METHOD_OPTIONS = [
-      ['manual', 'Manual'],
-      ['semi_automatic', 'Semi-automática'],
-      ['automatic', 'Automática'],
-      ['negotiated_batch', 'Lote negociado'],
-    ];
 
     const el = (id) => document.getElementById(id);
 
@@ -2862,83 +2693,6 @@
       if (Object.prototype.hasOwnProperty.call(next, 'subjects')) delete next.subjects;
       return next;
     }
-    function pruneJsonBridgeObject(payload = {}) {
-      return Object.fromEntries(
-        Object.entries(payload || {}).filter(([_, value]) => {
-          if (value === null || value === undefined) return false;
-          if (typeof value === 'string') return value.trim() !== '';
-          return true;
-        })
-      );
-    }
-
-    function getMarcJsonBridgeBlock(record = {}, key = '') {
-      const marc = getMarcJsonObject(record?.marc_json || record);
-      const value = marc?.[key];
-      return value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {};
-    }
-
-    function mergeMarcJsonBridgeBlock(rawValue, key, payload) {
-      const next = getMarcJsonObject(rawValue);
-      const cleaned = pruneJsonBridgeObject(payload);
-      if (Object.keys(cleaned).length) {
-        next[key] = cleaned;
-      } else if (Object.prototype.hasOwnProperty.call(next, key)) {
-        delete next[key];
-      }
-      return next;
-    }
-
-    function getBookAcquisitionBridge(record = {}) {
-      return getMarcJsonBridgeBlock(record, 'anarbib_acquisition');
-    }
-
-    function getBookProvenanceBridge(record = {}) {
-      return getMarcJsonBridgeBlock(record, 'anarbib_provenance');
-    }
-
-    function getBookNetworkBridge(record = {}) {
-      return getMarcJsonBridgeBlock(record, 'anarbib_network');
-    }
-
-    function renderSelectWithOptions(selectId, options = [], blankLabel = 'Sem indicação') {
-      const node = el(selectId);
-      if (!node) return;
-      const previousValue = node.value || '';
-      node.innerHTML = [`<option value="">${sanitize(blankLabel)}</option>`, ...options.map(([value, label]) => `<option value="${sanitize(value)}">${sanitize(label)}</option>`)].join('');
-      if (previousValue && Array.from(node.options).some(option => option.value === previousValue)) {
-        node.value = previousValue;
-      }
-    }
-
-    function getProfileDefaultLibraryLabel() {
-      return compactSpaces(
-        state.profile?.library_name
-        || state.profile?.default_library_name
-        || state.profile?.default_library_slug
-        || ''
-      );
-    }
-
-    function renderBookAcquisitionBridgeOptions() {
-      renderSelectWithOptions('bookAcquisitionMode', BOOK_ACQUISITION_MODE_OPTIONS, 'Sem indicação');
-      renderSelectWithOptions('bookMutualizationStatus', BOOK_MUTUALIZATION_STATUS_OPTIONS, 'Sem indicação');
-      renderSelectWithOptions('bookPartnerSource', BOOK_PARTNER_SOURCE_OPTIONS, 'Sem indicação');
-      renderSelectWithOptions('bookImportFormat', BOOK_IMPORT_FORMAT_OPTIONS, 'Sem indicação');
-      renderSelectWithOptions('bookImportMethod', BOOK_IMPORT_METHOD_OPTIONS, 'Sem indicação');
-    }
-
-    function seedBookOwnershipDefaults(force = false) {
-      const libraryLabel = getProfileDefaultLibraryLabel();
-      if (!libraryLabel) return;
-      const ownerNode = el('bookOwnerLibrary');
-      const holderNode = el('bookHolderLibrary');
-      if (ownerNode && (force || !String(ownerNode.value || '').trim())) ownerNode.value = libraryLabel;
-      if (holderNode && (force || !String(holderNode.value || '').trim())) holderNode.value = libraryLabel;
-      const networkNode = el('bookMutualizationStatus');
-      if (networkNode && (force || !String(networkNode.value || '').trim())) networkNode.value = 'local_only';
-    }
-
 
     function isUppercaseNameToken(token = '') {
       const cleaned = String(token || '').replace(/^[^0-9A-Za-zÀ-ÿ]+|[^0-9A-Za-zÀ-ÿ]+$/g, '');
@@ -3657,18 +3411,6 @@
         edition: el('bookEdition').value.trim(),
         publisher: el('bookPublisher').value.trim(),
         collection: el('bookCollection').value.trim(),
-        acquisitionMode: el('bookAcquisitionMode').value || '',
-        acquisitionDate: el('bookAcquisitionDate').value || '',
-        mutualizationStatus: el('bookMutualizationStatus').value || '',
-        ownerLibrary: el('bookOwnerLibrary').value.trim(),
-        holderLibrary: el('bookHolderLibrary').value.trim(),
-        acquisitionSourceLabel: el('bookAcquisitionSourceLabel').value.trim(),
-        partnerSource: el('bookPartnerSource').value || '',
-        sourceRecordId: el('bookSourceRecordId').value.trim(),
-        sourceRecordUrl: el('bookSourceRecordUrl').value.trim(),
-        importFormat: el('bookImportFormat').value || '',
-        importMethod: el('bookImportMethod').value || '',
-        provenanceNote: el('bookProvenanceNote').value.trim(),
         place: el('bookPlace').value.trim(),
         year: el('bookYear').value.trim(),
         isbn: el('bookISBN').value.trim(),
@@ -3895,15 +3637,19 @@
       syncCatalogacaoTabLocation(resolvedTab);
     }
 
+    const CATALOGACAO_REFRESH_COOLDOWN_MS = 2500;
     let catalogacaoRefreshPromise = null;
 
     function getActiveCatalogacaoTab() {
       return document.querySelector('.panel.active')?.id || getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getAvailableCatalogacaoTabs()[0] || 'batchesPanel';
     }
 
+    function hasRecentCatalogacaoRefresh(force = false) {
+      if (force) return false;
+      return Date.now() - (state.lastRefreshAt || 0) < CATALOGACAO_REFRESH_COOLDOWN_MS;
+    }
+
     async function refreshCatalogacaoForActiveTab() {
-      await requireSession();
-      await loadProfile();
       await loadBatches();
 
       const activeTab = getActiveCatalogacaoTab();
@@ -3918,12 +3664,96 @@
       updateStats();
     }
 
-    async function refreshCatalogacaoView() {
+    async function runCatalogacaoRefresh({ showSuccess = false, force = false, scope = 'full', softProfile = false, reason = 'manual' } = {}) {
       if (catalogacaoRefreshPromise) return catalogacaoRefreshPromise;
-      catalogacaoRefreshPromise = refreshCatalogacaoForActiveTab().finally(() => {
-        catalogacaoRefreshPromise = null;
-      });
+      if (hasRecentCatalogacaoRefresh(force)) return null;
+
+      catalogacaoRefreshPromise = (async () => {
+        const hadVisibleSession = !!state.session?.user?.id;
+        if (!hadVisibleSession) refs.userEmail.textContent = 'Verificando sessão…';
+        refs.rolePill.textContent = hadVisibleSession && softProfile ? 'Confirmando acesso…' : 'Verificando acesso…';
+        refs.rolePill.className = 'pill warn';
+
+        try {
+          clearMessage(refs.globalMessage);
+          await requireSession();
+          const profileState = await loadProfile({ soft: softProfile });
+          if (!profileState?.confirmed) {
+            updateLoginButton();
+            if (showSuccess) {
+              showMessage(refs.globalMessage, 'Sessão ativa, mas o acesso bibliotecário ainda não pôde ser reconfirmado.', 'info');
+            }
+            return { ok: false, pending: true, reason, scope };
+          }
+
+          const currentTab = getActiveCatalogacaoTab();
+
+          if (scope === 'active') {
+            await refreshCatalogacaoForActiveTab();
+          } else {
+            const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+            setTab(currentTab);
+            if (refs.labelBatchPreviewId?.value) {
+              try {
+                await loadLabelSheetPreview();
+              } catch (labelError) {
+                console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+              }
+            }
+            updateStats();
+
+            const failedSources = [];
+            if (batchesResult?.ok === false) failedSources.push('lotes');
+            if (queueResult?.ok === false) failedSources.push('fila editorial');
+            if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
+            if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
+            if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+
+            if (failedSources.length) {
+              showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+            } else if (showSuccess) {
+              showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+            }
+          }
+
+          updateLoginButton();
+          return { ok: true, reason, scope };
+        } catch (error) {
+          updateLoginButton();
+          console.error(error);
+          if (!state.session?.user?.id) {
+            refs.rolePill.textContent = 'Faça login para usar a catalogação';
+            refs.rolePill.className = 'pill danger';
+          } else if (error?.message === 'Usuário sem permissão bibliotecária.') {
+            refs.rolePill.textContent = 'Acesso restrito';
+            refs.rolePill.className = 'pill danger';
+          } else if (softProfile && state.isLibrarian) {
+            refs.rolePill.textContent = 'Sessão ativa · confirmando acesso…';
+            refs.rolePill.className = 'pill warn';
+          } else {
+            refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+            refs.rolePill.className = 'pill danger';
+          }
+          if (state.session?.user?.id && error?.message && !(softProfile && state.isLibrarian)) {
+            showMessage(refs.globalMessage, error.message, 'error');
+          }
+          return { ok: false, error, reason, scope };
+        } finally {
+          state.lastRefreshAt = Date.now();
+          state.lastRefreshReason = reason;
+          catalogacaoRefreshPromise = null;
+        }
+      })();
+
       return catalogacaoRefreshPromise;
+    }
+
+    function scheduleCatalogacaoAutoRefresh(reason, { force = false, scope = 'active' } = {}) {
+      return runCatalogacaoRefresh({ force, scope, softProfile: true, reason });
+    }
+
+    async function refreshCatalogacaoView() {
+      return scheduleCatalogacaoAutoRefresh('catalogacao-view', { scope: 'active' });
     }
 
     function openActiveDraftsView() {
@@ -3970,7 +3800,7 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         setTab(btn.dataset.tab);
-        await refreshCatalogacaoForActiveTab();
+        await scheduleCatalogacaoAutoRefresh('tab-switch', { force: true, scope: 'active' });
       });
     });
 
@@ -4891,24 +4721,6 @@
       const materialType = el('bookType').value;
       const collectionValue = el('bookCollection').value.trim();
       const subjectsValue = el('bookSubjects').value.trim();
-      const acquisitionBridge = {
-        acquisition_mode: el('bookAcquisitionMode').value || '',
-        acquisition_date: el('bookAcquisitionDate').value || '',
-        owner_library: el('bookOwnerLibrary').value.trim() || '',
-        holder_library: el('bookHolderLibrary').value.trim() || '',
-        source_label: el('bookAcquisitionSourceLabel').value.trim() || '',
-      };
-      const provenanceBridge = {
-        partner_source: el('bookPartnerSource').value || '',
-        source_record_id: el('bookSourceRecordId').value.trim() || '',
-        source_record_url: el('bookSourceRecordUrl').value.trim() || '',
-        import_format: el('bookImportFormat').value || '',
-        import_method: el('bookImportMethod').value || '',
-        provenance_note: el('bookProvenanceNote').value.trim() || '',
-      };
-      const networkBridge = {
-        mutualization_status: el('bookMutualizationStatus').value || '',
-      };
       const normalizedBookPlace = applyNormalizedBookPlaceValue();
       return {
         id: el('bookDraftId').value || undefined,
@@ -4940,21 +4752,9 @@
         loanable: materialType === 'periodico' ? false : el('bookLoanable').value === 'true',
         colecao: collectionValue || null,
         cover_object_path: el('bookCoverPath').value.trim() || null,
-        marc_json: mergeMarcJsonBridgeBlock(
-          mergeMarcJsonBridgeBlock(
-            mergeMarcJsonBridgeBlock(
-              mergeBookSubjectsIntoMarcJson(
-                mergeBookCollectionIntoMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), collectionValue),
-                subjectsValue
-              ),
-              'anarbib_acquisition',
-              acquisitionBridge
-            ),
-            'anarbib_provenance',
-            provenanceBridge
-          ),
-          'anarbib_network',
-          networkBridge
+        marc_json: mergeBookSubjectsIntoMarcJson(
+          mergeBookCollectionIntoMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), collectionValue),
+          subjectsValue
         ),
         created_by: state.profile.id,
         updated_by: state.profile.id,
@@ -5030,18 +4830,6 @@
       el('bookMarcJson').value = '';
       el('bookCollection').value = '';
       el('bookSubjects').value = '';
-      el('bookAcquisitionMode').value = '';
-      el('bookAcquisitionDate').value = '';
-      el('bookMutualizationStatus').value = '';
-      el('bookOwnerLibrary').value = '';
-      el('bookHolderLibrary').value = '';
-      el('bookAcquisitionSourceLabel').value = '';
-      el('bookPartnerSource').value = '';
-      el('bookSourceRecordId').value = '';
-      el('bookSourceRecordUrl').value = '';
-      el('bookImportFormat').value = '';
-      el('bookImportMethod').value = '';
-      el('bookProvenanceNote').value = '';
       el('bookCoverPath').value = '';
       el('bookCoverFile').value = '';
       refs.bookCoverFileName.textContent = 'Nenhum arquivo selecionado';
@@ -5049,7 +4837,6 @@
       refs.bookResponsibilityExtraWrap.innerHTML = '';
       refs.bookResponsibilityExtraWrap.classList.add('is-hidden');
       syncBookTypeUI();
-      seedBookOwnershipDefaults(true);
       setPreviewImage(refs.bookCoverPreview, '', 'covers');
       hidePublishedPopup('book');
       bookDraftStableState = 'new';
@@ -5285,29 +5072,61 @@
       return null;
     }
 
-    async function loadProfile() {
+    async function loadProfile(options = {}) {
+      const { soft = false } = options;
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
+      const previousProfile = state.profile && String(state.profile.user_id || state.profile.id || '') === String(userId)
+        ? state.profile
+        : null;
+      const hadConfirmedLibrarian = state.isLibrarian === true && !!state.lastAccessConfirmedAt && !!previousProfile;
       const data = await fetchAccessRecord(userId);
 
-      state.profile = data || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.can_access_catalogacao === true;
-
-      updateLoginButton();
-
-      if (state.isLibrarian) {
+      if (data?.can_access_catalogacao === true) {
+        state.profile = data;
+        state.isLibrarian = true;
+        state.lastAccessConfirmedAt = Date.now();
+        updateLoginButton();
         refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
-        return;
+        return { confirmed: true, pending: false };
       }
 
-      refs.rolePill.textContent = 'Acesso restrito';
-      refs.rolePill.className = 'pill danger';
-      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
-      throw new Error('Usuário sem permissão bibliotecária.');
+      if (data) {
+        state.profile = data;
+        state.isLibrarian = false;
+        state.lastAccessConfirmedAt = 0;
+        updateLoginButton();
+        refs.rolePill.textContent = 'Acesso restrito';
+        refs.rolePill.className = 'pill danger';
+        showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+        throw new Error('Usuário sem permissão bibliotecária.');
+      }
+
+      state.profile = previousProfile || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      updateLoginButton();
+      refs.userEmail.textContent = state.profile?.email || state.session?.user?.email || 'Usuário autenticado';
+
+      if (soft && hadConfirmedLibrarian) {
+        state.isLibrarian = true;
+        refs.rolePill.textContent = 'Sessão ativa · confirmando acesso…';
+        refs.rolePill.className = 'pill warn';
+        return { confirmed: true, pending: true };
+      }
+
+      state.isLibrarian = false;
+      refs.rolePill.textContent = soft ? 'Sessão ativa · acesso não reconfirmado' : 'Não foi possível confirmar o acesso';
+      refs.rolePill.className = 'pill warn';
+
+      if (soft) {
+        return { confirmed: false, pending: true };
+      }
+
+      showMessage(refs.globalMessage, 'Não foi possível confirmar o acesso bibliotecário agora.', 'error');
+      throw new Error('Não foi possível confirmar o acesso.');
     }
 
     async function loadBatches() {
@@ -5464,58 +5283,13 @@
     }
 
     async function refreshAll(showSuccess = false) {
-      refs.userEmail.textContent = 'Verificando sessão…';
-      refs.rolePill.textContent = 'Verificando acesso…';
-      refs.rolePill.className = 'pill warn';
-
-      try {
-        clearMessage(refs.globalMessage);
-        await requireSession();
-        await loadProfile();
-        renderBookAcquisitionBridgeOptions();
-        seedBookOwnershipDefaults(false);
-        const currentTab = getActiveCatalogacaoTab();
-        const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
-        setTab(currentTab);
-        if (refs.labelBatchPreviewId?.value) {
-          try {
-            await loadLabelSheetPreview();
-          } catch (labelError) {
-            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-          }
-        }
-        updateStats();
-        updateLoginButton();
-
-        const failedSources = [];
-        if (batchesResult?.ok === false) failedSources.push('lotes');
-        if (queueResult?.ok === false) failedSources.push('fila editorial');
-        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
-
-        if (failedSources.length) {
-          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-        } else if (showSuccess) {
-          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-        }
-      } catch (error) {
-        updateLoginButton();
-        console.error(error);
-        if (!state.session?.user?.id) {
-          refs.rolePill.textContent = 'Faça login para usar a catalogação';
-          refs.rolePill.className = 'pill danger';
-        } else if (!state.isLibrarian) {
-          refs.rolePill.textContent = 'Acesso restrito';
-          refs.rolePill.className = 'pill danger';
-        } else {
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
-        }
-        if (state.session?.user?.id && error?.message) {
-          showMessage(refs.globalMessage, error.message, 'error');
-        }
-      }
+      return runCatalogacaoRefresh({
+        showSuccess,
+        force: true,
+        scope: 'full',
+        softProfile: false,
+        reason: showSuccess ? 'manual-refresh' : 'initial-load',
+      });
     }
 
     async function saveDraft(table, payload, messageTarget, successText) {
@@ -5566,22 +5340,7 @@
       el('bookAuthor').value = enriched.autor || '';
       el('bookEdition').value = enriched.edicao || '';
       el('bookPublisher').value = enriched.editora || '';
-      const acquisitionBridge = getBookAcquisitionBridge(enriched);
-      const provenanceBridge = getBookProvenanceBridge(enriched);
-      const networkBridge = getBookNetworkBridge(enriched);
       el('bookCollection').value = getBookCollectionValue(enriched);
-      el('bookAcquisitionMode').value = acquisitionBridge.acquisition_mode || '';
-      el('bookAcquisitionDate').value = acquisitionBridge.acquisition_date || '';
-      el('bookMutualizationStatus').value = networkBridge.mutualization_status || '';
-      el('bookOwnerLibrary').value = acquisitionBridge.owner_library || '';
-      el('bookHolderLibrary').value = acquisitionBridge.holder_library || '';
-      el('bookAcquisitionSourceLabel').value = acquisitionBridge.source_label || '';
-      el('bookPartnerSource').value = provenanceBridge.partner_source || '';
-      el('bookSourceRecordId').value = provenanceBridge.source_record_id || '';
-      el('bookSourceRecordUrl').value = provenanceBridge.source_record_url || '';
-      el('bookImportFormat').value = provenanceBridge.import_format || '';
-      el('bookImportMethod').value = provenanceBridge.import_method || '';
-      el('bookProvenanceNote').value = provenanceBridge.provenance_note || '';
       el('bookPlace').value = normalizeBrazilianPublicationPlace(enriched.local_publicacao || '');
       el('bookYear').value = enriched.ano || '';
       el('bookISBN').value = enriched.isbn || '';
@@ -5601,7 +5360,6 @@
       el('bookCoverPath').value = enriched.cover_object_path || '';
       el('bookMarcJson').value = enriched.marc_json ? JSON.stringify(enriched.marc_json, null, 2) : '';
       syncBookTypeUI();
-      seedBookOwnershipDefaults(false);
       await loadBookContributorsForDraft(enriched.id, enriched.published_book_id, enriched.autor || '');
       syncBookResponsibilitySummary();
       setPreviewImage(refs.bookCoverPreview, enriched.cover_object_path || '', 'covers');
@@ -7754,7 +7512,14 @@
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
     refs.loginBtn.addEventListener('click', async () => {
-      const hasSession = !!state.session?.user?.id;
+      let currentSession = state.session;
+      try {
+        currentSession = await getCurrentSession();
+        state.session = currentSession;
+      } catch (error) {
+        console.warn('getCurrentSession before login/logout failed:', error);
+      }
+      const hasSession = !!currentSession?.user?.id;
       if (!hasSession) {
         window.location.href = LOGIN_URL;
         return;
@@ -7984,25 +7749,34 @@
       }
     });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       state.session = session;
-      if (session) {
-        refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
-        try {
-          await loadProfile();
-        } catch (error) {
-          console.warn('Auth state profile refresh failed:', error);
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
-        }
-      } else {
+      if (!session) {
         state.profile = null;
         state.isLibrarian = false;
+        state.lastAccessConfirmedAt = 0;
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
+        updateLoginButton();
+        return;
       }
+
+      refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
+      refs.rolePill.textContent = 'Verificando acesso…';
+      refs.rolePill.className = 'pill warn';
       updateLoginButton();
+
+      try {
+        await runCatalogacaoRefresh({
+          force: true,
+          scope: 'active',
+          softProfile: true,
+          reason: `auth:${event || 'change'}`,
+        });
+      } catch (error) {
+        console.warn('Auth state refresh failed:', error);
+      }
     });
 
     window.addEventListener('hashchange', () => {
@@ -8022,10 +7796,10 @@
     refreshAll();
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) refreshCatalogacaoView();
+      if (!document.hidden) scheduleCatalogacaoAutoRefresh('visibilitychange', { scope: 'active' });
     });
-    window.addEventListener('focus', () => refreshCatalogacaoView());
-    window.addEventListener('pageshow', () => refreshCatalogacaoView());
+    window.addEventListener('focus', () => scheduleCatalogacaoAutoRefresh('focus', { scope: 'active' }));
+    window.addEventListener('pageshow', () => scheduleCatalogacaoAutoRefresh('pageshow', { scope: 'active' }));
   </script>
 </body>
 </html>
