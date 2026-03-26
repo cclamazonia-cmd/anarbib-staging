@@ -439,6 +439,11 @@
       flex-wrap: wrap;
       gap: 8px;
       margin: 0 0 18px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--red-2), var(--bg));
+      box-shadow: var(--shadow);
     }
 
     .tabs .tab-btn-separator {
@@ -1407,8 +1412,8 @@
           <span id="rolePill" class="pill warn">Verificando acesso…</span>
         </div>
         <div class="toolbar-actions toolbar-actions-main">
-          <button id="loginBtn" class="button primary">Fazer login</button>
           <button id="refreshAllBtn" class="button secondary">Atualizar</button>
+          <button id="loginBtn" class="button primary">Fazer login</button>
         </div>
       </div>
       <div class="mode-switch" aria-label="Profundidade da ficha">
@@ -3968,9 +3973,8 @@
     }
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         setTab(btn.dataset.tab);
-        await refreshCatalogacaoForActiveTab();
       });
     });
 
@@ -7984,16 +7988,13 @@
       }
     });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
       state.session = session;
       if (session) {
         refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
-        try {
-          await loadProfile();
-        } catch (error) {
-          console.warn('Auth state profile refresh failed:', error);
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
+        if (!state.isLibrarian) {
+          refs.rolePill.textContent = 'Sessão ativa';
+          refs.rolePill.className = 'pill info';
         }
       } else {
         state.profile = null;
@@ -8020,12 +8021,6 @@
     renderTrash();
     updateLoginButton();
     refreshAll();
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) refreshCatalogacaoView();
-    });
-    window.addEventListener('focus', () => refreshCatalogacaoView());
-    window.addEventListener('pageshow', () => refreshCatalogacaoView());
   </script>
 </body>
 </html>
