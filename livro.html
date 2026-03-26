@@ -252,7 +252,6 @@
 
     document.getElementById("btnCatalogo").href = getCatalogReturnUrlFromUrl();
 
-    const EXTERNAL_BOOK_COVERS_BASE_URL = "https://asptfmokzykwzlshsncw.supabase.co/storage/v1/object/public/covers/books";
     const $ = (id) => document.getElementById(id);
 
     function apiFrom(schema, relation) {
@@ -270,16 +269,43 @@
       return "";
     }
 
-    function buildExternalBookCoverUrl(pathOrUrl) {
+    function normalizeCoverObjectPath(pathOrUrl) {
       const raw = String(pathOrUrl || "").trim();
       if (!raw) return "";
-      if (/^https?:\/\//i.test(raw)) return raw;
-      const clean = raw
+
+      let candidate = raw;
+      if (/^https?:\/\//i.test(candidate)) {
+        try {
+          const url = new URL(candidate);
+          const marker = "/storage/v1/object/public/covers/";
+          const idx = url.pathname.indexOf(marker);
+          if (idx >= 0) {
+            candidate = url.pathname.slice(idx + marker.length);
+          } else {
+            return candidate;
+          }
+        } catch (_) {
+          return candidate;
+        }
+      }
+
+      return candidate
         .replace(/^\/+/, "")
-        .replace(/^covers\/+?books\/+?/i, "")
-        .replace(/^covers\/+?/i, "")
-        .replace(/^books\/+?/i, "");
-      return clean ? `${EXTERNAL_BOOK_COVERS_BASE_URL}/${clean}` : "";
+        .replace(/^storage\/v1\/object\/public\/covers\/+?/i, "")
+        .replace(/^covers\/+?/i, "");
+    }
+
+    function buildExternalBookCoverUrl(pathOrUrl) {
+      const clean = normalizeCoverObjectPath(pathOrUrl);
+      if (!clean) return "";
+      if (/^https?:\/\//i.test(clean)) return clean;
+
+      try {
+        const { data } = supabase.storage.from("covers").getPublicUrl(clean);
+        return String(data?.publicUrl || "").trim();
+      } catch (_) {
+        return "";
+      }
     }
 
     function buildCadastroUrl(nextUrl = location.href) {
