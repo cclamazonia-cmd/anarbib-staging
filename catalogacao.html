@@ -49,30 +49,43 @@
       background: var(--bg);
     }
 
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: var(--brand-bg-image, var(--brand-panel-bg-image, none));
+      background-position: var(--brand-bg-position, var(--brand-panel-bg-position, center center));
+      background-size: var(--brand-bg-size, var(--brand-panel-bg-size, cover));
+      background-repeat: var(--brand-bg-repeat, var(--brand-panel-bg-repeat, no-repeat));
+      background-attachment: fixed;
+      opacity: .70;
+      filter: saturate(.98) contrast(1.02);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: rgba(0, 0, 0, .36);
+    }
+
     a { color: inherit; }
 
     .wrap {
       position: relative;
       isolation: isolate;
+      z-index: 1;
       max-width: 1680px;
       margin: 0 auto;
       padding: 24px;
     }
 
     .wrap::before {
-      content: "";
-      position: absolute;
-      inset: 8px;
-      z-index: 0;
-      pointer-events: none;
-      border-radius: 26px;
-      background-image: var(--brand-panel-bg-image, var(--brand-bg-image, none));
-      background-position: var(--brand-panel-bg-position, var(--brand-bg-position, center center));
-      background-size: var(--brand-panel-bg-size, var(--brand-bg-size, cover));
-      background-repeat: no-repeat;
-      opacity: .72;
-      mix-blend-mode: soft-light;
-      filter: saturate(.98) contrast(1.02);
+      display: none;
     }
 
     .wrap > * {
@@ -1315,8 +1328,7 @@
     }
 
     @media (max-width: 780px) {
-      .wrap::before {
-        opacity: .58;
+      body::before {
         background-position: center top;
       }
     }
@@ -7768,11 +7780,9 @@
       updateLoginButton();
 
       try {
-        await runCatalogacaoRefresh({
-          force: true,
+        await scheduleCatalogacaoAutoRefresh(`auth:${event || 'change'}`, {
+          force: event === 'SIGNED_IN' && !state.lastAccessConfirmedAt,
           scope: 'active',
-          softProfile: true,
-          reason: `auth:${event || 'change'}`,
         });
       } catch (error) {
         console.warn('Auth state refresh failed:', error);
