@@ -839,6 +839,69 @@
       return false;
     }
 
+    function parsePublicStorageLocation(rawValue) {
+      const raw = firstNonEmptyString(rawValue);
+      if (!raw) return null;
+      try {
+        const url = new URL(raw, location.href);
+        const marker = "/storage/v1/object/public/";
+        const idx = url.pathname.indexOf(marker);
+        if (idx >= 0) {
+          const rest = url.pathname.slice(idx + marker.length);
+          const slash = rest.indexOf("/");
+          if (slash > 0) {
+            const bucket = decodeURIComponent(rest.slice(0, slash));
+            const path = decodeURIComponent(rest.slice(slash + 1));
+            if (bucket && path) return { bucket, path };
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    async function resolvePublicDigitalAccess(bookRow = {}, bibRef = "", pdfValue = "") {
+      const access = {
+        hasDigitalAvailability: false,
+        assetId: "",
+        previewBucket: "",
+        previewPath: ""
+      };
+
+      const publishedBookId = Number(bookRow?.book_id || bookRow?.id || 0);
+      if (publishedBookId > 0) {
+        try {
+          const { data, error } = await supabase.rpc("get_book_primary_public_digital_asset", { p_book_id: publishedBookId });
+          if (!error) {
+            const row = Array.isArray(data) ? data[0] : data;
+            if (row?.asset_id) {
+              access.assetId = String(row.asset_id);
+              access.hasDigitalAvailability = true;
+              return access;
+            }
+            if (row?.storage_bucket && row?.storage_path) {
+              access.previewBucket = String(row.storage_bucket).trim();
+              access.previewPath = String(row.storage_path).trim();
+              access.hasDigitalAvailability = !!(access.previewBucket && access.previewPath);
+              if (access.hasDigitalAvailability) return access;
+            }
+          }
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao resolver asset público principal", err);
+        }
+      }
+
+      const parsedLocation = parsePublicStorageLocation(pdfValue);
+      if (parsedLocation) {
+        access.previewBucket = parsedLocation.bucket;
+        access.previewPath = parsedLocation.path;
+        access.hasDigitalAvailability = true;
+        return access;
+      }
+
+      access.hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bibRef, bookRow);
+      return access;
+    }
+
     async function getLibraryLineForBibRef(bib_ref, bookRow = null, libraryContext = {}) {
   const localContextRequested = !!(libraryContext?.libraryId || libraryContext?.librarySlug);
   const preferredLocal = firstNonEmptyString(
@@ -921,9 +984,9 @@
   return preferredLocal ? String(preferredLocal).split(" - ")[0].trim() : "";
 }
 
-    function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}) {
+    function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}, digitalAccess = null) {
       const viewerUrl = new URL("ler.html", location.href);
-      viewerUrl.searchParams.set("ref", bib_ref);
+      if (bib_ref) viewerUrl.searchParams.set("ref", bib_ref);
       const bookTitle = firstNonEmptyString(bookRow?.titulo, bookRow?.title, bookRow?.nome);
       if (bookTitle) viewerUrl.searchParams.set("title", bookTitle);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
@@ -932,6 +995,12 @@
       if (libraryId) viewerUrl.searchParams.set("library_id", libraryId);
       if (librarySlug) viewerUrl.searchParams.set("library_slug", librarySlug);
       if (libraryName) viewerUrl.searchParams.set("library_name", libraryName);
+      if (digitalAccess?.assetId) {
+        viewerUrl.searchParams.set("asset_id", String(digitalAccess.assetId));
+      } else if (digitalAccess?.previewBucket && digitalAccess?.previewPath) {
+        viewerUrl.searchParams.set("public_bucket", String(digitalAccess.previewBucket));
+        viewerUrl.searchParams.set("public_path", String(digitalAccess.previewPath));
+      }
       return viewerUrl.toString();
     }
 
@@ -1905,7 +1974,8 @@
         $("btnAbrirPdf").addEventListener("click", () => location.assign(pdf));
       }
 
-      const hasDigitalAvailability = await getDigitalAvailabilityForBibRef(bib_ref, data);
+      const publicDigitalAccess = await resolvePublicDigitalAccess(data, bib_ref, pdf);
+      const hasDigitalAvailability = !!publicDigitalAccess?.hasDigitalAvailability;
       setDigitalAvailability(hasDigitalAvailability);
       await loadReaderScopedServiceChip(data, libraryContext);
 
@@ -1914,8 +1984,13 @@
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
-        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext);
+        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, publicDigitalAccess);
         if (!hasDigitalAvailability) return;
+
+        if (publicDigitalAccess?.assetId || (publicDigitalAccess?.previewBucket && publicDigitalAccess?.previewPath)) {
+          location.assign(targetLerUrl);
+          return;
+        }
 
         try {
           const { data: { session } } = await supabase.auth.getSession();
