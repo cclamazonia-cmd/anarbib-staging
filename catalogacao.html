@@ -7973,6 +7973,7 @@
         } catch (contributorsError) {
           console.warn('Não foi possível salvar autores múltiplos antes da publicação.', contributorsError);
         }
+        await saveBookDraftDigitalResource(draftId);
         const { error } = await supabase.rpc('publish_book_draft', { p_draft_id: Number(draftId) });
         if (error) throw error;
         let contributorSyncMessage = '';
@@ -7984,24 +7985,34 @@
         }
         let authorLinkMessage = '';
         let digitalSyncMessage = '';
+        let publishedBookId = null;
         try {
-          const publishedBookId = await resolvePublishedBookIdFromDraft(draftId);
+          publishedBookId = await resolvePublishedBookIdFromDraft(draftId);
           if (publishedBookId) {
             el('bookPublishedId').value = String(publishedBookId);
+          }
+        } catch (publishedIdError) {
+          digitalSyncMessage = ` Não consegui confirmar o livro publicado para ressincronizar o PDF: ${publishedIdError.message}`;
+        }
+
+        if (publishedBookId) {
+          try {
             const { error: linkError } = await supabase.rpc('link_book_contributors_to_authors', { p_book_id: Number(publishedBookId) });
             if (linkError) throw linkError;
-            try {
-              const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
-              if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
-                digitalSyncMessage = ' Não consegui confirmar a sincronização do PDF público para a camada publicada.';
-              }
-            } catch (digitalError) {
-              digitalSyncMessage = ` Não consegui sincronizar o PDF público publicado: ${digitalError.message}`;
-            }
+          } catch (linkingError) {
+            authorLinkMessage = ` Não consegui atualizar automaticamente os vínculos entre autores e obras: ${linkingError.message}`;
           }
-        } catch (linkingError) {
-          authorLinkMessage = ` Não consegui atualizar automaticamente os vínculos entre autores e obras: ${linkingError.message}`;
+
+          try {
+            const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
+            if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
+              digitalSyncMessage = ' Não consegui confirmar a sincronização do PDF público para a camada publicada.';
+            }
+          } catch (digitalError) {
+            digitalSyncMessage = ` Não consegui sincronizar o PDF público publicado: ${digitalError.message}`;
+          }
         }
+
         await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
         setTab(currentTab);
         updateStats();

@@ -451,6 +451,13 @@
       pointer-events:none;
     }
 
+    .page-canvas-host {
+      display:grid;
+      place-items:center;
+      width:100%;
+      min-height:160px;
+    }
+
     .page-label {
       margin:0 0 8px;
       font-size:.84rem;
@@ -665,11 +672,14 @@
     const params = new URLSearchParams(location.search);
     const assetIdParam = (params.get("asset_id") || "").trim();
     const assetId = /^\d+$/.test(assetIdParam) ? Number(assetIdParam) : null;
+    const publicBucketParam = (params.get("public_bucket") || "").trim();
+    const publicPathParam = (params.get("public_path") || "").trim();
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
     const libraryContext = {
       libraryId: (params.get("library_id") || "").trim(),
-      librarySlug: (params.get("library_slug") || "").trim()
+      librarySlug: (params.get("library_slug") || "").trim(),
+      libraryName: (params.get("library_name") || "").trim()
     };
     const LOGO_BASE = `${REPO_BASE}/assets/img/libraries`;
     const RAW_LOGO_BASE = `${RAW_REPO_BASE}/assets/img/libraries`;
@@ -678,12 +688,28 @@
       blmf: [`${LOGO_BASE}/blmf/logo-blmf.png`, `${RAW_LOGO_BASE}/blmf/logo-blmf.png`, "./assets/img/libraries/blmf/logo-blmf.png"],
       btl: [`${LOGO_BASE}/btl/logo-btl.png`, `${RAW_LOGO_BASE}/btl/logo-btl.png`, "./assets/img/libraries/btl/logo-btl.png"],
     };
+    const LIBRARY_SLUG_ALIASES = {
+      "anarbib": "anarbib",
+      "blmf": "blmf",
+      "biblioteca-libertaria-maxwell-ferreira": "blmf",
+      "biblioteca libertaria maxwell ferreira": "blmf",
+      "maxwell-ferreira": "blmf",
+      "terra-livre": "btl",
+      "terra livre": "btl",
+      "biblioteca-terra-livre": "btl",
+      "biblioteca terra livre": "btl",
+      "btl": "btl",
+      "btl-sp": "btl",
+      "btl-sao-paulo": "btl",
+      "btl-são-paulo": "btl"
+    };
     const storageKey = assetId ? `anarbib:ler:asset:${assetId}` : (bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default");
 
     const state = {
       scale: 1.15,
       blobUrl: null,
       pdfDoc: null,
+      pdfjsLib: null,
       rendering: false,
       pageElements: [],
       currentPage: 1,
@@ -694,6 +720,11 @@
       fitWidth: false,
       fitWidthLocked: false,
       fullscreenRestoreMode: null,
+      renderVersion: 0,
+      visibleRenderRunning: false,
+      visibleRenderPending: false,
+      visibleRenderRadius: 2,
+      retainedRenderRadius: 4,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -787,8 +818,17 @@
       return Array.from(new Set(values.filter(Boolean)));
     }
 
+    function normalizeLibrarySlug(slug = "") {
+      const raw = String(slug || "").trim().toLowerCase();
+      return LIBRARY_SLUG_ALIASES[raw] || raw;
+    }
+
+    function resolveHoldingLibrarySlug() {
+      return normalizeLibrarySlug(libraryContext.librarySlug || document.documentElement.dataset.librarySlug || "");
+    }
+
     function assetCandidatesForSlug(slug) {
-      const key = String(slug || "").trim().toLowerCase();
+      const key = normalizeLibrarySlug(slug);
       return uniqueList(LOCAL_LOGO_ASSETS[key] || []);
     }
 
@@ -830,22 +870,8 @@
       return "";
     }
 
-    async function resolveReaderLibrarySlug(session) {
-      const fallbackSlug = (libraryContext.librarySlug || document.documentElement.dataset.librarySlug || "").trim().toLowerCase();
-      if (!session?.user?.id) return fallbackSlug;
-      try {
-        const { data } = await supabase.schema("api").from("my_access")
-          .select("library_slug, default_library_slug")
-          .maybeSingle();
-        const slug = String(data?.library_slug || data?.default_library_slug || "").trim().toLowerCase();
-        return slug || fallbackSlug;
-      } catch (_) {
-        return fallbackSlug;
-      }
-    }
-
-    async function loadHeroLogos(session) {
-      const readerSlug = await resolveReaderLibrarySlug(session);
+    async function loadHeroLogos() {
+      const readerSlug = resolveHoldingLibrarySlug();
       const readerLogo = await firstWorkingImage(assetCandidatesForSlug(readerSlug));
       setLogoState(
         "readerLibraryLogoImg",
@@ -855,6 +881,15 @@
       );
       const anarbibLogo = await firstWorkingImage(assetCandidatesForSlug("anarbib"));
       setLogoState("anarbibLogoImg", "anarbibLogoFallback", anarbibLogo, "Logótipo da rede AnarBib");
+    }
+
+    function getPreviewPublicAssetMeta() {
+      return {
+        source_name: (params.get("public_source_name") || "").trim(),
+        source_url: (params.get("public_source_url") || "").trim(),
+        attribution_text: (params.get("public_attribution") || "").trim(),
+        rights_status: (params.get("public_rights_status") || "").trim(),
+      };
     }
 
     async function getCurrentSession() {
@@ -1020,7 +1055,7 @@
       try {
         const { data, error } = await supabase
           .from("v_book_detail_public_v2")
-          .select("id,bib_ref,titulo,library_id,library_slug")
+          .select("id,bib_ref,titulo,library_id,library_slug,library_name")
           .eq("id", id)
           .maybeSingle();
 
@@ -1060,9 +1095,11 @@
       if (!bookTitle && bookMeta?.titulo) bookTitle = String(bookMeta.titulo || "").trim();
       if (!libraryContext.libraryId && bookMeta?.library_id) libraryContext.libraryId = String(bookMeta.library_id || "").trim();
       if (!libraryContext.librarySlug && bookMeta?.library_slug) libraryContext.librarySlug = String(bookMeta.library_slug || "").trim();
+      if (!libraryContext.libraryName && bookMeta?.library_name) libraryContext.libraryName = String(bookMeta.library_name || "").trim();
 
       refreshReaderHeadings();
       setAssetMetaLine(formatPublicAssetMeta(asset));
+      await loadHeroLogos();
 
       const publicUrl = buildPublicStorageUrl(asset.storage_bucket, asset.storage_path);
       if (!publicUrl) {
@@ -1097,6 +1134,7 @@
 
       refreshReaderHeadings();
       setAssetMetaLine(formatPublicAssetMeta(getPreviewPublicAssetMeta()));
+      await loadHeroLogos();
 
       const publicUrl = buildPublicStorageUrl(bucketName, objectPath);
       if (!publicUrl) {
@@ -1197,7 +1235,7 @@
 
     function updatePageUi() {
       $("pageInput").value = String(state.currentPage || 1);
-      $("pageCount").innerHTML = `<strong>Página</strong> / ${state.totalPages || "—"}`;
+      $("pageCount").innerHTML = `<strong>Página</strong> ${state.currentPage || 1} / ${state.totalPages || "—"}`;
       $("chipPages").innerHTML = `<strong>Páginas</strong> ${state.totalPages || "—"}`;
       $("chipMode").innerHTML = `<strong>Modo</strong> ${state.mode === "single" ? "uma página" : "contínuo"}`;
       $("btnMode").textContent = state.mode === "single" ? "Modo uma página" : "Modo contínuo";
@@ -1227,10 +1265,123 @@
       return Math.max(1, Math.min(state.totalPages || 1, Math.floor(page || 1)));
     }
 
+    function getRenderWindow() {
+      const before = state.mode === "single" ? 1 : state.visibleRenderRadius;
+      const after = state.mode === "single" ? 1 : state.visibleRenderRadius;
+      const keepBefore = state.mode === "single" ? 2 : state.retainedRenderRadius;
+      const keepAfter = state.mode === "single" ? 2 : state.retainedRenderRadius;
+      return {
+        renderStart: clampPage(state.currentPage - before),
+        renderEnd: clampPage(state.currentPage + after),
+        keepStart: clampPage(state.currentPage - keepBefore),
+        keepEnd: clampPage(state.currentPage + keepAfter),
+      };
+    }
+
+    function clearRenderedPage(wrap) {
+      if (!wrap) return;
+      const host = wrap.querySelector(".page-canvas-host");
+      if (!host) return;
+      const canvas = host.querySelector("canvas");
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+        canvas.remove();
+      }
+      wrap.dataset.rendered = "0";
+      wrap.dataset.rendering = "0";
+    }
+
+    async function ensurePageRendered(pdfjsLib, pageNo, renderVersion) {
+      const wrap = state.pageElements[pageNo - 1];
+      if (!wrap) return;
+      if (wrap.dataset.rendered === "1" && Number(wrap.dataset.renderScale || 0) === Number(state.scale)) return;
+      if (wrap.dataset.rendering === "1") return;
+
+      const host = wrap.querySelector(".page-canvas-host");
+      if (!host) return;
+
+      wrap.dataset.rendering = "1";
+      try {
+        const page = await state.pdfDoc.getPage(pageNo);
+        if (renderVersion !== state.renderVersion) return;
+
+        const viewport = page.getViewport({ scale: state.scale });
+        host.style.minHeight = `${Math.ceil(viewport.height)}px`;
+        host.style.width = `${Math.ceil(viewport.width)}px`;
+        host.replaceChildren();
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { alpha: false });
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        canvas.setAttribute("aria-hidden", "true");
+
+        const renderTask = page.render({ canvasContext: ctx, viewport });
+        await renderTask.promise;
+        if (renderVersion !== state.renderVersion) {
+          canvas.width = 0;
+          canvas.height = 0;
+          return;
+        }
+
+        host.replaceChildren(canvas);
+        wrap.dataset.rendered = "1";
+        wrap.dataset.renderScale = String(state.scale);
+        page.cleanup();
+      } finally {
+        wrap.dataset.rendering = "0";
+      }
+    }
+
+    function trimRenderedPages() {
+      const { keepStart, keepEnd } = getRenderWindow();
+      state.pageElements.forEach((wrap, index) => {
+        const pageNo = index + 1;
+        if (pageNo < keepStart || pageNo > keepEnd) {
+          clearRenderedPage(wrap);
+        }
+      });
+    }
+
+    async function renderVisiblePages(pdfjsLib, renderVersion) {
+      if (!state.pdfDoc || renderVersion !== state.renderVersion) return;
+      const { renderStart, renderEnd } = getRenderWindow();
+      trimRenderedPages();
+      const pageNos = [];
+      for (let pageNo = renderStart; pageNo <= renderEnd; pageNo += 1) pageNos.push(pageNo);
+      pageNos.sort((a, b) => Math.abs(a - state.currentPage) - Math.abs(b - state.currentPage));
+      for (const pageNo of pageNos) {
+        if (renderVersion !== state.renderVersion) return;
+        await ensurePageRendered(pdfjsLib, pageNo, renderVersion);
+      }
+    }
+
+    async function requestVisibleRender(pdfjsLib) {
+      state.visibleRenderPending = true;
+      if (state.visibleRenderRunning) return;
+      state.visibleRenderRunning = true;
+      try {
+        while (state.visibleRenderPending) {
+          state.visibleRenderPending = false;
+          const renderVersion = state.renderVersion;
+          await renderVisiblePages(pdfjsLib, renderVersion);
+        }
+      } finally {
+        state.visibleRenderRunning = false;
+      }
+    }
+
     function setCurrentPage(page, behavior = "smooth") {
       state.currentPage = clampPage(page);
       updatePageUi();
       scrollToCurrentPage(behavior);
+      Promise.resolve(state.pdfjsLib || loadPdfJs()).then((pdfjsLib) => {
+        state.pdfjsLib = pdfjsLib;
+        return requestVisibleRender(pdfjsLib);
+      }).catch((err) => {
+        console.warn("AnarBib ler v3: falha ao atualizar renderização visível", err);
+      });
     }
 
     function setupObserver() {
@@ -1249,6 +1400,12 @@
         if (pageNo && pageNo !== state.currentPage) {
           state.currentPage = pageNo;
           updatePageUi();
+          Promise.resolve(state.pdfjsLib || loadPdfJs()).then((pdfjsLib) => {
+            state.pdfjsLib = pdfjsLib;
+            return requestVisibleRender(pdfjsLib);
+          }).catch((err) => {
+            console.warn("AnarBib ler v3: falha ao renderizar páginas visíveis", err);
+          });
         }
       }, {
         root: viewer,
@@ -1270,6 +1427,9 @@
     async function renderAllPages(pdfjsLib) {
       if (!state.pdfDoc || state.rendering) return;
       state.rendering = true;
+      state.renderVersion += 1;
+      const renderVersion = state.renderVersion;
+      state.visibleRenderPending = false;
       for (const id of ["btnZoomIn", "btnZoomOut", "btnFitWidth", "btnPrev", "btnNext", "btnMode", "pageInput", "themeSelect"]) {
         $(id).disabled = true;
       }
@@ -1278,32 +1438,34 @@
       state.pageElements = [];
 
       try {
+        const firstPage = await state.pdfDoc.getPage(1);
         if (state.fitWidth || state.fitWidthLocked) {
-          const firstPage = await state.pdfDoc.getPage(1);
           state.scale = computeFitWidthScale(firstPage);
         }
+        const defaultViewport = firstPage.getViewport({ scale: state.scale });
+        firstPage.cleanup();
 
+        setStatus(`A preparar a leitura de ${state.pdfDoc.numPages} páginas…`, "warn");
         for (let num = 1; num <= state.pdfDoc.numPages; num += 1) {
-          setStatus(`A renderizar página ${num} de ${state.pdfDoc.numPages}…`, "warn");
-          const page = await state.pdfDoc.getPage(num);
-          const viewport = page.getViewport({ scale: state.scale });
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d", { alpha: false });
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-          canvas.setAttribute("aria-hidden", "true");
-
           const wrap = document.createElement("section");
           wrap.className = "page-card";
           wrap.dataset.pageNo = String(num);
+          wrap.dataset.rendered = "0";
+          wrap.dataset.rendering = "0";
+          wrap.dataset.renderScale = "0";
+
           const label = document.createElement("p");
           label.className = "page-label";
           label.textContent = `Página ${num}`;
-          wrap.append(label, canvas);
+
+          const host = document.createElement("div");
+          host.className = "page-canvas-host";
+          host.style.minHeight = `${Math.ceil(defaultViewport.height)}px`;
+          host.style.width = `${Math.ceil(defaultViewport.width)}px`;
+
+          wrap.append(label, host);
           pagesRoot.appendChild(wrap);
           state.pageElements.push(wrap);
-
-          await page.render({ canvasContext: ctx, viewport }).promise;
         }
 
         state.totalPages = state.pdfDoc.numPages;
@@ -1311,6 +1473,7 @@
         updatePageUi();
         setupObserver();
         scrollToCurrentPage("auto");
+        await requestVisibleRender(pdfjsLib);
         setStatus("PDF carregado com sucesso.", "ok", 2000);
       } finally {
         state.rendering = false;
@@ -1329,9 +1492,8 @@
       setAssetMetaLine("");
       setStatus("Preparando a leitura…", "warn");
 
-      let bootSession = null;
       try {
-        bootSession = await withTimeout(
+        await withTimeout(
           getCurrentSession(),
           8000,
           "A sessão demorou demais para responder."
@@ -1343,7 +1505,7 @@
       setupNavButtons().catch((err) => {
         console.warn("AnarBib ler v3: falha nos botões de navegação", err);
       });
-      loadHeroLogos(bootSession).catch((err) => {
+      loadHeroLogos().catch((err) => {
         console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
       });
 
@@ -1357,6 +1519,7 @@
 
       try {
         const pdfjsLib = await loadPdfJs();
+        state.pdfjsLib = pdfjsLib;
         const blob = assetId
           ? await downloadPublicAssetBlob(assetId)
           : ((publicBucketParam && publicPathParam)
@@ -1382,7 +1545,8 @@
 
     async function rerenderKeepingPosition() {
       if (!state.pdfDoc) return;
-      const pdfjsLib = await loadPdfJs();
+      const pdfjsLib = state.pdfjsLib || await loadPdfJs();
+      state.pdfjsLib = pdfjsLib;
       await renderAllPages(pdfjsLib);
     }
 
