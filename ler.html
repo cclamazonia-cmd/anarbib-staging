@@ -676,6 +676,7 @@
     const publicPathParam = (params.get("public_path") || "").trim();
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
+    let bookSubtitle = (params.get("subtitle") || "").trim();
     const libraryContext = {
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim(),
@@ -785,18 +786,26 @@
       el.classList.toggle("hidden", !txt);
     }
 
+    function getDisplayBookTitle() {
+      const title = String(bookTitle || "").trim();
+      const subtitle = String(bookSubtitle || "").trim();
+      if (title && subtitle) return `${title} - ${subtitle}`;
+      return title || subtitle || "";
+    }
+
     function refreshReaderHeadings() {
+      const displayBookTitle = getDisplayBookTitle();
       $("chipRef").innerHTML = bibRef
         ? `<strong>Ref.</strong> ${bibRef}`
         : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`);
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
-      $("subline").textContent = bookTitle
-        ? `Abrindo ${bookTitle}.`
-        : (bibRef ? `Abrindo ${bibRef}.` : (assetId ? `Abrindo ${bookTitle || `asset ${assetId}`}.` : "Falta a referência do livro."));
-      $("sheetSub").textContent = bookTitle
-        ? `Leitura de ${bookTitle}.`
-        : (bibRef ? `Leitura de ${bibRef}.` : (assetId ? `Leitura de ${bookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro."));
+      $("subline").textContent = displayBookTitle
+        ? `Abrindo ${displayBookTitle}.`
+        : (bibRef ? `Abrindo ${bibRef}.` : (assetId ? `Abrindo ${displayBookTitle || `asset ${assetId}`}.` : "Falta a referência do livro."));
+      $("sheetSub").textContent = displayBookTitle
+        ? `Leitura de ${displayBookTitle}.`
+        : (bibRef ? `Leitura de ${bibRef}.` : (assetId ? `Leitura de ${displayBookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro."));
     }
 
     function formatPublicAssetMeta(asset = null) {
@@ -1055,7 +1064,7 @@
       try {
         const { data, error } = await supabase
           .from("v_book_detail_public_v2")
-          .select("id,bib_ref,titulo,library_id,library_slug,library_name")
+          .select("id,bib_ref,titulo,subtitulo,library_id,library_slug,library_name")
           .eq("id", id)
           .maybeSingle();
 
@@ -1065,7 +1074,7 @@
       try {
         const { data, error } = await supabase
           .from("books")
-          .select("id,bib_ref,titulo")
+          .select("id,bib_ref,titulo,subtitulo")
           .eq("id", id)
           .maybeSingle();
 
@@ -1093,6 +1102,7 @@
 
       if (!bibRef && bookMeta?.bib_ref) bibRef = String(bookMeta.bib_ref || "").trim();
       if (!bookTitle && bookMeta?.titulo) bookTitle = String(bookMeta.titulo || "").trim();
+      if (!bookSubtitle && bookMeta?.subtitulo) bookSubtitle = String(bookMeta.subtitulo || "").trim();
       if (!libraryContext.libraryId && bookMeta?.library_id) libraryContext.libraryId = String(bookMeta.library_id || "").trim();
       if (!libraryContext.librarySlug && bookMeta?.library_slug) libraryContext.librarySlug = String(bookMeta.library_slug || "").trim();
       if (!libraryContext.libraryName && bookMeta?.library_name) libraryContext.libraryName = String(bookMeta.library_name || "").trim();

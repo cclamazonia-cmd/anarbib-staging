@@ -3415,6 +3415,13 @@
       return book.titulo || book.title || book.display_title || '—';
     }
 
+    function getBookDisplayTitleWithSubtitle(book = {}) {
+      const title = getBookDisplayTitle(book);
+      const subtitle = String(book.subtitulo || book.subtitle || '').trim();
+      if (!subtitle || title === '—') return title;
+      return `${title} - ${subtitle}`;
+    }
+
     function getBookSearchIndex(book = {}) {
       return normalizeForSearch([
         book.bib_ref,
@@ -7378,7 +7385,7 @@
               <tr>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${sanitize(getBookDisplayTitle(book))}</td>
+                <td>${sanitize(getBookDisplayTitleWithSubtitle(book))}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
