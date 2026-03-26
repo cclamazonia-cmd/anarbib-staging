@@ -760,12 +760,12 @@
         : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`);
       $("btnBackBook").href = buildBookUrl();
       $("btnNavLivro").href = buildBookUrl();
-      $("subline").textContent = bibRef
-        ? `Abrindo ${bookTitle || bibRef}.`
-        : (assetId ? `Abrindo ${bookTitle || `asset ${assetId}`}.` : "Falta a referência do livro.");
-      $("sheetSub").textContent = bibRef
-        ? `Leitura de ${bookTitle || bibRef}.`
-        : (assetId ? `Leitura de ${bookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro.");
+      $("subline").textContent = bookTitle
+        ? `Abrindo ${bookTitle}.`
+        : (bibRef ? `Abrindo ${bibRef}.` : (assetId ? `Abrindo ${bookTitle || `asset ${assetId}`}.` : "Falta a referência do livro."));
+      $("sheetSub").textContent = bookTitle
+        ? `Leitura de ${bookTitle}.`
+        : (bibRef ? `Leitura de ${bibRef}.` : (assetId ? `Leitura de ${bookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro."));
     }
 
     function formatPublicAssetMeta(asset = null) {
