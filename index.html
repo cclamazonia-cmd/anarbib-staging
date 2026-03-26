@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Catálogo(s) AnarBib</title>
-<meta name="description" content="Catálogo(s) AnarBib. Consulte referências, autores, títulos, editoras, anos, CDD e disponibilidade.">
+<meta name="description" content="Catálogo(s) AnarBib. Consulte referências, autores, títulos, editoras, anos e disponibilidade.">
 <meta name="theme-color" content="#7a0b14">
 <link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AnarBib">
 <meta property="og:title" content="Catálogo(s) AnarBib">
-<meta property="og:description" content="AnarBib — catálogo(s) público(s) com busca por autor, título, editora, ano, CDD e disponibilidade.">
+<meta property="og:description" content="AnarBib — catálogo(s) público(s) com busca por autor, título, editora, ano e disponibilidade.">
 <meta property="og:url" content="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">
 <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png">
 <meta property="og:image:alt" content="Logotipo AnarBib">
@@ -586,7 +586,6 @@ tbody tr:hover td { background: rgba(179,0,24,.18); }
 .col-titulo { width: var(--col-titulo-w); }
 .col-ano { width: 92px; white-space: nowrap; }
 .col-editora { width: 250px; }
-.col-cdd { width: 120px; }
 .col-biblioteca(s) { width: 220px; }
 .col-status { width: 185px; }
 .col-reserva { width: 175px; white-space: nowrap; }
@@ -919,10 +918,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
         <input id="yearFilter" class="input" type="search" autocomplete="off" placeholder="Ex.: 1984 ou intervalo 1917-1921">
       </div>
       <div class="field">
-        <label class="field-label" for="cddFilter">CDD</label>
-        <input id="cddFilter" class="input" type="search" autocomplete="off" placeholder="Ex.: 335">
-      </div>
-      <div class="field">
         <label class="field-label" for="availabilityFilter">Disponibilidade</label>
         <select id="availabilityFilter" class="select">
           <option value="all">Todas</option>
@@ -940,7 +935,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
           <option value="titulo">Título</option>
           <option value="ano">Ano</option>
           <option value="editora">Editora</option>
-          <option value="cdd">CDD</option>
           <option value="status">Disponibilidade</option>
         </select>
       </div>
@@ -990,7 +984,6 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
             <th class="col-titulo" data-key="titulo">título</th>
             <th class="col-ano" data-key="ano">ano</th>
             <th class="col-editora" data-key="editora">editora</th>
-            <th class="col-cdd" data-key="cdd">CDD</th>
             <th class="col-biblioteca(s)">biblioteca(s)</th>
             <th class="col-status" data-key="status">disponibilidade</th>
             <th class="col-reserva" data-key="reserva">reserva</th>
@@ -1086,7 +1079,6 @@ const search = document.getElementById('search');
 const authorFilter = document.getElementById('authorFilter');
 const publisherFilter = document.getElementById('publisherFilter');
 const yearFilter = document.getElementById('yearFilter');
-const cddFilter = document.getElementById('cddFilter');
 const sortSelect = document.getElementById('sortSelect');
 const availabilityFilter = document.getElementById('availabilityFilter');
 const libraryFilterDetails = document.getElementById('libraryFilterDetails');
@@ -1578,7 +1570,6 @@ function getSortLabel(key = sortKey, dir = sortDir) {
     titulo: 'título',
     ano: 'ano',
     editora: 'editora',
-    cdd: 'CDD',
     status: 'disponibilidade'
   };
   const base = labels[key] || 'relevância';
@@ -1591,7 +1582,6 @@ function getFilterState() {
     author: (authorFilter.value || '').trim(),
     publisher: (publisherFilter.value || '').trim(),
     year: (yearFilter.value || '').trim(),
-    cdd: (cddFilter.value || '').trim(),
     availability: availabilityFilter.value || 'all',
     libraries: serializeSelectedLibraries(),
     sort: sortKey,
@@ -1606,7 +1596,6 @@ function getVisibleWindowStateKey() {
     author: state.author,
     publisher: state.publisher,
     year: state.year,
-    cdd: state.cdd,
     availability: state.availability,
     libraries: state.libraries,
     sort: state.sort,
@@ -1633,7 +1622,6 @@ function buildActiveFilterItems() {
   if (state.author) items.push({ key: 'author', label: 'Autor(a)', value: state.author });
   if (state.publisher) items.push({ key: 'publisher', label: 'Editora', value: state.publisher });
   if (state.year) items.push({ key: 'year', label: 'Ano', value: state.year });
-  if (state.cdd) items.push({ key: 'cdd', label: 'CDD', value: state.cdd });
   if (state.availability !== 'all') items.push({ key: 'availability', label: 'Disponibilidade', value: getAvailabilityLabel(state.availability) });
   if (libraryAllExplicitlySelected) items.push({ key: 'libraries', label: 'Bibliotecas', value: 'todas' });
   else if (selectedLibraryKeys.size) items.push({ key: 'libraries', label: 'Bibliotecas', value: getSelectedLibraryLabels().join(', ') });
@@ -1674,7 +1662,6 @@ function syncStateToUrl() {
     author: state.author,
     publisher: state.publisher,
     year: state.year,
-    cdd: state.cdd,
     availability: state.availability,
     libraries: state.libraries,
     sort: state.sort,
@@ -1695,12 +1682,11 @@ function restoreStateFromUrl() {
   authorFilter.value = url.searchParams.get('author') || '';
   publisherFilter.value = url.searchParams.get('publisher') || '';
   yearFilter.value = url.searchParams.get('year') || '';
-  cddFilter.value = url.searchParams.get('cdd') || '';
   const availabilityFromUrl = url.searchParams.get('availability') || 'all';
   availabilityFilter.value = ['all','available','local','unavailable'].includes(availabilityFromUrl) ? availabilityFromUrl : 'all';
   setSelectedLibrariesFromParam(url.searchParams.get('libraries') || '');
   const sortFromUrl = url.searchParams.get('sort') || 'relevance';
-  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','cdd','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
+  sortKey = ['relevance','bib_ref','autor','titulo','ano','editora','status'].includes(sortFromUrl) ? sortFromUrl : 'relevance';
   sortDir = url.searchParams.get('dir') || 'asc';
   sortSelect.value = sortKey;
   if (!['asc','desc'].includes(sortDir)) sortDir = 'asc';
@@ -1756,7 +1742,6 @@ function clearSingleFilter(key) {
   else if (key === 'author') authorFilter.value = '';
   else if (key === 'publisher') publisherFilter.value = '';
   else if (key === 'year') yearFilter.value = '';
-  else if (key === 'cdd') cddFilter.value = '';
   else if (key === 'availability') availabilityFilter.value = 'all';
   else if (key === 'libraries') selectedLibraryKeys.clear();
   else if (key === 'sort') {
@@ -2613,9 +2598,6 @@ function buildRowMarkup(r) {
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700; display:inline-block;">${tituloInner}</a>` : tituloInner;
   const anoHtml = r.ano ? highlightHTML(r.ano, terms) : '<span class="muted">—</span>';
   const editoraHtml = r.editora ? highlightHTML(r.editora, terms) : '<span class="muted">—</span>';
-  const cddHtml = r.cdd
-    ? `<button class="tag-link cdd-chip" type="button" data-cdd="${escapeHTML(r.cdd)}">${highlightHTML(r.cdd, terms)}</button>`
-    : '<span class="muted">—</span>';
   const bibliotecaHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
@@ -2626,7 +2608,6 @@ function buildRowMarkup(r) {
     tituloCell,
     anoHtml,
     editoraHtml,
-    cddHtml,
     bibliotecaHtml,
     status,
     rowHtml: `
@@ -2635,7 +2616,6 @@ function buildRowMarkup(r) {
       <td class="col-titulo">${tituloCell}</td>
       <td class="col-ano">${anoHtml}</td>
       <td class="col-editora">${editoraHtml}</td>
-      <td class="col-cdd">${cddHtml}</td>
       <td class="col-biblioteca">${bibliotecaHtml}</td>
       <td class="col-status"><span class="status-badge ${status.cls}">${status.label}</span></td>
       <td class="col-reserva">${reservaHtml}</td>
@@ -2660,10 +2640,6 @@ function buildRowMarkup(r) {
           <div class="mobile-meta">
             <span class="mobile-meta-label">Ano</span>
             <div class="mobile-meta-value">${anoHtml}</div>
-          </div>
-          <div class="mobile-meta">
-            <span class="mobile-meta-label">CDD</span>
-            <div class="mobile-meta-value">${cddHtml}</div>
           </div>
           <div class="mobile-meta">
             <span class="mobile-meta-label">Biblioteca</span>
@@ -2845,7 +2821,6 @@ function currentRows() {
     if (!matchesNormalizedFilter(r._n.autor, r._variantAutor, authorFilter.value)) return false;
     if (!matchesNormalizedFilter(r._n.editora, orthographySkeleton(r._n.editora), publisherFilter.value)) return false;
     if (!matchYearField(r.ano, yearFilter.value)) return false;
-    if (!matchesNormalizedFilter(r._n.cdd, orthographySkeleton(r._n.cdd), cddFilter.value)) return false;
     return true;
   });
 
@@ -3071,7 +3046,6 @@ function clearFilters() {
   authorFilter.value = '';
   publisherFilter.value = '';
   yearFilter.value = '';
-  cddFilter.value = '';
   availabilityFilter.value = 'all';
   selectedLibraryKeys.clear();
   libraryAllExplicitlySelected = false;
@@ -3262,7 +3236,6 @@ search.addEventListener('input', debouncedRender);
 authorFilter.addEventListener('input', render);
 publisherFilter.addEventListener('input', render);
 yearFilter.addEventListener('input', render);
-cddFilter.addEventListener('input', render);
 availabilityFilter.addEventListener('change', render);
 libraryFilterMenu.addEventListener('change', (e) => {
   const input = e.target.closest('input[type="checkbox"]');
@@ -3319,7 +3292,7 @@ document.querySelectorAll('thead th[data-key]').forEach(th => {
     } else {
       sortKey = key;
       sortDir = 'asc';
-      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','cdd','status'].includes(key) ? key : 'relevance';
+      sortSelect.value = ['bib_ref','autor','titulo','ano','editora','status'].includes(key) ? key : 'relevance';
     }
     render();
   });
@@ -3378,11 +3351,6 @@ async function handleResultActions(e) {
     e.preventDefault();
     location.assign(buildAuthorHref(authorId));
     return;
-  }
-  const cddBtn = e.target.closest('.cdd-chip');
-  if (cddBtn) {
-    cddFilter.value = cddBtn.dataset.cdd || '';
-    render();
   }
 }
 tbody.addEventListener('click', handleResultActions);
