@@ -90,7 +90,26 @@
       padding: 6px 8px;
     }
 
-    .library-reference-logo.is-hidden {
+    .library-reference-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      background: rgba(12,12,12,.38);
+      color: #fff;
+      font-size: .88rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+      max-width: 240px;
+      text-align: center;
+    }
+
+    .library-reference-logo.is-hidden,
+    .library-reference-badge.is-hidden {
       display: none;
     }
 
@@ -1616,6 +1635,7 @@
         <div class="hero-logo-group">
           <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
           <img id="libraryReferenceLogo" class="logo topbar-logo library-reference-logo is-hidden" src="" alt="" aria-hidden="true">
+          <span id="libraryReferenceBadge" class="library-reference-badge is-hidden" aria-hidden="true"></span>
         </div>
       </div>
       <div class="hero-actions">
@@ -3165,6 +3185,7 @@
       rolePill: el('rolePill'),
       loginBtn: el('loginBtn'),
       libraryReferenceLogo: el('libraryReferenceLogo'),
+      libraryReferenceBadge: el('libraryReferenceBadge'),
       catalogModeSimpleBtn: el('catalogModeSimpleBtn'),
       catalogModeCompleteBtn: el('catalogModeCompleteBtn'),
       catalogModeHint: el('catalogModeHint'),
@@ -3758,7 +3779,7 @@
     function slugifyLibraryKey(value = '') {
       return String(value || '')
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[̀-ͯ]/g, '')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '');
@@ -3774,39 +3795,65 @@
       return Array.from(new Set(rawCandidates.map(slugifyLibraryKey).filter(Boolean)));
     }
 
+    function getProfileReferenceLibraryLabel() {
+      return compactSpaces(
+        state.profile?.library_name
+        || state.profile?.default_library_name
+        || state.profile?.library_slug
+        || state.profile?.default_library_slug
+        || ''
+      );
+    }
+
     function getProfileReferenceLibraryLogo() {
       const candidates = getProfileReferenceLibraryLogoCandidates();
       for (const key of candidates) {
-        if (USER_REFERENCE_LIBRARY_LOGO_MAP[key]) {
-          return USER_REFERENCE_LIBRARY_LOGO_MAP[key];
-        }
+        if (USER_REFERENCE_LIBRARY_LOGO_MAP[key]) return USER_REFERENCE_LIBRARY_LOGO_MAP[key];
       }
       return null;
     }
 
-    function hideProfileReferenceLibraryLogo() {
-      const node = refs.libraryReferenceLogo;
-      if (!node) return;
-      node.src = '';
-      node.alt = '';
-      node.title = '';
-      node.classList.add('is-hidden');
-      node.setAttribute('aria-hidden', 'true');
+    function hideProfileReferenceLibraryIdentity() {
+      const logoNode = refs.libraryReferenceLogo;
+      const badgeNode = refs.libraryReferenceBadge;
+      if (logoNode) {
+        logoNode.src = '';
+        logoNode.alt = '';
+        logoNode.title = '';
+        logoNode.classList.add('is-hidden');
+        logoNode.setAttribute('aria-hidden', 'true');
+      }
+      if (badgeNode) {
+        badgeNode.textContent = '';
+        badgeNode.title = '';
+        badgeNode.classList.add('is-hidden');
+        badgeNode.setAttribute('aria-hidden', 'true');
+      }
     }
 
-    function renderProfileReferenceLibraryLogo() {
-      const node = refs.libraryReferenceLogo;
-      if (!node) return;
+    function renderProfileReferenceLibraryIdentity() {
+      const logoNode = refs.libraryReferenceLogo;
+      const badgeNode = refs.libraryReferenceBadge;
+      if (!logoNode || !badgeNode) return;
+      hideProfileReferenceLibraryIdentity();
+
       const logo = getProfileReferenceLibraryLogo();
-      if (!logo?.src) {
-        hideProfileReferenceLibraryLogo();
+      const label = getProfileReferenceLibraryLabel();
+      if (logo?.src) {
+        logoNode.src = logo.src;
+        logoNode.alt = logo.alt || label || 'Biblioteca de referência do usuário';
+        logoNode.title = logo.alt || label || 'Biblioteca de referência do usuário';
+        logoNode.classList.remove('is-hidden');
+        logoNode.removeAttribute('aria-hidden');
         return;
       }
-      node.src = logo.src;
-      node.alt = logo.alt || 'Biblioteca de referência do usuário';
-      node.title = logo.alt || 'Biblioteca de referência do usuário';
-      node.classList.remove('is-hidden');
-      node.removeAttribute('aria-hidden');
+
+      if (label) {
+        badgeNode.textContent = label;
+        badgeNode.title = label;
+        badgeNode.classList.remove('is-hidden');
+        badgeNode.removeAttribute('aria-hidden');
+      }
     }
 
     function renderBookAcquisitionBridgeOptions() {
@@ -6744,7 +6791,6 @@
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
-        hideProfileReferenceLibraryLogo();
         updateLoginButton();
         showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
@@ -6798,7 +6844,7 @@
       state.isLibrarian = data?.can_access_catalogacao === true;
 
       updateLoginButton();
-      renderProfileReferenceLibraryLogo();
+      renderProfileReferenceLibraryIdentity();
 
       if (state.isLibrarian) {
         refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
@@ -9576,10 +9622,10 @@
       } else {
         state.profile = null;
         state.isLibrarian = false;
+        hideProfileReferenceLibraryIdentity();
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
-        hideProfileReferenceLibraryLogo();
       }
       updateLoginButton();
     });
@@ -9597,8 +9643,8 @@
     renderExemplarBatchQueue();
     renderLabelSheet([], '');
     renderTrash();
-    hideProfileReferenceLibraryLogo();
     updateLoginButton();
+    hideProfileReferenceLibraryIdentity();
     refreshAll();
   </script>
 </body>
