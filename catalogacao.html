@@ -1648,7 +1648,7 @@
           <button id="catalogModeSimpleBtn" type="button" class="button small secondary" aria-pressed="false">Interface simples</button>
           <button id="catalogModeCompleteBtn" type="button" class="button small secondary" aria-pressed="false">Interface completa</button>
         </div>
-        <span id="catalogModeHint" class="small">Neste primeiro passo, o toggle atua sobre Fichas de livros e Fichas de autores sem alterar dados já salvos.</span>
+        <span id="catalogModeHint" class="small">Neste primeiro passo, este seletor atua sobre Fichas de livros e Fichas de autores sem alterar dados já salvos.</span>
       </div>
     </section>
 
@@ -1708,7 +1708,7 @@
                 <label for="bookCoverFile" class="file-button">Escolher arquivo</label>
                 <span id="bookCoverFileName" class="file-status">Nenhum arquivo selecionado</span>
               </div>
-              <small>O upload vai para o bucket <code>covers</code>. Você pode salvar o rascunho sem imagem e enviar depois.</small>
+              <small>O envio vai para a pasta <code>covers</code> do armazenamento. Você pode salvar o rascunho sem imagem e enviar depois.</small>
             </div>
             <div class="actions">
               <button id="uploadBookCoverBtn" class="button secondary">Enviar capa</button>
@@ -2182,7 +2182,7 @@
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookProvenanceNote">Nota de proveniência</label>
               <textarea id="bookProvenanceNote" placeholder="Ex.: registro retomado do CSL Milano, corrigido localmente a partir do exemplar em mãos; lote de doação; importação semi-automática validada pela biblioteca."></textarea>
-              <small>Os campos principais deste bloco já circulam por colunas nativas. O bridge no JSON bibliográfico permanece apenas como compatibilidade de transição, sem quebrar o fluxo atual.</small>
+              <small>Os campos principais deste bloco já circulam por colunas nativas. O apoio no JSON bibliográfico permanece apenas durante a transição, sem quebrar o fluxo atual.</small>
             </div>
 
             <div class="form-flow-break">
@@ -2197,7 +2197,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">PDF vinculado</h4>
-                    <div class="hint">MVP: vincule manualmente um PDF já enviado a um bucket. O envio direto pelo formulário pode vir depois.</div>
+                    <div class="hint">Por enquanto, vincule manualmente um PDF já enviado ao armazenamento. O envio direto pelo formulário pode vir depois.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -2212,7 +2212,7 @@
                     <input id="bookDigitalLanguageCode" type="text" placeholder="pt / es / fr" />
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
-                    <label for="bookDigitalBucket">Bucket</label>
+                    <label for="bookDigitalBucket">Pasta no armazenamento</label>
                     <input id="bookDigitalBucket" type="text" placeholder="pdf-publico ou pdf-restrito" />
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
@@ -2372,7 +2372,7 @@
                 <label for="authorPhotoFile" class="file-button">Escolher arquivo</label>
                 <span id="authorPhotoFileName" class="file-status">Nenhum arquivo selecionado</span>
               </div>
-              <small>O upload vai para o bucket <code>authors</code>.</small>
+              <small>O envio vai para a pasta <code>authors</code> do armazenamento.</small>
             </div>
             <div class="actions">
               <button id="uploadAuthorPhotoBtn" class="button secondary">Enviar foto</button>
@@ -4857,7 +4857,7 @@
         if (existingIds.length) {
           const { error: updateError } = await supabase
             .from('digital_assets')
-            .update({ is_public: false, notes: 'Ocultado na catalogação porque não há mais PDF público primário ativo no rascunho.' })
+            .update({ is_public: false, notes: 'Ocultado na catalogação porque não há mais PDF público principal ativo no rascunho.' })
             .in('id', existingIds);
           if (updateError) throw updateError;
         }
