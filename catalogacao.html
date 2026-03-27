@@ -741,13 +741,17 @@
     }
 
     .book-public-preview {
-      border: 1px solid rgba(177, 0, 24, .28);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
       border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(249,244,244,.96));
-      padding: 18px;
-      display: grid;
-      gap: 16px;
-      box-shadow: 0 12px 28px rgba(18, 24, 38, .08);
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(179,0,24,.08));
+    }
+
+    .book-public-preview .hint {
+      color: #d7c2c7;
     }
 
     .book-public-preview-top {
@@ -765,12 +769,12 @@
     }
 
     .book-public-preview-card {
-      border: 1px solid rgba(177, 0, 24, .16);
-      border-radius: 16px;
-      background: #fff;
-      padding: 16px;
       display: grid;
       gap: 10px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
     }
 
     .book-public-preview-eyebrow {
@@ -778,24 +782,26 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .08em;
-      color: #b10018;
+      color: #ffe3e7;
     }
 
     .book-public-preview-title {
-      font-size: 20px;
+      font-size: 1.08rem;
       font-weight: 800;
-      color: #121826;
-      line-height: 1.22;
+      color: #fff;
+      line-height: 1.35;
     }
 
     .book-public-preview-line {
-      font-size: 13px;
-      line-height: 1.55;
-      color: #242b38;
+      font-size: .94rem;
+      line-height: 1.45;
+      color: #f0f0f0;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .book-public-preview-line.is-muted {
-      color: #6e7684;
+      color: #d7c2c7;
     }
 
     .book-public-preview-inline {
@@ -814,13 +820,15 @@
       font-size: 11px;
       font-weight: 800;
       letter-spacing: .02em;
-      background: rgba(18, 24, 38, .08);
-      color: #121826;
+      background: rgba(255,255,255,.10);
+      color: #f7f0f1;
+      border: 1px solid rgba(255,255,255,.08);
     }
 
     .book-public-preview-chip.is-strong {
-      background: rgba(177, 0, 24, .12);
-      color: #7a0013;
+      background: rgba(177,0,24,.22);
+      color: #ffe9ed;
+      border-color: rgba(255,255,255,.10);
     }
 
     .material-guide {
@@ -2267,7 +2275,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar index.html ou livro.html.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha do livro.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -3630,9 +3638,10 @@
       return getMarcJsonBridgeBlock(record, 'anarbib_material_detail');
     }
 
-    function getBookNativeOrBridgeValue(record = {}, nativeKey = '', bridgeValue) {
+    function getBookNativeOrBridgeValue(record = {}, nativeKey = '', bridgeValue = '') {
       const nativeValue = record?.[nativeKey];
-      if (nativeValue === null || nativeValue === undefined || nativeValue === '') return bridgeValue || '';
+      if (nativeValue === null || nativeValue === undefined) return bridgeValue ?? '';
+      if (typeof nativeValue === 'string') return nativeValue.trim() !== '' ? nativeValue : (bridgeValue ?? '');
       return nativeValue;
     }
 
@@ -4131,18 +4140,8 @@
       if (node) node.disabled = !!locked;
     }
 
-    function joinBookTitleAndSubtitle(title = '', subtitle = '') {
-      const baseTitle = compactSpaces(title || '');
-      const baseSubtitle = compactSpaces(subtitle || '');
-      const merged = [baseTitle, baseSubtitle].filter(Boolean).join(' — ');
-      return merged || '—';
-    }
-
     function getBookDisplayTitle(book = {}) {
-      return joinBookTitleAndSubtitle(
-        book.titulo || book.title || book.display_title || '',
-        book.subtitulo || book.subtitle || book.display_subtitle || ''
-      );
+      return book.titulo || book.title || book.display_title || '—';
     }
 
     function getBookSearchIndex(book = {}) {
@@ -5960,7 +5959,25 @@
     }
 
     async function enrichBookRecord(record) {
-      const needsSupplement = record?.published_book_id && !(record.titulo_periodico || record.volume || record.numero || record.fasciculo || record.data_edicao || record.periodicidade);
+      const needsSupplement = record?.published_book_id && !(
+        record.titulo_periodico ||
+        record.volume ||
+        record.numero ||
+        record.fasciculo ||
+        record.data_edicao ||
+        record.periodicidade ||
+        record.acquisition_mode ||
+        record.acquisition_date ||
+        record.owner_library ||
+        record.holder_library ||
+        record.partner_source ||
+        record.source_record_id ||
+        record.source_record_url ||
+        record.import_format ||
+        record.import_method ||
+        record.provenance_note ||
+        record.mutualization_status
+      );
       if (!needsSupplement) return record;
       try {
         const supplement = await fetchPublishedBookSupplement(record.published_book_id);
@@ -6106,23 +6123,20 @@
       const collectionValue = el('bookCollection').value.trim();
       const subjectsValue = el('bookSubjects').value.trim();
       updateBookDigitalResourceSummary();
+      const acquisitionModeValue = el('bookAcquisitionMode').value || '';
+      const acquisitionDateValue = el('bookAcquisitionDate').value || '';
+      const ownerLibraryValue = el('bookOwnerLibrary').value.trim() || '';
+      const holderLibraryValue = el('bookHolderLibrary').value.trim() || '';
+      const acquisitionSourceLabelValue = el('bookAcquisitionSourceLabel').value.trim() || '';
+      const partnerSourceValue = el('bookPartnerSource').value || '';
+      const sourceRecordIdValue = el('bookSourceRecordId').value.trim() || '';
+      const sourceRecordUrlValue = el('bookSourceRecordUrl').value.trim() || '';
+      const importFormatValue = el('bookImportFormat').value || '';
+      const importMethodValue = el('bookImportMethod').value || '';
+      const provenanceNoteValue = el('bookProvenanceNote').value.trim() || '';
+      const mutualizationStatusValue = el('bookMutualizationStatus').value || '';
       const acquisitionBridge = {
-        acquisition_mode: el('bookAcquisitionMode').value || '',
-        acquisition_date: el('bookAcquisitionDate').value || '',
-        owner_library: el('bookOwnerLibrary').value.trim() || '',
-        holder_library: el('bookHolderLibrary').value.trim() || '',
-        source_label: el('bookAcquisitionSourceLabel').value.trim() || '',
-      };
-      const provenanceBridge = {
-        partner_source: el('bookPartnerSource').value || '',
-        source_record_id: el('bookSourceRecordId').value.trim() || '',
-        source_record_url: el('bookSourceRecordUrl').value.trim() || '',
-        import_format: el('bookImportFormat').value || '',
-        import_method: el('bookImportMethod').value || '',
-        provenance_note: el('bookProvenanceNote').value.trim() || '',
-      };
-      const networkBridge = {
-        mutualization_status: el('bookMutualizationStatus').value || '',
+        source_label: acquisitionSourceLabelValue,
       };
       const materialDetailBridge = getBookMaterialDetailPayload(materialType);
       const normalizedBookPlace = applyNormalizedBookPlaceValue();
@@ -6155,18 +6169,18 @@
         tipo_material: materialType,
         loanable: NON_LOANABLE_MATERIAL_TYPES.has(materialType) ? false : el('bookLoanable').value === 'true',
         colecao: collectionValue || null,
-        acquisition_mode: el('bookAcquisitionMode').value || null,
-        acquisition_date: el('bookAcquisitionDate').value || null,
-        owner_library: el('bookOwnerLibrary').value.trim() || null,
-        holder_library: el('bookHolderLibrary').value.trim() || null,
-        partner_source: el('bookPartnerSource').value || null,
-        source_record_id: el('bookSourceRecordId').value.trim() || null,
-        source_record_url: el('bookSourceRecordUrl').value.trim() || null,
-        import_format: el('bookImportFormat').value || null,
-        import_method: el('bookImportMethod').value || null,
-        provenance_note: el('bookProvenanceNote').value.trim() || null,
-        mutualization_status: el('bookMutualizationStatus').value || null,
         cover_object_path: el('bookCoverPath').value.trim() || null,
+        acquisition_mode: acquisitionModeValue || null,
+        acquisition_date: acquisitionDateValue || null,
+        owner_library: ownerLibraryValue || null,
+        holder_library: holderLibraryValue || null,
+        partner_source: partnerSourceValue || null,
+        source_record_id: sourceRecordIdValue || null,
+        source_record_url: sourceRecordUrlValue || null,
+        import_format: importFormatValue || null,
+        import_method: importMethodValue || null,
+        provenance_note: provenanceNoteValue || null,
+        mutualization_status: mutualizationStatusValue || null,
         marc_json: mergeMarcJsonBridgeBlock(
           mergeMarcJsonBridgeBlock(
             mergeMarcJsonBridgeBlock(
@@ -6179,10 +6193,10 @@
                 acquisitionBridge
               ),
               'anarbib_provenance',
-              provenanceBridge
+              {}
             ),
             'anarbib_network',
-            networkBridge
+            {}
           ),
           'anarbib_material_detail',
           materialDetailBridge
@@ -7023,18 +7037,18 @@
       const networkBridge = getBookNetworkBridge(enriched);
       const materialDetailBridge = getBookMaterialDetailBridge(enriched);
       el('bookCollection').value = getBookCollectionValue(enriched);
-      el('bookAcquisitionMode').value = getBookNativeOrBridgeValue(enriched, 'acquisition_mode', acquisitionBridge.acquisition_mode);
-      el('bookAcquisitionDate').value = getBookNativeOrBridgeValue(enriched, 'acquisition_date', acquisitionBridge.acquisition_date);
-      el('bookMutualizationStatus').value = getBookNativeOrBridgeValue(enriched, 'mutualization_status', networkBridge.mutualization_status);
-      el('bookOwnerLibrary').value = getBookNativeOrBridgeValue(enriched, 'owner_library', acquisitionBridge.owner_library);
-      el('bookHolderLibrary').value = getBookNativeOrBridgeValue(enriched, 'holder_library', acquisitionBridge.holder_library);
+      el('bookAcquisitionMode').value = getBookNativeOrBridgeValue(enriched, 'acquisition_mode', acquisitionBridge.acquisition_mode) || '';
+      el('bookAcquisitionDate').value = getBookNativeOrBridgeValue(enriched, 'acquisition_date', acquisitionBridge.acquisition_date) || '';
+      el('bookMutualizationStatus').value = getBookNativeOrBridgeValue(enriched, 'mutualization_status', networkBridge.mutualization_status) || '';
+      el('bookOwnerLibrary').value = getBookNativeOrBridgeValue(enriched, 'owner_library', acquisitionBridge.owner_library) || '';
+      el('bookHolderLibrary').value = getBookNativeOrBridgeValue(enriched, 'holder_library', acquisitionBridge.holder_library) || '';
       el('bookAcquisitionSourceLabel').value = acquisitionBridge.source_label || '';
-      el('bookPartnerSource').value = getBookNativeOrBridgeValue(enriched, 'partner_source', provenanceBridge.partner_source);
-      el('bookSourceRecordId').value = getBookNativeOrBridgeValue(enriched, 'source_record_id', provenanceBridge.source_record_id);
-      el('bookSourceRecordUrl').value = getBookNativeOrBridgeValue(enriched, 'source_record_url', provenanceBridge.source_record_url);
-      el('bookImportFormat').value = getBookNativeOrBridgeValue(enriched, 'import_format', provenanceBridge.import_format);
-      el('bookImportMethod').value = getBookNativeOrBridgeValue(enriched, 'import_method', provenanceBridge.import_method);
-      el('bookProvenanceNote').value = getBookNativeOrBridgeValue(enriched, 'provenance_note', provenanceBridge.provenance_note);
+      el('bookPartnerSource').value = getBookNativeOrBridgeValue(enriched, 'partner_source', provenanceBridge.partner_source) || '';
+      el('bookSourceRecordId').value = getBookNativeOrBridgeValue(enriched, 'source_record_id', provenanceBridge.source_record_id) || '';
+      el('bookSourceRecordUrl').value = getBookNativeOrBridgeValue(enriched, 'source_record_url', provenanceBridge.source_record_url) || '';
+      el('bookImportFormat').value = getBookNativeOrBridgeValue(enriched, 'import_format', provenanceBridge.import_format) || '';
+      el('bookImportMethod').value = getBookNativeOrBridgeValue(enriched, 'import_method', provenanceBridge.import_method) || '';
+      el('bookProvenanceNote').value = getBookNativeOrBridgeValue(enriched, 'provenance_note', provenanceBridge.provenance_note) || '';
       fillBookMaterialDetailFields(materialDetailBridge);
       await loadBookDraftDigitalResource(enriched.id);
       el('bookPlace').value = normalizeBrazilianPublicationPlace(enriched.local_publicacao || '');
@@ -7338,9 +7352,6 @@
         const exemplar = getQueueExemplarRecord(item);
         return exemplar?.titulo_etiqueta || item.display_subtitle || item.display_title || '—';
       }
-      if (item.item_type === 'book') {
-        return joinBookTitleAndSubtitle(item.display_title || '', item.display_subtitle || '');
-      }
       return item.display_title || '—';
     }
 
@@ -7349,7 +7360,6 @@
         const exemplar = getQueueExemplarRecord(item);
         return exemplar?.autor_etiqueta || item.display_subtitle || '—';
       }
-      if (item.item_type === 'book') return '—';
       return item.display_subtitle || '—';
     }
 
@@ -7564,8 +7574,8 @@
           draftId: existingDraft?.id || null,
           batchId: bookDraft.batch_id || '',
           bibRef: bookDraft.bib_ref || '',
-          title: joinBookTitleAndSubtitle(existingDraft?.label_title_override || bookDraft.titulo || published?.titulo || '', bookDraft.subtitulo || published?.subtitulo || ''),
-          subtitle: '',
+          title: existingDraft?.label_title_override || bookDraft.titulo || published?.titulo || '—',
+          subtitle: bookDraft.subtitulo || published?.subtitulo || '',
           author: existingDraft?.label_author_override || bookDraft.autor || published?.autor || '',
           cdd: existingDraft?.label_cdd_override || bookDraft.cdd || published?.cdd || '',
           note: existingDraft?.label_note || '',
@@ -7586,8 +7596,8 @@
         batchId: bookDraft.batch_id || '',
         bookStatus: bookDraft.status || 'draft',
         bibRef: bookDraft.bib_ref || '',
-        title: joinBookTitleAndSubtitle(bookDraft.titulo || published?.titulo || '', bookDraft.subtitulo || published?.subtitulo || ''),
-        subtitle: '',
+        title: bookDraft.titulo || published?.titulo || '—',
+        subtitle: bookDraft.subtitulo || published?.subtitulo || '',
         author: bookDraft.autor || published?.autor || '',
         publishedCount,
         requestedCopies,
