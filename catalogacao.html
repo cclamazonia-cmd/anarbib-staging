@@ -684,6 +684,64 @@
       min-height: 1.2em;
     }
 
+    .material-guide {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(179,0,24,.08));
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 100%;
+    }
+
+    .material-guide-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .material-guide-title {
+      margin: 0;
+      font-size: 1rem;
+      color: #fff;
+    }
+
+    .material-guide-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .material-guide-block {
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      min-width: 0;
+    }
+
+    .material-guide-block strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #fff;
+      font-size: .85rem;
+      letter-spacing: .02em;
+    }
+
+    .material-guide-block div {
+      color: #dcdcdc;
+      line-height: 1.45;
+      font-size: .92rem;
+    }
+
+    @media (max-width: 900px) {
+      .material-guide-columns {
+        grid-template-columns: 1fr;
+      }
+    }
 
     .autofill-panel {
       margin-top: 10px;
@@ -1522,13 +1580,33 @@
               </select>
             </div>
 
+            <div id="bookTypeGuideBox" class="field" style="grid-column: span 2;">
+              <div class="material-guide">
+                <div class="material-guide-top">
+                  <h4 id="bookTypeGuideTitle" class="material-guide-title">Livro / brochura</h4>
+                  <span id="bookTypeGuideModePill" class="pill info">Modo simples</span>
+                </div>
+                <div id="bookTypeGuideSummary" class="hint">Use o núcleo bibliográfico comum e abra a interface completa apenas quando precisar de detalhes editoriais e materiais finos.</div>
+                <div class="material-guide-columns">
+                  <div class="material-guide-block">
+                    <strong>Foque agora</strong>
+                    <div id="bookTypeGuideSimple">Título, responsabilidades principais, editora, local, data, idioma e assuntos.</div>
+                  </div>
+                  <div class="material-guide-block mode-complete-only">
+                    <strong>Abra na completa se precisar</strong>
+                    <div id="bookTypeGuideComplete">Coleção, detalhes materiais, notas técnicas, identificadores finos e campos especializados.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="field" style="grid-column: span 3;">
-              <label for="bookTitle">Título</label>
+              <label id="bookTitleLabel" for="bookTitle">Título</label>
               <input id="bookTitle" type="text" required />
             </div>
 
             <div class="field" style="grid-column: span 3;">
-              <label for="bookSubtitle">Subtítulo</label>
+              <label id="bookSubtitleLabel" for="bookSubtitle">Subtítulo</label>
               <input id="bookSubtitle" type="text" />
             </div>
 
@@ -1556,7 +1634,7 @@
             </div>
 
             <div class="field">
-              <label for="bookPublisher">Editora</label>
+              <label id="bookPublisherLabel" for="bookPublisher">Editora</label>
               <input id="bookPublisher" type="text" />
             </div>
 
@@ -1566,12 +1644,12 @@
             </div>
 
             <div class="field">
-              <label for="bookPlace">Local de publicação</label>
+              <label id="bookPlaceLabel" for="bookPlace">Local de publicação</label>
               <input id="bookPlace" type="text" placeholder="São Paulo, SP - Brasil" />
             </div>
 
             <div class="field">
-              <label for="bookYear">Ano</label>
+              <label id="bookYearLabel" for="bookYear">Ano</label>
               <input id="bookYear" type="text" placeholder="2016" />
             </div>
 
@@ -1623,7 +1701,7 @@
                         <label for="bookIssueNumber">Número</label>
                         <input id="bookIssueNumber" type="text" placeholder="3" />
                       </div>
-                      <div class="field" style="padding:0; background:none; border:none;">
+                      <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
                         <label for="bookFascicle">Fascículo</label>
                         <input id="bookFascicle" type="text" placeholder="Especial" />
                       </div>
@@ -1631,7 +1709,7 @@
                         <label for="bookIssueDate">Data da edição</label>
                         <input id="bookIssueDate" type="text" placeholder="jan.-mar. 2024" />
                       </div>
-                      <div class="field" style="padding:0; background:none; border:none;">
+                      <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
                         <label for="bookFrequency">Periodicidade</label>
                         <input id="bookFrequency" type="text" placeholder="Trimestral" />
                       </div>
@@ -1680,7 +1758,7 @@
             </div>
 
             <div class="field">
-              <label for="bookLoanable">Empréstimo</label>
+              <label id="bookLoanableLabel" for="bookLoanable">Empréstimo</label>
               <select id="bookLoanable">
                 <option value="true">Emprestável</option>
                 <option value="false">Somente consulta</option>
@@ -1756,7 +1834,7 @@
                     <label for="bookAudioSupport">Suporte</label>
                     <input id="bookAudioSupport" type="text" placeholder="cassete, CD, arquivo digital, bobina…" />
                   </div>
-                  <div class="field" style="padding:0; background:none; border:none;">
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
                     <label for="bookAudioFormatTech">Formato técnico</label>
                     <input id="bookAudioFormatTech" type="text" placeholder="MP3, WAV, fita magnética…" />
                   </div>
@@ -2013,12 +2091,12 @@
             </div>
 
             <div class="field" style="grid-column: span 3;">
-              <label for="bookNotes">Notas</label>
+              <label id="bookNotesLabel" for="bookNotes">Notas</label>
               <textarea id="bookNotes" placeholder="Observações bibliográficas, estado do exemplar-matriz, notas internas…"></textarea>
             </div>
 
             <div class="field" style="grid-column: span 3;">
-              <label for="bookSubjects">Assuntos</label>
+              <label id="bookSubjectsLabel" for="bookSubjects">Assuntos</label>
               <textarea id="bookSubjects" placeholder="Trabalho ; sindicalismo ; história social"></textarea>
               <small>Preencha manualmente ou aplique abaixo as sugestões da BN. Nada é gravado automaticamente sem sua ação.</small>
             </div>
@@ -2725,6 +2803,141 @@
       outro: 'Use o núcleo comum e, se necessário, complete as observações para descrever um tipo ainda não modelado.',
     };
 
+    const MATERIAL_TYPE_UI_META = {
+      livro: {
+        guideTitle: 'Livro / brochura',
+        summary: 'Use o núcleo bibliográfico comum. Em geral, a interface simples basta para o trabalho cotidiano; abra a completa apenas para detalhamento editorial e material.',
+        simpleFocus: 'Título, subtítulo, responsabilidades principais, editora, local, ano, idioma, assuntos e aquisição simples.',
+        completeFocus: 'Edição, coleção, páginas, notas detalhadas, identificadores finos, cote e descrição material avançada.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora', place: 'Local de publicação', year: 'Ano', loanable: 'Empréstimo', notes: 'Resumo / notas', subjects: 'Assuntos'
+        },
+        placeholders: {
+          title: '', subtitle: '', publisher: '', place: 'São Paulo, SP - Brasil', year: '2016', notes: 'Resumo de conteúdo, notas bibliográficas ou observações internas…', subjects: 'Trabalho ; sindicalismo ; história social'
+        }
+      },
+      brochura: {
+        guideTitle: 'Livro / brochura',
+        summary: 'Brochuras continuam próximas do livro, mas costumam pedir menos aparato editorial. Mantenha o preenchimento enxuto em modo simples.',
+        simpleFocus: 'Título, responsabilidades principais, editora ou coletivo, local, ano, idioma, assuntos e aquisição simples.',
+        completeFocus: 'Coleção, paginação, notas editoriais, identificadores e descrição material mais fina.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora / entidade responsável', place: 'Local de publicação', year: 'Ano', loanable: 'Empréstimo', notes: 'Resumo / notas', subjects: 'Assuntos'
+        },
+        placeholders: {
+          title: '', subtitle: '', publisher: 'Editora, coletivo ou organização responsável', place: 'São Paulo, SP - Brasil', year: '2016', notes: 'Resumo de conteúdo, notas bibliográficas ou observações internas…', subjects: 'Trabalho ; sindicalismo ; história social'
+        }
+      },
+      periodico: {
+        guideTitle: 'Periódico / boletim',
+        summary: 'Em modo simples, foque no número ou fascículo em mãos. Os detalhes seriais mais finos ficam para a interface completa.',
+        simpleFocus: 'Título da edição, periódico-mãe, volume ou número, data, idioma, editora e assuntos.',
+        completeFocus: 'Fascículo, periodicidade, estado de coleção, notas de série e outros vínculos seriais.',
+        labels: {
+          title: 'Título da edição / número', subtitle: 'Subtítulo / chamada', publisher: 'Editora / entidade responsável', place: 'Local de publicação', year: 'Ano / data', loanable: 'Consulta local', notes: 'Resumo / notas do número', subjects: 'Assuntos / dossiê'
+        },
+        placeholders: {
+          title: 'Título do número ou da edição', subtitle: 'Dossiê, chamada principal ou subtítulo', publisher: 'Entidade editora do periódico', place: 'Cidade de publicação', year: '2024 / jan.-mar. 2024', notes: 'Resumo do número, dossiê, notas editoriais ou de coleção…', subjects: 'Anarquismo ; movimento estudantil ; dossiê' 
+        }
+      },
+      boletim: {
+        guideTitle: 'Periódico / boletim',
+        summary: 'Boletins seriados usam a mesma lógica de revista ou periódico, com prioridade à identificação clara do número em mãos.',
+        simpleFocus: 'Título do boletim, numeração, data, idioma, entidade responsável e assuntos.',
+        completeFocus: 'Periodicidade, fascículo, estado de coleção, série editorial e notas seriais.',
+        labels: {
+          title: 'Título da edição / boletim', subtitle: 'Subtítulo / chamada', publisher: 'Entidade responsável', place: 'Local de publicação / difusão', year: 'Ano / data', loanable: 'Consulta local', notes: 'Resumo / notas do boletim', subjects: 'Assuntos / campanha'
+        },
+        placeholders: {
+          title: 'Título do boletim ou da edição', subtitle: 'Chamada principal, tema ou subtítulo', publisher: 'Sindicato, coletivo, frente, coordenação…', place: 'Cidade, campus, bairro, local de difusão…', year: '2024 / maio de 2024', notes: 'Resumo do boletim, campanha ou notas editoriais…', subjects: 'Campanha ; sindicalismo ; boletins' 
+        }
+      },
+      tract: {
+        guideTitle: 'Tracto / panfleto',
+        summary: 'A interface simples deve permitir registrar rapidamente o contexto político básico do impresso, sem obrigar a descrição material completa.',
+        simpleFocus: 'Título ou intitulé, organização emissora, data ou período, lugar de difusão, campanha e assuntos.',
+        completeFocus: 'Recto/verso, formato, técnica de impressão, estado material e observações finas de circulação.',
+        labels: {
+          title: 'Título / intitulé de trabalho', subtitle: 'Subtítulo / lema / chamada', publisher: 'Organização emissora', place: 'Lugar de difusão', year: 'Data / período', loanable: 'Empréstimo', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Sem título formal? use um intitulé de trabalho claro', subtitle: 'Lema, chamada principal ou subtítulo', publisher: 'Sindicato, frente, coletivo, coordenação…', place: 'Belém, campus, ocupação, ato, bairro…', year: 'mai. 2013 / inverno de 2016 / sem data precisa', notes: 'Contexto político, uso do impresso, observações internas…', subjects: 'Greve ; antifascismo ; solidariedade' 
+        }
+      },
+      cartaz: {
+        guideTitle: 'Cartaz / affiche',
+        summary: 'Em modo simples, o objetivo é identificar rapidamente o cartaz, sua campanha e seu contexto de difusão local.',
+        simpleFocus: 'Título ou intitulé, organização emissora, data ou período, lugar de difusão, campanha e assuntos.',
+        completeFocus: 'Recto/verso se houver, formato físico, técnica de impressão, estado material e notas finas de conservação.',
+        labels: {
+          title: 'Título / intitulé do cartaz', subtitle: 'Subtítulo / lema / chamada', publisher: 'Organização emissora', place: 'Lugar de difusão', year: 'Data / período', loanable: 'Consulta local', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Sem título formal? use um intitulé de trabalho claro', subtitle: 'Lema, chamada principal ou subtítulo', publisher: 'Sindicato, frente, coletivo, coordenação…', place: 'Belém, campus, ocupação, ato, bairro…', year: 'mai. 2013 / inverno de 2016 / sem data precisa', notes: 'Contexto político, função pública do cartaz, observações internas…', subjects: 'Campanha ; cartazes ; memória militante' 
+        }
+      },
+      audio: {
+        guideTitle: 'Áudio',
+        summary: 'Em modo simples, registre primeiro o que se ouve e em que suporte. Os detalhes técnicos de gravação ficam para a interface completa.',
+        simpleFocus: 'Título, intervenientes principais, duração, suporte, língua falada ou cantada e assuntos.',
+        completeFocus: 'Formato técnico, tipo de gravação, nota de digitalização e observações avançadas de suporte.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo / série / faixa', publisher: 'Selo / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / conteúdo', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Título da gravação ou do registro sonoro', subtitle: 'Série, faixa, episódio ou recorte', publisher: 'Selo, coletivo, rádio, editora, organização…', place: 'Cidade, estúdio, rádio, local do ato…', year: '2018 / sem data precisa', notes: 'Resumo do conteúdo sonoro, contexto, observações internas…', subjects: 'Rádio livre ; memória oral ; música militante' 
+        }
+      },
+      audiovisual: {
+        guideTitle: 'Audiovisual',
+        summary: 'Em modo simples, privilegie a identificação da obra, da realização, do suporte e do contexto de consulta.',
+        simpleFocus: 'Título, realização ou direção, duração, suporte, língua e assuntos.',
+        completeFocus: 'Legendagem, condições de consulta, intervenientes detalhados e notas técnicas adicionais.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo / episódio / série', publisher: 'Produtora / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / sinopse', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Título do filme, vídeo ou registro', subtitle: 'Episódio, série, subtítulo ou chamada', publisher: 'Coletivo realizador, produtora, associação…', place: 'Cidade, local de produção ou difusão…', year: '2019 / sem data precisa', notes: 'Sinopse, contexto político, observações de consulta…', subjects: 'Documentário ; audiovisual ; memória social' 
+        }
+      },
+      recurso_digital: {
+        guideTitle: 'Recurso digital nativo',
+        summary: 'A interface simples deve permitir registrar um objeto que nasce digital com seu acesso principal e seu uso, sem exigir descrição técnica pesada.',
+        simpleFocus: 'Título, URL ou acesso principal, modalidade de acesso, restrição, idioma, assuntos e recurso principal.',
+        completeFocus: 'Observação técnica do arquivo, notas de espelho local, detalhes de suporte e proveniência ampliada.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo / versão', publisher: 'Entidade responsável', place: 'Origem / contexto', year: 'Ano / data', loanable: 'Consulta digital', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Título do recurso digital', subtitle: 'Versão, subtítulo ou recorte', publisher: 'Coletivo, projeto, associação, pessoa responsável…', place: 'Site, rede, origem do recurso…', year: '2025 / sem data precisa', notes: 'Descrição do conteúdo, contexto e observações de acesso…', subjects: 'PDF ; vídeo online ; arquivo digital ; memória' 
+        }
+      },
+      dossie: {
+        guideTitle: 'Dossiê / conjunto militante',
+        summary: 'Em modo simples, descreva primeiro o conjunto, seu período e seus vínculos organizativos. A estrutura fina do conjunto fica para a completa.',
+        simpleFocus: 'Título do conjunto, descrição sintética, período coberto, organizações ligadas e assuntos.',
+        completeFocus: 'Nota de contexto, cronologia, vínculos fortes com campanhas, autoridades e outros conjuntos.',
+        labels: {
+          title: 'Título do conjunto', subtitle: 'Subtítulo / recorte', publisher: 'Entidade organizadora', place: 'Lugar principal', year: 'Período / data', loanable: 'Empréstimo', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Título do dossiê ou conjunto', subtitle: 'Recorte temático, territorial ou temporal', publisher: 'Coletivo, entidade ou rede organizadora…', place: 'Cidade, território, local principal…', year: '2013-2016 / primavera de 2020', notes: 'Contexto do conjunto, cronologia e observações internas…', subjects: 'Greves ; campanha ; repressão ; memória' 
+        }
+      },
+      outro: {
+        guideTitle: 'Outro tipo documental',
+        summary: 'Use o núcleo comum sem tentar encaixar à força um objeto singular num molde livro. A interface completa fica como apoio para observações mais finas.',
+        simpleFocus: 'Título, responsabilidades principais, data, idioma, assuntos e uma descrição breve do objeto.',
+        completeFocus: 'Observações materiais, notas técnicas, vínculos documentaires et adaptações locais provisórias.',
+        labels: {
+          title: 'Título', subtitle: 'Subtítulo / identificação complementar', publisher: 'Entidade responsável', place: 'Lugar principal', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
+        },
+        placeholders: {
+          title: 'Título ou identificação principal do objeto', subtitle: 'Subtítulo ou recorte complementar', publisher: 'Entidade, coletivo ou responsável', place: 'Cidade, local ou contexto principal', year: '2016 / sem data precisa', notes: 'Descreva aqui o tipo de objeto e o contexto de uso…', subjects: 'Tema ; contexto ; palavras-chave' 
+        }
+      },
+    };
+
     const el = (id) => document.getElementById(id);
 
     const refs = {
@@ -2767,6 +2980,19 @@
       bookISBNField: el('bookISBNField'),
       bookISSNField: el('bookISSNField'),
       bookMaterialHint: el('bookMaterialHint'),
+      bookTypeGuideTitle: el('bookTypeGuideTitle'),
+      bookTypeGuideModePill: el('bookTypeGuideModePill'),
+      bookTypeGuideSummary: el('bookTypeGuideSummary'),
+      bookTypeGuideSimple: el('bookTypeGuideSimple'),
+      bookTypeGuideComplete: el('bookTypeGuideComplete'),
+      bookTitleLabel: el('bookTitleLabel'),
+      bookSubtitleLabel: el('bookSubtitleLabel'),
+      bookPublisherLabel: el('bookPublisherLabel'),
+      bookPlaceLabel: el('bookPlaceLabel'),
+      bookYearLabel: el('bookYearLabel'),
+      bookLoanableLabel: el('bookLoanableLabel'),
+      bookNotesLabel: el('bookNotesLabel'),
+      bookSubjectsLabel: el('bookSubjectsLabel'),
       bookContributorsWrap: el('bookContributorsWrap'),
       bookResponsibilityExtraWrap: el('bookResponsibilityExtraWrap'),
       bookDigitalLinkedSummary: el('bookDigitalLinkedSummary'),
@@ -4534,6 +4760,7 @@
           ? 'Modo simples ativo: Fichas de livros e Fichas de autores mostram só o núcleo de trabalho cotidiano.'
           : 'Modo completo ativo: Fichas de livros e Fichas de autores mostram também os campos técnicos e avançados.';
       }
+      if (el('bookType')) syncBookTypeUI();
     }
 
     function setCatalogacaoMode(mode = 'simple') {
@@ -5422,6 +5649,54 @@
       updateBookQuickLabelPreview();
     }
 
+    function setFieldLabelText(node, text, fallback = '') {
+      if (!node) return;
+      node.textContent = String(text || fallback || '');
+    }
+
+    function setFieldPlaceholder(node, value, fallback = '') {
+      if (!node) return;
+      const nextValue = String(value || fallback || '');
+      if (nextValue) {
+        node.setAttribute('placeholder', nextValue);
+      } else {
+        node.removeAttribute('placeholder');
+      }
+    }
+
+    function getMaterialTypeUiMeta(materialType = '') {
+      return MATERIAL_TYPE_UI_META[materialType] || MATERIAL_TYPE_UI_META.outro;
+    }
+
+    function syncBookMaterialDescriptors(materialType = '') {
+      const uiMeta = getMaterialTypeUiMeta(materialType);
+      const labels = uiMeta.labels || {};
+      const placeholders = uiMeta.placeholders || {};
+      setFieldLabelText(refs.bookTitleLabel, labels.title, 'Título');
+      setFieldLabelText(refs.bookSubtitleLabel, labels.subtitle, 'Subtítulo');
+      setFieldLabelText(refs.bookPublisherLabel, labels.publisher, 'Editora');
+      setFieldLabelText(refs.bookPlaceLabel, labels.place, 'Local de publicação');
+      setFieldLabelText(refs.bookYearLabel, labels.year, 'Ano');
+      setFieldLabelText(refs.bookLoanableLabel, labels.loanable, 'Empréstimo');
+      setFieldLabelText(refs.bookNotesLabel, labels.notes, 'Notas');
+      setFieldLabelText(refs.bookSubjectsLabel, labels.subjects, 'Assuntos');
+      setFieldPlaceholder(el('bookTitle'), placeholders.title, '');
+      setFieldPlaceholder(el('bookSubtitle'), placeholders.subtitle, '');
+      setFieldPlaceholder(el('bookPublisher'), placeholders.publisher, '');
+      setFieldPlaceholder(el('bookPlace'), placeholders.place, 'São Paulo, SP - Brasil');
+      setFieldPlaceholder(el('bookYear'), placeholders.year, '2016');
+      setFieldPlaceholder(el('bookNotes'), placeholders.notes, 'Observações bibliográficas, estado do exemplar-matriz, notas internas…');
+      setFieldPlaceholder(el('bookSubjects'), placeholders.subjects, 'Trabalho ; sindicalismo ; história social');
+      if (refs.bookTypeGuideTitle) refs.bookTypeGuideTitle.textContent = uiMeta.guideTitle || 'Tipo documental';
+      if (refs.bookTypeGuideSummary) refs.bookTypeGuideSummary.textContent = uiMeta.summary || '';
+      if (refs.bookTypeGuideSimple) refs.bookTypeGuideSimple.textContent = uiMeta.simpleFocus || '';
+      if (refs.bookTypeGuideComplete) refs.bookTypeGuideComplete.textContent = uiMeta.completeFocus || '';
+      if (refs.bookTypeGuideModePill) {
+        refs.bookTypeGuideModePill.textContent = state.catalogacaoMode === 'complete' ? 'Modo completo' : 'Modo simples';
+        refs.bookTypeGuideModePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
+      }
+    }
+
     function syncBookTypeUI() {
       const materialType = el('bookType').value || 'livro';
       const isSerialType = SERIAL_MATERIAL_TYPES.has(materialType);
@@ -5434,6 +5709,7 @@
         refs.bookLoanable.value = 'false';
       }
       refs.bookMaterialHint.textContent = BOOK_MATERIAL_HINTS[materialType] || BOOK_MATERIAL_HINTS.outro;
+      syncBookMaterialDescriptors(materialType);
       refs.bookISSNField.style.borderColor = isSerialType ? 'rgba(29,78,216,.38)' : '';
       refs.bookISBNField.style.opacity = isSerialType ? '.72' : '1';
     }
