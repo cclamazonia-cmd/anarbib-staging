@@ -1509,8 +1509,15 @@
               <label for="bookType">Tipo de material</label>
               <select id="bookType">
                 <option value="livro">Livro</option>
-                <option value="periodico">Periódico</option>
                 <option value="brochura">Brochura</option>
+                <option value="periodico">Periódico / revista</option>
+                <option value="boletim">Boletim</option>
+                <option value="tract">Tracto / panfleto</option>
+                <option value="cartaz">Cartaz / affiche</option>
+                <option value="audio">Áudio</option>
+                <option value="audiovisual">Audiovisual</option>
+                <option value="recurso_digital">Recurso digital nativo</option>
+                <option value="dossie">Dossiê / conjunto militante</option>
                 <option value="outro">Outro</option>
               </select>
             </div>
@@ -1600,8 +1607,8 @@
                 <div id="periodicalFields" class="field is-hidden" style="grid-column: span 3;">
                   <div class="section-block">
                     <div>
-                      <h4 class="section-title">Dados do periódico</h4>
-                      <div class="hint">Preencha aqui os dados específicos de volume, número e periodicidade.</div>
+                      <h4 class="section-title">Dados do periódico / boletim</h4>
+                      <div class="hint">Preencha aqui os dados específicos de revista, periódico ou boletim seriado: título-mãe, volume, número, fascículo, data e periodicidade.</div>
                     </div>
                     <div class="grid cols-3">
                       <div class="field" style="padding:0; background:none; border:none;">
@@ -1679,6 +1686,191 @@
                 <option value="false">Somente consulta</option>
               </select>
               <small id="bookMaterialHint" class="material-note">Livros e brochuras podem ser marcados conforme o uso interno.</small>
+            </div>
+
+            <div class="form-flow-break">
+              <strong>Módulo específico conforme o tipo de material</strong>
+              <span>Este bloco amplia a ficha para objetos militantes sem quebrar o núcleo comum. Só aparece o módulo correspondente ao tipo escolhido.</span>
+            </div>
+
+            <div id="tractMaterialFields" class="field is-hidden" data-material-panel data-material-types="tract,cartaz" style="grid-column: span 3;">
+              <div class="section-block">
+                <div>
+                  <h4 class="section-title">Tracto / cartaz / material militante</h4>
+                  <div class="hint">Registre aqui o contexto político e material de difusão do item.</div>
+                </div>
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialCampaign">Campanha / mobilização</label>
+                    <input id="bookMaterialCampaign" type="text" placeholder="Greve geral, campanha antifascista, jornada de solidariedade…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialEmitter">Organização / coletivo emissor</label>
+                    <input id="bookMaterialEmitter" type="text" placeholder="Sindicato, frente, coletivo, coordenação…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialApproxDate">Data ou período</label>
+                    <input id="bookMaterialApproxDate" type="text" placeholder="mai. 2013 / inverno de 2016 / sem data precisa" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialDiffusionPlace">Lugar de difusão</label>
+                    <input id="bookMaterialDiffusionPlace" type="text" placeholder="Belém, ocupação, ato, campus, bairro…" />
+                  </div>
+                  <div class="field">
+                    <label for="bookMaterialRectoVerso">Recto / verso</label>
+                    <select id="bookMaterialRectoVerso">
+                      <option value="">Sem indicação</option>
+                      <option value="recto">Somente recto</option>
+                      <option value="recto_verso">Recto e verso</option>
+                      <option value="desconhecido">Não verificado</option>
+                    </select>
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialFormat">Formato físico</label>
+                    <input id="bookMaterialFormat" type="text" placeholder="A4, A3, dobrado, volante, cartaz grande…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
+                    <label for="bookMaterialPrintTechnique">Técnica de impressão</label>
+                    <input id="bookMaterialPrintTechnique" type="text" placeholder="Mimeógrafo, offset, serigrafia, fotocópia…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookMaterialPhysicalState">Estado material</label>
+                    <input id="bookMaterialPhysicalState" type="text" placeholder="Dobras, rasgos, manchas, cola, grampos, conservação…" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="audioMaterialFields" class="field is-hidden" data-material-panel data-material-types="audio" style="grid-column: span 3;">
+              <div class="section-block">
+                <div>
+                  <h4 class="section-title">Áudio</h4>
+                  <div class="hint">Descreva aqui o suporte sonoro, a duração e o tipo de gravação.</div>
+                </div>
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudioDuration">Duração</label>
+                    <input id="bookAudioDuration" type="text" placeholder="00:47:12" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudioSupport">Suporte</label>
+                    <input id="bookAudioSupport" type="text" placeholder="cassete, CD, arquivo digital, bobina…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudioFormatTech">Formato técnico</label>
+                    <input id="bookAudioFormatTech" type="text" placeholder="MP3, WAV, fita magnética…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudioSpokenLanguage">Língua falada / cantada</label>
+                    <input id="bookAudioSpokenLanguage" type="text" placeholder="Português, espanhol, bilíngue…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookAudioParticipants">Intervenientes</label>
+                    <input id="bookAudioParticipants" type="text" placeholder="Palestrantes, cantores, locutores, entrevistados…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 3;">
+                    <label for="bookAudioRecordingType">Tipo de gravação / nota técnica</label>
+                    <input id="bookAudioRecordingType" type="text" placeholder="Registro de ato, programa de rádio, gravação de reunião, digitalização…" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="audiovisualMaterialFields" class="field is-hidden" data-material-panel data-material-types="audiovisual" style="grid-column: span 3;">
+              <div class="section-block">
+                <div>
+                  <h4 class="section-title">Audiovisual</h4>
+                  <div class="hint">Registre duração, suporte, responsáveis e condições de visionnage.</div>
+                </div>
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudiovisualDuration">Duração</label>
+                    <input id="bookAudiovisualDuration" type="text" placeholder="01:32:00" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudiovisualSupport">Suporte</label>
+                    <input id="bookAudiovisualSupport" type="text" placeholder="DVD, VHS, arquivo MP4…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudiovisualLanguage">Língua</label>
+                    <input id="bookAudiovisualLanguage" type="text" placeholder="Português, espanhol, francês…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookAudiovisualDirector">Realização / direção</label>
+                    <input id="bookAudiovisualDirector" type="text" placeholder="Nome da pessoa ou coletivo realizador" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookAudiovisualParticipants">Intervenientes</label>
+                    <input id="bookAudiovisualParticipants" type="text" placeholder="Entrevistados, narradores, participantes, coletivos…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
+                    <label for="bookAudiovisualSubtitles">Legendagem / subtítulos</label>
+                    <input id="bookAudiovisualSubtitles" type="text" placeholder="Sem subtítulos / PT-BR / ES / múltiplos…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookAudiovisualAccessNote">Condições de consulta</label>
+                    <input id="bookAudiovisualAccessNote" type="text" placeholder="Visionnage local, sessão mediada, acesso restrito…" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="digitalNativeMaterialFields" class="field is-hidden" data-material-panel data-material-types="recurso_digital" style="grid-column: span 3;">
+              <div class="section-block">
+                <div>
+                  <h4 class="section-title">Recurso digital nativo</h4>
+                  <div class="hint">Use este bloco para materiais que nascem digitais e podem existir sem suporte físico.</div>
+                </div>
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookDigitalNativeUrl">URL principal</label>
+                    <input id="bookDigitalNativeUrl" type="url" placeholder="https://..." />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalNativeAccess">Modalidade de acesso</label>
+                    <input id="bookDigitalNativeAccess" type="text" placeholder="Leitura online, download, consulta local…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalNativeRestriction">Nível de restrição</label>
+                    <input id="bookDigitalNativeRestriction" type="text" placeholder="Público, conta ativa, consulta local…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDigitalNativeUsage">Uso principal</label>
+                    <input id="bookDigitalNativeUsage" type="text" placeholder="Texto, áudio, vídeo, imagem, dataset…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 3;">
+                    <label for="bookDigitalNativeFileNote">Observação técnica</label>
+                    <input id="bookDigitalNativeFileNote" type="text" placeholder="Bucket/path, mirror local, checksum, observação de arquivo…" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="dossierMaterialFields" class="field is-hidden" data-material-panel data-material-types="dossie" style="grid-column: span 3;">
+              <div class="section-block">
+                <div>
+                  <h4 class="section-title">Dossiê / conjunto militante</h4>
+                  <div class="hint">Descreva aqui o perímetro do conjunto e os vínculos organizativos principais.</div>
+                </div>
+                <div class="grid cols-3">
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookDossierScope">Descrição sintética do conjunto</label>
+                    <input id="bookDossierScope" type="text" placeholder="Dossiê de campanha, conjunto de documentos de greve, pasta temática…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none;">
+                    <label for="bookDossierPeriod">Período coberto</label>
+                    <input id="bookDossierPeriod" type="text" placeholder="2013-2016 / primavera de 2020…" />
+                  </div>
+                  <div class="field" style="padding:0; background:none; border:none; grid-column: span 2;">
+                    <label for="bookDossierOrganizations">Organizações / coletivos ligados</label>
+                    <input id="bookDossierOrganizations" type="text" placeholder="Frente, sindicato, coletivo, rede, campanha…" />
+                  </div>
+                  <div class="field mode-complete-only" style="padding:0; background:none; border:none;">
+                    <label for="bookDossierContext">Nota de contexto</label>
+                    <input id="bookDossierContext" type="text" placeholder="Contexto político, cronologia, ligação com outros conjuntos…" />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="form-flow-break">
@@ -2517,6 +2709,22 @@
       ['negotiated_batch', 'Lote negociado'],
     ];
 
+    const SERIAL_MATERIAL_TYPES = new Set(['periodico', 'boletim']);
+    const NON_LOANABLE_MATERIAL_TYPES = new Set(['periodico', 'boletim', 'cartaz', 'recurso_digital']);
+    const BOOK_MATERIAL_HINTS = {
+      livro: 'Livros podem ser marcados conforme o uso interno da biblioteca.',
+      brochura: 'Brochuras podem ser marcadas conforme o uso interno da biblioteca.',
+      periodico: 'Periódicos ficam marcados como somente consulta local e usam ISSN / dados seriados.',
+      boletim: 'Boletins seriados ficam marcados como somente consulta local e usam ISSN / dados de numeração.',
+      tract: 'Tractos e panfletos usam o núcleo comum mais o módulo militante de campanha, difusão e materialidade.',
+      cartaz: 'Cartazes ficam como somente consulta local e usam o módulo militante de campanha, formato e técnica.',
+      audio: 'Áudios usam o núcleo comum mais duração, suporte, formato técnico e intervenientes.',
+      audiovisual: 'Audiovisuais usam o núcleo comum mais duração, suporte, realização e condições de consulta.',
+      recurso_digital: 'Recursos digitais nativos não usam empréstimo físico local; descreva acesso, uso e restrições.',
+      dossie: 'Dossiês e conjuntos militantes usam o núcleo comum mais o perímetro do conjunto e suas organizações ligadas.',
+      outro: 'Use o núcleo comum e, se necessário, complete as observações para descrever um tipo ainda não modelado.',
+    };
+
     const el = (id) => document.getElementById(id);
 
     const refs = {
@@ -2980,6 +3188,74 @@
       return getMarcJsonBridgeBlock(record, 'anarbib_network');
     }
 
+    function getBookMaterialDetailBridge(record = {}) {
+      return getMarcJsonBridgeBlock(record, 'anarbib_material_detail');
+    }
+
+    const BOOK_MATERIAL_DETAIL_FIELD_MAP = {
+      tract_campaign: 'bookMaterialCampaign',
+      emitter_org: 'bookMaterialEmitter',
+      approximate_date: 'bookMaterialApproxDate',
+      diffusion_place: 'bookMaterialDiffusionPlace',
+      recto_verso: 'bookMaterialRectoVerso',
+      physical_format: 'bookMaterialFormat',
+      print_technique: 'bookMaterialPrintTechnique',
+      physical_state: 'bookMaterialPhysicalState',
+      audio_duration: 'bookAudioDuration',
+      audio_support: 'bookAudioSupport',
+      audio_format: 'bookAudioFormatTech',
+      audio_language: 'bookAudioSpokenLanguage',
+      audio_participants: 'bookAudioParticipants',
+      audio_recording_type: 'bookAudioRecordingType',
+      audiovisual_duration: 'bookAudiovisualDuration',
+      audiovisual_support: 'bookAudiovisualSupport',
+      audiovisual_language: 'bookAudiovisualLanguage',
+      audiovisual_director: 'bookAudiovisualDirector',
+      audiovisual_participants: 'bookAudiovisualParticipants',
+      audiovisual_subtitles: 'bookAudiovisualSubtitles',
+      audiovisual_access_note: 'bookAudiovisualAccessNote',
+      digital_native_url: 'bookDigitalNativeUrl',
+      digital_native_access: 'bookDigitalNativeAccess',
+      digital_native_restriction: 'bookDigitalNativeRestriction',
+      digital_native_usage: 'bookDigitalNativeUsage',
+      digital_native_file_note: 'bookDigitalNativeFileNote',
+      dossier_scope: 'bookDossierScope',
+      dossier_period: 'bookDossierPeriod',
+      dossier_organizations: 'bookDossierOrganizations',
+      dossier_context: 'bookDossierContext',
+    };
+
+    function getBookMaterialDetailPayload(materialType = '') {
+      const payload = { material_type: materialType || (el('bookType')?.value || 'livro') };
+      Object.entries(BOOK_MATERIAL_DETAIL_FIELD_MAP).forEach(([key, fieldId]) => {
+        payload[key] = String(el(fieldId)?.value || '').trim();
+      });
+      return payload;
+    }
+
+    function fillBookMaterialDetailFields(detail = {}) {
+      Object.entries(BOOK_MATERIAL_DETAIL_FIELD_MAP).forEach(([key, fieldId]) => {
+        const node = el(fieldId);
+        if (!node) return;
+        node.value = detail?.[key] || '';
+      });
+    }
+
+    function getMaterialPanels() {
+      return Array.from(document.querySelectorAll('[data-material-panel]'));
+    }
+
+    function toggleMaterialPanels(materialType = '') {
+      const currentType = String(materialType || el('bookType')?.value || 'livro');
+      getMaterialPanels().forEach(panel => {
+        const allowedTypes = String(panel.dataset.materialTypes || '')
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+        panel.classList.toggle('is-hidden', !allowedTypes.includes(currentType));
+      });
+    }
+
     function renderSelectWithOptions(selectId, options = [], blankLabel = 'Sem indicação') {
       const node = el(selectId);
       if (!node) return;
@@ -3415,13 +3691,6 @@
       return book.titulo || book.title || book.display_title || '—';
     }
 
-    function getBookDisplayTitleWithSubtitle(book = {}) {
-      const title = getBookDisplayTitle(book);
-      const subtitle = String(book.subtitulo || book.subtitle || '').trim();
-      if (!subtitle || title === '—') return title;
-      return `${title} - ${subtitle}`;
-    }
-
     function getBookSearchIndex(book = {}) {
       return normalizeForSearch([
         book.bib_ref,
@@ -3766,6 +4035,36 @@
         digitalIsPublic: !!el('bookDigitalIsPublic').checked,
         digitalIsPrimary: !!el('bookDigitalIsPrimary').checked,
         digitalBibliographicMatch: !!el('bookDigitalBibliographicMatch').checked,
+        materialCampaign: el('bookMaterialCampaign').value.trim(),
+        materialEmitter: el('bookMaterialEmitter').value.trim(),
+        materialApproxDate: el('bookMaterialApproxDate').value.trim(),
+        materialDiffusionPlace: el('bookMaterialDiffusionPlace').value.trim(),
+        materialRectoVerso: el('bookMaterialRectoVerso').value || '',
+        materialFormat: el('bookMaterialFormat').value.trim(),
+        materialPrintTechnique: el('bookMaterialPrintTechnique').value.trim(),
+        materialPhysicalState: el('bookMaterialPhysicalState').value.trim(),
+        audioDuration: el('bookAudioDuration').value.trim(),
+        audioSupport: el('bookAudioSupport').value.trim(),
+        audioFormat: el('bookAudioFormatTech').value.trim(),
+        audioLanguage: el('bookAudioSpokenLanguage').value.trim(),
+        audioParticipants: el('bookAudioParticipants').value.trim(),
+        audioRecordingType: el('bookAudioRecordingType').value.trim(),
+        audiovisualDuration: el('bookAudiovisualDuration').value.trim(),
+        audiovisualSupport: el('bookAudiovisualSupport').value.trim(),
+        audiovisualLanguage: el('bookAudiovisualLanguage').value.trim(),
+        audiovisualDirector: el('bookAudiovisualDirector').value.trim(),
+        audiovisualParticipants: el('bookAudiovisualParticipants').value.trim(),
+        audiovisualSubtitles: el('bookAudiovisualSubtitles').value.trim(),
+        audiovisualAccessNote: el('bookAudiovisualAccessNote').value.trim(),
+        digitalNativeUrl: el('bookDigitalNativeUrl').value.trim(),
+        digitalNativeAccess: el('bookDigitalNativeAccess').value.trim(),
+        digitalNativeRestriction: el('bookDigitalNativeRestriction').value.trim(),
+        digitalNativeUsage: el('bookDigitalNativeUsage').value.trim(),
+        digitalNativeFileNote: el('bookDigitalNativeFileNote').value.trim(),
+        dossierScope: el('bookDossierScope').value.trim(),
+        dossierPeriod: el('bookDossierPeriod').value.trim(),
+        dossierOrganizations: el('bookDossierOrganizations').value.trim(),
+        dossierContext: el('bookDossierContext').value.trim(),
         place: el('bookPlace').value.trim(),
         year: el('bookYear').value.trim(),
         isbn: el('bookISBN').value.trim(),
@@ -5124,20 +5423,19 @@
     }
 
     function syncBookTypeUI() {
-      const isPeriodico = el('bookType').value === 'periodico';
-      refs.periodicalFields.classList.toggle('is-hidden', !isPeriodico);
+      const materialType = el('bookType').value || 'livro';
+      const isSerialType = SERIAL_MATERIAL_TYPES.has(materialType);
+      const isForcedNonLoanable = NON_LOANABLE_MATERIAL_TYPES.has(materialType);
+      refs.periodicalFields.classList.toggle('is-hidden', !isSerialType);
+      toggleMaterialPanels(materialType);
       refs.bookLoanable = refs.bookLoanable || el('bookLoanable');
-      refs.bookLoanable.disabled = isPeriodico;
-      if (isPeriodico) {
+      refs.bookLoanable.disabled = isForcedNonLoanable;
+      if (isForcedNonLoanable) {
         refs.bookLoanable.value = 'false';
-        refs.bookMaterialHint.textContent = 'Periódicos ficam marcados como somente consulta local.';
-        refs.bookISSNField.style.borderColor = 'rgba(29,78,216,.38)';
-        refs.bookISBNField.style.opacity = '.72';
-      } else {
-        refs.bookMaterialHint.textContent = 'Livros e brochuras podem ser marcados conforme o uso interno.';
-        refs.bookISSNField.style.borderColor = '';
-        refs.bookISBNField.style.opacity = '1';
       }
+      refs.bookMaterialHint.textContent = BOOK_MATERIAL_HINTS[materialType] || BOOK_MATERIAL_HINTS.outro;
+      refs.bookISSNField.style.borderColor = isSerialType ? 'rgba(29,78,216,.38)' : '';
+      refs.bookISBNField.style.opacity = isSerialType ? '.72' : '1';
     }
 
     async function fetchPublishedBookSupplement(bookId) {
@@ -5316,6 +5614,7 @@
       const networkBridge = {
         mutualization_status: el('bookMutualizationStatus').value || '',
       };
+      const materialDetailBridge = getBookMaterialDetailPayload(materialType);
       const normalizedBookPlace = applyNormalizedBookPlaceValue();
       return {
         id: el('bookDraftId').value || undefined,
@@ -5333,7 +5632,7 @@
         ano: el('bookYear').value.trim() || null,
         isbn: el('bookISBN').value.trim() || null,
         issn: el('bookISSN').value.trim() || null,
-        titulo_periodico: materialType === 'periodico' ? (el('bookPeriodicalTitle').value.trim() || el('bookTitle').value.trim() || null) : (el('bookPeriodicalTitle').value.trim() || null),
+        titulo_periodico: SERIAL_MATERIAL_TYPES.has(materialType) ? (el('bookPeriodicalTitle').value.trim() || el('bookTitle').value.trim() || null) : (el('bookPeriodicalTitle').value.trim() || null),
         volume: el('bookVolume').value.trim() || null,
         numero: el('bookIssueNumber').value.trim() || null,
         fasciculo: el('bookFascicle').value.trim() || null,
@@ -5344,24 +5643,28 @@
         paginas: parseOptionalInt(el('bookPages').value),
         notas: el('bookNotes').value.trim() || null,
         tipo_material: materialType,
-        loanable: materialType === 'periodico' ? false : el('bookLoanable').value === 'true',
+        loanable: NON_LOANABLE_MATERIAL_TYPES.has(materialType) ? false : el('bookLoanable').value === 'true',
         colecao: collectionValue || null,
         cover_object_path: el('bookCoverPath').value.trim() || null,
         marc_json: mergeMarcJsonBridgeBlock(
           mergeMarcJsonBridgeBlock(
             mergeMarcJsonBridgeBlock(
-              mergeBookSubjectsIntoMarcJson(
-                mergeBookCollectionIntoMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), collectionValue),
-                subjectsValue
+              mergeMarcJsonBridgeBlock(
+                mergeBookSubjectsIntoMarcJson(
+                  mergeBookCollectionIntoMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), collectionValue),
+                  subjectsValue
+                ),
+                'anarbib_acquisition',
+                acquisitionBridge
               ),
-              'anarbib_acquisition',
-              acquisitionBridge
+              'anarbib_provenance',
+              provenanceBridge
             ),
-            'anarbib_provenance',
-            provenanceBridge
+            'anarbib_network',
+            networkBridge
           ),
-          'anarbib_network',
-          networkBridge
+          'anarbib_material_detail',
+          materialDetailBridge
         ),
         created_by: state.profile.id,
         updated_by: state.profile.id,
@@ -5464,6 +5767,7 @@
       bookDraftBaseline = serializeBookFormState();
       setBookDraftVisualState('new');
       clearMessage(refs.bookMessage);
+      syncBookTypeUI();
       updateBookQuickLabelPreview();
     }
 
@@ -6002,6 +6306,7 @@
       const acquisitionBridge = getBookAcquisitionBridge(enriched);
       const provenanceBridge = getBookProvenanceBridge(enriched);
       const networkBridge = getBookNetworkBridge(enriched);
+      const materialDetailBridge = getBookMaterialDetailBridge(enriched);
       el('bookCollection').value = getBookCollectionValue(enriched);
       el('bookAcquisitionMode').value = acquisitionBridge.acquisition_mode || '';
       el('bookAcquisitionDate').value = acquisitionBridge.acquisition_date || '';
@@ -6015,6 +6320,7 @@
       el('bookImportFormat').value = provenanceBridge.import_format || '';
       el('bookImportMethod').value = provenanceBridge.import_method || '';
       el('bookProvenanceNote').value = provenanceBridge.provenance_note || '';
+      fillBookMaterialDetailFields(materialDetailBridge);
       await loadBookDraftDigitalResource(enriched.id);
       el('bookPlace').value = normalizeBrazilianPublicationPlace(enriched.local_publicacao || '');
       el('bookYear').value = enriched.ano || '';
@@ -7385,7 +7691,7 @@
               <tr>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${sanitize(getBookDisplayTitleWithSubtitle(book))}</td>
+                <td>${sanitize(getBookDisplayTitle(book))}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
@@ -7980,7 +8286,6 @@
         } catch (contributorsError) {
           console.warn('Não foi possível salvar autores múltiplos antes da publicação.', contributorsError);
         }
-        await saveBookDraftDigitalResource(draftId);
         const { error } = await supabase.rpc('publish_book_draft', { p_draft_id: Number(draftId) });
         if (error) throw error;
         let contributorSyncMessage = '';
@@ -7992,34 +8297,24 @@
         }
         let authorLinkMessage = '';
         let digitalSyncMessage = '';
-        let publishedBookId = null;
         try {
-          publishedBookId = await resolvePublishedBookIdFromDraft(draftId);
+          const publishedBookId = await resolvePublishedBookIdFromDraft(draftId);
           if (publishedBookId) {
             el('bookPublishedId').value = String(publishedBookId);
-          }
-        } catch (publishedIdError) {
-          digitalSyncMessage = ` Não consegui confirmar o livro publicado para ressincronizar o PDF: ${publishedIdError.message}`;
-        }
-
-        if (publishedBookId) {
-          try {
             const { error: linkError } = await supabase.rpc('link_book_contributors_to_authors', { p_book_id: Number(publishedBookId) });
             if (linkError) throw linkError;
-          } catch (linkingError) {
-            authorLinkMessage = ` Não consegui atualizar automaticamente os vínculos entre autores e obras: ${linkingError.message}`;
-          }
-
-          try {
-            const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
-            if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
-              digitalSyncMessage = ' Não consegui confirmar a sincronização do PDF público para a camada publicada.';
+            try {
+              const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
+              if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
+                digitalSyncMessage = ' Não consegui confirmar a sincronização do PDF público para a camada publicada.';
+              }
+            } catch (digitalError) {
+              digitalSyncMessage = ` Não consegui sincronizar o PDF público publicado: ${digitalError.message}`;
             }
-          } catch (digitalError) {
-            digitalSyncMessage = ` Não consegui sincronizar o PDF público publicado: ${digitalError.message}`;
           }
+        } catch (linkingError) {
+          authorLinkMessage = ` Não consegui atualizar automaticamente os vínculos entre autores e obras: ${linkingError.message}`;
         }
-
         await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
         setTab(currentTab);
         updateStats();
