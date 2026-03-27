@@ -740,6 +740,89 @@
       color: var(--muted);
     }
 
+    .book-public-preview {
+      border: 1px solid rgba(177, 0, 24, .28);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(249,244,244,.96));
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      box-shadow: 0 12px 28px rgba(18, 24, 38, .08);
+    }
+
+    .book-public-preview-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .book-public-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .book-public-preview-card {
+      border: 1px solid rgba(177, 0, 24, .16);
+      border-radius: 16px;
+      background: #fff;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .book-public-preview-eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #b10018;
+    }
+
+    .book-public-preview-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #121826;
+      line-height: 1.22;
+    }
+
+    .book-public-preview-line {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #242b38;
+    }
+
+    .book-public-preview-line.is-muted {
+      color: #6e7684;
+    }
+
+    .book-public-preview-inline {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .book-public-preview-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      background: rgba(18, 24, 38, .08);
+      color: #121826;
+    }
+
+    .book-public-preview-chip.is-strong {
+      background: rgba(177, 0, 24, .12);
+      color: #7a0013;
+    }
+
     .material-guide {
       padding: 12px 14px;
       border-radius: 16px;
@@ -2178,6 +2261,39 @@
                 </div>
               </div>
             </div>
+
+            <div class="field" style="grid-column: span 3;">
+              <div class="book-public-preview">
+                <div class="book-public-preview-top">
+                  <div>
+                    <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar index.html ou livro.html.</div>
+                  </div>
+                  <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
+                </div>
+                <div class="book-public-preview-grid">
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Linha no catálogo</div>
+                    <div class="book-public-preview-inline">
+                      <span id="bookPublicCatalogKindChip" class="book-public-preview-chip is-strong">Livro / brochura</span>
+                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Biblioteca: —</span>
+                    </div>
+                    <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
+                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Meta de exibição: —</div>
+                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Resumo curto de catálogo ainda não informado.</div>
+                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Disponibilidade e acesso: —</div>
+                  </div>
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Abertura da ficha</div>
+                    <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
+                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Tipo, responsabilidade e proveniência pública: —</div>
+                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha ainda não informado.</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Circulação, acesso e suporte: —</div>
+                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos públicos: —</div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookMarcJson">Estrutura bibliográfica em JSON</label>
               <textarea id="bookMarcJson" placeholder='{"245":{"a":"Título"},"100":{"a":"Autor"}}'></textarea>
@@ -3124,6 +3240,18 @@
       bookDerivedSummaryContext: el('bookDerivedSummaryContext'),
       bookDerivedSummaryAccess: el('bookDerivedSummaryAccess'),
       bookDerivedSummarySubjects: el('bookDerivedSummarySubjects'),
+      bookPublicPreviewModePill: el('bookPublicPreviewModePill'),
+      bookPublicCatalogKindChip: el('bookPublicCatalogKindChip'),
+      bookPublicCatalogLibraryChip: el('bookPublicCatalogLibraryChip'),
+      bookPublicCatalogTitle: el('bookPublicCatalogTitle'),
+      bookPublicCatalogMeta: el('bookPublicCatalogMeta'),
+      bookPublicCatalogSnippet: el('bookPublicCatalogSnippet'),
+      bookPublicCatalogAccess: el('bookPublicCatalogAccess'),
+      bookPublicFichaTitle: el('bookPublicFichaTitle'),
+      bookPublicFichaMeta: el('bookPublicFichaMeta'),
+      bookPublicFichaBody: el('bookPublicFichaBody'),
+      bookPublicFichaAccess: el('bookPublicFichaAccess'),
+      bookPublicFichaSubjects: el('bookPublicFichaSubjects'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
       labelSuggestCode: el('labelSuggestCode'),
@@ -5236,6 +5364,7 @@
       syncBookDraftVisualState();
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
+      updateBookPublicSurfacePreview();
       showMessage(refs.bookMessage, 'CDD sugerida aplicada sem sobrescrever dados existentes.', 'ok');
     }
 
@@ -5729,6 +5858,7 @@
         refs.bookResponsibilityExtraWrap.classList.add('is-hidden');
         updateBookQuickLabelPreview();
         updateBookDerivedSummaryPreview();
+        updateBookPublicSurfacePreview();
         return;
       }
       renderBookResponsibilitySummary(contributors);
@@ -5799,6 +5929,7 @@
       refs.bookISSNField.style.borderColor = isSerialType ? 'rgba(29,78,216,.38)' : '';
       refs.bookISBNField.style.opacity = isSerialType ? '.72' : '1';
       updateBookDerivedSummaryPreview();
+      updateBookPublicSurfacePreview();
     }
 
     async function fetchPublishedBookSupplement(bookId) {
@@ -6133,6 +6264,7 @@
       syncBookTypeUI();
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
+      updateBookPublicSurfacePreview();
     }
 
     function resetAuthorForm() {
@@ -6311,6 +6443,79 @@
       refs.bookDerivedSummarySubjects.textContent = `Assuntos: ${summary.subjects}`;
     }
 
+    function buildBookPublicSurfacePreview() {
+      const summary = buildBookDerivedSummary();
+      const materialType = el('bookType')?.value || 'livro';
+      const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
+      const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
+      const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
+      const digitalNativeUrl = compactSpaces(el('bookDigitalNativeUrl')?.value || '');
+      const digitalNativeAccess = compactSpaces(el('bookDigitalNativeAccess')?.value || '');
+      const digitalNativeRestriction = compactSpaces(el('bookDigitalNativeRestriction')?.value || '');
+      const digitalNativeUsage = compactSpaces(el('bookDigitalNativeUsage')?.value || '');
+      const dossierScope = compactSpaces(el('bookDossierScope')?.value || '');
+      const dossierOrganizations = compactSpaces(el('bookDossierOrganizations')?.value || '');
+      const materialFormat = compactSpaces(el('bookMaterialFormat')?.value || '');
+      const physicalState = compactSpaces(el('bookMaterialPhysicalState')?.value || '');
+      const videoSupport = compactSpaces(el('bookAudiovisualSupport')?.value || '');
+      const audioSupport = compactSpaces(el('bookAudioSupport')?.value || '');
+      const supportText = (() => {
+        if (materialType === 'audio') return joinSummaryParts([audioSupport, compactSpaces(el('bookAudioRecordingType')?.value || ''), compactSpaces(el('bookAudioFormatTech')?.value || '')]);
+        if (materialType === 'audiovisual') return joinSummaryParts([videoSupport, compactSpaces(el('bookAudiovisualSubtitles')?.value || '')]);
+        if (materialType === 'recurso_digital') return joinSummaryParts([digitalNativeUsage, digitalNativeAccess, digitalNativeRestriction]);
+        if (materialType === 'tract' || materialType === 'cartaz') return joinSummaryParts([materialFormat, physicalState]);
+        if (materialType === 'dossie') return joinSummaryParts([dossierScope, compactSpaces(el('bookDossierPeriod')?.value || '')]);
+        return '';
+      })();
+      const catalogMetaParts = [summary.meta];
+      if (supportText) catalogMetaParts.push(`Suporte: ${supportText}`);
+      const snippetParts = [summary.context];
+      if ((materialType === 'tract' || materialType === 'cartaz') && physicalState) snippetParts.push(`Estado: ${physicalState}`);
+      if (materialType === 'recurso_digital' && digitalNativeUrl) snippetParts.push('URL principal informada.');
+      if (materialType === 'dossie' && dossierOrganizations) snippetParts.push(`Organizações: ${dossierOrganizations}`);
+      const catalogAccessParts = [summary.access];
+      if (materialType === 'recurso_digital' && digitalNativeRestriction) catalogAccessParts.push(`Restrição: ${digitalNativeRestriction}`);
+      if (materialType === 'recurso_digital' && digitalNativeAccess) catalogAccessParts.push(`Uso: ${digitalNativeAccess}`);
+      const fichaMetaParts = [summary.kindLabel, summary.meta];
+      if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+      const fichaBodyParts = [summary.context];
+      if (materialType === 'dossie' && dossierOrganizations) fichaBodyParts.push(`Vínculos organizativos: ${dossierOrganizations}`);
+      if (materialType === 'recurso_digital' && digitalNativeUrl) fichaBodyParts.push('Recurso digital principal informado.');
+      return {
+        kindLabel: summary.kindLabel,
+        displayLibrary,
+        catalogTitle: summary.title,
+        catalogMeta: joinSummaryParts(catalogMetaParts) || 'Meta de exibição: —',
+        catalogSnippet: joinSummaryParts(snippetParts) || 'Resumo curto de catálogo ainda não informado.',
+        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Disponibilidade e acesso ainda não definidos.',
+        fichaTitle: summary.title,
+        fichaMeta: joinSummaryParts(fichaMetaParts) || 'Tipo, responsabilidade e proveniência pública: —',
+        fichaBody: joinSummaryParts(fichaBodyParts) || 'Corpo mínimo da ficha ainda não informado.',
+        fichaAccess: joinSummaryParts([summary.access, supportText ? `Suporte: ${supportText}` : '']) || 'Circulação, acesso e suporte ainda não definidos.',
+        fichaSubjects: summary.subjects || '—',
+      };
+    }
+
+    function updateBookPublicSurfacePreview() {
+      if (!refs.bookPublicCatalogTitle) return;
+      const preview = buildBookPublicSurfacePreview();
+      if (refs.bookPublicPreviewModePill) {
+        refs.bookPublicPreviewModePill.textContent = state.catalogacaoMode === 'complete' ? 'Modo completo' : 'Modo simples';
+        refs.bookPublicPreviewModePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
+      }
+      if (refs.bookPublicCatalogKindChip) refs.bookPublicCatalogKindChip.textContent = preview.kindLabel;
+      if (refs.bookPublicCatalogLibraryChip) refs.bookPublicCatalogLibraryChip.textContent = `Biblioteca: ${preview.displayLibrary}`;
+      refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
+      refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
+      refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
+      refs.bookPublicCatalogAccess.textContent = `Disponibilidade e acesso: ${preview.catalogAccess}`;
+      refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
+      refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
+      refs.bookPublicFichaBody.textContent = preview.fichaBody;
+      refs.bookPublicFichaAccess.textContent = `Circulação, acesso e suporte: ${preview.fichaAccess}`;
+      refs.bookPublicFichaSubjects.textContent = `Assuntos públicos: ${preview.fichaSubjects}`;
+    }
+
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
       syncLabelSummaryFromExemplar();
       hidePublishedPopup('label');
@@ -6376,11 +6581,13 @@
         syncBookDraftVisualState();
         updateBookQuickLabelPreview();
         updateBookDerivedSummaryPreview();
+        updateBookPublicSurfacePreview();
       });
       node.addEventListener('change', () => {
         syncBookDraftVisualState();
         updateBookQuickLabelPreview();
         updateBookDerivedSummaryPreview();
+        updateBookPublicSurfacePreview();
       });
     });
 
@@ -6829,6 +7036,7 @@
       refs.bookCoverFileName.textContent = 'Nenhum arquivo selecionado';
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
+      updateBookPublicSurfacePreview();
     }
 
     function fillAuthorForm(record) {
@@ -9008,6 +9216,7 @@
       syncBookTypeUI();
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
+      updateBookPublicSurfacePreview();
     });
     if (refs.previewAuthorAssistBtn) refs.previewAuthorAssistBtn.addEventListener('click', previewAuthorAssist);
     if (refs.applyAuthorAssistBtn) refs.applyAuthorAssistBtn.addEventListener('click', applyAuthorAssist);
