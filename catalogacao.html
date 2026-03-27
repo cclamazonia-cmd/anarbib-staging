@@ -3701,6 +3701,36 @@
       dossier_context: 'bookDossierContext',
     };
 
+    const BOOK_MATERIAL_DETAIL_NATIVE_KEYS = Object.keys(BOOK_MATERIAL_DETAIL_FIELD_MAP);
+
+    function getBookMaterialDetailNativePayload(detail = {}) {
+      return Object.fromEntries(
+        BOOK_MATERIAL_DETAIL_NATIVE_KEYS.map((key) => {
+          const rawValue = detail?.[key];
+          if (rawValue === null || rawValue === undefined) return [key, null];
+          if (typeof rawValue === 'string') return [key, rawValue.trim() || null];
+          return [key, rawValue];
+        })
+      );
+    }
+
+    function getBookResolvedMaterialDetail(record = {}, bridge = getBookMaterialDetailBridge(record)) {
+      const resolved = {};
+      BOOK_MATERIAL_DETAIL_NATIVE_KEYS.forEach((key) => {
+        resolved[key] = getBookNativeOrBridgeValue(record, key, bridge?.[key] || '') || '';
+      });
+      return resolved;
+    }
+
+    function hasBookResolvedMaterialDetail(record = {}, bridge = getBookMaterialDetailBridge(record)) {
+      return BOOK_MATERIAL_DETAIL_NATIVE_KEYS.some((key) => {
+        const value = getBookNativeOrBridgeValue(record, key, bridge?.[key] || '');
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'string') return value.trim() !== '';
+        return true;
+      });
+    }
+
     function getBookMaterialDetailPayload(materialType = '') {
       const payload = { material_type: materialType || (el('bookType')?.value || 'livro') };
       Object.entries(BOOK_MATERIAL_DETAIL_FIELD_MAP).forEach(([key, fieldId]) => {
@@ -6047,7 +6077,7 @@
       if (!bookId) return null;
       const { data, error } = await supabase
         .from('books')
-        .select('titulo_periodico, volume, numero, fasciculo, data_edicao, periodicidade, acquisition_mode, acquisition_date, owner_library, holder_library, source_label, partner_source, source_record_id, source_record_url, import_format, import_method, provenance_note, mutualization_status')
+        .select('titulo_periodico, volume, numero, fasciculo, data_edicao, periodicidade, acquisition_mode, acquisition_date, owner_library, holder_library, source_label, partner_source, source_record_id, source_record_url, import_format, import_method, provenance_note, mutualization_status, tract_campaign, emitter_org, approximate_date, diffusion_place, recto_verso, physical_format, print_technique, physical_state, audio_duration, audio_support, audio_format, audio_language, audio_participants, audio_recording_type, audiovisual_duration, audiovisual_support, audiovisual_language, audiovisual_director, audiovisual_participants, audiovisual_subtitles, audiovisual_access_note, digital_native_url, digital_native_access, digital_native_restriction, digital_native_usage, digital_native_file_note, dossier_scope, dossier_period, dossier_organizations, dossier_context')
         .eq('id', Number(bookId))
         .single();
       if (error) throw error;
@@ -6073,7 +6103,8 @@
         record.import_format ||
         record.import_method ||
         record.provenance_note ||
-        record.mutualization_status
+        record.mutualization_status ||
+        hasBookResolvedMaterialDetail(record)
       );
       if (!needsSupplement) return record;
       try {
@@ -6235,6 +6266,7 @@
       const acquisitionBridge = {};
 
       const materialDetailBridge = getBookMaterialDetailPayload(materialType);
+      const materialDetailNativePayload = getBookMaterialDetailNativePayload(materialDetailBridge);
       const normalizedBookPlace = applyNormalizedBookPlaceValue();
       return {
         id: el('bookDraftId').value || undefined,
@@ -6278,6 +6310,7 @@
         import_method: importMethodValue || null,
         provenance_note: provenanceNoteValue || null,
         mutualization_status: mutualizationStatusValue || null,
+        ...materialDetailNativePayload,
         marc_json: mergeMarcJsonBridgeBlock(
           mergeMarcJsonBridgeBlock(
             mergeMarcJsonBridgeBlock(
@@ -7133,6 +7166,7 @@
       const provenanceBridge = getBookProvenanceBridge(enriched);
       const networkBridge = getBookNetworkBridge(enriched);
       const materialDetailBridge = getBookMaterialDetailBridge(enriched);
+      const resolvedMaterialDetail = getBookResolvedMaterialDetail(enriched, materialDetailBridge);
       el('bookCollection').value = getBookCollectionValue(enriched);
       el('bookAcquisitionMode').value = getBookNativeOrBridgeValue(enriched, 'acquisition_mode', acquisitionBridge.acquisition_mode) || '';
       el('bookAcquisitionDate').value = getBookNativeOrBridgeValue(enriched, 'acquisition_date', acquisitionBridge.acquisition_date) || '';
@@ -7146,7 +7180,7 @@
       el('bookImportFormat').value = getBookNativeOrBridgeValue(enriched, 'import_format', provenanceBridge.import_format) || '';
       el('bookImportMethod').value = getBookNativeOrBridgeValue(enriched, 'import_method', provenanceBridge.import_method) || '';
       el('bookProvenanceNote').value = getBookNativeOrBridgeValue(enriched, 'provenance_note', provenanceBridge.provenance_note) || '';
-      fillBookMaterialDetailFields(materialDetailBridge);
+      fillBookMaterialDetailFields(resolvedMaterialDetail);
       await loadBookDraftDigitalResource(enriched.id);
       el('bookPlace').value = normalizeBrazilianPublicationPlace(enriched.local_publicacao || '');
       el('bookYear').value = enriched.ano || '';
