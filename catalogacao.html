@@ -6047,7 +6047,7 @@
       if (!bookId) return null;
       const { data, error } = await supabase
         .from('books')
-        .select('titulo_periodico, volume, numero, fasciculo, data_edicao, periodicidade, acquisition_mode, acquisition_date, owner_library, holder_library, partner_source, source_record_id, source_record_url, import_format, import_method, provenance_note, mutualization_status')
+        .select('titulo_periodico, volume, numero, fasciculo, data_edicao, periodicidade, acquisition_mode, acquisition_date, owner_library, holder_library, source_label, partner_source, source_record_id, source_record_url, import_format, import_method, provenance_note, mutualization_status')
         .eq('id', Number(bookId))
         .single();
       if (error) throw error;
@@ -6066,6 +6066,7 @@
         record.acquisition_date ||
         record.owner_library ||
         record.holder_library ||
+        record.source_label ||
         record.partner_source ||
         record.source_record_id ||
         record.source_record_url ||
@@ -6231,9 +6232,8 @@
       const importMethodValue = el('bookImportMethod').value || '';
       const provenanceNoteValue = el('bookProvenanceNote').value.trim() || '';
       const mutualizationStatusValue = el('bookMutualizationStatus').value || '';
-      const acquisitionBridge = {
-        source_label: acquisitionSourceLabelValue,
-      };
+      const acquisitionBridge = {};
+
       const materialDetailBridge = getBookMaterialDetailPayload(materialType);
       const normalizedBookPlace = applyNormalizedBookPlaceValue();
       return {
@@ -6270,6 +6270,7 @@
         acquisition_date: acquisitionDateValue || null,
         owner_library: ownerLibraryValue || null,
         holder_library: holderLibraryValue || null,
+        source_label: acquisitionSourceLabelValue || null,
         partner_source: partnerSourceValue || null,
         source_record_id: sourceRecordIdValue || null,
         source_record_url: sourceRecordUrlValue || null,
@@ -7138,7 +7139,7 @@
       el('bookMutualizationStatus').value = getBookNativeOrBridgeValue(enriched, 'mutualization_status', networkBridge.mutualization_status) || '';
       el('bookOwnerLibrary').value = getBookNativeOrBridgeValue(enriched, 'owner_library', acquisitionBridge.owner_library) || '';
       el('bookHolderLibrary').value = getBookNativeOrBridgeValue(enriched, 'holder_library', acquisitionBridge.holder_library) || '';
-      el('bookAcquisitionSourceLabel').value = acquisitionBridge.source_label || '';
+      el('bookAcquisitionSourceLabel').value = getBookNativeOrBridgeValue(enriched, 'source_label', acquisitionBridge.source_label) || '';
       el('bookPartnerSource').value = getBookNativeOrBridgeValue(enriched, 'partner_source', provenanceBridge.partner_source) || '';
       el('bookSourceRecordId').value = getBookNativeOrBridgeValue(enriched, 'source_record_id', provenanceBridge.source_record_id) || '';
       el('bookSourceRecordUrl').value = getBookNativeOrBridgeValue(enriched, 'source_record_url', provenanceBridge.source_record_url) || '';
