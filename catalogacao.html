@@ -2086,7 +2086,7 @@
                   </div>
                   <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 3;">
                     <label for="bookDigitalNativeFileNote">Observação técnica</label>
-                    <input id="bookDigitalNativeFileNote" type="text" placeholder="Bucket/path, mirror local, checksum, observação de arquivo…" />
+                    <input id="bookDigitalNativeFileNote" type="text" placeholder="Pasta, cópia local, verificação e observação do arquivo…" />
                   </div>
                 </div>
               </div>
@@ -2121,7 +2121,7 @@
 
             <div class="form-flow-break">
               <strong>Aquisição, proveniência e pertencimento</strong>
-              <span>Registre como o item entrou, de onde vieram os metadados e como ele pode circular no futuro, sem confundir isso com um empréstimo inter-bibs já operacional.</span>
+              <span>Registre como o item entrou, de onde vieram os metadados e como ele pode circular no futuro, sem confundir isso com um empréstimo entre bibliotecas já em uso.</span>
             </div>
 
             <div class="field">
@@ -2187,7 +2187,7 @@
 
             <div class="form-flow-break">
               <strong>Exemplar digital / leitura</strong>
-              <span>Vincule aqui um PDF já presente no Storage. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
+              <span>Vincule aqui um PDF já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2235,7 +2235,7 @@
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
                     <label for="bookDigitalRightsStatus">Situação de direitos</label>
-                    <input id="bookDigitalRightsStatus" type="text" placeholder="dominio_publico" />
+                    <input id="bookDigitalRightsStatus" type="text" placeholder="domínio público" />
                   </div>
                 </div>
 
@@ -4695,7 +4695,7 @@
       }
 
       if (!storageBucket || !storagePath) {
-        throw new Error('Para vincular um PDF, informe o bucket e o caminho do arquivo.');
+        throw new Error('Para vincular um PDF, informe a pasta no armazenamento e o caminho do arquivo.');
       }
 
       return {
@@ -4762,7 +4762,7 @@
     async function openBookDigitalPdfFromForm() {
       const bucket = el('bookDigitalBucket').value.trim();
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe o bucket e o caminho do PDF para abri-lo.');
+      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
       let resolvedUrl = signedData?.signedUrl || '';
       if (!resolvedUrl) {
@@ -4791,7 +4791,7 @@
 
       if (isPublic) {
         if (!bucket || !path) {
-          throw new Error('Informe o bucket e o caminho do PDF público para abrir no leitor.');
+          throw new Error('Informe a pasta no armazenamento e o caminho do PDF público para abrir no leitor.');
         }
 
         if (publishedBookId) {
