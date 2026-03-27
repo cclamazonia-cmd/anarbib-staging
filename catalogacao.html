@@ -74,6 +74,26 @@
       gap: 12px;
     }
 
+    .hero-logo-group {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .library-reference-logo {
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      background: rgba(12,12,12,.24);
+      padding: 6px 8px;
+    }
+
+    .library-reference-logo.is-hidden {
+      display: none;
+    }
+
     .hero-copy {
       display: flex;
       flex-direction: column;
@@ -1439,6 +1459,9 @@
     @media (max-width: 980px) {
       .logo,
       .topbar-logo { width: auto; max-width: 118px; height: 56px; }
+      .hero-logo-group {
+        justify-content: flex-start;
+      }
       .grid.cols-2,
       .grid.cols-4,
       .statusbar {
@@ -1590,7 +1613,10 @@
           <h1>Catalogação - ANARBIB</h1>
           <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
         </div>
-        <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
+        <div class="hero-logo-group">
+          <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
+          <img id="libraryReferenceLogo" class="logo topbar-logo library-reference-logo is-hidden" src="" alt="" aria-hidden="true">
+        </div>
       </div>
       <div class="hero-actions">
         <a class="btn" id="btnPainel" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html">Voltar ao painel</a>
@@ -3138,6 +3164,7 @@
       userEmail: el('userEmail'),
       rolePill: el('rolePill'),
       loginBtn: el('loginBtn'),
+      libraryReferenceLogo: el('libraryReferenceLogo'),
       catalogModeSimpleBtn: el('catalogModeSimpleBtn'),
       catalogModeCompleteBtn: el('catalogModeCompleteBtn'),
       catalogModeHint: el('catalogModeHint'),
@@ -3711,6 +3738,75 @@
         || state.profile?.default_library_slug
         || ''
       );
+    }
+
+    const USER_REFERENCE_LIBRARY_LOGO_MAP = Object.freeze({
+      btl: {
+        src: 'https://bibliotecaterralivre.noblogs.org/files/2020/01/BTL10-e1579976419270.jpg',
+        alt: 'Biblioteca Terra Livre',
+      },
+      terra_livre: {
+        src: 'https://bibliotecaterralivre.noblogs.org/files/2020/01/BTL10-e1579976419270.jpg',
+        alt: 'Biblioteca Terra Livre',
+      },
+      biblioteca_terra_livre: {
+        src: 'https://bibliotecaterralivre.noblogs.org/files/2020/01/BTL10-e1579976419270.jpg',
+        alt: 'Biblioteca Terra Livre',
+      },
+    });
+
+    function slugifyLibraryKey(value = '') {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    }
+
+    function getProfileReferenceLibraryLogoCandidates() {
+      const rawCandidates = [
+        state.profile?.library_slug,
+        state.profile?.default_library_slug,
+        state.profile?.library_name,
+        state.profile?.default_library_name,
+      ];
+      return Array.from(new Set(rawCandidates.map(slugifyLibraryKey).filter(Boolean)));
+    }
+
+    function getProfileReferenceLibraryLogo() {
+      const candidates = getProfileReferenceLibraryLogoCandidates();
+      for (const key of candidates) {
+        if (USER_REFERENCE_LIBRARY_LOGO_MAP[key]) {
+          return USER_REFERENCE_LIBRARY_LOGO_MAP[key];
+        }
+      }
+      return null;
+    }
+
+    function hideProfileReferenceLibraryLogo() {
+      const node = refs.libraryReferenceLogo;
+      if (!node) return;
+      node.src = '';
+      node.alt = '';
+      node.title = '';
+      node.classList.add('is-hidden');
+      node.setAttribute('aria-hidden', 'true');
+    }
+
+    function renderProfileReferenceLibraryLogo() {
+      const node = refs.libraryReferenceLogo;
+      if (!node) return;
+      const logo = getProfileReferenceLibraryLogo();
+      if (!logo?.src) {
+        hideProfileReferenceLibraryLogo();
+        return;
+      }
+      node.src = logo.src;
+      node.alt = logo.alt || 'Biblioteca de referência do usuário';
+      node.title = logo.alt || 'Biblioteca de referência do usuário';
+      node.classList.remove('is-hidden');
+      node.removeAttribute('aria-hidden');
     }
 
     function renderBookAcquisitionBridgeOptions() {
@@ -6648,6 +6744,7 @@
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
+        hideProfileReferenceLibraryLogo();
         updateLoginButton();
         showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
@@ -6701,6 +6798,7 @@
       state.isLibrarian = data?.can_access_catalogacao === true;
 
       updateLoginButton();
+      renderProfileReferenceLibraryLogo();
 
       if (state.isLibrarian) {
         refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
@@ -9481,6 +9579,7 @@
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
+        hideProfileReferenceLibraryLogo();
       }
       updateLoginButton();
     });
@@ -9498,6 +9597,7 @@
     renderExemplarBatchQueue();
     renderLabelSheet([], '');
     renderTrash();
+    hideProfileReferenceLibraryLogo();
     updateLoginButton();
     refreshAll();
   </script>
