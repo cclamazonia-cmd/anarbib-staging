@@ -741,17 +741,13 @@
     }
 
     .book-public-preview {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 14px;
+      border: 1px solid rgba(177, 0, 24, .28);
       border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(179,0,24,.08));
-    }
-
-    .book-public-preview .hint {
-      color: #d7c2c7;
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(249,244,244,.96));
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      box-shadow: 0 12px 28px rgba(18, 24, 38, .08);
     }
 
     .book-public-preview-top {
@@ -769,12 +765,12 @@
     }
 
     .book-public-preview-card {
+      border: 1px solid rgba(177, 0, 24, .16);
+      border-radius: 16px;
+      background: #fff;
+      padding: 16px;
       display: grid;
       gap: 10px;
-      padding: 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
     }
 
     .book-public-preview-eyebrow {
@@ -782,26 +778,24 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .08em;
-      color: #ffe3e7;
+      color: #b10018;
     }
 
     .book-public-preview-title {
-      font-size: 1.08rem;
+      font-size: 20px;
       font-weight: 800;
-      color: #fff;
-      line-height: 1.35;
+      color: #121826;
+      line-height: 1.22;
     }
 
     .book-public-preview-line {
-      font-size: .94rem;
-      line-height: 1.45;
-      color: #f0f0f0;
-      word-break: break-word;
-      overflow-wrap: anywhere;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #242b38;
     }
 
     .book-public-preview-line.is-muted {
-      color: #d7c2c7;
+      color: #6e7684;
     }
 
     .book-public-preview-inline {
@@ -820,15 +814,13 @@
       font-size: 11px;
       font-weight: 800;
       letter-spacing: .02em;
-      background: rgba(255,255,255,.10);
-      color: #f7f0f1;
-      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(18, 24, 38, .08);
+      color: #121826;
     }
 
     .book-public-preview-chip.is-strong {
-      background: rgba(177,0,24,.22);
-      color: #ffe9ed;
-      border-color: rgba(255,255,255,.10);
+      background: rgba(177, 0, 24, .12);
+      color: #7a0013;
     }
 
     .material-guide {
@@ -2275,7 +2267,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha do livro.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar index.html ou livro.html.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -4133,8 +4125,18 @@
       if (node) node.disabled = !!locked;
     }
 
+    function joinBookTitleAndSubtitle(title = '', subtitle = '') {
+      const baseTitle = compactSpaces(title || '');
+      const baseSubtitle = compactSpaces(subtitle || '');
+      const merged = [baseTitle, baseSubtitle].filter(Boolean).join(' — ');
+      return merged || '—';
+    }
+
     function getBookDisplayTitle(book = {}) {
-      return book.titulo || book.title || book.display_title || '—';
+      return joinBookTitleAndSubtitle(
+        book.titulo || book.title || book.display_title || '',
+        book.subtitulo || book.subtitle || book.display_subtitle || ''
+      );
     }
 
     function getBookSearchIndex(book = {}) {
@@ -7319,6 +7321,9 @@
         const exemplar = getQueueExemplarRecord(item);
         return exemplar?.titulo_etiqueta || item.display_subtitle || item.display_title || '—';
       }
+      if (item.item_type === 'book') {
+        return joinBookTitleAndSubtitle(item.display_title || '', item.display_subtitle || '');
+      }
       return item.display_title || '—';
     }
 
@@ -7327,6 +7332,7 @@
         const exemplar = getQueueExemplarRecord(item);
         return exemplar?.autor_etiqueta || item.display_subtitle || '—';
       }
+      if (item.item_type === 'book') return '—';
       return item.display_subtitle || '—';
     }
 
@@ -7541,8 +7547,8 @@
           draftId: existingDraft?.id || null,
           batchId: bookDraft.batch_id || '',
           bibRef: bookDraft.bib_ref || '',
-          title: existingDraft?.label_title_override || bookDraft.titulo || published?.titulo || '—',
-          subtitle: bookDraft.subtitulo || published?.subtitulo || '',
+          title: joinBookTitleAndSubtitle(existingDraft?.label_title_override || bookDraft.titulo || published?.titulo || '', bookDraft.subtitulo || published?.subtitulo || ''),
+          subtitle: '',
           author: existingDraft?.label_author_override || bookDraft.autor || published?.autor || '',
           cdd: existingDraft?.label_cdd_override || bookDraft.cdd || published?.cdd || '',
           note: existingDraft?.label_note || '',
@@ -7563,8 +7569,8 @@
         batchId: bookDraft.batch_id || '',
         bookStatus: bookDraft.status || 'draft',
         bibRef: bookDraft.bib_ref || '',
-        title: bookDraft.titulo || published?.titulo || '—',
-        subtitle: bookDraft.subtitulo || published?.subtitulo || '',
+        title: joinBookTitleAndSubtitle(bookDraft.titulo || published?.titulo || '', bookDraft.subtitulo || published?.subtitulo || ''),
+        subtitle: '',
         author: bookDraft.autor || published?.autor || '',
         publishedCount,
         requestedCopies,
