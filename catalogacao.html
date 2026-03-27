@@ -684,6 +684,62 @@
       min-height: 1.2em;
     }
 
+
+    .book-derived-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(179,0,24,.08));
+    }
+
+    .book-derived-summary-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .book-derived-summary-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+
+    .book-derived-summary-kind {
+      color: #ffe3e7;
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .book-derived-summary-title {
+      color: #fff;
+      font-size: 1.08rem;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .book-derived-summary-line {
+      color: #f0f0f0;
+      font-size: .94rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .book-derived-summary-line.is-muted {
+      color: var(--muted);
+    }
+
     .material-guide {
       padding: 12px 14px;
       border-radius: 16px;
@@ -2101,6 +2157,27 @@
               <small>Preencha manualmente ou aplique abaixo as sugestões da BN. Nada é gravado automaticamente sem sua ação.</small>
             </div>
 
+
+
+            <div class="field" style="grid-column: span 3;">
+              <div class="book-derived-summary">
+                <div class="book-derived-summary-top">
+                  <div>
+                    <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
+                    <div class="hint">Prévia curta do que esta ficha já comunica para futuras superfícies de consulta, difusão e revisão editorial.</div>
+                  </div>
+                  <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
+                </div>
+                <div class="book-derived-summary-card">
+                  <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
+                  <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
+                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Responsabilidade, edição ou difusão: —</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Resumo material e contextual ainda não informado.</div>
+                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação e acesso: —</div>
+                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
+                </div>
+              </div>
+            </div>
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookMarcJson">Estrutura bibliográfica em JSON</label>
               <textarea id="bookMarcJson" placeholder='{"245":{"a":"Título"},"100":{"a":"Autor"}}'></textarea>
@@ -3040,6 +3117,13 @@
       bookQuickLabelTitle: el('bookQuickLabelTitle'),
       bookQuickLabelAuthor: el('bookQuickLabelAuthor'),
       bookQuickLabelShelf: el('bookQuickLabelShelf'),
+      bookDerivedSummaryModePill: el('bookDerivedSummaryModePill'),
+      bookDerivedSummaryKind: el('bookDerivedSummaryKind'),
+      bookDerivedSummaryTitle: el('bookDerivedSummaryTitle'),
+      bookDerivedSummaryMeta: el('bookDerivedSummaryMeta'),
+      bookDerivedSummaryContext: el('bookDerivedSummaryContext'),
+      bookDerivedSummaryAccess: el('bookDerivedSummaryAccess'),
+      bookDerivedSummarySubjects: el('bookDerivedSummarySubjects'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
       labelSuggestCode: el('labelSuggestCode'),
@@ -5151,6 +5235,7 @@
       fillIfEmpty(el('bookCDD'), parsed.cdd.cdd);
       syncBookDraftVisualState();
       updateBookQuickLabelPreview();
+      updateBookDerivedSummaryPreview();
       showMessage(refs.bookMessage, 'CDD sugerida aplicada sem sobrescrever dados existentes.', 'ok');
     }
 
@@ -5643,6 +5728,7 @@
         refs.bookResponsibilityExtraWrap.innerHTML = '';
         refs.bookResponsibilityExtraWrap.classList.add('is-hidden');
         updateBookQuickLabelPreview();
+        updateBookDerivedSummaryPreview();
         return;
       }
       renderBookResponsibilitySummary(contributors);
@@ -5712,6 +5798,7 @@
       syncBookMaterialDescriptors(materialType);
       refs.bookISSNField.style.borderColor = isSerialType ? 'rgba(29,78,216,.38)' : '';
       refs.bookISBNField.style.opacity = isSerialType ? '.72' : '1';
+      updateBookDerivedSummaryPreview();
     }
 
     async function fetchPublishedBookSupplement(bookId) {
@@ -6045,6 +6132,7 @@
       clearMessage(refs.bookMessage);
       syncBookTypeUI();
       updateBookQuickLabelPreview();
+      updateBookDerivedSummaryPreview();
     }
 
     function resetAuthorForm() {
@@ -6107,8 +6195,123 @@
         : 'Sem coleção sugerida no momento.';
     }
 
-    function resetLabelForm(clearMessageBox = true) {
-      if (el('labelForm')) el('labelForm').reset();
+
+
+    function getBookMaterialTypeLabel(materialType = '') {
+      const node = el('bookType');
+      const option = Array.from(node?.options || []).find(item => item.value === String(materialType || ''));
+      return compactSpaces(option?.textContent || materialType || 'Outro');
+    }
+
+    function joinSummaryParts(parts = [], separator = ' · ') {
+      return parts.map(part => compactSpaces(part)).filter(Boolean).join(separator);
+    }
+
+    function buildBookDerivedSummary() {
+      const materialType = el('bookType')?.value || 'livro';
+      const kindLabel = getBookMaterialTypeLabel(materialType);
+      const title = compactSpaces(el('bookTitle')?.value || '');
+      const subtitle = compactSpaces(el('bookSubtitle')?.value || '');
+      const displayTitle = [title, subtitle].filter(Boolean).join(' — ');
+      const author = compactSpaces(el('bookAuthor')?.value || '');
+      const publisher = compactSpaces(el('bookPublisher')?.value || '');
+      const place = compactSpaces(el('bookPlace')?.value || '');
+      const year = compactSpaces(el('bookYear')?.value || '');
+      const collection = compactSpaces(el('bookCollection')?.value || '');
+      const edition = compactSpaces(el('bookEdition')?.value || '');
+      const pages = compactSpaces(el('bookPages')?.value || '');
+      const subjects = formatBookSubjectsValue(el('bookSubjects')?.value || '');
+      const loanable = String(el('bookLoanable')?.value || 'true') === 'true';
+      const digitalBucket = compactSpaces(el('bookDigitalBucket')?.value || '');
+      const digitalPath = compactSpaces(el('bookDigitalPath')?.value || '');
+      const digitalPublic = !!el('bookDigitalIsPublic')?.checked;
+      const digitalLinked = digitalBucket && digitalPath;
+      const contextParts = [];
+
+      if (SERIAL_MATERIAL_TYPES.has(materialType)) {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookPeriodicalTitle')?.value || ''),
+          compactSpaces(el('bookVolume')?.value ? `vol. ${el('bookVolume').value}` : ''),
+          compactSpaces(el('bookIssueNumber')?.value ? `n. ${el('bookIssueNumber').value}` : ''),
+          compactSpaces(el('bookIssueDate')?.value || ''),
+        ]));
+      } else if (materialType === 'tract' || materialType === 'cartaz') {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookMaterialCampaign')?.value || ''),
+          compactSpaces(el('bookMaterialEmitter')?.value || ''),
+          compactSpaces(el('bookMaterialDiffusionPlace')?.value || ''),
+          compactSpaces(el('bookMaterialApproxDate')?.value || ''),
+        ]));
+      } else if (materialType === 'audio') {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookAudioDuration')?.value || ''),
+          compactSpaces(el('bookAudioSupport')?.value || ''),
+          compactSpaces(el('bookAudioSpokenLanguage')?.value || ''),
+          compactSpaces(el('bookAudioParticipants')?.value || ''),
+        ]));
+      } else if (materialType === 'audiovisual') {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookAudiovisualDuration')?.value || ''),
+          compactSpaces(el('bookAudiovisualSupport')?.value || ''),
+          compactSpaces(el('bookAudiovisualDirector')?.value || ''),
+          compactSpaces(el('bookAudiovisualLanguage')?.value || ''),
+        ]));
+      } else if (materialType === 'recurso_digital') {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookDigitalNativeUsage')?.value || ''),
+          compactSpaces(el('bookDigitalNativeAccess')?.value || ''),
+          compactSpaces(el('bookDigitalNativeRestriction')?.value || ''),
+          compactSpaces(el('bookDigitalNativeUrl')?.value || ''),
+        ]));
+      } else if (materialType === 'dossie') {
+        contextParts.push(joinSummaryParts([
+          compactSpaces(el('bookDossierScope')?.value || ''),
+          compactSpaces(el('bookDossierPeriod')?.value || ''),
+          compactSpaces(el('bookDossierOrganizations')?.value || ''),
+        ]));
+      } else {
+        contextParts.push(joinSummaryParts([
+          collection ? `Coleção: ${collection}` : '',
+          edition ? `Edição: ${edition}` : '',
+          pages ? `${pages} p.` : '',
+        ]));
+      }
+
+      const notes = compactSpaces(el('bookNotes')?.value || '');
+      if (notes) contextParts.push(truncatePreviewText(notes, 180));
+
+      const accessParts = [];
+      accessParts.push(loanable ? 'Empréstimo físico possível' : 'Consulta local / circulação restrita');
+      if (digitalLinked) {
+        accessParts.push(digitalPublic ? 'PDF público vinculado' : 'PDF restrito vinculado');
+      }
+
+      return {
+        kindLabel,
+        title: displayTitle || 'Título ainda não informado',
+        meta: joinSummaryParts([author, publisher, place, year]) || 'Responsabilidade, edição ou difusão: —',
+        context: contextParts.filter(Boolean).join(' — ') || 'Resumo material e contextual ainda não informado.',
+        access: accessParts.join(' · ') || 'Circulação e acesso: —',
+        subjects: subjects || '—',
+      };
+    }
+
+    function updateBookDerivedSummaryPreview() {
+      if (!refs.bookDerivedSummaryTitle) return;
+      const summary = buildBookDerivedSummary();
+      if (refs.bookDerivedSummaryModePill) {
+        refs.bookDerivedSummaryModePill.textContent = state.catalogacaoMode === 'complete' ? 'Modo completo' : 'Modo simples';
+        refs.bookDerivedSummaryModePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
+      }
+      refs.bookDerivedSummaryKind.textContent = summary.kindLabel;
+      refs.bookDerivedSummaryTitle.textContent = summary.title;
+      refs.bookDerivedSummaryMeta.textContent = summary.meta;
+      refs.bookDerivedSummaryContext.textContent = summary.context;
+      refs.bookDerivedSummaryAccess.textContent = `Circulação e acesso: ${summary.access}`;
+      refs.bookDerivedSummarySubjects.textContent = `Assuntos: ${summary.subjects}`;
+    }
+
+    function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
       syncLabelSummaryFromExemplar();
       hidePublishedPopup('label');
       labelDraftStableState = 'new';
@@ -6172,10 +6375,12 @@
       node.addEventListener('input', () => {
         syncBookDraftVisualState();
         updateBookQuickLabelPreview();
+        updateBookDerivedSummaryPreview();
       });
       node.addEventListener('change', () => {
         syncBookDraftVisualState();
         updateBookQuickLabelPreview();
+        updateBookDerivedSummaryPreview();
       });
     });
 
@@ -6623,6 +6828,7 @@
       setPreviewImage(refs.bookCoverPreview, enriched.cover_object_path || '', 'covers');
       refs.bookCoverFileName.textContent = 'Nenhum arquivo selecionado';
       updateBookQuickLabelPreview();
+      updateBookDerivedSummaryPreview();
     }
 
     function fillAuthorForm(record) {
@@ -8801,6 +9007,7 @@
     el('bookType').addEventListener('change', () => {
       syncBookTypeUI();
       updateBookQuickLabelPreview();
+      updateBookDerivedSummaryPreview();
     });
     if (refs.previewAuthorAssistBtn) refs.previewAuthorAssistBtn.addEventListener('click', previewAuthorAssist);
     if (refs.applyAuthorAssistBtn) refs.applyAuthorAssistBtn.addEventListener('click', applyAuthorAssist);
