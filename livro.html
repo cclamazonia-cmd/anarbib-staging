@@ -188,7 +188,7 @@
         </div>
 
         <div class="contentbox">
-          <h2 class="section-title">Detalhes da edição</h2>
+          <h2 class="section-title" id="detailSectionTitle">Detalhes da edição</h2>
 
           <div class="meta" style="margin-top:12px">
             <div class="pill" id="bibRefPill">ref: —</div>
@@ -1124,24 +1124,141 @@
       host.style.display = "flex";
     }
 
-    function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount }) {
+    const PUBLIC_MATERIAL_TYPE_LABELS = Object.freeze({
+      livro: "Livro",
+      brochura: "Brochura",
+      periodico: "Periódico",
+      boletim: "Boletim",
+      tract: "Tract",
+      cartaz: "Cartaz",
+      audio: "Áudio",
+      audiovisual: "Audiovisual",
+      recurso_digital: "Recurso digital",
+      dossie: "Dossiê",
+      outro: "Outro documento"
+    });
+
+    function parseJsonObject(raw) {
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
+      if (typeof raw === "string" && raw.trim()) {
+        try {
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch (_) {
+          return {};
+        }
+      }
+      return {};
+    }
+
+    function normalizeMaterialType(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function getPublicMaterialTypeLabel(value) {
+      const key = normalizeMaterialType(value);
+      return PUBLIC_MATERIAL_TYPE_LABELS[key] || (key ? key.replace(/_/g, " ") : "Livro");
+    }
+
+    function getMaterialDetailBridge(marcJson) {
+      const marc = parseJsonObject(marcJson);
+      const detail = marc?.anarbib_material_detail;
+      return detail && typeof detail === "object" && !Array.isArray(detail) ? detail : {};
+    }
+
+    function joinContextParts(parts = []) {
+      return parts.map((part) => String(part || "").trim()).filter(Boolean).join(" · " );
+    }
+
+    function buildMaterialContextSummary({ tipoMaterial, tituloPeriodico, volume, numero, fasciculo, dataEdicao, periodicidade, idioma, localPublicacao, editora, marcJson }) {
+      const typeKey = normalizeMaterialType(tipoMaterial);
+      const detail = getMaterialDetailBridge(marcJson);
+
+      if (typeKey === "periodico" || typeKey === "boletim") {
+        return joinContextParts([
+          tituloPeriodico,
+          volume ? `vol. ${volume}` : "",
+          numero ? `n. ${numero}` : "",
+          fasciculo ? `fasc. ${fasciculo}` : "",
+          dataEdicao,
+          periodicidade
+        ]);
+      }
+
+      if (typeKey === "tract" || typeKey === "cartaz") {
+        return joinContextParts([
+          detail?.emitter_org,
+          detail?.tract_campaign,
+          detail?.diffusion_place || localPublicacao,
+          detail?.approximate_date
+        ]);
+      }
+
+      if (typeKey === "audio") {
+        return joinContextParts([
+          detail?.audio_duration,
+          detail?.audio_support,
+          detail?.audio_language || idioma,
+          detail?.audio_recording_type
+        ]);
+      }
+
+      if (typeKey === "audiovisual") {
+        return joinContextParts([
+          detail?.audiovisual_duration,
+          detail?.audiovisual_support,
+          detail?.audiovisual_language || idioma,
+          detail?.audiovisual_director
+        ]);
+      }
+
+      if (typeKey === "recurso_digital") {
+        return joinContextParts([
+          detail?.digital_native_access,
+          detail?.digital_native_restriction,
+          detail?.digital_native_file_note,
+          editora
+        ]);
+      }
+
+      if (typeKey === "dossie") {
+        return joinContextParts([
+          detail?.dossier_scope,
+          detail?.dossier_period,
+          detail?.dossier_organizations,
+          detail?.dossier_context
+        ]);
+      }
+
+      return joinContextParts([editora, localPublicacao, idioma]);
+    }
+
+    function getDetailSectionTitle(tipoMaterial) {
+      const typeKey = normalizeMaterialType(tipoMaterial);
+      if (typeKey === "periodico" || typeKey === "boletim") return "Detalhes da publicação";
+      if (typeKey === "tract" || typeKey === "cartaz") return "Detalhes do documento";
+      if (typeKey === "audio" || typeKey === "audiovisual" || typeKey === "recurso_digital") return "Detalhes do suporte";
+      if (typeKey === "dossie") return "Detalhes do dossiê";
+      return "Detalhes da edição";
+    }
+
+    function buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount, contextSummary }) {
       const parts = [];
-      const tipo = String(tipoMaterial || "").trim();
+      const tipo = getPublicMaterialTypeLabel(tipoMaterial);
       const libraries = String(libraryLine || "").trim();
-      const fallbackPub = String(editora || "").trim();
+      const context = String(contextSummary || "").trim();
       const year = String(ano || "").trim();
 
       if (tipo) parts.push(tipo);
       if (libraries) parts.push(libraries);
-      else if (fallbackPub) parts.push(fallbackPub);
+      else if (context) parts.push(context);
+      if (libraries && context) parts.push(context);
       if (year) parts.push(year);
 
       const countLabel = formatExemplarCount(tombosCount);
-      if (countLabel) {
-        parts.push(countLabel);
-      }
+      if (countLabel) parts.push(countLabel);
 
-      return parts.join(" · ") || "Livro publicado no catálogo AnarBib.";
+      return parts.join(" · ") || "Documento publicado no catálogo AnarBib.";
     }
 
     function applyPublicServiceState() {
@@ -1652,14 +1769,14 @@
         "cover_object_path","edicao","local_publicacao","isbn","issn","idioma","paginas","notas",
         "tipo_material","autores_secundarios","colecao","volume","assuntos","tradutor","organizador",
         "author_id","catalog_source","library_id","library_slug","library_name","biblioteca",
-        "has_online_reading","exemplares_total","bibliotecas_count","holding_libraries_json","tombos_json"
+        "has_online_reading","exemplares_total","bibliotecas_count","holding_libraries_json","tombos_json","marc_json","titulo_periodico","numero","fasciculo","data_edicao","periodicidade"
       ].join(",");
       const fallbackSelect = [
         "id","bib_ref","autor","titulo","subtitulo","ano","editora","cdd","loanable","available_count",
         "created_at","cover_object_path","edicao","local_publicacao","isbn","issn","idioma","paginas",
         "notas","tipo_material","autores_secundarios","colecao","volume","assuntos","tradutor",
         "organizador","author_id","catalog_source","library_id","library_slug","library_name","biblioteca",
-        "has_online_reading","tombo"
+        "has_online_reading","tombo","marc_json","titulo_periodico","numero","fasciculo","data_edicao","periodicidade"
       ].join(",");
 
       try {
@@ -1727,7 +1844,7 @@
         try {
           const fallbackBooks = await supabase
             .from("books")
-            .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+            .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,numero,fasciculo,data_edicao,periodicidade,titulo_periodico,marc_json,assuntos,tradutor,organizador,author_id,catalog_source")
             .eq("bib_ref", bib_ref)
             .maybeSingle();
 
@@ -1781,6 +1898,12 @@
       const colTipo = findCol(keys, ["tipo_material", "tipo de material", "material_type"]);
       const colColecao = findCol(keys, ["colecao", "coleção", "series", "serie", "série", "collection"]);
       const colVolume = findCol(keys, ["volume", "tomo", "vol"]);
+      const colNumero = findCol(keys, ["numero", "número", "issue_number", "number"]);
+      const colFasciculo = findCol(keys, ["fasciculo", "fascículo", "fascicle"]);
+      const colDataEdicao = findCol(keys, ["data_edicao", "data edição", "issue_date", "publication_date"]);
+      const colPeriodicidade = findCol(keys, ["periodicidade", "frequency"]);
+      const colTituloPeriodico = findCol(keys, ["titulo_periodico", "título periódico", "periodical_title", "serial_title"]);
+      const colMarcJson = findCol(keys, ["marc_json"]);
       const colTradutor = findCol(keys, ["tradutor", "translator"]);
       const colOrganizador = findCol(keys, ["organizador", "organizadora", "organizer"]);
       const colAutoresSec = findCol(keys, ["autores_secundarios", "autores secundários", "autores secundarios", "secondary_authors"]);
@@ -1807,6 +1930,12 @@
       const tipoMaterial = colTipo ? (data[colTipo] || "") : "";
       let colecao = colColecao ? (data[colColecao] || "") : "";
       const volume = colVolume ? (data[colVolume] || "") : "";
+      const numero = colNumero ? (data[colNumero] || "") : "";
+      const fasciculo = colFasciculo ? (data[colFasciculo] || "") : "";
+      const dataEdicao = colDataEdicao ? (data[colDataEdicao] || "") : "";
+      const periodicidade = colPeriodicidade ? (data[colPeriodicidade] || "") : "";
+      const tituloPeriodico = colTituloPeriodico ? (data[colTituloPeriodico] || "") : "";
+      const marcJson = colMarcJson ? data[colMarcJson] : null;
       const tradutor = colTradutor ? (data[colTradutor] || "") : "";
       const organizador = colOrganizador ? (data[colOrganizador] || "") : "";
       const autoresSecundarios = colAutoresSec ? (data[colAutoresSec] || "") : "";
@@ -1854,24 +1983,55 @@
       setPill("heroRefChip", "ref", data[colRef] || "");
       setPill("yearPill", "ano", ano, true);
       setPill("heroYearChip", "ano", ano);
-      setPill("pubPill", "editora", editora, true);
-      setPill("heroPubChip", "editora", editora);
-      setPill("placePill", "local", localPublicacao);
+      const materialTypeLabel = getPublicMaterialTypeLabel(tipoMaterial);
+      const materialContextSummary = buildMaterialContextSummary({
+        tipoMaterial,
+        tituloPeriodico,
+        volume,
+        numero,
+        fasciculo,
+        dataEdicao,
+        periodicidade,
+        idioma,
+        localPublicacao,
+        editora,
+        marcJson
+      });
+      const publicationLabel = (["tract", "cartaz"].includes(normalizeMaterialType(tipoMaterial)))
+        ? "edição / difusão"
+        : ((["audio", "audiovisual", "recurso_digital"].includes(normalizeMaterialType(tipoMaterial))) ? "produção / difusão" : "editora");
+      const locationLabel = (["tract", "cartaz"].includes(normalizeMaterialType(tipoMaterial))) ? "lugar" : "local";
+      const volumeLabel = (["periodico", "boletim"].includes(normalizeMaterialType(tipoMaterial))) ? "volume / número" : "volume";
+      const volumeValue = (["periodico", "boletim"].includes(normalizeMaterialType(tipoMaterial)))
+        ? joinContextParts([
+            volume ? `vol. ${volume}` : "",
+            numero ? `n. ${numero}` : "",
+            fasciculo ? `fasc. ${fasciculo}` : ""
+          ])
+        : volume;
+      const descValue = sanitizePublicResumo(resumo) || materialContextSummary || "—";
+
+      const detailSectionTitle = $("detailSectionTitle");
+      if (detailSectionTitle) detailSectionTitle.textContent = getDetailSectionTitle(tipoMaterial);
+
+      setPill("pubPill", publicationLabel, editora, true);
+      setPill("heroPubChip", publicationLabel, editora);
+      setPill("placePill", locationLabel, localPublicacao);
       setPill("editionPill", "edição", edicao);
       setPill("isbnPill", "ISBN", isbn);
       setPill("issnPill", "ISSN", issn);
       setPill("langPill", "idioma", idioma);
       setPill("pagesPill", "páginas", paginas);
-      setPill("typePill", "tipo", tipoMaterial);
-      setPill("collectionPill", "coleção / série", colecao);
-      setPill("volumePill", "volume", volume);
+      setPill("typePill", "tipo", materialTypeLabel);
+      setPill("collectionPill", "coleção / série", colecao || periodicidade || tituloPeriodico);
+      setPill("volumePill", volumeLabel, volumeValue);
       setPill("translatorPill", "tradutor", tradutor);
       setPill("organizerPill", "organizador", organizador);
       setPill("secondaryAuthorsPill", "autores sec.", autoresSecundarios);
       setPill("subjectsPill", "assuntos", assuntos);
       setPill("cddPill", "CDD", cdd, true);
 
-      $("desc").textContent = sanitizePublicResumo(resumo) || "—";
+      $("desc").textContent = descValue;
 
       async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
         const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
@@ -1953,7 +2113,7 @@
       const exemplaresCount = holdingsInfo.totalCount || tombos.length;
       document.title = `${titulo || "Livro"} - AnarBib`;
       const libraryLine = holdingsInfo.libraryLine || await getLibraryLineForBibRef(bib_ref, data, libraryContext);
-      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: exemplaresCount });
+      $("heroIntro").textContent = buildHeroIntro({ tipoMaterial, libraryLine, editora, ano, tombosCount: exemplaresCount, contextSummary: materialContextSummary });
       renderHeroHoldingsDetail(holdingsInfo);
       setPill("tomboPill", "tombo", tombos.length ? tombos.join(", ") : "", true);
       setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
