@@ -1574,6 +1574,29 @@
       gap: 16px;
     }
 
+    .book-title-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .book-title-stack-main {
+      color: #fff;
+      font-weight: 700;
+      line-height: 1.34;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .book-title-stack-sub {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
     #catalogPanel .panel-body {
       width: 100%;
     }
@@ -4144,6 +4167,24 @@
       return book.titulo || book.title || book.display_title || '—';
     }
 
+    function getBookDisplaySubtitle(book = {}) {
+      return book.subtitulo || book.subtitle || book.display_subtitle || '';
+    }
+
+    function renderBookTitleStackHtml(title = '', subtitle = '') {
+      const safeTitle = sanitize(title || '—');
+      const safeSubtitle = sanitize(subtitle || '');
+      return `
+        <div class="book-title-stack">
+          <div class="book-title-stack-main">${safeTitle}</div>
+          ${safeSubtitle ? `<div class="book-title-stack-sub">${safeSubtitle}</div>` : ''}
+        </div>`;
+    }
+
+    function renderBookDisplayTitleHtml(book = {}) {
+      return renderBookTitleStackHtml(getBookDisplayTitle(book), getBookDisplaySubtitle(book));
+    }
+
     function getBookSearchIndex(book = {}) {
       return normalizeForSearch([
         book.bib_ref,
@@ -4999,6 +5040,59 @@
 
     const CATALOGACAO_TAB_STORAGE_KEY = 'catalogacaoActiveTab';
     const CATALOGACAO_TAB_HASH_PREFIX = '#tab=';
+    const CATALOGACAO_FILTERS_STORAGE_KEY = 'catalogacaoFiltersState';
+    const CATALOGACAO_PERSISTED_FILTER_IDS = [
+      'queueTypeFilter',
+      'queueStatusFilter',
+      'queueSearch',
+      'catalogSearch',
+      'catalogExemplarSearch',
+      'exemplarLotImportId',
+      'exemplarBatchSearchInput',
+      'exemplarPendingScope',
+      'labelLotImportId',
+      'labelBatchSearchInput',
+      'labelPendingScope',
+      'labelBatchPreviewId',
+    ];
+
+    function getStoredCatalogacaoFilters() {
+      try {
+        const raw = window.localStorage?.getItem(CATALOGACAO_FILTERS_STORAGE_KEY) || '';
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function persistCatalogacaoFilters() {
+      try {
+        const payload = {};
+        CATALOGACAO_PERSISTED_FILTER_IDS.forEach(id => {
+          const node = el(id);
+          if (!node) return;
+          payload[id] = String(node.value || '');
+        });
+        window.localStorage?.setItem(CATALOGACAO_FILTERS_STORAGE_KEY, JSON.stringify(payload));
+      } catch {}
+    }
+
+    function applyStoredCatalogacaoFilters() {
+      const stored = getStoredCatalogacaoFilters();
+      CATALOGACAO_PERSISTED_FILTER_IDS.forEach(id => {
+        const node = el(id);
+        if (!node || !Object.prototype.hasOwnProperty.call(stored, id)) return;
+        const nextValue = String(stored[id] || '');
+        if (node.tagName === 'SELECT') {
+          if (Array.from(node.options).some(option => option.value === nextValue)) {
+            node.value = nextValue;
+          }
+          return;
+        }
+        node.value = nextValue;
+      });
+    }
 
     function getAvailableCatalogacaoTabs() {
       return Array.from(document.querySelectorAll('.tab-btn'))
@@ -5091,6 +5185,7 @@
       el('queueTypeFilter').value = '';
       el('queueStatusFilter').value = '';
       el('queueSearch').value = '';
+      persistCatalogacaoFilters();
       setTab('queuePanel');
       renderQueue();
       clearMessage(refs.queueMessage);
@@ -5193,6 +5288,7 @@
           refs.labelBatchPreviewId.value = el('exemplarBatchId').value;
         }
       }
+      applyStoredCatalogacaoFilters();
     }
 
     function parseJsonSafe(value, fallback = {}) {
@@ -7413,8 +7509,8 @@
               <tr>
                 <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
-                <td>${sanitize(getQueuePrimaryDisplay(item))}</td>
-                <td>${sanitize(getQueueSecondaryDisplay(item))}</td>
+                <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
+                <td>${item.item_type === 'book' ? '—' : sanitize(getQueueSecondaryDisplay(item))}</td>
                 <td>${item.batch_id ? '#' + sanitize(item.batch_id) : '—'}</td>
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
@@ -7859,8 +7955,7 @@
         <div class="batch-exemplar-book" data-batch-book-index="${group.bookIndex}">
           <div class="batch-exemplar-book-head">
             <div>
-              <strong>${sanitize(group.title || '—')}</strong>
-              <div class="hint" style="margin-top:4px;">${sanitize(group.subtitle || group.author || 'Sem subtítulo')}</div>
+              ${renderBookTitleStackHtml(group.title || '—', group.subtitle || '')}
               <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
@@ -8235,8 +8330,8 @@
                 <td>${getQueueStatusBadge(item.status)}</td>
                 <td>${sanitize(item.action)}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
-                <td>${sanitize(getQueuePrimaryDisplay(item))}</td>
-                <td>${sanitize(getQueueSecondaryDisplay(item))}</td>
+                <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
+                <td>${item.item_type === 'book' ? '—' : sanitize(getQueueSecondaryDisplay(item))}</td>
                 <td>${item.batch_id ? '#' + sanitize(item.batch_id) : '—'}</td>
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
@@ -8422,7 +8517,7 @@
               <tr>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${sanitize(getBookDisplayTitle(book))}</td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
@@ -9320,6 +9415,18 @@
       if (event.target.closest('.contributor-row')) { syncBookResponsibilitySummary(); syncBookDraftVisualState(); }
     });
 
+    document.addEventListener('input', (event) => {
+      if (CATALOGACAO_PERSISTED_FILTER_IDS.includes(event.target?.id || '')) {
+        persistCatalogacaoFilters();
+      }
+    });
+
+    document.addEventListener('change', (event) => {
+      if (CATALOGACAO_PERSISTED_FILTER_IDS.includes(event.target?.id || '')) {
+        persistCatalogacaoFilters();
+      }
+    });
+
     ['queueTypeFilter', 'queueStatusFilter', 'queueSearch'].forEach(id => {
       el(id).addEventListener('input', () => {
         state.showOnlyActiveDrafts = false;
@@ -9532,6 +9639,7 @@
     });
 
     applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
+    applyStoredCatalogacaoFilters();
     setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
     resetBookForm();
     resetAuthorForm();
