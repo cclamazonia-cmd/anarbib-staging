@@ -8296,6 +8296,53 @@
     }
 
 
+    async function ensureLoadedExemplarForLabelAction(actionLabel = 'validar este rótulo', targetMessage = refs.labelMessage) {
+      const rawDraftId = String(el('exemplarDraftId')?.value || '').trim();
+      const draftId = Number(rawDraftId);
+      if (!draftId || !Number.isFinite(draftId)) {
+        const message = `Carregue primeiro um exemplar real antes de ${actionLabel}.`;
+        if (targetMessage) showMessage(targetMessage, message, 'error');
+        throw new Error(message);
+      }
+
+      const { data, error } = await supabase
+        .from('exemplar_drafts')
+        .select('id, status, target_bib_ref, tombo')
+        .eq('id', draftId)
+        .maybeSingle();
+      if (error) throw error;
+
+      if (!data || String(data.status || '') === 'cancelled') {
+        const message = `Este formulário de rótulo não está ligado a um exemplar ativo. Recarregue o exemplar antes de ${actionLabel}.`;
+        if (targetMessage) showMessage(targetMessage, message, 'error');
+        throw new Error(message);
+      }
+
+      const persistedBibRef = compactSpaces(data.target_bib_ref || '');
+      const persistedTombo = compactSpaces(data.tombo || '');
+      if (!persistedBibRef || !persistedTombo) {
+        const message = `O exemplar carregado ainda não está consistente para ${actionLabel}. Verifique referência e tombo antes de continuar.`;
+        if (targetMessage) showMessage(targetMessage, message, 'error');
+        throw new Error(message);
+      }
+
+      const formBibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const formTombo = compactSpaces(el('exemplarTombo')?.value || '');
+      if (!formBibRef || !formTombo) {
+        const message = `O formulário de rótulo está sem referência ou tombo do exemplar. Recarregue o exemplar antes de ${actionLabel}.`;
+        if (targetMessage) showMessage(targetMessage, message, 'error');
+        throw new Error(message);
+      }
+
+      if (formBibRef !== persistedBibRef || formTombo !== persistedTombo) {
+        const message = `O formulário de rótulo não corresponde ao exemplar carregado em base. Reabra o exemplar antes de ${actionLabel}.`;
+        if (targetMessage) showMessage(targetMessage, message, 'error');
+        throw new Error(message);
+      }
+
+      return data;
+    }
+
     function ensureLabelBasicData(item = null, targetMessage = refs.labelMessage, actionLabel = 'validar este rótulo') {
       const source = item && typeof item === 'object'
         ? item
@@ -9293,8 +9340,8 @@
     });
     el('labelReadyBtn').addEventListener('click', async () => {
       try {
-        const draftId = el('exemplarDraftId').value;
-        if (!draftId) throw new Error('Carregue primeiro um exemplar para validar o rótulo.');
+        const loadedExemplar = await ensureLoadedExemplarForLabelAction('validar este rótulo', refs.labelMessage);
+        const draftId = loadedExemplar.id;
         if (!ensureLabelBasicData(null, refs.labelMessage, 'validar este rótulo')) return;
         const payload = getExemplarDraftPayload('', 'ready');
         await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
@@ -9504,8 +9551,8 @@
         return;
       }
       try {
-        const draftId = el('exemplarDraftId').value;
-        if (!draftId) throw new Error('Carregue primeiro um exemplar para publicar o rótulo.');
+        const loadedExemplar = await ensureLoadedExemplarForLabelAction('publicar este rótulo', refs.labelMessage);
+        const draftId = loadedExemplar.id;
         if (!ensureLabelBasicData(null, refs.labelMessage, 'publicar este rótulo')) return;
         const payload = getExemplarDraftPayload('', 'ready');
         await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
