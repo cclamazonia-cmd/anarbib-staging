@@ -934,6 +934,11 @@
             const row = Array.isArray(data) ? data[0] : data;
             if (row?.asset_id) {
               access.assetId = String(row.asset_id);
+              if (row?.storage_bucket && row?.storage_path) {
+                access.previewBucket = String(row.storage_bucket).trim();
+                access.previewPath = String(row.storage_path).trim();
+                access.previewUrl = buildPublicStorageUrl(access.previewBucket, access.previewPath);
+              }
               access.hasDigitalAvailability = true;
               return access;
             }
