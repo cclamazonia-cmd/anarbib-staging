@@ -9385,17 +9385,77 @@
       return createdDraftId;
     }
 
+    function getAuthorAuthorityTypeLabel(type = '') {
+      const labels = {
+        person: 'Pessoa',
+        collective: 'Coletivo / organização',
+        publisher_series: 'Editora / série / revista',
+        place_campaign_theme: 'Lugar / campanha / tema',
+        other: 'Outra autoridade',
+      };
+      return labels[normalizeAuthorAuthorityType(type)] || labels.person;
+    }
+
+    function getAuthorStructuredMetaForRecord(record = {}) {
+      const parsed = extractAuthorStructuredMetaFromNotes(record.notes || '');
+      return parsed?.meta || {
+        authority_type: 'person',
+        acronym: '',
+        activity_period: '',
+        variant_names: '',
+        pseudonyms: '',
+        activity_place: '',
+        context_links: '',
+      };
+    }
+
+    function getAuthorCatalogSearchIndex(author = {}) {
+      const meta = getAuthorStructuredMetaForRecord(author);
+      return normalizeForSearch([
+        author.preferred_name,
+        author.sort_name,
+        author.country,
+        author.source_label,
+        author.source_kind,
+        getAuthorAuthorityTypeLabel(meta.authority_type),
+        meta.acronym,
+        meta.activity_period,
+        meta.variant_names,
+        meta.pseudonyms,
+        meta.activity_place,
+        meta.context_links,
+      ].filter(Boolean).join(' '));
+    }
+
+    function renderCatalogAuthorIdentityHtml(author = {}) {
+      const meta = getAuthorStructuredMetaForRecord(author);
+      const mainName = sanitize(author.sort_name || author.preferred_name || '—');
+      const secondaryName = sanitize(author.preferred_name || author.sort_name || '—');
+      const chips = [
+        getAuthorAuthorityTypeLabel(meta.authority_type),
+        meta.acronym ? `Sigla: ${meta.acronym}` : '',
+        meta.activity_place ? `Âncora: ${meta.activity_place}` : '',
+      ].filter(Boolean);
+      const extraLines = [
+        meta.activity_period ? `Período: ${sanitize(meta.activity_period)}` : '',
+        meta.variant_names ? `Variantes: ${sanitize(meta.variant_names)}` : '',
+        meta.pseudonyms ? `Pseudônimos: ${sanitize(meta.pseudonyms)}` : '',
+        meta.context_links ? `Vínculos: ${sanitize(meta.context_links)}` : '',
+      ].filter(Boolean);
+      return `
+        <div class="book-title-stack">
+          <div class="book-title-stack-main">${mainName}</div>
+          <div class="book-title-stack-sub">${secondaryName}</div>
+          ${chips.length ? `<div class="book-public-preview-inline">${chips.map(chip => `<span class="book-public-preview-chip">${sanitize(chip)}</span>`).join('')}</div>` : ''}
+          ${extraLines.length ? extraLines.map(line => `<div class="book-title-stack-sub">${line}</div>`).join('') : ''}
+        </div>`;
+    }
+
     function renderCatalogAuthors() {
       const search = normalizeForSearch(el('catalogSearch').value);
       let items = [...state.authors];
       if (search) {
-        items = items.filter(author => normalizeForSearch([
-          author.preferred_name,
-          author.sort_name,
-          author.country,
-          author.source_label,
-          author.source_kind,
-        ].filter(Boolean).join(' ')).includes(search));
+        items = items.filter(author => getAuthorCatalogSearchIndex(author).includes(search));
       }
       items = sortCatalogItems('authors', items);
       if (!items.length) {
@@ -9417,7 +9477,7 @@
             ${items.map(author => `
               <tr>
                 <td>${author.id}</td>
-                <td>${sanitize(author.sort_name || author.preferred_name || '—')}</td>
+                <td>${renderCatalogAuthorIdentityHtml(author)}</td>
                 <td>${sanitize(author.country || '—')}</td>
                 <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
                 <td>
