@@ -577,16 +577,92 @@
       el.style.display = txt ? "" : "none";
     }
 
-    function setDigitalAvailability(canReadOnline) {
+    function setDigitalAvailability(state = {}) {
       const chip = $("digitalChip");
       const btnLer = $("btnLer");
       if (!chip || !btnLer) return;
 
-      const yes = !!canReadOnline;
-      chip.textContent = yes ? "SIM" : "NÃO";
+      const hasPublicAccess = !!state?.hasPublicAccess;
+      const hasRestrictedAccess = !!state?.hasRestrictedAccess;
+      const canReadRestrictedNow = !!state?.canReadRestrictedNow;
+      const hasAnyDigitalAccess = hasPublicAccess || hasRestrictedAccess;
+
+      let chipText = "NÃO";
+      let yes = false;
+      let buttonText = "Ler";
+      let buttonTitle = "Abrir leitura digital";
+
+      if (hasPublicAccess) {
+        chipText = "SIM";
+        yes = true;
+      } else if (canReadRestrictedNow) {
+        chipText = "SIM (conta ativa)";
+        yes = true;
+      } else if (hasRestrictedAccess) {
+        chipText = "CONTA ATIVA";
+        buttonText = currentUserContext?.isLoggedIn ? "Verificar acesso" : "Entrar para ler";
+        buttonTitle = currentUserContext?.isLoggedIn
+          ? "Verificar se sua conta pode abrir a leitura restrita"
+          : "Entrar com conta ativa para abrir a leitura restrita";
+      }
+
+      chip.textContent = chipText;
       chip.classList.toggle("yes", yes);
       chip.classList.toggle("no", !yes);
-      btnLer.style.display = yes ? "inline-flex" : "none";
+
+      btnLer.textContent = buttonText;
+      btnLer.title = buttonTitle;
+      btnLer.style.display = hasAnyDigitalAccess ? "inline-flex" : "none";
+    }
+
+    async function resolveRestrictedDigitalAccess(bookRow = {}, bibRef = "") {
+      const access = {
+        hasRestrictedAccess: false,
+        canReadRestrictedNow: false,
+        userAccountActive: false,
+        row: null
+      };
+
+      const rowFlag = bookRow?.has_online_reading === true || String(bookRow?.has_online_reading || "").trim().toLowerCase() === "true";
+      access.hasRestrictedAccess = rowFlag;
+
+      if (!currentUserContext?.isLoggedIn) {
+        return access;
+      }
+
+      try {
+        const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
+        if (ensureProfileError) {
+          console.warn("AnarBib livro: erro ao garantir profile antes da verificação da leitura restrita", ensureProfileError);
+        }
+      } catch (ensureProfileException) {
+        console.warn("AnarBib livro: exceção ao garantir profile antes da verificação da leitura restrita", ensureProfileException);
+      }
+
+      try {
+        const { data: readState, error: readStateError } = await supabase.rpc(
+          "fn_book_restricted_pdf_state_for_current_user",
+          { p_bib_ref: bibRef }
+        );
+
+        if (readStateError) {
+          console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
+          return access;
+        }
+
+        const row = Array.isArray(readState)
+          ? readState[0]
+          : (readState && typeof readState === "object" ? readState : null);
+
+        access.row = row || null;
+        access.hasRestrictedAccess = access.hasRestrictedAccess || !!row?.has_reading_resource;
+        access.canReadRestrictedNow = !!row?.can_show_read_button;
+        access.userAccountActive = !!row?.user_account_active;
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
+      }
+
+      return access;
     }
 
     function extractHoldingLibraryNames(raw) {
@@ -2119,14 +2195,19 @@
       setPill("exemplaresPill", "exemplares", exemplaresCount > 1 ? String(exemplaresCount) : "");
       setPill("heroExemplaresChip", "exemplares", exemplaresCount ? String(exemplaresCount) : "");
 
-      const digitalAccess = await resolvePublicDigitalAccess(data, bib_ref, pdf);
-      const directPdfUrl = digitalAccess.previewUrl || String(pdf || "").trim();
+      const publicDigitalAccess = await resolvePublicDigitalAccess(data, bib_ref, pdf);
+      const restrictedDigitalAccess = await resolveRestrictedDigitalAccess(data, bib_ref);
+      const directPdfUrl = publicDigitalAccess.previewUrl || String(pdf || "").trim();
       if (directPdfUrl) {
         $("btnAbrirPdf").style.display = "inline-flex";
         $("btnAbrirPdf").addEventListener("click", () => location.assign(directPdfUrl));
       }
 
-      setDigitalAvailability(digitalAccess.hasDigitalAvailability);
+      setDigitalAvailability({
+        hasPublicAccess: publicDigitalAccess.hasDigitalAvailability,
+        hasRestrictedAccess: restrictedDigitalAccess.hasRestrictedAccess,
+        canReadRestrictedNow: restrictedDigitalAccess.canReadRestrictedNow
+      });
       await loadReaderScopedServiceChip(data, libraryContext);
 
       const accessState = computeBookAccessState(data, libraryContext);
@@ -2134,10 +2215,11 @@
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
-        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, digitalAccess);
-        if (!digitalAccess.hasDigitalAvailability) return;
+        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, publicDigitalAccess);
+        const hasAnyDigitalAccess = publicDigitalAccess.hasDigitalAvailability || restrictedDigitalAccess.hasRestrictedAccess;
+        if (!hasAnyDigitalAccess) return;
 
-        if (digitalAccess.assetId || digitalAccess.previewBucket || digitalAccess.previewPath || digitalAccess.previewUrl) {
+        if (publicDigitalAccess.assetId || publicDigitalAccess.previewBucket || publicDigitalAccess.previewPath || publicDigitalAccess.previewUrl) {
           location.assign(targetLerUrl);
           return;
         }
@@ -2150,32 +2232,31 @@
             return;
           }
 
-          try {
-            const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
-            if (ensureProfileError) {
-              console.warn("AnarBib livro: erro ao garantir profile do usuário", ensureProfileError);
+          let restrictedRow = restrictedDigitalAccess.row;
+          if (!restrictedRow) {
+            const { data: readState, error: readStateError } = await supabase.rpc(
+              "fn_book_restricted_pdf_state_for_current_user",
+              { p_bib_ref: bib_ref }
+            );
+
+            if (readStateError) {
+              console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
+              setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
+              return;
             }
-          } catch (ensureProfileException) {
-            console.warn("AnarBib livro: exceção ao garantir profile do usuário", ensureProfileException);
+
+            restrictedRow = Array.isArray(readState)
+              ? readState[0]
+              : (readState && typeof readState === "object" ? readState : null);
           }
 
-          const { data: readState, error: readStateError } = await supabase.rpc(
-            "fn_book_restricted_pdf_state_for_current_user",
-            { p_bib_ref: bib_ref }
-          );
-
-          if (readStateError) {
-            console.warn("AnarBib livro: erro na RPC de leitura restrita", readStateError);
-            setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
+          if (restrictedRow?.can_show_read_button) {
+            location.assign(targetLerUrl);
             return;
           }
 
-          const row = Array.isArray(readState)
-            ? readState[0]
-            : (readState && typeof readState === "object" ? readState : null);
-
-          if (row?.can_show_read_button) {
-            location.assign(targetLerUrl);
+          if (restrictedRow?.has_reading_resource && restrictedRow?.user_account_active === false) {
+            setStatus("O exemplar digital existe, mas a leitura está reservada a contas ativas.", "warn");
             return;
           }
 
