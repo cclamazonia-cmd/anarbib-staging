@@ -906,6 +906,23 @@
       return session || null;
     }
 
+    async function fetchCurrentAccessRecord(userId) {
+      if (!userId) return null;
+      const accessSelect = "user_id,can_access_painel,is_librarian,library_id,library_slug,library_name,default_library_id,default_library_slug,default_library_name";
+
+      try {
+        const { data, error } = await supabase.from("my_access").select(accessSelect).eq("user_id", userId).maybeSingle();
+        if (!error && data) return data;
+      } catch (_) {}
+
+      try {
+        const { data, error } = await supabase.schema("api").from("my_access").select(accessSelect).eq("user_id", userId).maybeSingle();
+        if (!error && data) return data;
+      } catch (_) {}
+
+      return null;
+    }
+
     async function setupNavButtons() {
       const session = await getCurrentSession();
       const loginBtn = $("btnLogin");
@@ -922,8 +939,13 @@
       loginBtn.classList.add("hidden");
       let isLibrarian = false;
       try {
-        const { data } = await supabase.from("profiles").select("is_librarian").eq("id", session.user.id).maybeSingle();
-        isLibrarian = !!data?.is_librarian;
+        const accessRecord = await fetchCurrentAccessRecord(session.user.id);
+        if (accessRecord) {
+          isLibrarian = accessRecord.can_access_painel === true || accessRecord.is_librarian === true;
+        } else {
+          const { data } = await supabase.from("profiles").select("is_librarian").eq("id", session.user.id).maybeSingle();
+          isLibrarian = !!data?.is_librarian;
+        }
       } catch (_) {}
       contaBtn.href = isLibrarian ? PAINEL_URL : CONTA_URL;
       contaBtn.textContent = isLibrarian ? "Painel" : "Minha conta";
@@ -1195,6 +1217,7 @@
       await verifyReadAccess(ref);
 
       const requestBody = {
+        ref,
         bib_ref: ref,
         library_id: libraryContext.libraryId || null,
         library_slug: libraryContext.librarySlug || null,
