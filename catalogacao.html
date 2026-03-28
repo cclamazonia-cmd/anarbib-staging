@@ -7023,6 +7023,7 @@
       authorDraftStableState = 'new';
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState('new');
+      refreshCatalogAuthorSignals();
       clearMessage(refs.authorMessage);
     }
 
@@ -8000,6 +8001,7 @@
       if (authorDraftStableState === 'published') showPublishedPopup('author'); else hidePublishedPopup('author');
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState(authorDraftStableState);
+      refreshCatalogAuthorSignals();
     }
 
     function fillLabelForm(record, { switchTab = false } = {}) {
@@ -9736,6 +9738,10 @@
       summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount} — ${parts.join(' · ')}.`;
     }
 
+    function refreshCatalogAuthorSignals() {
+      renderCatalogAuthors();
+    }
+
     function renderCatalogAuthors() {
       const search = normalizeForSearch(el('catalogSearch').value);
       const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
@@ -10538,26 +10544,31 @@
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
+      refreshCatalogAuthorSignals();
     });
     ['authorAcronym', 'authorActivityPeriod', 'authorVariantNames', 'authorPseudonyms', 'authorActivityPlace', 'authorContextLinks'].forEach((fieldId) => {
       const node = el(fieldId);
       if (!node) return;
       node.addEventListener('input', () => {
         syncAuthorDraftVisualState();
+        refreshCatalogAuthorSignals();
       });
       node.addEventListener('change', () => {
         syncAuthorDraftVisualState();
+        refreshCatalogAuthorSignals();
       });
     });
     el('authorPreferredName').addEventListener('input', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
+      refreshCatalogAuthorSignals();
     });
     el('authorPreferredName').addEventListener('change', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
+      refreshCatalogAuthorSignals();
     });
 
     el('openIsbnBnBtn').addEventListener('click', () => openIsbnLookup('bn'));
