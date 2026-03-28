@@ -249,7 +249,20 @@
       PAINEL: new URL("painel.html", `${GH_BASE}/anarbib-conta-staging/conta.html`).href,
     };
 
-    document.getElementById("btnCatalogo").href = ROUTES.CATALOGO;
+    function getReturnUrlFromQuery() {
+      try {
+        const raw = new URL(location.href).searchParams.get("return_to");
+        if (!raw) return ROUTES.CATALOGO;
+        const fallback = new URL(ROUTES.CATALOGO, location.origin);
+        const candidate = new URL(raw, location.origin);
+        if (candidate.origin !== fallback.origin) return ROUTES.CATALOGO;
+        return candidate.toString();
+      } catch (_) {
+        return ROUTES.CATALOGO;
+      }
+    }
+
+    document.getElementById("btnCatalogo").href = getReturnUrlFromQuery();
     document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
 
     const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
@@ -394,6 +407,7 @@
       if (ctx.libraryId) url.searchParams.set("library_id", ctx.libraryId);
       if (ctx.librarySlug) url.searchParams.set("library_slug", ctx.librarySlug);
       if (ctx.libraryName) url.searchParams.set("library_name", ctx.libraryName);
+      url.searchParams.set("return_to", location.href);
       return url.toString();
     }
 
