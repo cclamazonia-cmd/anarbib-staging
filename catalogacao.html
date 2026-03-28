@@ -2791,7 +2791,7 @@
             <select id="queueStatusFilter">
               <option value="">Todas as situações ativas</option>
               <option value="draft">Em rascunho</option>
-              <option value="ready">Pronto para publicação</option>
+              <option value="ready">Pronto</option>
             </select>
           </div>
           <div class="field">
@@ -4041,6 +4041,24 @@
       showMessage(
         refs.authorMessage,
         `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo doublon antes de ${mode}.`,
+        'info'
+      );
+      return duplicate;
+    }
+
+    async function guardBookDuplicateBeforeSaveOrPublish(mode = 'salvar') {
+      const currentPublishedBookId = el('bookPublishedId').value || '';
+      const isbn = normalizeISBN(el('bookISBN')?.value || '');
+      if (!isbn) return null;
+      const duplicate = findDuplicateBookByIsbn(isbn);
+      if (!duplicate) return null;
+      if (currentPublishedBookId && String(duplicate.id) === String(currentPublishedBookId)) return null;
+
+      await loadOrCreateBookDraftFromCatalog(duplicate.id);
+      const duplicateLabel = `${getBookDisplayTitle(duplicate)}${duplicate.bib_ref ? ` · ref. ${duplicate.bib_ref}` : ''}`;
+      showMessage(
+        refs.bookMessage,
+        `Livro já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar uma duplicata antes de ${mode}.`,
         'info'
       );
       return duplicate;
@@ -7440,8 +7458,8 @@
     function getQueueStatusBadge(status = '') {
       const map = {
         draft: { label: 'Em rascunho', cls: 'queue-status-draft' },
-        ready: { label: 'Pronto para publicação', cls: 'queue-status-ready' },
-        published: { label: 'Já publicado', cls: 'queue-status-published' },
+        ready: { label: 'Pronto', cls: 'queue-status-ready' },
+        published: { label: 'Publicado', cls: 'queue-status-published' },
         cancelled: { label: 'Descartado', cls: 'queue-status-cancelled' },
       };
       const config = map[status] || { label: status || '—', cls: 'queue-status-unknown' };
@@ -8983,6 +9001,9 @@
     el('bookForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const currentPublishedBookId = el('bookPublishedId').value || '';
+        const duplicate = currentPublishedBookId ? null : await guardBookDuplicateBeforeSaveOrPublish('salvar este rascunho');
+        if (duplicate) return;
         const payload = await reuseExistingDraftIdIfNeeded('book_drafts', getBookDraftPayload(), 'published_book_id');
         if (!payload.titulo) throw new Error('Informe o título do livro.');
         const saved = await saveDraft('book_drafts', payload, refs.bookMessage, 'Rascunho de livro salvo com sucesso.');
@@ -9160,6 +9181,9 @@
       try {
         const draftId = el('bookDraftId').value;
         if (!draftId) throw new Error('Salve o rascunho antes de publicar.');
+        const currentPublishedBookId = el('bookPublishedId').value || '';
+        const duplicate = currentPublishedBookId ? null : await guardBookDuplicateBeforeSaveOrPublish('publicar este rascunho');
+        if (duplicate) return;
         setPublishLock('book', true);
         try {
           await saveBookDraftContributors(draftId);
