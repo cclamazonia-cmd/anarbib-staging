@@ -269,6 +269,20 @@
       }
     }
 
+    function getBookReturnUrlFromQuery() {
+      try {
+        const raw = new URL(location.href).searchParams.get("book_return_to");
+        if (!raw) return "";
+        const fallback = new URL(ROUTES.LIVRO, location.origin);
+        const candidate = new URL(raw, location.origin);
+        if (candidate.origin !== fallback.origin) return "";
+        if (candidate.pathname !== fallback.pathname) return "";
+        return candidate.toString();
+      } catch (_) {
+        return "";
+      }
+    }
+
     document.getElementById("btnCatalogo").href = getReturnUrlFromQuery();
     document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
 
@@ -410,12 +424,14 @@
 
     function buildLivroHref(row, ctx = {}) {
       const url = new URL(ROUTES.LIVRO, location.href);
+      const originBookReturnUrl = getBookReturnUrlFromQuery();
       url.searchParams.set("ref", String(row?.bib_ref || "").trim());
       if (ctx.libraryId) url.searchParams.set("library_id", ctx.libraryId);
       if (ctx.librarySlug) url.searchParams.set("library_slug", ctx.librarySlug);
       if (ctx.libraryName) url.searchParams.set("library_name", ctx.libraryName);
       url.searchParams.set("return_to", getReturnUrlFromQuery());
       url.searchParams.set("author_return_to", location.href);
+      if (originBookReturnUrl) url.searchParams.set("book_return_to", originBookReturnUrl);
       return url.toString();
     }
 
