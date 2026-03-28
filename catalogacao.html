@@ -2213,7 +2213,7 @@
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
                     <label for="bookDigitalBucket">Pasta no armazenamento</label>
-                    <input id="bookDigitalBucket" type="text" placeholder="pdf-publico ou pdf-restrito" />
+                    <input id="bookDigitalBucket" type="text" placeholder="anarbib-pdf-public ou pdf-restrito" />
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
                     <label for="bookDigitalPath">Caminho do arquivo</label>
@@ -2983,6 +2983,9 @@
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
     const LOGIN_URL = ROUTES.CADASTRO;
+    const DIGITAL_PUBLIC_BUCKET = 'anarbib-pdf-public';
+    const DIGITAL_RESTRICTED_BUCKET = 'pdf-restrito';
+    const DIGITAL_PUBLIC_BUCKET_LEGACY = 'pdf-publico';
 
     const state = {
       session: null,
@@ -4768,10 +4771,52 @@
       return isPublic ? 'Público' : 'Conta ativa';
     }
 
+    function normalizeBookDigitalBucket(bucket = '') {
+      const raw = String(bucket || '').trim();
+      if (!raw) return '';
+      return raw === DIGITAL_PUBLIC_BUCKET_LEGACY ? DIGITAL_PUBLIC_BUCKET : raw;
+    }
+
+    function isBookDigitalPublicBucket(bucket = '') {
+      const normalized = normalizeBookDigitalBucket(bucket);
+      return normalized === DIGITAL_PUBLIC_BUCKET;
+    }
+
+    function syncBookDigitalPublicToggleFromBucket() {
+      const bucketNode = el('bookDigitalBucket');
+      const publicNode = el('bookDigitalIsPublic');
+      if (!bucketNode || !publicNode) return;
+      const normalizedBucket = normalizeBookDigitalBucket(bucketNode.value);
+      if (normalizedBucket && normalizedBucket !== bucketNode.value) bucketNode.value = normalizedBucket;
+      if (normalizedBucket === DIGITAL_PUBLIC_BUCKET) publicNode.checked = true;
+      if (normalizedBucket === DIGITAL_RESTRICTED_BUCKET) publicNode.checked = false;
+    }
+
+    function syncBookDigitalBucketFromToggle() {
+      const bucketNode = el('bookDigitalBucket');
+      const publicNode = el('bookDigitalIsPublic');
+      if (!bucketNode || !publicNode) return;
+      const normalizedBucket = normalizeBookDigitalBucket(bucketNode.value);
+      const shouldRewrite = !normalizedBucket || normalizedBucket === DIGITAL_PUBLIC_BUCKET || normalizedBucket === DIGITAL_RESTRICTED_BUCKET;
+      if (!shouldRewrite) return;
+      bucketNode.value = publicNode.checked ? DIGITAL_PUBLIC_BUCKET : DIGITAL_RESTRICTED_BUCKET;
+    }
+
+    function updateBookDigitalActionButtons() {
+      const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
+      const path = String(el('bookDigitalPath')?.value || '').trim();
+      const bibRef = String(el('bookBibRef')?.value || '').trim();
+      const hasFile = !!(bucket && path);
+      const pdfBtn = el('openBookDigitalPdfBtn');
+      const readerBtn = el('openBookDigitalReaderBtn');
+      if (pdfBtn) pdfBtn.disabled = !hasFile;
+      if (readerBtn) readerBtn.disabled = !(hasFile || bibRef);
+    }
+
     function fillBookDigitalResourceFields(record = null) {
       el('bookDigitalDraftResourceId').value = record?.id || '';
       el('bookDigitalLanguageCode').value = record?.language_code || '';
-      el('bookDigitalBucket').value = record?.storage_bucket || '';
+      el('bookDigitalBucket').value = normalizeBookDigitalBucket(record?.storage_bucket || '');
       el('bookDigitalPath').value = record?.storage_path || '';
       el('bookDigitalSourceName').value = record?.source_name || '';
       el('bookDigitalSourceUrl').value = record?.source_url || '';
@@ -4788,17 +4833,21 @@
     }
 
     function updateBookDigitalResourceSummary(record = null) {
-      const bucket = record?.storage_bucket || el('bookDigitalBucket').value.trim();
+      const bucket = normalizeBookDigitalBucket(record?.storage_bucket || el('bookDigitalBucket').value.trim());
       const path = record?.storage_path || el('bookDigitalPath').value.trim();
       const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
-      const isPublic = record ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico') : !!el('bookDigitalIsPublic').checked;
+      const isPublic = record
+        ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico' || isBookDigitalPublicBucket(record.storage_bucket || ''))
+        : (!!el('bookDigitalIsPublic').checked || isBookDigitalPublicBucket(bucket));
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
         refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF vinculado neste rascunho.';
+        updateBookDigitalActionButtons();
         return;
       }
       refs.bookDigitalLinkedSummary.textContent = `PDF vinculado: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      updateBookDigitalActionButtons();
     }
 
     async function loadBookDraftDigitalResource(draftId) {
@@ -4820,7 +4869,7 @@
     function buildBookDraftDigitalResourcePayload(draftId) {
       const resourceId = el('bookDigitalDraftResourceId').value || '';
       const languageCode = el('bookDigitalLanguageCode').value.trim();
-      const storageBucket = el('bookDigitalBucket').value.trim();
+      const storageBucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const storagePath = el('bookDigitalPath').value.trim();
       const sourceName = el('bookDigitalSourceName').value.trim();
       const sourceUrl = el('bookDigitalSourceUrl').value.trim();
@@ -4901,7 +4950,7 @@
     }
 
     async function openBookDigitalPdfFromForm() {
-      const bucket = el('bookDigitalBucket').value.trim();
+      const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
       if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
@@ -4919,7 +4968,7 @@
       const viewerUrl = new URL('ler.html', location.href);
       const publishedBookId = Number(el('bookPublishedId').value || 0);
       const bibRef = el('bookBibRef').value.trim();
-      const bucket = el('bookDigitalBucket').value.trim();
+      const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
       const sourceName = el('bookDigitalSourceName').value.trim();
       const sourceUrl = el('bookDigitalSourceUrl').value.trim();
@@ -4980,90 +5029,33 @@
         reason: 'book_digital_resources_backend_is_canonical'
       };
     }
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
-      // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
+    // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     const AUTHOR_STRUCTURED_META_START = '[ANARBIB_AUTH_META]';
     const AUTHOR_STRUCTURED_META_END = '[/ANARBIB_AUTH_META]';
@@ -7419,6 +7411,14 @@
       el(id).addEventListener('input', updateBookDigitalResourceSummary);
       el(id).addEventListener('change', updateBookDigitalResourceSummary);
     });
+    el('bookDigitalBucket').addEventListener('input', syncBookDigitalPublicToggleFromBucket);
+    el('bookDigitalBucket').addEventListener('change', syncBookDigitalPublicToggleFromBucket);
+    el('bookDigitalIsPublic').addEventListener('change', () => {
+      syncBookDigitalBucketFromToggle();
+      updateBookDigitalResourceSummary();
+    });
+
+    updateBookDigitalActionButtons();
 
     el('bookPlace').addEventListener('blur', () => {
       const previous = el('bookPlace').value;
