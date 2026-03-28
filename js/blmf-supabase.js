@@ -5,14 +5,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const authStorage = (() => {
   try {
-    if (window?.localStorage) return window.localStorage;
-  } catch (error) {
-    console.warn('localStorage indisponível; tentando sessionStorage.', error);
-  }
-  try {
     if (window?.sessionStorage) return window.sessionStorage;
   } catch (error) {
-    console.warn('sessionStorage indisponível.', error);
+    console.warn('sessionStorage indisponível; usando armazenamento interno transitório.', error);
   }
   return undefined;
 })();
