@@ -2957,6 +2957,34 @@
         <div class="catalog-published-stack">
           <div class="card">
             <h4>Autores publicados</h4>
+            <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
+              <div class="field">
+                <label for="catalogAuthorAuthorityFilter">Tipo de autoridade</label>
+                <select id="catalogAuthorAuthorityFilter">
+                  <option value="">Todos os tipos</option>
+                  <option value="person">Pessoa</option>
+                  <option value="collective">Coletivo / organização</option>
+                  <option value="publisher_series">Editora / série / revista</option>
+                  <option value="place_campaign_theme">Lugar / campanha / tema</option>
+                  <option value="other">Outra autoridade</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="catalogAuthorSignalFilter">Sinal editorial</label>
+                <select id="catalogAuthorSignalFilter">
+                  <option value="">Todos os sinais</option>
+                  <option value="draft_active">Com rascunho ativo</option>
+                  <option value="current">Ficha aberta</option>
+                  <option value="very_close">Muito próximo da ficha aberta</option>
+                  <option value="close">Próximo da ficha aberta</option>
+                  <option value="no_signal">Sem sinal editorial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="catalogAuthorsFilterSummary">Leitura do recorte</label>
+                <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
+              </div>
+            </div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
           <div class="card">
@@ -5515,6 +5543,8 @@
       'queueStatusFilter',
       'queueSearch',
       'catalogSearch',
+      'catalogAuthorAuthorityFilter',
+      'catalogAuthorSignalFilter',
       'catalogExemplarSearch',
       'exemplarLotImportId',
       'exemplarBatchSearchInput',
@@ -9632,17 +9662,67 @@
         </div>`;
     }
 
+    function getCatalogAuthorSignalType(row = {}) {
+      if (row?.draftLink?.id) return 'draft_active';
+      if (row?.proximityMeta?.isCurrent) return 'current';
+      if (row?.proximityMeta?.level === 'very_close') return 'very_close';
+      if (row?.proximityMeta?.level === 'close') return 'close';
+      return 'no_signal';
+    }
+
+    function renderCatalogAuthorsFilterSummary(visibleCount = 0, totalCount = 0) {
+      const authorityFilter = el('catalogAuthorAuthorityFilter')?.value || '';
+      const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
+      const parts = [];
+      if (authorityFilter) parts.push(`tipo: ${getAuthorAuthorityTypeLabel(authorityFilter)}`);
+      if (signalFilter) {
+        const signalLabels = {
+          draft_active: 'com rascunho ativo',
+          current: 'ficha aberta',
+          very_close: 'muito próximo da ficha aberta',
+          close: 'próximo da ficha aberta',
+          no_signal: 'sem sinal editorial',
+        };
+        parts.push(`sinal: ${signalLabels[signalFilter] || signalFilter}`);
+      }
+      const summaryNode = el('catalogAuthorsFilterSummary');
+      if (!summaryNode) return;
+      if (!parts.length) {
+        summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount}. Sem filtro específico nos autores publicados.`;
+        return;
+      }
+      summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount} — ${parts.join(' · ')}.`;
+    }
+
     function renderCatalogAuthors() {
       const search = normalizeForSearch(el('catalogSearch').value);
+      const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
+      const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
       const draftLinkMap = getCatalogAuthorDraftLinkMap();
       const currentSignals = getCurrentCatalogAuthorFormSignals();
-      let items = [...state.authors];
+      let rows = [...state.authors].map((author) => {
+        const draftLink = draftLinkMap.get(String(author.id)) || null;
+        const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
+        const meta = getAuthorStructuredMetaForRecord(author);
+        return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
+      });
+      const totalCount = rows.length;
       if (search) {
-        items = items.filter(author => getAuthorCatalogSearchIndex(author).includes(search));
+        rows = rows.filter(({ author }) => getAuthorCatalogSearchIndex(author).includes(search));
       }
-      items = sortCatalogItems('authors', items);
-      if (!items.length) {
-        refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado.</div>';
+      if (authorityFilter) {
+        rows = rows.filter(({ meta }) => normalizeAuthorAuthorityType(meta.authority_type || 'person') === authorityFilter);
+      }
+      if (signalFilter) {
+        rows = rows.filter((row) => row.signalType === signalFilter);
+      }
+      const sortedAuthors = sortCatalogItems('authors', rows.map((row) => row.author));
+      rows = sortedAuthors
+        .map((author) => rows.find((row) => row.author === author))
+        .filter(Boolean);
+      renderCatalogAuthorsFilterSummary(rows.length, totalCount);
+      if (!rows.length) {
+        refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado para este recorte.</div>';
         return;
       }
       refs.catalogAuthorsWrap.innerHTML = `
@@ -9657,9 +9737,7 @@
             </tr>
           </thead>
           <tbody>
-            ${items.map(author => {
-              const draftLink = draftLinkMap.get(String(author.id)) || null;
-              const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
+            ${rows.map(({ author, draftLink, proximityMeta }) => {
               const buttonLabel = draftLink?.id ? 'Abrir rascunho ativo' : 'Criar rascunho de edição';
               return `
               <tr>
@@ -10547,6 +10625,8 @@
       renderCatalogBooks();
       renderCatalogAuthors();
     });
+    el('catalogAuthorAuthorityFilter').addEventListener('change', renderCatalogAuthors);
+    el('catalogAuthorSignalFilter').addEventListener('change', renderCatalogAuthors);
     el('catalogExemplarSearch').addEventListener('input', renderCatalogExemplars);
     if (refs.refreshLabelSheetBtn) {
       refs.refreshLabelSheetBtn.addEventListener('click', async () => {
