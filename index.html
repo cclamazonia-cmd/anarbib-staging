@@ -2198,7 +2198,7 @@ function normalizeAuthorChipEntries(value) {
   out.sort((a, b) => (a.ord - b.ord) || String(a.label || '').localeCompare(String(b.label || ''), 'pt-BR', { numeric: true }));
   return out;
 }
-function buildAuthorHref(authorId) {
+function buildAuthorHref(authorId, row = null) {
   const params = new URLSearchParams();
   params.set('v', AUTHOR_PAGE_VERSION);
   params.set('_cb', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -2206,6 +2206,11 @@ function buildAuthorHref(authorId) {
     params.set('id', String(authorId));
     params.set('author_id', String(authorId));
   }
+  const explicitViewContext = resolveExplicitViewLibraryContext(row);
+  if (explicitViewContext?.library_id) params.set('library_id', String(explicitViewContext.library_id));
+  if (explicitViewContext?.library_slug) params.set('library_slug', String(explicitViewContext.library_slug));
+  if (explicitViewContext?.library_name) params.set('library_name', String(explicitViewContext.library_name));
+  params.set('return_to', location.href);
   return `${AUTOR_URL}?${params.toString()}`;
 }
 
@@ -2275,14 +2280,14 @@ async function loadAuthorCanonicalMap() {
   }
   return map;
 }
-function buildAuthorMarkup(authorValue, authorIdsValue, terms, authorChipEntries = null) {
+function buildAuthorMarkup(authorValue, authorIdsValue, terms, authorChipEntries = null, row = null) {
   const canonicalEntries = normalizeAuthorChipEntries(authorChipEntries);
   if (canonicalEntries.length) {
     const parts = canonicalEntries.map((entry) => {
       const clickAuthorId = normalizeAuthorIdValue(entry.author_id);
       const displayName = formatAuthorLabelABNT(firstNonEmptyString(entry.label, authorCanonicalMap.get(clickAuthorId)));
       const label = highlightHTML(displayName, terms);
-      const href = buildAuthorHref(clickAuthorId);
+      const href = buildAuthorHref(clickAuthorId, row);
       if (clickAuthorId) {
         return `<a class="tag-link author-chip" href="${href}" data-author-id="${clickAuthorId}">${label}</a>`;
       }
@@ -2303,7 +2308,7 @@ function buildAuthorMarkup(authorValue, authorIdsValue, terms, authorChipEntries
     const displayName = displayAuthorId ? formatAuthorLabelABNT(firstNonEmptyString(authorCanonicalMap.get(displayAuthorId), name)) : formatAuthorLabelABNT(name);
     const label = highlightHTML(displayName, terms);
     const clickAuthorId = linkedAuthorId || (names.length === 1 ? aliasAuthorId : null);
-    const href = buildAuthorHref(clickAuthorId);
+    const href = buildAuthorHref(clickAuthorId, row);
     if (clickAuthorId) {
       return `<a class="tag-link author-chip" href="${href}" data-author-id="${clickAuthorId}">${label}</a>`;
     }
@@ -2883,7 +2888,7 @@ function buildRowMarkup(r) {
   const terms = [...(lastQuery.phrases || []), ...(lastQuery.tokens || [])];
   const refHtml = ref ? highlightHTML(ref, terms) : '<span class="muted">—</span>';
   const authorIdsValue = (Array.isArray(r.author_ids_list) ? (r.author_ids_list.length ? r.author_ids_list : null) : (r.author_ids_list && String(r.author_ids_list).trim() ? r.author_ids_list : null)) ?? r.author_ids ?? r.author_id;
-  const autorHtml = buildAuthorMarkup(r.author_display || r.autor, authorIdsValue, terms, r.author_chips);
+  const autorHtml = buildAuthorMarkup(r.author_display || r.autor, authorIdsValue, terms, r.author_chips, r);
   const livroUrl = ref ? buildLivroHref(r) : '#';
   const tituloHtml = r.titulo ? highlightHTML(r.titulo, terms) : '<span class="muted">—</span>';
   const subtituloHtml = r.subtitulo ? highlightHTML(r.subtitulo, terms) : '';
@@ -3677,7 +3682,8 @@ async function handleResultActions(e) {
       return;
     }
     e.preventDefault();
-    location.assign(buildAuthorHref(authorId));
+    const authorHref = (authorBtn.getAttribute('href') || '').trim();
+    location.assign(authorHref || buildAuthorHref(authorId));
     return;
   }
 }
