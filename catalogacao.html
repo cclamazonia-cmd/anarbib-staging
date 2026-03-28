@@ -9697,7 +9697,7 @@
         }
         resetBookDigitalResourceFields();
         syncBookDraftVisualState();
-        showMessage(refs.bookMessage, 'PDF desvinculado deste rascunho.', 'ok');
+        showMessage(refs.bookMessage, 'PDF desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o PDF na ficha publicada.', 'ok');
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       }
@@ -9929,10 +9929,10 @@
             try {
               const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
               if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
-                digitalSyncMessage = ' Não consegui confirmar a sincronização do PDF público para a camada publicada.';
+                digitalSyncMessage = ' Não consegui confirmar a camada canônica de PDFs publicados.';
               }
             } catch (digitalError) {
-              digitalSyncMessage = ` Não consegui sincronizar o PDF público publicado: ${digitalError.message}`;
+              digitalSyncMessage = ` Não consegui confirmar a camada canônica de PDFs publicados: ${digitalError.message}`;
             }
           }
         } catch (linkingError) {
