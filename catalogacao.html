@@ -6752,24 +6752,57 @@
       const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
       const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
       const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
+      const author = compactSpaces(el('bookAuthor')?.value || '');
+      const publisher = compactSpaces(el('bookPublisher')?.value || '');
+      const place = compactSpaces(el('bookPlace')?.value || '');
+      const year = compactSpaces(el('bookYear')?.value || '');
+      const notes = compactSpaces(el('bookNotes')?.value || '');
+      const periodicalTitle = compactSpaces(el('bookPeriodicalTitle')?.value || '');
+      const volume = compactSpaces(el('bookVolume')?.value || '');
+      const issueNumber = compactSpaces(el('bookIssueNumber')?.value || '');
+      const fascicle = compactSpaces(el('bookFascicle')?.value || '');
+      const issueDate = compactSpaces(el('bookIssueDate')?.value || '');
+      const frequency = compactSpaces(el('bookFrequency')?.value || '');
+      const campaign = compactSpaces(el('bookMaterialCampaign')?.value || '');
+      const emitter = compactSpaces(el('bookMaterialEmitter')?.value || '');
+      const approxDate = compactSpaces(el('bookMaterialApproxDate')?.value || '');
+      const diffusionPlace = compactSpaces(el('bookMaterialDiffusionPlace')?.value || '');
+      const rectoVerso = compactSpaces(el('bookMaterialRectoVerso')?.value || '');
+      const materialFormat = compactSpaces(el('bookMaterialFormat')?.value || '');
+      const printTechnique = compactSpaces(el('bookMaterialPrintTechnique')?.value || '');
+      const physicalState = compactSpaces(el('bookMaterialPhysicalState')?.value || '');
+      const audioDuration = compactSpaces(el('bookAudioDuration')?.value || '');
+      const audioSupport = compactSpaces(el('bookAudioSupport')?.value || '');
+      const audioLanguage = compactSpaces(el('bookAudioSpokenLanguage')?.value || '');
+      const audioParticipants = compactSpaces(el('bookAudioParticipants')?.value || '');
+      const audioRecordingType = compactSpaces(el('bookAudioRecordingType')?.value || '');
+      const audioFormat = compactSpaces(el('bookAudioFormatTech')?.value || '');
+      const audiovisualDuration = compactSpaces(el('bookAudiovisualDuration')?.value || '');
+      const audiovisualSupport = compactSpaces(el('bookAudiovisualSupport')?.value || '');
+      const audiovisualLanguage = compactSpaces(el('bookAudiovisualLanguage')?.value || '');
+      const audiovisualDirector = compactSpaces(el('bookAudiovisualDirector')?.value || '');
+      const audiovisualParticipants = compactSpaces(el('bookAudiovisualParticipants')?.value || '');
+      const audiovisualSubtitles = compactSpaces(el('bookAudiovisualSubtitles')?.value || '');
+      const audiovisualAccessNote = compactSpaces(el('bookAudiovisualAccessNote')?.value || '');
       const digitalNativeUrl = compactSpaces(el('bookDigitalNativeUrl')?.value || '');
       const digitalNativeAccess = compactSpaces(el('bookDigitalNativeAccess')?.value || '');
       const digitalNativeRestriction = compactSpaces(el('bookDigitalNativeRestriction')?.value || '');
       const digitalNativeUsage = compactSpaces(el('bookDigitalNativeUsage')?.value || '');
+      const digitalNativeFileNote = compactSpaces(el('bookDigitalNativeFileNote')?.value || '');
       const dossierScope = compactSpaces(el('bookDossierScope')?.value || '');
+      const dossierPeriod = compactSpaces(el('bookDossierPeriod')?.value || '');
       const dossierOrganizations = compactSpaces(el('bookDossierOrganizations')?.value || '');
-      const materialFormat = compactSpaces(el('bookMaterialFormat')?.value || '');
-      const physicalState = compactSpaces(el('bookMaterialPhysicalState')?.value || '');
-      const videoSupport = compactSpaces(el('bookAudiovisualSupport')?.value || '');
-      const audioSupport = compactSpaces(el('bookAudioSupport')?.value || '');
+      const dossierContext = compactSpaces(el('bookDossierContext')?.value || '');
+
       const supportText = (() => {
-        if (materialType === 'audio') return joinSummaryParts([audioSupport, compactSpaces(el('bookAudioRecordingType')?.value || ''), compactSpaces(el('bookAudioFormatTech')?.value || '')]);
-        if (materialType === 'audiovisual') return joinSummaryParts([videoSupport, compactSpaces(el('bookAudiovisualSubtitles')?.value || '')]);
+        if (materialType === 'audio') return joinSummaryParts([audioSupport, audioRecordingType, audioFormat]);
+        if (materialType === 'audiovisual') return joinSummaryParts([audiovisualSupport, audiovisualSubtitles]);
         if (materialType === 'recurso_digital') return joinSummaryParts([digitalNativeUsage, digitalNativeAccess, digitalNativeRestriction]);
         if (materialType === 'tract' || materialType === 'cartaz') return joinSummaryParts([materialFormat, physicalState]);
-        if (materialType === 'dossie') return joinSummaryParts([dossierScope, compactSpaces(el('bookDossierPeriod')?.value || '')]);
+        if (materialType === 'dossie') return joinSummaryParts([dossierScope, dossierPeriod]);
         return '';
       })();
+
       const catalogMetaParts = [summary.meta];
       if (supportText) catalogMetaParts.push(`Suporte: ${supportText}`);
       const snippetParts = [summary.context];
@@ -6784,6 +6817,143 @@
       const fichaBodyParts = [summary.context];
       if (materialType === 'dossie' && dossierOrganizations) fichaBodyParts.push(`Vínculos organizativos: ${dossierOrganizations}`);
       if (materialType === 'recurso_digital' && digitalNativeUrl) fichaBodyParts.push('Recurso digital principal informado.');
+
+      if (SERIAL_MATERIAL_TYPES.has(materialType)) {
+        const serialIdentity = joinSummaryParts([
+          periodicalTitle,
+          volume ? `vol. ${volume}` : '',
+          issueNumber ? `n. ${issueNumber}` : '',
+          fascicle ? `fasc. ${fascicle}` : '',
+          issueDate,
+        ]);
+        const serialSupport = joinSummaryParts([
+          frequency ? `Periodicidade: ${frequency}` : '',
+          publisher ? `Entidade: ${publisher}` : '',
+          place,
+          year,
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(serialIdentity || summary.meta);
+        if (serialSupport) catalogMetaParts.push(serialSupport);
+        snippetParts.length = 0;
+        snippetParts.push(summary.context);
+        if (notes) snippetParts.push(truncatePreviewText(notes, 120));
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, serialIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        fichaBodyParts.push(joinSummaryParts([
+          publisher ? `Entidade responsável: ${publisher}` : '',
+          place,
+          year,
+          frequency ? `Periodicidade: ${frequency}` : '',
+        ]));
+        if (summary.context) fichaBodyParts.push(summary.context);
+      } else if (materialType === 'tract' || materialType === 'cartaz') {
+        const rectoVersoLabel = rectoVerso === 'recto' ? 'somente recto' : rectoVerso === 'recto_verso' ? 'recto e verso' : rectoVerso === 'desconhecido' ? 'recto/verso não verificado' : '';
+        const militantIdentity = joinSummaryParts([
+          emitter ? `Emissor: ${emitter}` : '',
+          campaign ? `Campanha: ${campaign}` : '',
+          diffusionPlace,
+          approxDate,
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(militantIdentity || summary.meta);
+        if (materialFormat) catalogMetaParts.push(`Formato: ${materialFormat}`);
+        if (rectoVersoLabel) catalogMetaParts.push(rectoVersoLabel);
+        snippetParts.length = 0;
+        if (summary.context) snippetParts.push(summary.context);
+        if (printTechnique) snippetParts.push(`Impressão: ${printTechnique}`);
+        if (physicalState) snippetParts.push(`Estado: ${physicalState}`);
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, militantIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        if (summary.context) fichaBodyParts.push(summary.context);
+        if (materialFormat || rectoVersoLabel) fichaBodyParts.push(joinSummaryParts([materialFormat ? `Formato: ${materialFormat}` : '', rectoVersoLabel]));
+        if (printTechnique || physicalState) fichaBodyParts.push(joinSummaryParts([printTechnique ? `Técnica: ${printTechnique}` : '', physicalState ? `Estado: ${physicalState}` : '']));
+      } else if (materialType === 'audio') {
+        const audioIdentity = joinSummaryParts([
+          audioDuration ? `Duração: ${audioDuration}` : '',
+          audioSupport ? `Suporte: ${audioSupport}` : '',
+          audioLanguage ? `Língua: ${audioLanguage}` : '',
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(audioIdentity || summary.meta);
+        if (audioParticipants) catalogMetaParts.push(`Intervenientes: ${audioParticipants}`);
+        snippetParts.length = 0;
+        if (summary.context) snippetParts.push(summary.context);
+        if (audioRecordingType) snippetParts.push(`Registro: ${audioRecordingType}`);
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, audioIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        if (summary.context) fichaBodyParts.push(summary.context);
+        if (audioParticipants) fichaBodyParts.push(`Intervenientes: ${audioParticipants}`);
+        if (audioRecordingType || audioFormat) fichaBodyParts.push(joinSummaryParts([audioRecordingType ? `Tipo de gravação: ${audioRecordingType}` : '', audioFormat ? `Formato: ${audioFormat}` : '']));
+      } else if (materialType === 'audiovisual') {
+        const audiovisualIdentity = joinSummaryParts([
+          audiovisualDuration ? `Duração: ${audiovisualDuration}` : '',
+          audiovisualSupport ? `Suporte: ${audiovisualSupport}` : '',
+          audiovisualLanguage ? `Língua: ${audiovisualLanguage}` : '',
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(audiovisualIdentity || summary.meta);
+        if (audiovisualDirector) catalogMetaParts.push(`Realização: ${audiovisualDirector}`);
+        snippetParts.length = 0;
+        if (summary.context) snippetParts.push(summary.context);
+        if (audiovisualParticipants) snippetParts.push(`Intervenientes: ${audiovisualParticipants}`);
+        if (audiovisualAccessNote) snippetParts.push(`Consulta: ${audiovisualAccessNote}`);
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, audiovisualIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        if (summary.context) fichaBodyParts.push(summary.context);
+        if (audiovisualDirector || audiovisualParticipants) fichaBodyParts.push(joinSummaryParts([audiovisualDirector ? `Realização: ${audiovisualDirector}` : '', audiovisualParticipants ? `Intervenientes: ${audiovisualParticipants}` : '']));
+        if (audiovisualSubtitles || audiovisualAccessNote) fichaBodyParts.push(joinSummaryParts([audiovisualSubtitles ? `Legendagem: ${audiovisualSubtitles}` : '', audiovisualAccessNote ? `Consulta: ${audiovisualAccessNote}` : '']));
+      } else if (materialType === 'recurso_digital') {
+        const digitalIdentity = joinSummaryParts([
+          digitalNativeUsage ? `Uso: ${digitalNativeUsage}` : '',
+          digitalNativeAccess ? `Acesso: ${digitalNativeAccess}` : '',
+          digitalNativeRestriction ? `Restrição: ${digitalNativeRestriction}` : '',
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(digitalIdentity || summary.meta);
+        if (author) catalogMetaParts.push(author);
+        snippetParts.length = 0;
+        if (summary.context) snippetParts.push(summary.context);
+        if (digitalNativeUrl) snippetParts.push(`URL principal: ${digitalNativeUrl}`);
+        if (digitalNativeFileNote) snippetParts.push(`Arquivo: ${digitalNativeFileNote}`);
+        catalogAccessParts.length = 0;
+        catalogAccessParts.push(digitalIdentity || summary.access);
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, digitalIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        if (summary.context) fichaBodyParts.push(summary.context);
+        if (digitalNativeUrl) fichaBodyParts.push(`URL principal: ${digitalNativeUrl}`);
+        if (digitalNativeFileNote) fichaBodyParts.push(`Observação do arquivo: ${digitalNativeFileNote}`);
+      } else if (materialType === 'dossie') {
+        const dossierIdentity = joinSummaryParts([
+          dossierPeriod ? `Período: ${dossierPeriod}` : '',
+          dossierOrganizations ? `Organizações: ${dossierOrganizations}` : '',
+        ]);
+        catalogMetaParts.length = 0;
+        catalogMetaParts.push(dossierIdentity || summary.meta);
+        if (publisher) catalogMetaParts.push(`Entidade: ${publisher}`);
+        snippetParts.length = 0;
+        if (dossierScope) snippetParts.push(dossierScope);
+        if (summary.context && summary.context !== dossierScope) snippetParts.push(summary.context);
+        if (dossierContext) snippetParts.push(`Contexto: ${dossierContext}`);
+        fichaMetaParts.length = 0;
+        fichaMetaParts.push(summary.kindLabel, dossierIdentity || summary.meta);
+        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        fichaBodyParts.length = 0;
+        if (dossierScope) fichaBodyParts.push(dossierScope);
+        if (dossierOrganizations) fichaBodyParts.push(`Vínculos organizativos: ${dossierOrganizations}`);
+        if (dossierContext) fichaBodyParts.push(`Contexto: ${dossierContext}`);
+      }
+
       return {
         kindLabel: summary.kindLabel,
         displayLibrary,
