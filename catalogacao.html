@@ -2428,6 +2428,52 @@
             </div>
 
             <div class="form-flow-break">
+              <strong>Autoridade enriquecida</strong>
+              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Enquanto o backend dedicado não chega, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
+            </div>
+
+            <div class="field">
+              <label for="authorAuthorityType">Tipo de autoridade</label>
+              <select id="authorAuthorityType">
+                <option value="person">Pessoa</option>
+                <option value="collective">Coletivo / organização</option>
+                <option value="publisher_series">Editora / série / revista</option>
+                <option value="place_campaign_theme">Lugar / campanha / tema</option>
+                <option value="other">Outra forma de autoridade</option>
+              </select>
+            </div>
+
+            <div class="field mode-complete-only">
+              <label for="authorAcronym">Sigla / forma curta</label>
+              <input id="authorAcronym" type="text" placeholder="CGT / FAG / CSL / CIRA" />
+            </div>
+
+            <div class="field">
+              <label for="authorActivityPeriod">Período de atividade</label>
+              <input id="authorActivityPeriod" type="text" placeholder="1910-1936 / década de 1980 / em atividade" />
+            </div>
+
+            <div class="field mode-complete-only" style="grid-column: span 3;">
+              <label for="authorVariantNames">Formas variantes</label>
+              <textarea id="authorVariantNames" placeholder="Nomes paralelos, grafias alternativas, formas em outras línguas, nomes históricos…"></textarea>
+            </div>
+
+            <div class="field mode-complete-only" style="grid-column: span 2;">
+              <label for="authorPseudonyms">Pseudônimos / nomes de guerra</label>
+              <input id="authorPseudonyms" type="text" placeholder="Separar por ponto e vírgula" />
+            </div>
+
+            <div class="field mode-complete-only">
+              <label for="authorActivityPlace">Lugar / ancoragem</label>
+              <input id="authorActivityPlace" type="text" placeholder="Belém, Amazônia, Buenos Aires, rede transnacional…" />
+            </div>
+
+            <div class="field mode-complete-only" style="grid-column: span 3;">
+              <label for="authorContextLinks">Vínculos documentários / contextuais</label>
+              <input id="authorContextLinks" type="text" placeholder="Campanhas, coletivos, periódicos, séries, redes ou conjuntos ligados…" />
+            </div>
+
+            <div class="form-flow-break">
               <strong>Dados biográficos mínimos</strong>
               <span>Preencha aqui as informações básicas de identificação histórica.</span>
             </div>
@@ -3257,6 +3303,13 @@
       previewAuthorAssistBtn: el('previewAuthorAssistBtn'),
       applyAuthorAssistBtn: el('applyAuthorAssistBtn'),
       authorAssistPreview: el('authorAssistPreview'),
+      authorAuthorityType: el('authorAuthorityType'),
+      authorAcronym: el('authorAcronym'),
+      authorActivityPeriod: el('authorActivityPeriod'),
+      authorVariantNames: el('authorVariantNames'),
+      authorPseudonyms: el('authorPseudonyms'),
+      authorActivityPlace: el('authorActivityPlace'),
+      authorContextLinks: el('authorContextLinks'),
       bookQuickLabelCode: el('bookQuickLabelCode'),
       bookQuickLabelCDD: el('bookQuickLabelCDD'),
       bookQuickLabelTitle: el('bookQuickLabelTitle'),
@@ -4121,6 +4174,10 @@
         if (fallback && !String(sortField.value || '').trim()) {
           sortField.value = fallback;
         }
+        return;
+      }
+      if (getCurrentAuthorAuthorityType() !== 'person') {
+        sortField.value = normalizeInlineWhitespace(preferredField.value || fallback || '');
         return;
       }
       const parts = buildCanonicalAuthorNameParts(preferredField.value || '');
@@ -4990,6 +5047,119 @@
       // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
       // digital-assets front sync intentionally disabled; publication is canonical in book_digital_resources.
 
+    const AUTHOR_STRUCTURED_META_START = '[ANARBIB_AUTH_META]';
+    const AUTHOR_STRUCTURED_META_END = '[/ANARBIB_AUTH_META]';
+
+    function normalizeAuthorAuthorityType(value = '') {
+      const normalized = String(value || '').trim();
+      return ['person', 'collective', 'publisher_series', 'place_campaign_theme', 'other'].includes(normalized)
+        ? normalized
+        : 'person';
+    }
+
+    function getCurrentAuthorAuthorityType() {
+      return normalizeAuthorAuthorityType(el('authorAuthorityType')?.value || 'person');
+    }
+
+    function extractAuthorStructuredMetaFromNotes(notes = '') {
+      const raw = String(notes || '');
+      const start = raw.indexOf(AUTHOR_STRUCTURED_META_START);
+      const end = raw.indexOf(AUTHOR_STRUCTURED_META_END);
+      if (start === -1 || end === -1 || end < start) {
+        return {
+          cleanNotes: raw.trim(),
+          meta: {
+            authority_type: 'person',
+            acronym: '',
+            activity_period: '',
+            variant_names: '',
+            pseudonyms: '',
+            activity_place: '',
+            context_links: '',
+          },
+        };
+      }
+
+      const before = raw.slice(0, start).trim();
+      const after = raw.slice(end + AUTHOR_STRUCTURED_META_END.length).trim();
+      const block = raw.slice(start + AUTHOR_STRUCTURED_META_START.length, end).trim();
+      const meta = {
+        authority_type: 'person',
+        acronym: '',
+        activity_period: '',
+        variant_names: '',
+        pseudonyms: '',
+        activity_place: '',
+        context_links: '',
+      };
+
+      block.split(/\n+/).map((line) => line.trim()).filter(Boolean).forEach((line) => {
+        const separatorIndex = line.indexOf('=');
+        if (separatorIndex === -1) return;
+        const key = line.slice(0, separatorIndex).trim();
+        const rawValue = line.slice(separatorIndex + 1).trim();
+        try {
+          meta[key] = decodeURIComponent(rawValue);
+        } catch (_error) {
+          meta[key] = rawValue;
+        }
+      });
+      meta.authority_type = normalizeAuthorAuthorityType(meta.authority_type);
+
+      return {
+        cleanNotes: [before, after].filter(Boolean).join('\n\n').trim(),
+        meta,
+      };
+    }
+
+    function applyAuthorStructuredMetaToFields(meta = {}) {
+      if (refs.authorAuthorityType) refs.authorAuthorityType.value = normalizeAuthorAuthorityType(meta.authority_type);
+      if (refs.authorAcronym) refs.authorAcronym.value = meta.acronym || '';
+      if (refs.authorActivityPeriod) refs.authorActivityPeriod.value = meta.activity_period || '';
+      if (refs.authorVariantNames) refs.authorVariantNames.value = meta.variant_names || '';
+      if (refs.authorPseudonyms) refs.authorPseudonyms.value = meta.pseudonyms || '';
+      if (refs.authorActivityPlace) refs.authorActivityPlace.value = meta.activity_place || '';
+      if (refs.authorContextLinks) refs.authorContextLinks.value = meta.context_links || '';
+    }
+
+    function buildAuthorStructuredMetaFromFields() {
+      return {
+        authority_type: getCurrentAuthorAuthorityType(),
+        acronym: refs.authorAcronym?.value.trim() || '',
+        activity_period: refs.authorActivityPeriod?.value.trim() || '',
+        variant_names: refs.authorVariantNames?.value.trim() || '',
+        pseudonyms: refs.authorPseudonyms?.value.trim() || '',
+        activity_place: refs.authorActivityPlace?.value.trim() || '',
+        context_links: refs.authorContextLinks?.value.trim() || '',
+      };
+    }
+
+    function authorStructuredMetaHasContent(meta = {}) {
+      return !!(
+        (meta.authority_type && meta.authority_type !== 'person') ||
+        meta.acronym ||
+        meta.activity_period ||
+        meta.variant_names ||
+        meta.pseudonyms ||
+        meta.activity_place ||
+        meta.context_links
+      );
+    }
+
+    function buildAuthorNotesWithStructuredMeta(humanNotes = '') {
+      const cleanHumanNotes = String(humanNotes || '').trim();
+      const meta = buildAuthorStructuredMetaFromFields();
+      if (!authorStructuredMetaHasContent(meta)) return cleanHumanNotes || null;
+      const lines = [AUTHOR_STRUCTURED_META_START];
+      Object.entries(meta).forEach(([key, value]) => {
+        const cleanValue = String(value || '').trim();
+        if (!cleanValue) return;
+        lines.push(`${key}=${encodeURIComponent(cleanValue)}`);
+      });
+      lines.push(AUTHOR_STRUCTURED_META_END);
+      return [cleanHumanNotes, lines.join('\n')].filter(Boolean).join('\n\n');
+    }
+
     function serializeAuthorFormState() {
       return JSON.stringify({
         draftId: el('authorDraftId').value || '',
@@ -5008,6 +5178,13 @@
         viaf: el('authorVIAF').value.trim(),
         isni: el('authorISNI').value.trim(),
         wikidata: el('authorWikidata').value.trim(),
+        authorityType: getCurrentAuthorAuthorityType(),
+        acronym: refs.authorAcronym?.value.trim() || '',
+        activityPeriod: refs.authorActivityPeriod?.value.trim() || '',
+        variantNames: refs.authorVariantNames?.value.trim() || '',
+        pseudonyms: refs.authorPseudonyms?.value.trim() || '',
+        activityPlace: refs.authorActivityPlace?.value.trim() || '',
+        contextLinks: refs.authorContextLinks?.value.trim() || '',
         photoPath: el('authorPhotoPath').value.trim(),
         notes: el('authorNotes').value.trim(),
       });
@@ -6413,7 +6590,7 @@
         isni: el('authorISNI').value.trim() || null,
         wikidata_id: el('authorWikidata').value.trim() || null,
         photo_object_path: el('authorPhotoPath').value.trim() || null,
-        notes: el('authorNotes').value.trim() || null,
+        notes: buildAuthorNotesWithStructuredMeta(el('authorNotes').value.trim()),
         created_by: state.profile.id,
         updated_by: state.profile.id,
       };
@@ -6577,6 +6754,7 @@
       el('authorDraftId').value = '';
       el('authorPublishedId').value = '';
       el('authorAction').value = 'create';
+      if (refs.authorAuthorityType) refs.authorAuthorityType.value = 'person';
       el('authorPhotoPath').value = '';
       syncAuthorSortName('');
       el('authorPhotoFile').value = '';
@@ -7517,11 +7695,13 @@
       setTab('authorsPanel');
       const publishedAuthorId = record.published_author_id || '';
       const resolvedAction = publishedAuthorId ? 'update' : (record.action || 'create');
+      const parsedNotes = extractAuthorStructuredMetaFromNotes(record.notes || '');
       el('authorDraftId').value = record.id || '';
       el('authorPublishedId').value = publishedAuthorId;
       el('authorAction').value = resolvedAction;
       el('authorBatchId').value = record.batch_id || '';
       el('authorPreferredName').value = record.preferred_name || '';
+      applyAuthorStructuredMetaToFields(parsedNotes.meta || {});
       syncAuthorSortName(record.sort_name || '', { preservePublished: !!publishedAuthorId });
       el('authorBiography').value = record.biography || '';
       el('authorBirthYear').value = record.birth_year || '';
@@ -7534,7 +7714,7 @@
       el('authorISNI').value = record.isni || '';
       el('authorWikidata').value = record.wikidata_id || '';
       el('authorPhotoPath').value = record.photo_object_path || '';
-      el('authorNotes').value = record.notes || '';
+      el('authorNotes').value = parsedNotes.cleanNotes || '';
       if (refs.authorAssistRawName) refs.authorAssistRawName.value = '';
       renderAuthorAssistPreview(parseAuthorAssistName(''));
       setPreviewImage(refs.authorPhotoPreview, record.photo_object_path || '', 'authors');
@@ -9805,6 +9985,20 @@
     });
     if (refs.previewAuthorAssistBtn) refs.previewAuthorAssistBtn.addEventListener('click', previewAuthorAssist);
     if (refs.applyAuthorAssistBtn) refs.applyAuthorAssistBtn.addEventListener('click', applyAuthorAssist);
+    if (refs.authorAuthorityType) refs.authorAuthorityType.addEventListener('change', () => {
+      syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
+      syncAuthorDraftVisualState();
+    });
+    ['authorAcronym', 'authorActivityPeriod', 'authorVariantNames', 'authorPseudonyms', 'authorActivityPlace', 'authorContextLinks'].forEach((fieldId) => {
+      const node = el(fieldId);
+      if (!node) return;
+      node.addEventListener('input', () => {
+        syncAuthorDraftVisualState();
+      });
+      node.addEventListener('change', () => {
+        syncAuthorDraftVisualState();
+      });
+    });
     el('authorPreferredName').addEventListener('input', () => {
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
