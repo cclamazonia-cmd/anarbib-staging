@@ -193,6 +193,7 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao catálogo</a>
+        <a class="btn disabled" id="btnLivro" href="#" rel="noopener" aria-disabled="true" title="Disponível quando esta página foi aberta a partir de uma ficha livro.">Livro</a>
         <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
         <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
       </div>
@@ -285,6 +286,22 @@
 
     document.getElementById("btnCatalogo").href = getReturnUrlFromQuery();
     document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
+
+    const btnLivro = document.getElementById("btnLivro");
+    const bookReturnUrl = getBookReturnUrlFromQuery();
+    if (btnLivro) {
+      if (bookReturnUrl) {
+        btnLivro.href = bookReturnUrl;
+        btnLivro.classList.remove("disabled");
+        btnLivro.setAttribute("aria-disabled", "false");
+        btnLivro.title = "Voltar à última ficha livro consultada.";
+      } else {
+        btnLivro.href = "#";
+        btnLivro.classList.add("disabled");
+        btnLivro.setAttribute("aria-disabled", "true");
+        btnLivro.title = "Disponível quando esta página foi aberta a partir de uma ficha livro.";
+      }
+    }
 
     const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";

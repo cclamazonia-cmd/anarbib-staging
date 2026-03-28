@@ -674,6 +674,7 @@
     const assetId = /^\d+$/.test(assetIdParam) ? Number(assetIdParam) : null;
     const publicBucketParam = (params.get("public_bucket") || "").trim();
     const publicPathParam = (params.get("public_path") || "").trim();
+    const publicUrlParam = (params.get("public_url") || "").trim();
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
     let bookSubtitle = (params.get("subtitle") || "").trim();
@@ -1226,6 +1227,35 @@
       }
     }
 
+    async function downloadPublicUrlBlob(publicUrlInput) {
+      const publicUrl = String(publicUrlInput || "").trim();
+      if (!publicUrl) {
+        throw new Error("URL pública ausente para a leitura do PDF.");
+      }
+
+      refreshReaderHeadings();
+      setAssetMetaLine(formatPublicAssetMeta(getPreviewPublicAssetMeta()));
+      await loadHeroLogos();
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const response = await fetch(publicUrl, { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar o PDF público (${response.status}).`);
+        }
+        return await response.blob();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          throw new Error("A leitura pública demorou demais para responder.");
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+
     async function loadPdfJs() {
       try {
         const pdfjsLib = await import(PDFJS_MAIN);
@@ -1576,7 +1606,7 @@
         console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
       });
 
-      if (!assetId && !bibRef && !(publicBucketParam && publicPathParam)) {
+      if (!assetId && !bibRef && !(publicBucketParam && publicPathParam) && !publicUrlParam) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
         return;
       }
@@ -1591,7 +1621,9 @@
           ? await downloadPublicAssetBlob(assetId)
           : ((publicBucketParam && publicPathParam)
               ? await downloadPublicPreviewBlob(publicBucketParam, publicPathParam)
-              : await downloadPdfBlob(bibRef));
+              : (publicUrlParam
+                  ? await downloadPublicUrlBlob(publicUrlParam)
+                  : await downloadPdfBlob(bibRef)));
 
         if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
 
