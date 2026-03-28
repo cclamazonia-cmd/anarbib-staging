@@ -2769,7 +2769,7 @@
       <div class="panel-header">
         <div>
           <h3>Fila editorial</h3>
-          <p>Consulte somente os rascunhos ativos de livros, autores e exemplares. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
+          <p>Consulte somente os rascunhos ativos de documentos, autores e exemplares. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
         </div>
         <div class="inline">
           <button id="refreshQueueBtn" class="button secondary">Atualizar fila</button>
@@ -2781,7 +2781,7 @@
             <label for="queueTypeFilter">Tipo</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Livros</option>
+              <option value="book">Documentos</option>
               <option value="author">Autores</option>
               <option value="exemplar">Exemplares</option>
             </select>
@@ -2811,7 +2811,7 @@
           <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
             <div>
               <h4 style="margin:0 0 6px;">Lixeira de rascunhos</h4>
-              <p class="small">Aqui aparecem somente os rascunhos descartados de livros, autores e exemplares. Você pode restaurar ou restaurar e abrir para continuar a edição.</p>
+              <p class="small">Aqui aparecem somente os rascunhos descartados de documentos, autores e exemplares. Você pode restaurar ou restaurar e abrir para continuar a edição.</p>
               <p class="small" style="margin-top:8px; color:#ffe0e0;">Atenção: ao esvaziar a lixeira, os rascunhos descartados serão apagados de forma irreversível.</p>
             </div>
             <div class="row-actions">
@@ -7450,7 +7450,7 @@
 
     function getItemTypeLabel(type = '') {
       const map = {
-        book: 'Livro',
+        book: 'Documento',
         author: 'Autor',
         exemplar: 'Exemplar',
       };
@@ -8372,7 +8372,7 @@
               return `
               <tr>
                 <td style="text-align:center;"><input class="queue-row-select" type="checkbox" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" ${state.queueSelection.has(selectionKey) ? 'checked' : ''} aria-label="Selecionar rascunho" /></td>
-                <td>${sanitize(item.item_type)}</td>
+                <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${getQueueStatusBadge(item.status)}</td>
                 <td>${sanitize(item.action)}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
