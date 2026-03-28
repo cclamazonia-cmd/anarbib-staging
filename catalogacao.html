@@ -7491,6 +7491,20 @@
       return item.display_subtitle || '—';
     }
 
+    function getQueueSearchIndex(item = {}) {
+      const exemplar = item.item_type === 'exemplar' ? getQueueExemplarRecord(item) : null;
+      return [
+        item.reference_code,
+        item.display_title,
+        item.display_subtitle,
+        getQueuePrimaryDisplay(item),
+        getQueueSecondaryDisplay(item),
+        exemplar?.tombo,
+        exemplar?.bib_ref,
+        exemplar?.titulo_etiqueta,
+        exemplar?.autor_etiqueta,
+      ].filter(Boolean).join(' ').toLowerCase();
+    }
 
     async function restoreQueueDraft(type, id) {
       const table = getDraftTableName(type);
@@ -8316,7 +8330,7 @@
       if (typeFilter) items = items.filter(item => item.item_type === typeFilter);
       if (statusFilter) items = items.filter(item => item.status === statusFilter);
       if (search) {
-        items = items.filter(item => [item.reference_code, item.display_title, item.display_subtitle].filter(Boolean).join(' ').toLowerCase().includes(search));
+        items = items.filter(item => getQueueSearchIndex(item).includes(search));
       }
 
       if (!items.length) {
