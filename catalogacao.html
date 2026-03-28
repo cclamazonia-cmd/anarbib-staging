@@ -2395,14 +2395,14 @@
             </div>
 
             <div class="field" style="grid-column: span 2;">
-              <label for="authorPreferredName">Nome SOBRENOME</label>
+              <label id="authorPreferredNameLabel" for="authorPreferredName">Nome SOBRENOME</label>
               <input id="authorPreferredName" type="text" placeholder="Osvaldo BAYER" required />
             </div>
 
             <div class="field mode-complete-only">
-              <label for="authorSortName">Nome para ordenação</label>
+              <label id="authorSortNameLabel" for="authorSortName">Nome para ordenação</label>
               <input id="authorSortName" class="author-sort-lock" type="text" placeholder="BAYER, Osvaldo" readonly aria-readonly="true" />
-              <small>Preenchido automaticamente a partir do campo “Nome SOBRENOME”.</small>
+              <small id="authorSortNameHint">Preenchido automaticamente a partir do campo “Nome SOBRENOME”.</small>
             </div>
 
 
@@ -2473,23 +2473,28 @@
               <input id="authorContextLinks" type="text" placeholder="Campanhas, coletivos, periódicos, séries, redes ou conjuntos ligados…" />
             </div>
 
+            <div class="field" style="grid-column: span 3;">
+              <label for="authorAuthorityGuideText">Leitura atual da autoridade</label>
+              <div id="authorAuthorityGuideText" class="hint">Autoridade pessoa: use a forma retida, a biografia curta pública e as notas internas para completar o contexto documental.</div>
+            </div>
+
             <div class="form-flow-break">
               <strong>Dados biográficos mínimos</strong>
               <span>Preencha aqui as informações básicas de identificação histórica.</span>
             </div>
 
             <div class="field">
-              <label for="authorBirthYear">Ano de nascimento</label>
+              <label id="authorBirthYearLabel" for="authorBirthYear">Ano de nascimento</label>
               <input id="authorBirthYear" type="number" />
             </div>
 
             <div class="field">
-              <label for="authorDeathYear">Ano de falecimento</label>
+              <label id="authorDeathYearLabel" for="authorDeathYear">Ano de falecimento</label>
               <input id="authorDeathYear" type="number" />
             </div>
 
             <div class="field">
-              <label for="authorCountry">País</label>
+              <label id="authorCountryLabel" for="authorCountry">País</label>
               <input id="authorCountry" type="text" placeholder="Brasil" />
             </div>
 
@@ -2541,13 +2546,15 @@
             </div>
 
             <div class="field" style="grid-column: span 3;">
-              <label for="authorBiography">Biografia curta</label>
-              <textarea id="authorBiography"></textarea>
+              <label id="authorBiographyLabel" for="authorBiography">Biografia curta</label>
+              <textarea id="authorBiography" placeholder="Síntese biográfica pública da pessoa autora."></textarea>
+              <small id="authorBiographyHint">Texto curto voltado à apresentação pública inicial desta autoridade.</small>
             </div>
 
             <div class="field" style="grid-column: span 3;">
-              <label for="authorNotes">Notas</label>
-              <textarea id="authorNotes"></textarea>
+              <label id="authorNotesLabel" for="authorNotes">Notas</label>
+              <textarea id="authorNotes" placeholder="Observações internas, documentárias e variantes não exibidas como biografia curta."></textarea>
+              <small id="authorNotesHint">Use este campo para contexto interno e observações documentárias. As metadatas estruturadas da autoridade enriquecida ficam preservadas aqui sem aparecer misturadas no formulário.</small>
             </div>
 
             <div class="form-flow-break">
@@ -3303,6 +3310,17 @@
       previewAuthorAssistBtn: el('previewAuthorAssistBtn'),
       applyAuthorAssistBtn: el('applyAuthorAssistBtn'),
       authorAssistPreview: el('authorAssistPreview'),
+      authorPreferredNameLabel: el('authorPreferredNameLabel'),
+      authorSortNameLabel: el('authorSortNameLabel'),
+      authorSortNameHint: el('authorSortNameHint'),
+      authorBirthYearLabel: el('authorBirthYearLabel'),
+      authorDeathYearLabel: el('authorDeathYearLabel'),
+      authorCountryLabel: el('authorCountryLabel'),
+      authorBiographyLabel: el('authorBiographyLabel'),
+      authorBiographyHint: el('authorBiographyHint'),
+      authorNotesLabel: el('authorNotesLabel'),
+      authorNotesHint: el('authorNotesHint'),
+      authorAuthorityGuideText: el('authorAuthorityGuideText'),
       authorAuthorityType: el('authorAuthorityType'),
       authorAcronym: el('authorAcronym'),
       authorActivityPeriod: el('authorActivityPeriod'),
@@ -5061,6 +5079,158 @@
       return normalizeAuthorAuthorityType(el('authorAuthorityType')?.value || 'person');
     }
 
+    const AUTHOR_AUTHORITY_UI_META = {
+      person: {
+        preferredNameLabel: 'Nome SOBRENOME',
+        sortNameLabel: 'Nome para ordenação',
+        sortNameHint: 'Preenchido automaticamente a partir do campo “Nome SOBRENOME”.',
+        birthYearLabel: 'Ano de nascimento',
+        deathYearLabel: 'Ano de falecimento',
+        countryLabel: 'País',
+        biographyLabel: 'Biografia curta',
+        biographyPlaceholder: 'Síntese biográfica pública da pessoa autora.',
+        biographyHint: 'Texto curto voltado à apresentação pública inicial desta autoridade.',
+        notesLabel: 'Notas',
+        notesPlaceholder: 'Observações internas, documentárias e variantes não exibidas como biografia curta.',
+        notesHint: 'Use este campo para contexto interno e observações documentárias. As metadatas estruturadas da autoridade enriquecida ficam preservadas aqui sem aparecer misturadas no formulário.',
+        guide(authorityName = '', acronymSuggestion = '') {
+          const parts = ['Autoridade pessoa: use a forma retida da autora ou do autor como entrada principal.'];
+          if (authorityName) parts.push(`Forma atual: ${authorityName}.`);
+          if (acronymSuggestion) parts.push(`Sigla sugerida apenas se houver uso documental real: ${acronymSuggestion}.`);
+          parts.push('A biografia curta serve como apresentação pública; as notas ficam para contexto interno e documental.');
+          return parts.join(' ');
+        },
+      },
+      collective: {
+        preferredNameLabel: 'Nome / forma retida',
+        sortNameLabel: 'Forma para ordenação',
+        sortNameHint: 'Para coletivos e organizações, a ordenação acompanha a forma retida sem inversão automática.',
+        birthYearLabel: 'Ano de início',
+        deathYearLabel: 'Ano de fim',
+        countryLabel: 'País / território',
+        biographyLabel: 'Apresentação pública curta',
+        biographyPlaceholder: 'Apresentação pública curta do coletivo ou da organização.',
+        biographyHint: 'Use este campo para uma apresentação pública inicial do coletivo ou da organização.',
+        notesLabel: 'Nota interna / documental',
+        notesPlaceholder: 'Contexto interno, histórico documental, mudanças de nome, cisões, vínculos e observações de catalogação.',
+        notesHint: 'Registre aqui contexto documental, história interna, relações orgânicas e observações de catalogação não destinadas à apresentação pública.',
+        guide(authorityName = '', acronymSuggestion = '') {
+          const parts = ['Autoridade coletiva: privilegie a forma retida mais estável e documentável do coletivo ou da organização.'];
+          if (authorityName) parts.push(`Forma atual: ${authorityName}.`);
+          if (acronymSuggestion) parts.push(`Sugestão de sigla: ${acronymSuggestion}. Use-a apenas se for de fato empregada nas fontes.`);
+          parts.push('A apresentação pública curta deve resumir quem é a entidade; a nota interna serve para contexto, variantes, redes e mudanças de nome.');
+          return parts.join(' ');
+        },
+      },
+      publisher_series: {
+        preferredNameLabel: 'Nome / forma retida',
+        sortNameLabel: 'Forma para ordenação',
+        sortNameHint: 'Editoras, séries e revistas mantêm a forma retida como base de ordenação.',
+        birthYearLabel: 'Ano de início',
+        deathYearLabel: 'Ano de fim',
+        countryLabel: 'País / território',
+        biographyLabel: 'Apresentação pública curta',
+        biographyPlaceholder: 'Apresentação pública curta da editora, série ou revista.',
+        biographyHint: 'Use este campo para uma apresentação pública curta da entidade editorial.',
+        notesLabel: 'Nota interna / documental',
+        notesPlaceholder: 'Contexto editorial, vínculos de coleção, mudanças de título, periodicidade ou observações internas.',
+        notesHint: 'Registre aqui observações editoriais e documentárias não destinadas à apresentação pública.',
+        guide(authorityName = '', acronymSuggestion = '') {
+          const parts = ['Autoridade editorial: trate a forma retida como entrada estável de editora, série ou revista.'];
+          if (authorityName) parts.push(`Forma atual: ${authorityName}.`);
+          if (acronymSuggestion) parts.push(`Sigla sugerida: ${acronymSuggestion}, se houver uso real nas fontes.`);
+          parts.push('Use a apresentação pública curta para situar a entidade editorial; reserve a nota interna para periodicidade, mudanças de título e contexto documental.');
+          return parts.join(' ');
+        },
+      },
+      place_campaign_theme: {
+        preferredNameLabel: 'Forma retida',
+        sortNameLabel: 'Forma para ordenação',
+        sortNameHint: 'Lugares, campanhas e temas usam a mesma forma retida na ordenação, salvo necessidade documental específica.',
+        birthYearLabel: 'Ano inicial',
+        deathYearLabel: 'Ano final',
+        countryLabel: 'Território principal',
+        biographyLabel: 'Apresentação pública curta',
+        biographyPlaceholder: 'Apresentação pública curta do lugar, campanha ou tema.',
+        biographyHint: 'Use este campo para uma apresentação pública curta da autoridade temática ou contextual.',
+        notesLabel: 'Nota interna / documental',
+        notesPlaceholder: 'Contexto, cronologia, recortes territoriais, relações documentárias e observações internas.',
+        notesHint: 'Registre aqui o contexto documental, a cronologia e os vínculos que não precisam aparecer como apresentação pública.',
+        guide(authorityName = '', acronymSuggestion = '') {
+          const parts = ['Autoridade contextual: estabilize a forma retida do lugar, campanha ou tema para facilitar a reunião documental.'];
+          if (authorityName) parts.push(`Forma atual: ${authorityName}.`);
+          if (acronymSuggestion) parts.push(`Sigla sugerida apenas se houver uso consolidado: ${acronymSuggestion}.`);
+          parts.push('A apresentação pública curta contextualiza; a nota interna documenta cronologia, recortes e relações.');
+          return parts.join(' ');
+        },
+      },
+      other: {
+        preferredNameLabel: 'Forma retida',
+        sortNameLabel: 'Forma para ordenação',
+        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição backend mais fina.',
+        birthYearLabel: 'Ano inicial',
+        deathYearLabel: 'Ano final',
+        countryLabel: 'País / território',
+        biographyLabel: 'Apresentação pública curta',
+        biographyPlaceholder: 'Apresentação pública curta desta forma de autoridade.',
+        biographyHint: 'Use este campo para uma apresentação pública curta e legível da autoridade.',
+        notesLabel: 'Nota interna / documental',
+        notesPlaceholder: 'Contexto documental interno, critérios de tratamento e observações de catalogação.',
+        notesHint: 'Registre aqui critérios de tratamento, contexto documental e observações internas.',
+        guide(authorityName = '', acronymSuggestion = '') {
+          const parts = ['Autoridade especial: use a forma retida mais estável disponível, sem forçar uma tipologia inadequada.'];
+          if (authorityName) parts.push(`Forma atual: ${authorityName}.`);
+          if (acronymSuggestion) parts.push(`Sigla sugerida apenas se fizer sentido documental: ${acronymSuggestion}.`);
+          parts.push('A apresentação pública curta deve explicar a autoridade; a nota interna conserva os critérios documentários.');
+          return parts.join(' ');
+        },
+      },
+    };
+
+    function getAuthorAuthorityUiMeta(type = 'person') {
+      return AUTHOR_AUTHORITY_UI_META[normalizeAuthorAuthorityType(type)] || AUTHOR_AUTHORITY_UI_META.person;
+    }
+
+    function buildAuthorityAcronymSuggestion(value = '') {
+      const stopwords = new Set(['de', 'da', 'do', 'dos', 'das', 'del', 'la', 'le', 'les', 'los', 'las', 'e', 'y', 'of']);
+      const tokens = compactSpaces(String(value || ''))
+        .split(/\s+/)
+        .map(token => token.replace(/[^\p{L}\p{N}]/gu, ''))
+        .filter(Boolean)
+        .filter(token => !stopwords.has(normalizeTextBasic(token)));
+      if (!tokens.length) return '';
+      if (tokens.length === 1) {
+        const single = stripDiacritics(tokens[0]).toUpperCase();
+        return single.slice(0, Math.min(4, single.length));
+      }
+      const initials = tokens.slice(0, 5).map(token => stripDiacritics(token).charAt(0).toUpperCase()).join('');
+      return initials.length >= 2 ? initials : '';
+    }
+
+    function applyAuthorAuthorityUiProfile() {
+      const type = getCurrentAuthorAuthorityType();
+      const meta = getAuthorAuthorityUiMeta(type);
+      const authorityName = compactSpaces(el('authorPreferredName')?.value || '');
+      const acronymSuggestion = buildAuthorityAcronymSuggestion(authorityName);
+      if (refs.authorPreferredNameLabel) refs.authorPreferredNameLabel.textContent = meta.preferredNameLabel;
+      if (refs.authorSortNameLabel) refs.authorSortNameLabel.textContent = meta.sortNameLabel;
+      if (refs.authorSortNameHint) refs.authorSortNameHint.textContent = meta.sortNameHint;
+      if (refs.authorBirthYearLabel) refs.authorBirthYearLabel.textContent = meta.birthYearLabel;
+      if (refs.authorDeathYearLabel) refs.authorDeathYearLabel.textContent = meta.deathYearLabel;
+      if (refs.authorCountryLabel) refs.authorCountryLabel.textContent = meta.countryLabel;
+      if (refs.authorBiographyLabel) refs.authorBiographyLabel.textContent = meta.biographyLabel;
+      if (el('authorBiography')) el('authorBiography').placeholder = meta.biographyPlaceholder;
+      if (refs.authorBiographyHint) refs.authorBiographyHint.textContent = meta.biographyHint;
+      if (refs.authorNotesLabel) refs.authorNotesLabel.textContent = meta.notesLabel;
+      if (el('authorNotes')) el('authorNotes').placeholder = meta.notesPlaceholder;
+      if (refs.authorNotesHint) refs.authorNotesHint.textContent = meta.notesHint;
+      if (refs.authorAuthorityGuideText) refs.authorAuthorityGuideText.textContent = meta.guide(authorityName, acronymSuggestion);
+      const acronymNode = el('authorAcronym');
+      if (acronymNode && !acronymNode.placeholder) {
+        acronymNode.placeholder = 'CGT / FAG / CSL / CIRA';
+      }
+    }
+
     function extractAuthorStructuredMetaFromNotes(notes = '') {
       const raw = String(notes || '');
       const start = raw.indexOf(AUTHOR_STRUCTURED_META_START);
@@ -5120,6 +5290,7 @@
       if (refs.authorPseudonyms) refs.authorPseudonyms.value = meta.pseudonyms || '';
       if (refs.authorActivityPlace) refs.authorActivityPlace.value = meta.activity_place || '';
       if (refs.authorContextLinks) refs.authorContextLinks.value = meta.context_links || '';
+      applyAuthorAuthorityUiProfile();
     }
 
     function buildAuthorStructuredMetaFromFields() {
@@ -6756,6 +6927,7 @@
       el('authorAction').value = 'create';
       if (refs.authorAuthorityType) refs.authorAuthorityType.value = 'person';
       el('authorPhotoPath').value = '';
+      applyAuthorAuthorityUiProfile();
       syncAuthorSortName('');
       el('authorPhotoFile').value = '';
       refs.authorPhotoFileName.textContent = 'Nenhum arquivo selecionado';
@@ -9962,6 +10134,8 @@
       }
     });
 
+    applyAuthorAuthorityUiProfile();
+
     if (refs.catalogModeSimpleBtn) {
       refs.catalogModeSimpleBtn.addEventListener('click', () => setCatalogacaoMode('simple'));
     }
@@ -9986,6 +10160,7 @@
     if (refs.previewAuthorAssistBtn) refs.previewAuthorAssistBtn.addEventListener('click', previewAuthorAssist);
     if (refs.applyAuthorAssistBtn) refs.applyAuthorAssistBtn.addEventListener('click', applyAuthorAssist);
     if (refs.authorAuthorityType) refs.authorAuthorityType.addEventListener('change', () => {
+      applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
     });
@@ -10000,10 +10175,12 @@
       });
     });
     el('authorPreferredName').addEventListener('input', () => {
+      applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
     });
     el('authorPreferredName').addEventListener('change', () => {
+      applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
     });
