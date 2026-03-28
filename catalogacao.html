@@ -9639,10 +9639,31 @@
       return { isCurrent: false, level: '', commonTokens };
     }
 
+    function getCatalogAuthorDraftStateMeta(draftLink = null) {
+      if (!draftLink?.id) {
+        return {
+          actionLabel: '',
+          statusLabel: '',
+          buttonLabel: 'Criar rascunho de edição',
+        };
+      }
+      const normalizedAction = String(draftLink.action || '').trim().toLowerCase();
+      const normalizedStatus = String(draftLink.status || '').trim().toLowerCase();
+      const actionLabel = normalizedAction === 'edit' ? 'Rascunho de edição' : 'Novo rascunho';
+      const statusLabel = normalizedStatus === 'ready' ? 'Pronto para publicação' : 'Em rascunho';
+      const buttonLabel = normalizedStatus === 'ready'
+        ? 'Abrir rascunho pronto'
+        : (normalizedAction === 'edit' ? 'Abrir rascunho de edição' : 'Abrir novo rascunho');
+      return { actionLabel, statusLabel, buttonLabel };
+    }
+
     function renderCatalogAuthorIdentityStack(author = {}, draftLink = null, proximityMeta = {}) {
       const statusChips = [];
+      const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
       if (draftLink?.id) {
         statusChips.push(`<span class="book-public-preview-chip is-strong">Rascunho ativo #${sanitize(draftLink.id)}</span>`);
+        if (draftMeta.actionLabel) statusChips.push(`<span class="book-public-preview-chip">${sanitize(draftMeta.actionLabel)}</span>`);
+        if (draftMeta.statusLabel) statusChips.push(`<span class="book-public-preview-chip">${sanitize(draftMeta.statusLabel)}</span>`);
       }
       if (proximityMeta?.isCurrent) {
         statusChips.push('<span class="book-public-preview-chip is-strong">Ficha aberta</span>');
@@ -9738,7 +9759,8 @@
           </thead>
           <tbody>
             ${rows.map(({ author, draftLink, proximityMeta }) => {
-              const buttonLabel = draftLink?.id ? 'Abrir rascunho ativo' : 'Criar rascunho de edição';
+              const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
+              const buttonLabel = draftMeta.buttonLabel;
               return `
               <tr>
                 <td>${author.id}</td>
