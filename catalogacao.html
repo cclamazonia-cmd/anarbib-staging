@@ -3543,6 +3543,18 @@
       }) || null;
     }
 
+    function findDuplicateBookByTitleAuthor({ title = '', author = '', excludeBookId = '' } = {}) {
+      const wantedTitle = normalizeBookDuplicateCorePart(title);
+      const wantedAuthor = normalizeBookDuplicateCorePart(author);
+      if (!wantedTitle || !wantedAuthor) return null;
+      return state.books.find(book => {
+        if (excludeBookId && String(book.id) === String(excludeBookId)) return false;
+        const bookTitle = normalizeBookDuplicateCorePart(getBookDisplayTitle(book));
+        const bookAuthor = normalizeBookDuplicateCorePart(book.autor || book.author || '');
+        return bookTitle === wantedTitle && bookAuthor === wantedAuthor;
+      }) || null;
+    }
+
     function parseBnLookupPayload(data) {
       const item = Array.isArray(data?.results) && data.results.length ? data.results[0] : null;
       if (!item) return null;
@@ -4070,15 +4082,20 @@
       const title = el('bookTitle')?.value || '';
       const author = el('bookAuthor')?.value || '';
       const year = el('bookYear')?.value || '';
+      const hasYear = normalizeBookDuplicateCorePart(year);
       const duplicate = isbn
         ? findDuplicateBookByIsbn(isbn)
-        : findDuplicateBookByCoreIdentity({ title, author, year, excludeBookId: currentPublishedBookId });
+        : (hasYear
+          ? findDuplicateBookByCoreIdentity({ title, author, year, excludeBookId: currentPublishedBookId })
+          : findDuplicateBookByTitleAuthor({ title, author, excludeBookId: currentPublishedBookId }));
       if (!duplicate) return null;
       if (currentPublishedBookId && String(duplicate.id) === String(currentPublishedBookId)) return null;
 
       await loadOrCreateBookDraftFromCatalog(duplicate.id);
       const duplicateLabel = `${getBookDisplayTitle(duplicate)}${duplicate.bib_ref ? ` · ref. ${duplicate.bib_ref}` : ''}`;
-      const duplicateReason = isbn ? 'ISBN já existente' : 'título + autoria + ano já existentes';
+      const duplicateReason = isbn
+        ? 'ISBN já existente'
+        : (hasYear ? 'título + autoria + ano já existentes' : 'título + autoria já existentes');
       showMessage(
         refs.bookMessage,
         `Livro já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar uma duplicata antes de ${mode} (${duplicateReason}).`,
