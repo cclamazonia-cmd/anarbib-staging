@@ -6450,6 +6450,83 @@
       };
     }
 
+
+    function normalizeTomboKey(value = '') {
+      return normalizeForSearch(compactSpaces(String(value || ''))).replace(/\s+/g, '');
+    }
+
+    async function findExemplarTomboConflict({ tombo = '', draftId = '', publishedExemplarId = '' } = {}) {
+      const rawTombo = compactSpaces(String(tombo || ''));
+      const wantedTombo = normalizeTomboKey(rawTombo);
+      if (!wantedTombo) return null;
+
+      const [{ data: draftMatches, error: draftError }, { data: publishedMatches, error: publishedError }] = await Promise.all([
+        supabase
+          .from('exemplar_drafts')
+          .select('id, published_exemplar_id, target_bib_ref, tombo, status, batch_id')
+          .neq('status', 'cancelled')
+          .ilike('tombo', rawTombo)
+          .limit(10),
+        supabase
+          .from('v_exemplar_labels')
+          .select('exemplar_id, bib_ref, tombo, autor_etiqueta, titulo_etiqueta')
+          .ilike('tombo', rawTombo)
+          .limit(10),
+      ]);
+
+      if (draftError) throw draftError;
+      if (publishedError) throw publishedError;
+
+      const conflictingDraft = (draftMatches || []).find(row => {
+        if (draftId && String(row.id) === String(draftId)) return false;
+        return normalizeTomboKey(row.tombo || '') === wantedTombo;
+      });
+      if (conflictingDraft) {
+        return { scope: 'draft', ...conflictingDraft };
+      }
+
+      const conflictingPublished = (publishedMatches || []).find(row => {
+        if (publishedExemplarId && String(row.exemplar_id) === String(publishedExemplarId)) return false;
+        return normalizeTomboKey(row.tombo || '') === wantedTombo;
+      });
+      if (conflictingPublished) {
+        return { scope: 'published', ...conflictingPublished };
+      }
+
+      return null;
+    }
+
+    function describeExemplarTomboConflict(conflict) {
+      if (!conflict) return 'Tombo já usado em outro exemplar.';
+      if (conflict.scope === 'draft') {
+        return `Tombo já usado em outro rascunho de exemplar (#${conflict.id}${conflict.target_bib_ref ? ` · ref. ${conflict.target_bib_ref}` : ''}).`;
+      }
+      return `Tombo já usado em exemplar publicado (#${conflict.exemplar_id}${conflict.bib_ref ? ` · ref. ${conflict.bib_ref}` : ''}).`;
+    }
+
+    async function guardExemplarTomboBeforePersist(payload = {}, target = null) {
+      const conflict = await findExemplarTomboConflict({
+        tombo: payload?.tombo || '',
+        draftId: payload?.id || '',
+        publishedExemplarId: payload?.published_exemplar_id || '',
+      });
+      if (!conflict) return null;
+      const message = describeExemplarTomboConflict(conflict);
+      if (target) showMessage(target, message, 'error');
+      throw new Error(message);
+    }
+
+    async function getPersistedExemplarDraftIdentity(draftId = '') {
+      if (!draftId) return null;
+      const { data, error } = await supabase
+        .from('exemplar_drafts')
+        .select('id, published_exemplar_id, tombo')
+        .eq('id', Number(draftId))
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
     function resetBookForm() {
       el('bookForm').reset();
       el('bookDraftId').value = '';
@@ -7916,6 +7993,7 @@
       if (!payload.target_bib_ref || !payload.tombo) {
         throw new Error('Cada exemplar precisa ter referência e tombo antes da validação.');
       }
+      await guardExemplarTomboBeforePersist(payload, refs.exemplarBatchMessage);
 
       let result;
       if (payload.id) {
@@ -9090,6 +9168,7 @@
       try {
         const payload = await reuseExistingDraftIdIfNeeded('exemplar_drafts', getExemplarDraftPayload(), 'published_exemplar_id');
         if (!payload.target_bib_ref || !payload.tombo) throw new Error('Informe a referência do livro e o tombo do exemplar.');
+        await guardExemplarTomboBeforePersist(payload, refs.exemplarMessage);
         const saved = await saveDraft('exemplar_drafts', payload, refs.exemplarMessage, 'Rascunho de exemplar salvo com sucesso.');
         fillExemplarForm(saved);
       } catch (error) {
@@ -9102,6 +9181,7 @@
       try {
         if (!el('exemplarBibRef').value.trim() || !el('exemplarTombo').value.trim()) throw new Error('Carregue primeiro um exemplar para editar o rótulo.');
         const payload = await reuseExistingDraftIdIfNeeded('exemplar_drafts', getExemplarDraftPayload('', 'pending'), 'published_exemplar_id');
+        await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
         const saved = await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo salvo com sucesso.');
         fillExemplarForm(saved, { switchTab: false, syncLabel: false });
         fillLabelForm(saved, { switchTab: false });
@@ -9181,13 +9261,18 @@
       } catch (error) { showMessage(refs.authorMessage, error.message, 'error'); }
     });
     el('exemplarReadyBtn').addEventListener('click', async () => {
-      try { await markDraftReady('exemplar_drafts', el('exemplarDraftId').value, refs.exemplarMessage); } catch (error) { showMessage(refs.exemplarMessage, error.message, 'error'); }
+      try {
+        const draftIdentity = await getPersistedExemplarDraftIdentity(el('exemplarDraftId').value);
+        await guardExemplarTomboBeforePersist(draftIdentity || {}, refs.exemplarMessage);
+        await markDraftReady('exemplar_drafts', el('exemplarDraftId').value, refs.exemplarMessage);
+      } catch (error) { showMessage(refs.exemplarMessage, error.message, 'error'); }
     });
     el('labelReadyBtn').addEventListener('click', async () => {
       try {
         const draftId = el('exemplarDraftId').value;
         if (!draftId) throw new Error('Carregue primeiro um exemplar para validar o rótulo.');
         const payload = getExemplarDraftPayload('', 'ready');
+        await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
         const saved = await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo validado com sucesso.');
         fillExemplarForm(saved, { switchTab: false, syncLabel: false });
         fillLabelForm(saved, { switchTab: false });
@@ -9364,6 +9449,8 @@
       try {
         const draftId = el('exemplarDraftId').value;
         if (!draftId) throw new Error('Salve o rascunho antes de publicar.');
+        const draftIdentity = await getPersistedExemplarDraftIdentity(draftId);
+        await guardExemplarTomboBeforePersist(draftIdentity || {}, refs.exemplarMessage);
         setPublishLock('exemplar', true);
         const { error } = await supabase.rpc('publish_exemplar_draft', { p_draft_id: Number(draftId) });
         if (error) throw error;
@@ -9394,8 +9481,9 @@
       try {
         const draftId = el('exemplarDraftId').value;
         if (!draftId) throw new Error('Carregue primeiro um exemplar para publicar o rótulo.');
-        setPublishLock('label', true);
         const payload = getExemplarDraftPayload('', 'ready');
+        await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
+        setPublishLock('label', true);
         await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo salvo antes da publicação.');
         const { error } = await supabase.rpc('publish_exemplar_draft', { p_draft_id: Number(draftId) });
         if (error) throw error;
