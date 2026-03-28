@@ -8295,6 +8295,26 @@
       );
     }
 
+
+    function ensureLabelBasicData(item = null, targetMessage = refs.labelMessage, actionLabel = 'validar este rótulo') {
+      const source = item && typeof item === 'object'
+        ? item
+        : {
+            displayAuthor: el('labelAuthorInput')?.value || '',
+            displayTitle: el('labelTitleInput')?.value || '',
+            displayCDD: el('labelCDDInput')?.value || '',
+          };
+      const missing = [];
+      if (!String(source.displayAuthor || '').trim()) missing.push('autor');
+      if (!String(source.displayTitle || '').trim()) missing.push('título');
+      if (!String(source.displayCDD || '').trim()) missing.push('CDD');
+      if (!missing.length) return true;
+      if (targetMessage) {
+        showMessage(targetMessage, `Preencha ${missing.join(', ')} antes de ${actionLabel}.`, 'error');
+      }
+      return false;
+    }
+
     function getLabelBatchSearchIndex(item = {}) {
       return normalizeForSearch([
         item.id,
@@ -8376,6 +8396,10 @@
       const visibleItems = getFilteredLabelBatchItems();
       if (!visibleItems.length) {
         throw new Error('Nenhum rótulo visível para validar com os filtros atuais.');
+      }
+      const incompleteItems = visibleItems.filter(item => !hasBasicLabelData(item));
+      if (incompleteItems.length) {
+        throw new Error(`${incompleteItems.length} rótulo(s) visível(is) ainda sem autor, título e CDD completos. Corrija antes da validação em massa.`);
       }
       if (visibleItems.length > 25) {
         const confirmed = window.confirm(`Validar ${visibleItems.length} rótulos visíveis de uma vez?`);
@@ -9271,6 +9295,7 @@
       try {
         const draftId = el('exemplarDraftId').value;
         if (!draftId) throw new Error('Carregue primeiro um exemplar para validar o rótulo.');
+        if (!ensureLabelBasicData(null, refs.labelMessage, 'validar este rótulo')) return;
         const payload = getExemplarDraftPayload('', 'ready');
         await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
         const saved = await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo validado com sucesso.');
@@ -9481,6 +9506,7 @@
       try {
         const draftId = el('exemplarDraftId').value;
         if (!draftId) throw new Error('Carregue primeiro um exemplar para publicar o rótulo.');
+        if (!ensureLabelBasicData(null, refs.labelMessage, 'publicar este rótulo')) return;
         const payload = getExemplarDraftPayload('', 'ready');
         await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
         setPublishLock('label', true);
