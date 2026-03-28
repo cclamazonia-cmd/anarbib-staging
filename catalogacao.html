@@ -7508,6 +7508,34 @@
       return data?.session || null;
     }
 
+    async function getEffectiveSession() {
+      try {
+        const session = await getCurrentSession();
+        state.session = session;
+        return session;
+      } catch (error) {
+        console.warn('getCurrentSession failed:', error);
+        return state.session || null;
+      }
+    }
+
+    async function redirectToLoginPage() {
+      window.location.href = LOGIN_URL;
+    }
+
+    async function safeLogoutAndRedirect() {
+      const signOutAttempt = Promise.resolve()
+        .then(() => supabase.auth.signOut())
+        .catch((error) => {
+          console.warn('signOut failed:', error);
+        });
+      await Promise.race([
+        signOutAttempt,
+        new Promise((resolve) => setTimeout(resolve, 800)),
+      ]);
+      await redirectToLoginPage();
+    }
+
     async function requireSession() {
       const session = await getCurrentSession();
       state.session = session;
@@ -10297,17 +10325,20 @@
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
     refs.loginBtn.addEventListener('click', async () => {
-      const hasSession = !!state.session?.user?.id;
-      if (!hasSession) {
-        window.location.href = LOGIN_URL;
-        return;
-      }
+      refs.loginBtn.disabled = true;
       try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.warn('signOut failed:', error);
+        const effectiveSession = await getEffectiveSession();
+        const hasSession = !!effectiveSession?.user?.id;
+        if (!hasSession) {
+          await redirectToLoginPage();
+          return;
+        }
+        await safeLogoutAndRedirect();
+      } finally {
+        window.setTimeout(() => {
+          if (refs.loginBtn) refs.loginBtn.disabled = false;
+        }, 1200);
       }
-      window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-contrib-action]');
@@ -10572,7 +10603,24 @@
     renderLabelSheet([], '');
     renderTrash();
     updateLoginButton();
-    refreshAll();
+    refreshAll().catch((error) => {
+      console.warn('catalogacao refreshAll bootstrap failed:', error);
+      state.profile = null;
+      state.isLibrarian = false;
+      refs.userEmail.textContent = state.session?.user?.email || 'Sem sessão';
+      refs.rolePill.textContent = state.session?.user?.id
+        ? 'Sessão ativa — recarregue ou faça login novamente'
+        : 'Faça login para usar a catalogação';
+      refs.rolePill.className = state.session?.user?.id ? 'pill warn' : 'pill danger';
+      updateLoginButton();
+      showMessage(
+        refs.globalMessage,
+        state.session?.user?.id
+          ? 'A sessão foi lida, mas a inicialização da catalogação falhou. Você pode tentar Atualizar ou refazer o login.'
+          : 'Não foi possível restaurar a sessão automaticamente. Faça login novamente para continuar.',
+        state.session?.user?.id ? 'info' : 'error'
+      );
+    });
   </script>
 </body>
 </html>
