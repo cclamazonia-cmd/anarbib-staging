@@ -7457,6 +7457,14 @@
       return map[type] || (type || '—');
     }
 
+    function getQueueActionLabel(action = '') {
+      const map = {
+        create: 'Novo rascunho',
+        update: 'Rascunho de edição',
+      };
+      return map[action] || (action || '—');
+    }
+
     function getDraftTableName(type = '') {
       const map = {
         book: 'book_drafts',
@@ -8374,7 +8382,7 @@
                 <td style="text-align:center;"><input class="queue-row-select" type="checkbox" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" ${state.queueSelection.has(selectionKey) ? 'checked' : ''} aria-label="Selecionar rascunho" /></td>
                 <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${getQueueStatusBadge(item.status)}</td>
-                <td>${sanitize(item.action)}</td>
+                <td>${sanitize(getQueueActionLabel(item.action))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
                 <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
                 <td>${item.item_type === 'book' ? '—' : sanitize(getQueueSecondaryDisplay(item))}</td>
