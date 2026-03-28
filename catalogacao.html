@@ -4119,31 +4119,75 @@
       return tokens.sort().join('|');
     }
 
-    function findExistingPublishedAuthorMatch({ sortName = '', preferredName = '', excludePublishedAuthorId = '' } = {}) {
-      const wantedSort = normalizeAuthorKeyJs(sortName);
-      const wantedPreferred = normalizeAuthorKeyJs(preferredName);
-      const wantedBrazilianSort = normalizeBrazilianAuthorSortKey(sortName || preferredName || '');
-      const wantedTokenBag = normalizeAuthorTokenBagKey(sortName || preferredName || '');
-      if (!wantedSort && !wantedPreferred && !wantedBrazilianSort && !wantedTokenBag) return null;
+    function normalizeAuthorShortKey(value = '') {
+      return normalizeTextBasic(value).replace(/[^a-z0-9]+/g, '');
+    }
+
+    function splitAuthorStructuredList(value = '') {
+      return String(value || '')
+        .split(/\s*;\s*|\s*
++\s*/)
+        .map(item => normalizeInlineWhitespace(item))
+        .filter(Boolean);
+    }
+
+    function hasAnyIntersection(leftValues = [], rightValues = []) {
+      const rightSet = new Set((rightValues || []).filter(Boolean));
+      return (leftValues || []).some(value => rightSet.has(value));
+    }
+
+    function buildAuthorDuplicateSignature({ sortName = '', preferredName = '', authorityType = 'person', acronym = '', variantNames = '', pseudonyms = '' } = {}) {
+      const labels = [
+        sortName,
+        preferredName,
+        acronym,
+        ...splitAuthorStructuredList(variantNames),
+        ...splitAuthorStructuredList(pseudonyms),
+      ].map(value => normalizeInlineWhitespace(value)).filter(Boolean);
+      return {
+        authorityType: normalizeAuthorAuthorityType(authorityType || 'person'),
+        labels,
+        exactKeys: labels.map(value => normalizeAuthorKeyJs(value)).filter(Boolean),
+        brazilianSortKeys: labels.map(value => normalizeBrazilianAuthorSortKey(value)).filter(Boolean),
+        tokenBags: labels.map(value => normalizeAuthorTokenBagKey(value)).filter(Boolean),
+        shortKeys: labels.map(value => normalizeAuthorShortKey(value)).filter(Boolean),
+      };
+    }
+
+    function findExistingPublishedAuthorMatch({ sortName = '', preferredName = '', authorityType = 'person', acronym = '', variantNames = '', pseudonyms = '', excludePublishedAuthorId = '' } = {}) {
+      const wanted = buildAuthorDuplicateSignature({ sortName, preferredName, authorityType, acronym, variantNames, pseudonyms });
+      const hasWantedSignals = wanted.exactKeys.length || wanted.brazilianSortKeys.length || wanted.tokenBags.length || wanted.shortKeys.length;
+      if (!hasWantedSignals) return null;
       return (state.authors || []).find(author => {
         if (excludePublishedAuthorId && String(author.id) === String(excludePublishedAuthorId)) return false;
-        const authorSort = normalizeAuthorKeyJs(author.sort_name || '');
-        const authorPreferred = normalizeAuthorKeyJs(author.preferred_name || '');
-        const authorBrazilianSort = normalizeBrazilianAuthorSortKey(author.sort_name || author.preferred_name || '');
-        const authorTokenBag = normalizeAuthorTokenBagKey(author.sort_name || author.preferred_name || '');
-        if (wantedSort && authorSort && authorSort === wantedSort) return true;
-        if (wantedPreferred && authorPreferred && authorPreferred === wantedPreferred) return true;
-        if (wantedBrazilianSort && authorBrazilianSort && authorBrazilianSort === wantedBrazilianSort) return true;
-        if (wantedTokenBag && authorTokenBag && authorTokenBag === wantedTokenBag) return true;
+        const existingMeta = getAuthorStructuredMetaForRecord(author);
+        const existing = buildAuthorDuplicateSignature({
+          sortName: author.sort_name || '',
+          preferredName: author.preferred_name || '',
+          authorityType: existingMeta.authority_type || 'person',
+          acronym: existingMeta.acronym || '',
+          variantNames: existingMeta.variant_names || '',
+          pseudonyms: existingMeta.pseudonyms || '',
+        });
+        const sameAuthorityType = wanted.authorityType === existing.authorityType;
+        if (hasAnyIntersection(wanted.exactKeys, existing.exactKeys)) return true;
+        if (hasAnyIntersection(wanted.brazilianSortKeys, existing.brazilianSortKeys)) return true;
+        if (hasAnyIntersection(wanted.tokenBags, existing.tokenBags)) return true;
+        if (sameAuthorityType && hasAnyIntersection(wanted.shortKeys, existing.shortKeys)) return true;
         return false;
       }) || null;
     }
 
     async function guardAuthorDuplicateBeforeSaveOrPublish(mode = 'salvar') {
       const payload = getAuthorDraftPayload();
+      const authorMeta = extractAuthorStructuredMetaFromNotes(payload.notes || '')?.meta || {};
       const duplicate = findExistingPublishedAuthorMatch({
         sortName: payload.sort_name,
         preferredName: payload.preferred_name,
+        authorityType: authorMeta.authority_type || getCurrentAuthorAuthorityType(),
+        acronym: authorMeta.acronym || '',
+        variantNames: authorMeta.variant_names || '',
+        pseudonyms: authorMeta.pseudonyms || '',
         excludePublishedAuthorId: payload.published_author_id,
       });
       if (!duplicate) return null;
