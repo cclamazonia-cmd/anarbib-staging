@@ -3019,6 +3019,7 @@
       bnLookup: null,
       queueSelection: new Set(),
       catalogacaoMode: 'simple',
+      authorDraftLinks: [],
     };
 
     const BOOK_ACQUISITION_MODE_OPTIONS = [
@@ -4119,31 +4120,74 @@
       return tokens.sort().join('|');
     }
 
-    function findExistingPublishedAuthorMatch({ sortName = '', preferredName = '', excludePublishedAuthorId = '' } = {}) {
-      const wantedSort = normalizeAuthorKeyJs(sortName);
-      const wantedPreferred = normalizeAuthorKeyJs(preferredName);
-      const wantedBrazilianSort = normalizeBrazilianAuthorSortKey(sortName || preferredName || '');
-      const wantedTokenBag = normalizeAuthorTokenBagKey(sortName || preferredName || '');
-      if (!wantedSort && !wantedPreferred && !wantedBrazilianSort && !wantedTokenBag) return null;
+    function normalizeAuthorShortKey(value = '') {
+      return normalizeTextBasic(value).replace(/[^a-z0-9]+/g, '');
+    }
+
+    function splitAuthorStructuredList(value = '') {
+      return String(value || '')
+        .split(/\s*;\s*|\s*\n+\s*/)
+        .map(item => normalizeInlineWhitespace(item))
+        .filter(Boolean);
+    }
+
+    function hasAnyIntersection(leftValues = [], rightValues = []) {
+      const rightSet = new Set((rightValues || []).filter(Boolean));
+      return (leftValues || []).some(value => rightSet.has(value));
+    }
+
+    function buildAuthorDuplicateSignature({ sortName = '', preferredName = '', authorityType = 'person', acronym = '', variantNames = '', pseudonyms = '' } = {}) {
+      const labels = [
+        sortName,
+        preferredName,
+        acronym,
+        ...splitAuthorStructuredList(variantNames),
+        ...splitAuthorStructuredList(pseudonyms),
+      ].map(value => normalizeInlineWhitespace(value)).filter(Boolean);
+      return {
+        authorityType: normalizeAuthorAuthorityType(authorityType || 'person'),
+        labels,
+        exactKeys: labels.map(value => normalizeAuthorKeyJs(value)).filter(Boolean),
+        brazilianSortKeys: labels.map(value => normalizeBrazilianAuthorSortKey(value)).filter(Boolean),
+        tokenBags: labels.map(value => normalizeAuthorTokenBagKey(value)).filter(Boolean),
+        shortKeys: labels.map(value => normalizeAuthorShortKey(value)).filter(Boolean),
+      };
+    }
+
+    function findExistingPublishedAuthorMatch({ sortName = '', preferredName = '', authorityType = 'person', acronym = '', variantNames = '', pseudonyms = '', excludePublishedAuthorId = '' } = {}) {
+      const wanted = buildAuthorDuplicateSignature({ sortName, preferredName, authorityType, acronym, variantNames, pseudonyms });
+      const hasWantedSignals = wanted.exactKeys.length || wanted.brazilianSortKeys.length || wanted.tokenBags.length || wanted.shortKeys.length;
+      if (!hasWantedSignals) return null;
       return (state.authors || []).find(author => {
         if (excludePublishedAuthorId && String(author.id) === String(excludePublishedAuthorId)) return false;
-        const authorSort = normalizeAuthorKeyJs(author.sort_name || '');
-        const authorPreferred = normalizeAuthorKeyJs(author.preferred_name || '');
-        const authorBrazilianSort = normalizeBrazilianAuthorSortKey(author.sort_name || author.preferred_name || '');
-        const authorTokenBag = normalizeAuthorTokenBagKey(author.sort_name || author.preferred_name || '');
-        if (wantedSort && authorSort && authorSort === wantedSort) return true;
-        if (wantedPreferred && authorPreferred && authorPreferred === wantedPreferred) return true;
-        if (wantedBrazilianSort && authorBrazilianSort && authorBrazilianSort === wantedBrazilianSort) return true;
-        if (wantedTokenBag && authorTokenBag && authorTokenBag === wantedTokenBag) return true;
+        const existingMeta = getAuthorStructuredMetaForRecord(author);
+        const existing = buildAuthorDuplicateSignature({
+          sortName: author.sort_name || '',
+          preferredName: author.preferred_name || '',
+          authorityType: existingMeta.authority_type || 'person',
+          acronym: existingMeta.acronym || '',
+          variantNames: existingMeta.variant_names || '',
+          pseudonyms: existingMeta.pseudonyms || '',
+        });
+        const sameAuthorityType = wanted.authorityType === existing.authorityType;
+        if (hasAnyIntersection(wanted.exactKeys, existing.exactKeys)) return true;
+        if (hasAnyIntersection(wanted.brazilianSortKeys, existing.brazilianSortKeys)) return true;
+        if (hasAnyIntersection(wanted.tokenBags, existing.tokenBags)) return true;
+        if (sameAuthorityType && hasAnyIntersection(wanted.shortKeys, existing.shortKeys)) return true;
         return false;
       }) || null;
     }
 
     async function guardAuthorDuplicateBeforeSaveOrPublish(mode = 'salvar') {
       const payload = getAuthorDraftPayload();
+      const authorMeta = extractAuthorStructuredMetaFromNotes(payload.notes || '')?.meta || {};
       const duplicate = findExistingPublishedAuthorMatch({
         sortName: payload.sort_name,
         preferredName: payload.preferred_name,
+        authorityType: authorMeta.authority_type || getCurrentAuthorAuthorityType(),
+        acronym: authorMeta.acronym || '',
+        variantNames: authorMeta.variant_names || '',
+        pseudonyms: authorMeta.pseudonyms || '',
         excludePublishedAuthorId: payload.published_author_id,
       });
       if (!duplicate) return null;
@@ -7652,12 +7696,14 @@
         { data: exemplars, error: exemplarsError },
         { count: booksTotal, error: booksTotalError },
         { count: authorsTotal, error: authorsTotalError },
+        { data: authorDraftLinks, error: authorDraftLinksError },
       ] = await Promise.all([
         fetchAllCatalogBooks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         supabase.from('v_exemplar_labels').select('*').order('exemplar_id', { ascending: false }).limit(300),
         supabase.from('v_catalog_books_editable').select('*', { count: 'exact', head: true }),
         supabase.from('authors').select('*', { count: 'exact', head: true }),
+        fetchActiveAuthorDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
       ]);
 
       const errors = [];
@@ -7697,6 +7743,14 @@
         state.catalogTotals.authors = state.authors.length;
       } else {
         state.catalogTotals.authors = Number.isFinite(authorsTotal) ? authorsTotal : state.authors.length;
+      }
+
+      if (authorDraftLinksError) {
+        console.warn('loadCatalog author draft links failed:', authorDraftLinksError);
+        state.authorDraftLinks = [];
+        errors.push({ source: 'authorDraftLinks', error: authorDraftLinksError });
+      } else {
+        state.authorDraftLinks = authorDraftLinks || [];
       }
 
       renderCatalogBooks();
@@ -9451,8 +9505,137 @@
         </div>`;
     }
 
+    async function fetchActiveAuthorDraftLinks() {
+      const { data, error } = await supabase
+        .from('author_drafts')
+        .select('id, published_author_id, status, action, updated_at')
+        .in('status', ['draft', 'ready'])
+        .not('published_author_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    function getCatalogAuthorDraftLinkMap() {
+      const map = new Map();
+      (state.authorDraftLinks || []).forEach((row) => {
+        const key = String(row?.published_author_id || '').trim();
+        if (!key || map.has(key)) return;
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function buildCatalogAuthorTokenSet(values = []) {
+      const tokens = new Set();
+      String(values || '')
+      ;
+      (values || []).forEach((value) => {
+        normalizeForMatch(value)
+          .split(/\s+/)
+          .map((token) => token.trim())
+          .filter((token) => token.length >= 3)
+          .forEach((token) => tokens.add(token));
+      });
+      return tokens;
+    }
+
+    function getCurrentCatalogAuthorFormSignals() {
+      const currentPublishedId = String(el('authorPublishedId')?.value || '').trim();
+      const preferredName = compactSpaces(el('authorPreferredName')?.value || '');
+      const sortName = compactSpaces(el('authorSortName')?.value || '');
+      const authorityType = getCurrentAuthorAuthorityType();
+      const acronym = compactSpaces(el('authorAcronym')?.value || '');
+      const variantNames = compactSpaces(el('authorVariantNames')?.value || '');
+      const pseudonyms = compactSpaces(el('authorPseudonyms')?.value || '');
+      const signature = buildAuthorDuplicateSignature({
+        sortName,
+        preferredName,
+        authorityType,
+        acronym,
+        variantNames,
+        pseudonyms,
+      });
+      const tokenSet = buildCatalogAuthorTokenSet([
+        preferredName,
+        sortName,
+        acronym,
+        ...splitAuthorStructuredList(variantNames),
+        ...splitAuthorStructuredList(pseudonyms),
+      ]);
+      const hasContent = Boolean(currentPublishedId || preferredName || sortName || acronym || variantNames || pseudonyms);
+      return { currentPublishedId, authorityType, signature, tokenSet, hasContent };
+    }
+
+    function countCommonAuthorTokens(leftSet, rightSet) {
+      if (!leftSet?.size || !rightSet?.size) return 0;
+      let count = 0;
+      leftSet.forEach((token) => {
+        if (rightSet.has(token)) count += 1;
+      });
+      return count;
+    }
+
+    function getCatalogAuthorProximityMeta(author = {}, currentSignals = getCurrentCatalogAuthorFormSignals()) {
+      if (!currentSignals?.hasContent) {
+        return { isCurrent: false, level: '', commonTokens: 0 };
+      }
+      const authorId = String(author?.id || '').trim();
+      if (currentSignals.currentPublishedId && authorId && currentSignals.currentPublishedId === authorId) {
+        return { isCurrent: true, level: 'current', commonTokens: currentSignals.tokenSet.size || 0 };
+      }
+      const meta = getAuthorStructuredMetaForRecord(author);
+      const authorSignature = buildAuthorDuplicateSignature({
+        sortName: author.sort_name || '',
+        preferredName: author.preferred_name || '',
+        authorityType: meta.authority_type || 'person',
+        acronym: meta.acronym || '',
+        variantNames: meta.variant_names || '',
+        pseudonyms: meta.pseudonyms || '',
+      });
+      const sameAuthorityType = currentSignals.signature.authorityType === authorSignature.authorityType;
+      const exactOverlap = hasAnyIntersection(currentSignals.signature.exactKeys, authorSignature.exactKeys)
+        || hasAnyIntersection(currentSignals.signature.brazilianSortKeys, authorSignature.brazilianSortKeys)
+        || hasAnyIntersection(currentSignals.signature.tokenBags, authorSignature.tokenBags)
+        || (sameAuthorityType && hasAnyIntersection(currentSignals.signature.shortKeys, authorSignature.shortKeys));
+      const authorTokenSet = buildCatalogAuthorTokenSet(authorSignature.labels);
+      const commonTokens = countCommonAuthorTokens(currentSignals.tokenSet, authorTokenSet);
+      if (exactOverlap) {
+        return { isCurrent: false, level: 'very_close', commonTokens };
+      }
+      if (sameAuthorityType && commonTokens >= 2) {
+        return { isCurrent: false, level: 'close', commonTokens };
+      }
+      return { isCurrent: false, level: '', commonTokens };
+    }
+
+    function renderCatalogAuthorIdentityStack(author = {}, draftLink = null, proximityMeta = {}) {
+      const statusChips = [];
+      if (draftLink?.id) {
+        statusChips.push(`<span class="book-public-preview-chip is-strong">Rascunho ativo #${sanitize(draftLink.id)}</span>`);
+      }
+      if (proximityMeta?.isCurrent) {
+        statusChips.push('<span class="book-public-preview-chip is-strong">Ficha aberta</span>');
+      } else if (proximityMeta?.level === 'very_close') {
+        statusChips.push('<span class="book-public-preview-chip is-strong">Muito próximo da ficha aberta</span>');
+      } else if (proximityMeta?.level === 'close') {
+        statusChips.push('<span class="book-public-preview-chip">Próximo da ficha aberta</span>');
+      }
+      const commonTokensLine = proximityMeta?.commonTokens >= 2 && !proximityMeta?.isCurrent
+        ? `<div class="book-title-stack-sub">Sinais comuns com a ficha aberta: ${sanitize(proximityMeta.commonTokens)}</div>`
+        : '';
+      return `
+        <div class="book-title-stack">
+          ${renderCatalogAuthorIdentityHtml(author)}
+          ${statusChips.length ? `<div class="book-public-preview-inline">${statusChips.join('')}</div>` : ''}
+          ${commonTokensLine}
+        </div>`;
+    }
+
     function renderCatalogAuthors() {
       const search = normalizeForSearch(el('catalogSearch').value);
+      const draftLinkMap = getCatalogAuthorDraftLinkMap();
+      const currentSignals = getCurrentCatalogAuthorFormSignals();
       let items = [...state.authors];
       if (search) {
         items = items.filter(author => getAuthorCatalogSearchIndex(author).includes(search));
@@ -9474,18 +9657,23 @@
             </tr>
           </thead>
           <tbody>
-            ${items.map(author => `
+            ${items.map(author => {
+              const draftLink = draftLinkMap.get(String(author.id)) || null;
+              const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
+              const buttonLabel = draftLink?.id ? 'Abrir rascunho ativo' : 'Criar rascunho de edição';
+              return `
               <tr>
                 <td>${author.id}</td>
-                <td>${renderCatalogAuthorIdentityHtml(author)}</td>
+                <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
                 <td>${sanitize(author.country || '—')}</td>
                 <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}">Criar rascunho de edição</button>
+                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
                   </div>
                 </td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
 
@@ -9494,6 +9682,12 @@
       refs.catalogAuthorsWrap.querySelectorAll('[data-action="author-edit-draft"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const activeDraftId = Number(btn.dataset.draftId || 0);
+            if (activeDraftId) {
+              await fetchDraftAndEdit('author', activeDraftId);
+              showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${activeDraftId}).`, 'ok');
+              return;
+            }
             await loadOrCreateAuthorDraftFromCatalog(btn.dataset.authorId);
           } catch (error) {
             showMessage(refs.catalogMessage, error.message, 'error');
