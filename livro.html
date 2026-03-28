@@ -1054,13 +1054,16 @@
       const viewerUrl = new URL("ler.html", location.href);
       if (bib_ref) viewerUrl.searchParams.set("ref", bib_ref);
       const bookTitle = firstNonEmptyString(bookRow?.titulo, bookRow?.title, bookRow?.nome);
+      const bookSubtitle = firstNonEmptyString(bookRow?.subtitulo, bookRow?.subtitle);
       if (bookTitle) viewerUrl.searchParams.set("title", bookTitle);
+      if (bookSubtitle) viewerUrl.searchParams.set("subtitle", bookSubtitle);
       const libraryId = firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id);
       const librarySlug = firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug);
       const libraryName = firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca);
       if (libraryId) viewerUrl.searchParams.set("library_id", libraryId);
       if (librarySlug) viewerUrl.searchParams.set("library_slug", librarySlug);
       if (libraryName) viewerUrl.searchParams.set("library_name", libraryName);
+      viewerUrl.searchParams.set("return_to", getCatalogReturnUrlFromUrl());
       if (digitalAccess?.assetId) {
         viewerUrl.searchParams.set("asset_id", String(digitalAccess.assetId));
       } else if (digitalAccess?.previewBucket && digitalAccess?.previewPath) {
@@ -1451,7 +1454,6 @@
       if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
       if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
       if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
-      params.set("return_to", location.href);
       return `${ROUTES.AUTOR}?${params.toString()}`;
     }
 

@@ -566,10 +566,10 @@
         </div>
       </div>
       <nav class="quick-nav" aria-label="Navegação rápida">
-        <a class="button secondary" id="btnNavCatalogos" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">Catálogos</a>
+        <a class="button secondary" id="btnNavCatalogos" href="index.html">Catálogos</a>
         <a class="button secondary" id="btnNavLivro" href="livro.html">Livro</a>
         <a class="button secondary" id="btnNavConta" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/conta.html">Minha conta</a>
-        <a class="button secondary" id="btnNavManual" href="https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf" target="_blank" rel="noopener noreferrer">Manual</a>
+        <a class="button secondary" id="btnNavManual" href="https://github.com/cclamazonia-cmd/anarbib-staging/blob/main/Manual_do_AnarBib.pdf">Manual</a>
       </nav>
     </header>
 
@@ -706,6 +706,8 @@
     };
     const storageKey = assetId ? `anarbib:ler:asset:${assetId}` : (bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default");
 
+    $("btnNavCatalogos").href = getCatalogReturnUrlFromUrl();
+
     const state = {
       scale: 1.15,
       blobUrl: null,
@@ -770,13 +772,27 @@
       return u.toString();
     }
 
+    function getCatalogReturnUrlFromUrl() {
+      try {
+        const raw = new URL(location.href).searchParams.get("return_to");
+        const fallback = new URL(`${GH_BASE}/anarbib-staging/index.html`);
+        if (!raw) return fallback.toString();
+        const candidate = new URL(raw, location.origin);
+        if (candidate.origin !== fallback.origin) return fallback.toString();
+        if (candidate.pathname !== fallback.pathname) return fallback.toString();
+        return candidate.toString();
+      } catch (_) {
+        return `${GH_BASE}/anarbib-staging/index.html`;
+      }
+    }
+
     function buildBookUrl() {
       const url = new URL("livro.html", location.href);
       if (bibRef) url.searchParams.set("ref", bibRef);
       if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);
       if (libraryContext.librarySlug) url.searchParams.set("library_slug", libraryContext.librarySlug);
       if (libraryContext.libraryName) url.searchParams.set("library_name", libraryContext.libraryName);
-      url.searchParams.set("return_to", location.href);
+      url.searchParams.set("return_to", getCatalogReturnUrlFromUrl());
       return url.toString();
     }
 
