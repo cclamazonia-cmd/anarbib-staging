@@ -677,6 +677,7 @@
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
     let bookSubtitle = (params.get("subtitle") || "").trim();
+    const bookReturnToParam = (params.get("book_return_to") || "").trim();
     const libraryContext = {
       libraryId: (params.get("library_id") || "").trim(),
       librarySlug: (params.get("library_slug") || "").trim(),
@@ -786,7 +787,22 @@
       }
     }
 
+    function getBookReturnUrlFromUrl() {
+      try {
+        if (!bookReturnToParam) return "";
+        const fallback = new URL("livro.html", location.href);
+        const candidate = new URL(bookReturnToParam, location.origin);
+        if (candidate.origin !== fallback.origin) return "";
+        if (!/\/livro\.html$/i.test(candidate.pathname)) return "";
+        return candidate.toString();
+      } catch (_) {
+        return "";
+      }
+    }
+
     function buildBookUrl() {
+      const explicitBookReturn = getBookReturnUrlFromUrl();
+      if (explicitBookReturn) return explicitBookReturn;
       const url = new URL("livro.html", location.href);
       if (bibRef) url.searchParams.set("ref", bibRef);
       if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);

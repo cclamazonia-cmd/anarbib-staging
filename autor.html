@@ -249,6 +249,12 @@
       PAINEL: new URL("painel.html", `${GH_BASE}/anarbib-conta-staging/conta.html`).href,
     };
 
+    function buildCadastroUrl(nextUrl = location.href) {
+      const u = new URL(ROUTES.CADASTRO);
+      u.searchParams.set("next", nextUrl);
+      return u.toString();
+    }
+
     function getReturnUrlFromQuery() {
       try {
         const raw = new URL(location.href).searchParams.get("return_to");
@@ -256,6 +262,7 @@
         const fallback = new URL(ROUTES.CATALOGO, location.origin);
         const candidate = new URL(raw, location.origin);
         if (candidate.origin !== fallback.origin) return ROUTES.CATALOGO;
+        if (candidate.pathname !== fallback.pathname) return ROUTES.CATALOGO;
         return candidate.toString();
       } catch (_) {
         return ROUTES.CATALOGO;
@@ -263,7 +270,7 @@
     }
 
     document.getElementById("btnCatalogo").href = getReturnUrlFromQuery();
-    document.getElementById("btnEntrar").href = ROUTES.CADASTRO;
+    document.getElementById("btnEntrar").href = buildCadastroUrl(location.href);
 
     const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
@@ -407,7 +414,8 @@
       if (ctx.libraryId) url.searchParams.set("library_id", ctx.libraryId);
       if (ctx.librarySlug) url.searchParams.set("library_slug", ctx.librarySlug);
       if (ctx.libraryName) url.searchParams.set("library_name", ctx.libraryName);
-      url.searchParams.set("return_to", location.href);
+      url.searchParams.set("return_to", getReturnUrlFromQuery());
+      url.searchParams.set("author_return_to", location.href);
       return url.toString();
     }
 
@@ -626,7 +634,7 @@
         btnEntrar.textContent = "Entrar";
         btnEntrar.title = "Entrar";
         btnEntrar.onclick = null;
-        btnEntrar.href = ROUTES.CADASTRO;
+        btnEntrar.href = buildCadastroUrl(location.href);
       }
     }
 
