@@ -4895,12 +4895,14 @@
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const bibRef = String(el('bookBibRef')?.value || '').trim();
+      const resourceId = String(el('bookDigitalDraftResourceId')?.value || '').trim();
       const hasFile = !!(bucket && path);
+      const hasLinkedDraftResource = !!(resourceId || hasFile);
       const isPublic = isBookDigitalPublicSelection();
       const pdfBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
       if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !bibRef;
+      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !(bibRef && hasLinkedDraftResource);
     }
 
     function fillBookDigitalResourceFields(record = null) {
@@ -5060,6 +5062,7 @@
       const bibRef = el('bookBibRef').value.trim();
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
+      const draftResourceId = String(el('bookDigitalDraftResourceId').value || '').trim();
       const sourceName = el('bookDigitalSourceName').value.trim();
       const sourceUrl = el('bookDigitalSourceUrl').value.trim();
       const attributionText = el('bookDigitalAttributionText').value.trim();
@@ -5108,6 +5111,9 @@
       }
 
       if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
+      if (!draftResourceId && !(bucket && path)) {
+        throw new Error('Vincule primeiro um PDF restrito neste rascunho antes de abrir no leitor.');
+      }
       viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
