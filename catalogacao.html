@@ -4224,7 +4224,7 @@
       const duplicateLabel = duplicate.sort_name || duplicate.preferred_name || `#${duplicate.id}`;
       showMessage(
         refs.authorMessage,
-        `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo duplicado antes de ${mode}.`,
+        `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo doublon antes de ${mode}.`,
         'info'
       );
       return duplicate;
@@ -4899,14 +4899,12 @@
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const bibRef = String(el('bookBibRef')?.value || '').trim();
-      const resourceId = String(el('bookDigitalDraftResourceId')?.value || '').trim();
       const hasFile = !!(bucket && path);
-      const hasLinkedDraftResource = !!(resourceId || hasFile);
       const isPublic = isBookDigitalPublicSelection();
       const pdfBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
       if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !(bibRef && hasLinkedDraftResource);
+      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !bibRef;
     }
 
     function fillBookDigitalResourceFields(record = null) {
@@ -5066,7 +5064,6 @@
       const bibRef = el('bookBibRef').value.trim();
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      const draftResourceId = String(el('bookDigitalDraftResourceId').value || '').trim();
       const sourceName = el('bookDigitalSourceName').value.trim();
       const sourceUrl = el('bookDigitalSourceUrl').value.trim();
       const attributionText = el('bookDigitalAttributionText').value.trim();
@@ -5115,9 +5112,6 @@
       }
 
       if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
-      if (!draftResourceId && !(bucket && path)) {
-        throw new Error('Vincule primeiro um PDF restrito neste rascunho antes de abrir no leitor.');
-      }
       viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
@@ -7033,7 +7027,6 @@
       authorDraftStableState = 'new';
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState('new');
-      refreshCatalogAuthorSignals();
       clearMessage(refs.authorMessage);
     }
 
@@ -8011,7 +8004,6 @@
       if (authorDraftStableState === 'published') showPublishedPopup('author'); else hidePublishedPopup('author');
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState(authorDraftStableState);
-      refreshCatalogAuthorSignals();
     }
 
     function fillLabelForm(record, { switchTab = false } = {}) {
@@ -9571,8 +9563,9 @@
     async function fetchActiveAuthorDraftLinks() {
       const { data, error } = await supabase
         .from('author_drafts')
-        .select('id, published_author_id, status, action, updated_at, preferred_name, sort_name, country, source_label, source_kind, notes')
+        .select('id, published_author_id, status, action, updated_at')
         .in('status', ['draft', 'ready'])
+        .not('published_author_id', 'is', null)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -9747,10 +9740,6 @@
       summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount} — ${parts.join(' · ')}.`;
     }
 
-    function refreshCatalogAuthorSignals() {
-      renderCatalogAuthors();
-    }
-
     function renderCatalogAuthors() {
       const search = normalizeForSearch(el('catalogSearch').value);
       const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
@@ -9763,26 +9752,6 @@
         const meta = getAuthorStructuredMetaForRecord(author);
         return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
       });
-
-      const standaloneDraftRows = (state.authorDraftLinks || [])
-        .filter((draftLink) => !String(draftLink?.published_author_id || '').trim())
-        .map((draftLink) => {
-          const author = {
-            id: '',
-            preferred_name: draftLink?.preferred_name || `Rascunho #${draftLink?.id || 'novo'}`,
-            sort_name: draftLink?.sort_name || draftLink?.preferred_name || `Rascunho #${draftLink?.id || 'novo'}`,
-            country: draftLink?.country || '',
-            source_label: draftLink?.source_label || '',
-            source_kind: draftLink?.source_kind || '',
-            notes: draftLink?.notes || '',
-          };
-          const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
-          const meta = getAuthorStructuredMetaForRecord(author);
-          return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
-        });
-
-      rows = [...rows, ...standaloneDraftRows];
-
       const totalCount = rows.length;
       if (search) {
         rows = rows.filter(({ author }) => getAuthorCatalogSearchIndex(author).includes(search));
@@ -9819,13 +9788,13 @@
               const buttonLabel = draftMeta.buttonLabel;
               return `
               <tr>
-                <td>${sanitize(author.id || '—')}</td>
+                <td>${author.id}</td>
                 <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
                 <td>${sanitize(author.country || '—')}</td>
                 <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${sanitize(author.id || '')}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
+                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
                   </div>
                 </td>
               </tr>`;
@@ -10573,31 +10542,26 @@
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
-      refreshCatalogAuthorSignals();
     });
     ['authorAcronym', 'authorActivityPeriod', 'authorVariantNames', 'authorPseudonyms', 'authorActivityPlace', 'authorContextLinks'].forEach((fieldId) => {
       const node = el(fieldId);
       if (!node) return;
       node.addEventListener('input', () => {
         syncAuthorDraftVisualState();
-        refreshCatalogAuthorSignals();
       });
       node.addEventListener('change', () => {
         syncAuthorDraftVisualState();
-        refreshCatalogAuthorSignals();
       });
     });
     el('authorPreferredName').addEventListener('input', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
-      refreshCatalogAuthorSignals();
     });
     el('authorPreferredName').addEventListener('change', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
       syncAuthorDraftVisualState();
-      refreshCatalogAuthorSignals();
     });
 
     el('openIsbnBnBtn').addEventListener('click', () => openIsbnLookup('bn'));
