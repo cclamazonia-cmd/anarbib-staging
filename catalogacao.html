@@ -4878,6 +4878,10 @@
       return !!el('bookDigitalIsPublic')?.checked || isBookDigitalPublicBucket(el('bookDigitalBucket')?.value || '');
     }
 
+    function buildCatalogacaoReturnUrl() {
+      return new URL('catalogacao.html', location.href).toString();
+    }
+
     function buildCatalogacaoPublicBookUrl(bibRef = '') {
       const normalizedBibRef = String(bibRef || '').trim();
       if (!normalizedBibRef) return '';
@@ -4887,7 +4891,7 @@
       if (profileLibrary.libraryId) bookUrl.searchParams.set('library_id', profileLibrary.libraryId);
       if (profileLibrary.librarySlug) bookUrl.searchParams.set('library_slug', profileLibrary.librarySlug);
       if (profileLibrary.libraryName) bookUrl.searchParams.set('library_name', profileLibrary.libraryName);
-      bookUrl.searchParams.set('return_to', ROUTES.CATALOGO);
+      bookUrl.searchParams.set('return_to', buildCatalogacaoReturnUrl());
       return bookUrl.toString();
     }
 
@@ -5074,7 +5078,7 @@
       if (title) viewerUrl.searchParams.set('title', title);
       const subtitle = el('bookSubtitle').value.trim();
       if (subtitle) viewerUrl.searchParams.set('subtitle', subtitle);
-      viewerUrl.searchParams.set('return_to', ROUTES.CATALOGO);
+      viewerUrl.searchParams.set('return_to', buildCatalogacaoReturnUrl());
       if (publicBookUrl) viewerUrl.searchParams.set('book_return_to', publicBookUrl);
 
       const profileLibrary = getProfileDefaultLibraryContext();
