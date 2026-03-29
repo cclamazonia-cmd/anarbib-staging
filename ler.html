@@ -780,8 +780,13 @@
         const fallback = new URL(`${GH_BASE}/anarbib-staging/index.html`);
         if (!raw) return fallback.toString();
         const candidate = new URL(raw, location.origin);
+        const allowedPaths = new Set([
+          "/anarbib-staging/index.html",
+          "/anarbib-staging/catalogacao.html",
+          "/anarbib-conta-staging/catalogacao.html"
+        ]);
         if (candidate.origin !== fallback.origin) return fallback.toString();
-        if (candidate.pathname !== fallback.pathname) return fallback.toString();
+        if (!allowedPaths.has(candidate.pathname)) return fallback.toString();
         return candidate.toString();
       } catch (_) {
         return `${GH_BASE}/anarbib-staging/index.html`;
