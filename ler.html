@@ -801,16 +801,44 @@
       }
     }
 
-    function buildBookUrl() {
+    function getResolvedBookUrl() {
       const explicitBookReturn = getBookReturnUrlFromUrl();
       if (explicitBookReturn) return explicitBookReturn;
+      if (!bibRef) return "";
       const url = new URL("livro.html", location.href);
-      if (bibRef) url.searchParams.set("ref", bibRef);
+      url.searchParams.set("ref", bibRef);
       if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);
       if (libraryContext.librarySlug) url.searchParams.set("library_slug", libraryContext.librarySlug);
       if (libraryContext.libraryName) url.searchParams.set("library_name", libraryContext.libraryName);
       url.searchParams.set("return_to", getCatalogReturnUrlFromUrl());
       return url.toString();
+    }
+
+    function buildBookUrl() {
+      return getResolvedBookUrl() || "#";
+    }
+
+    function applyBookNavState() {
+      const targetUrl = getResolvedBookUrl();
+      const hasTarget = !!targetUrl;
+      const disabledTitle = "Disponível quando esta leitura foi aberta a partir de uma ficha livro identificável.";
+      ["btnBackBook", "btnNavLivro"].forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        if (hasTarget) {
+          el.href = targetUrl;
+          el.removeAttribute("aria-disabled");
+          el.style.pointerEvents = "";
+          el.style.opacity = "";
+          el.title = "Voltar à ficha do livro";
+          return;
+        }
+        el.href = "#";
+        el.setAttribute("aria-disabled", "true");
+        el.style.pointerEvents = "none";
+        el.style.opacity = ".55";
+        el.title = disabledTitle;
+      });
     }
 
     function setAssetMetaLine(message = "") {
@@ -833,8 +861,7 @@
       $("chipRef").innerHTML = bibRef
         ? `<strong>Ref.</strong> ${bibRef}`
         : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`);
-      $("btnBackBook").href = buildBookUrl();
-      $("btnNavLivro").href = buildBookUrl();
+      applyBookNavState();
       $("subline").textContent = displayBookTitle
         ? `Abrindo ${displayBookTitle}.`
         : (bibRef ? `Abrindo ${bibRef}.` : (assetId ? `Abrindo ${displayBookTitle || `asset ${assetId}`}.` : "Falta a referência do livro."));
