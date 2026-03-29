@@ -1189,6 +1189,13 @@
       const asset = await getPublicAssetById(pAssetId);
       const bookMeta = asset?.book_id ? await fetchBookMetaById(asset.book_id) : null;
 
+      if (!bibRef && asset?.bib_ref) bibRef = String(asset.bib_ref || "").trim();
+      if (!bookTitle && (asset?.titulo || asset?.title)) bookTitle = String(asset.titulo || asset.title || "").trim();
+      if (!bookSubtitle && (asset?.subtitulo || asset?.subtitle)) bookSubtitle = String(asset.subtitulo || asset.subtitle || "").trim();
+      if (!libraryContext.libraryId && asset?.library_id) libraryContext.libraryId = String(asset.library_id || "").trim();
+      if (!libraryContext.librarySlug && asset?.library_slug) libraryContext.librarySlug = String(asset.library_slug || "").trim();
+      if (!libraryContext.libraryName && (asset?.library_name || asset?.biblioteca)) libraryContext.libraryName = String(asset.library_name || asset.biblioteca || "").trim();
+
       if (!bibRef && bookMeta?.bib_ref) bibRef = String(bookMeta.bib_ref || "").trim();
       if (!bookTitle && bookMeta?.titulo) bookTitle = String(bookMeta.titulo || "").trim();
       if (!bookSubtitle && bookMeta?.subtitulo) bookSubtitle = String(bookMeta.subtitulo || "").trim();
