@@ -2876,7 +2876,7 @@
           </div>
           <div class="field">
             <label for="queueSearch">Buscar</label>
-            <input id="queueSearch" type="text" placeholder="Título, autor, tombo, referência…" />
+            <input id="queueSearch" type="text" placeholder="Título, autor, tombo, referência ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -8419,6 +8419,23 @@
       return item.display_subtitle || '—';
     }
 
+    function getQueueExemplarLocationDisplay(item = {}) {
+      if (item.item_type !== 'exemplar') return '';
+      const exemplar = getQueueExemplarRecord(item);
+      return compactSpaces(exemplar?.shelf_location || '');
+    }
+
+    function renderQueueComplementHtml(item = {}) {
+      if (item.item_type === 'book') return '—';
+      const secondary = sanitize(getQueueSecondaryDisplay(item));
+      const location = sanitize(getQueueExemplarLocationDisplay(item));
+      if (item.item_type !== 'exemplar' || !location || location === '—') return secondary || '—';
+      const parts = [];
+      if (secondary && secondary !== '—') parts.push(`<div>${secondary}</div>`);
+      parts.push(`<div><strong>Localização:</strong> ${location}</div>`);
+      return parts.join('');
+    }
+
     function getQueueSearchIndex(item = {}) {
       const exemplar = item.item_type === 'exemplar' ? getQueueExemplarRecord(item) : null;
       return [
@@ -8431,6 +8448,7 @@
         exemplar?.bib_ref,
         exemplar?.titulo_etiqueta,
         exemplar?.autor_etiqueta,
+        exemplar?.shelf_location,
       ].filter(Boolean).join(' ').toLowerCase();
     }
 
@@ -8484,7 +8502,7 @@
                 <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
                 <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
-                <td>${item.item_type === 'book' ? '—' : sanitize(getQueueSecondaryDisplay(item))}</td>
+                <td>${renderQueueComplementHtml(item)}</td>
                 <td>${item.batch_id ? '#' + sanitize(item.batch_id) : '—'}</td>
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
@@ -9377,7 +9395,7 @@
                 <td>${sanitize(getQueueActionLabel(item.action))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
                 <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
-                <td>${item.item_type === 'book' ? '—' : sanitize(getQueueSecondaryDisplay(item))}</td>
+                <td>${renderQueueComplementHtml(item)}</td>
                 <td>${item.batch_id ? '#' + sanitize(item.batch_id) : '—'}</td>
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
