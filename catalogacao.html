@@ -2652,9 +2652,36 @@
             <input id="exemplarTombo" type="text" placeholder="123-CCLA-2026 ou 123-CCLA-2026-02" required />
           </div>
 
+          <div class="field">
+            <label for="exemplarLocationLibrary">Biblioteca</label>
+            <input id="exemplarLocationLibrary" type="text" placeholder="BLMF - Belém do Pará" />
+          </div>
+
+          <div class="field">
+            <label for="exemplarLocationSector">Setor / sala</label>
+            <input id="exemplarLocationSector" type="text" placeholder="Sala 1 / Acervo geral" />
+          </div>
+
+          <div class="field">
+            <label for="exemplarLocationShelfUnit">Estante</label>
+            <input id="exemplarLocationShelfUnit" type="text" placeholder="Estante A" />
+          </div>
+
+          <div class="field">
+            <label for="exemplarLocationLevel">Prateleira</label>
+            <input id="exemplarLocationLevel" type="text" placeholder="Prateleira 3" />
+          </div>
+
           <div class="field" style="grid-column: span 2;">
-            <label for="exemplarShelf">Localização</label>
-            <input id="exemplarShelf" type="text" placeholder="Estante A / Prateleira 3" />
+            <label for="exemplarLocationNote">Observação curta de localização</label>
+            <input id="exemplarLocationNote" type="text" placeholder="Caixa azul / topo / consulta interna" />
+          </div>
+
+          <div class="field" style="grid-column: span 3;">
+            <label for="exemplarShelf">Localização consolidada</label>
+            <input id="exemplarShelf" type="text" placeholder="Biblioteca: ... · Setor/sala: ... · Estante: ... · Prateleira: ..." readonly />
+            <input id="exemplarShelfLegacyRaw" type="hidden" />
+            <small>Este campo é calculado automaticamente a partir dos campos estruturados acima. Se um exemplar antigo tiver só uma localização livre, ela continua preservada até você reorganizar os campos.</small>
           </div>
 
           <div class="field" style="grid-column: span 3;">
@@ -3334,6 +3361,12 @@
       labelCurrentBibRef: el('labelCurrentBibRef'),
       labelCurrentTombo: el('labelCurrentTombo'),
       labelCurrentShelf: el('labelCurrentShelf'),
+      exemplarLocationLibrary: el('exemplarLocationLibrary'),
+      exemplarLocationSector: el('exemplarLocationSector'),
+      exemplarLocationShelfUnit: el('exemplarLocationShelfUnit'),
+      exemplarLocationLevel: el('exemplarLocationLevel'),
+      exemplarLocationNote: el('exemplarLocationNote'),
+      exemplarShelfLegacyRaw: el('exemplarShelfLegacyRaw'),
       bookPublishedPopupBtn: el('bookPublishedPopupBtn'),
       authorPublishedPopupBtn: el('authorPublishedPopupBtn'),
       exemplarPublishedPopupBtn: el('exemplarPublishedPopupBtn'),
@@ -4224,7 +4257,7 @@
       const duplicateLabel = duplicate.sort_name || duplicate.preferred_name || `#${duplicate.id}`;
       showMessage(
         refs.authorMessage,
-        `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo doublon antes de ${mode}.`,
+        `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo duplicado antes de ${mode}.`,
         'info'
       );
       return duplicate;
@@ -4321,6 +4354,7 @@
           bib_ref: item.bib_ref || '',
           autor_etiqueta: item.autor_etiqueta || '',
           titulo_etiqueta: item.titulo_etiqueta || '',
+          shelf_location: item.shelf_location || '',
         },
       };
       return maps?.[scope]?.[key] ?? '';
@@ -5472,7 +5506,13 @@
         batchId: el('exemplarBatchId').value || '',
         bibRef: el('exemplarBibRef').value.trim(),
         tombo: el('exemplarTombo').value.trim(),
-        shelf: el('exemplarShelf').value.trim(),
+        locationLibrary: refs.exemplarLocationLibrary?.value.trim() || '',
+        locationSector: refs.exemplarLocationSector?.value.trim() || '',
+        locationShelfUnit: refs.exemplarLocationShelfUnit?.value.trim() || '',
+        locationShelfLevel: refs.exemplarLocationLevel?.value.trim() || '',
+        locationNote: refs.exemplarLocationNote?.value.trim() || '',
+        shelf: syncExemplarStructuredLocation(),
+        legacyShelfRaw: refs.exemplarShelfLegacyRaw?.value.trim() || '',
         notes: el('exemplarNotes').value.trim(),
       });
     }
@@ -5497,7 +5537,13 @@
         batchId: el('exemplarBatchId').value || '',
         bibRef: el('exemplarBibRef').value.trim(),
         tombo: el('exemplarTombo').value.trim(),
-        shelf: el('exemplarShelf').value.trim(),
+        locationLibrary: refs.exemplarLocationLibrary?.value.trim() || '',
+        locationSector: refs.exemplarLocationSector?.value.trim() || '',
+        locationShelfUnit: refs.exemplarLocationShelfUnit?.value.trim() || '',
+        locationShelfLevel: refs.exemplarLocationLevel?.value.trim() || '',
+        locationNote: refs.exemplarLocationNote?.value.trim() || '',
+        shelf: syncExemplarStructuredLocation(),
+        legacyShelfRaw: refs.exemplarShelfLegacyRaw?.value.trim() || '',
         labelAuthor: el('labelAuthorInput')?.value.trim() || '',
         labelTitle: el('labelTitleInput')?.value.trim() || '',
         labelCDD: el('labelCDDInput')?.value.trim() || '',
@@ -6866,6 +6912,105 @@
       return el('exemplarLabelStatus')?.value || 'pending';
     }
 
+    function parseStructuredExemplarLocation(rawValue = '') {
+      const clean = compactSpaces(String(rawValue || ''));
+      const emptyState = {
+        library: '',
+        sector: '',
+        shelfUnit: '',
+        shelfLevel: '',
+        note: '',
+        legacyRaw: clean,
+        isStructured: false,
+      };
+      if (!clean) return emptyState;
+
+      const labels = [
+        ['biblioteca', 'library'],
+        ['setor/sala', 'sector'],
+        ['estante', 'shelfUnit'],
+        ['prateleira', 'shelfLevel'],
+        ['observação', 'note'],
+        ['observacao', 'note'],
+        ['obs.', 'note'],
+        ['obs', 'note'],
+      ];
+      const parsed = { ...emptyState };
+      let matched = 0;
+
+      clean.split(/\s+·\s+/).forEach(part => {
+        const chunk = compactSpaces(part);
+        const separatorIndex = chunk.indexOf(':');
+        if (separatorIndex === -1) return;
+        const rawLabel = normalizeTextBasic(chunk.slice(0, separatorIndex));
+        const rawValuePart = compactSpaces(chunk.slice(separatorIndex + 1));
+        const entry = labels.find(([label]) => rawLabel === normalizeTextBasic(label));
+        if (!entry || !rawValuePart) return;
+        parsed[entry[1]] = rawValuePart;
+        matched += 1;
+      });
+
+      if (!matched) return emptyState;
+      parsed.legacyRaw = '';
+      parsed.isStructured = true;
+      return parsed;
+    }
+
+    function formatStructuredExemplarLocation(parts = {}) {
+      const items = [
+        ['Biblioteca', parts.library],
+        ['Setor/sala', parts.sector],
+        ['Estante', parts.shelfUnit],
+        ['Prateleira', parts.shelfLevel],
+        ['Observação', parts.note],
+      ].filter(([, value]) => compactSpaces(value));
+      return items.map(([label, value]) => `${label}: ${compactSpaces(value)}`).join(' · ');
+    }
+
+    function getExemplarLocationPartsFromForm() {
+      return {
+        library: refs.exemplarLocationLibrary?.value || '',
+        sector: refs.exemplarLocationSector?.value || '',
+        shelfUnit: refs.exemplarLocationShelfUnit?.value || '',
+        shelfLevel: refs.exemplarLocationLevel?.value || '',
+        note: refs.exemplarLocationNote?.value || '',
+      };
+    }
+
+    function getResolvedExemplarLocationValue() {
+      const structured = formatStructuredExemplarLocation(getExemplarLocationPartsFromForm());
+      if (structured) return structured;
+      return compactSpaces(refs.exemplarShelfLegacyRaw?.value || '');
+    }
+
+    function syncExemplarStructuredLocation(options = {}) {
+      const shouldClearLegacy = !!options.clearLegacy;
+      if (shouldClearLegacy && refs.exemplarShelfLegacyRaw) refs.exemplarShelfLegacyRaw.value = '';
+      const nextValue = getResolvedExemplarLocationValue();
+      if (el('exemplarShelf')) el('exemplarShelf').value = nextValue;
+      return nextValue;
+    }
+
+    function fillExemplarStructuredLocation(rawValue = '') {
+      const parsed = parseStructuredExemplarLocation(rawValue);
+      if (refs.exemplarLocationLibrary) refs.exemplarLocationLibrary.value = parsed.library || '';
+      if (refs.exemplarLocationSector) refs.exemplarLocationSector.value = parsed.sector || '';
+      if (refs.exemplarLocationShelfUnit) refs.exemplarLocationShelfUnit.value = parsed.shelfUnit || '';
+      if (refs.exemplarLocationLevel) refs.exemplarLocationLevel.value = parsed.shelfLevel || '';
+      if (refs.exemplarLocationNote) refs.exemplarLocationNote.value = parsed.note || '';
+      if (refs.exemplarShelfLegacyRaw) refs.exemplarShelfLegacyRaw.value = parsed.isStructured ? '' : (parsed.legacyRaw || '');
+      syncExemplarStructuredLocation();
+    }
+
+    function seedExemplarLocationLibrary(force = false) {
+      const node = refs.exemplarLocationLibrary;
+      if (!node) return;
+      const libraryLabel = getProfileDefaultLibraryLabel();
+      if (!libraryLabel) return;
+      if (force || !compactSpaces(node.value)) node.value = libraryLabel;
+      syncExemplarStructuredLocation();
+    }
+
     function getExemplarDraftPayload(statusOverride = '', labelStatusOverride = '') {
       const resolvedStatus = statusOverride || getCurrentExemplarStatus() || 'draft';
       const resolvedLabelStatus = labelStatusOverride || getCurrentLabelStatus() || 'pending';
@@ -6878,7 +7023,7 @@
         label_status: resolvedLabelStatus,
         target_bib_ref: el('exemplarBibRef').value.trim(),
         tombo: el('exemplarTombo').value.trim(),
-        shelf_location: el('exemplarShelf').value.trim() || null,
+        shelf_location: syncExemplarStructuredLocation().trim() || null,
         label_title_override: el('labelTitleInput')?.value.trim() || null,
         label_author_override: el('labelAuthorInput')?.value.trim() || null,
         label_cdd_override: el('labelCDDInput')?.value.trim() || null,
@@ -7043,10 +7188,11 @@
     }
 
     function syncLabelSummaryFromExemplar() {
+      const shelfDisplay = syncExemplarStructuredLocation();
       if (refs.labelCurrentBatch) refs.labelCurrentBatch.textContent = getBatchLabel(el('exemplarBatchId').value || '');
       if (refs.labelCurrentBibRef) refs.labelCurrentBibRef.textContent = el('exemplarBibRef').value || '—';
       if (refs.labelCurrentTombo) refs.labelCurrentTombo.textContent = el('exemplarTombo').value || '—';
-      if (refs.labelCurrentShelf) refs.labelCurrentShelf.textContent = el('exemplarShelf').value || '—';
+      if (refs.labelCurrentShelf) refs.labelCurrentShelf.textContent = shelfDisplay || '—';
     }
 
     function truncatePreviewText(value = '', maxLength = 80) {
@@ -7447,6 +7593,9 @@
       el('exemplarAction').value = 'create';
       el('exemplarCurrentStatus').value = 'draft';
       el('exemplarLabelStatus').value = 'pending';
+      if (refs.exemplarShelfLegacyRaw) refs.exemplarShelfLegacyRaw.value = '';
+      seedExemplarLocationLibrary(false);
+      syncExemplarStructuredLocation();
       hidePublishedPopup('exemplar');
       exemplarDraftStableState = 'new';
       exemplarDraftBaseline = serializeExemplarFormState();
@@ -7469,6 +7618,11 @@
     ['exemplarTombo','exemplarBibRef','exemplarShelf','exemplarBatchId'].forEach(id => {
       el(id).addEventListener('input', () => { updateLabelPreview(); syncLabelDraftVisualState(); });
       el(id).addEventListener('change', () => { updateLabelPreview(); syncLabelDraftVisualState(); });
+    });
+
+    ['exemplarLocationLibrary','exemplarLocationSector','exemplarLocationShelfUnit','exemplarLocationLevel','exemplarLocationNote'].forEach(id => {
+      el(id).addEventListener('input', () => { syncExemplarStructuredLocation({ clearLegacy: true }); updateLabelPreview(); syncLabelDraftVisualState(); });
+      el(id).addEventListener('change', () => { syncExemplarStructuredLocation({ clearLegacy: true }); updateLabelPreview(); syncLabelDraftVisualState(); });
     });
 
     ['labelAuthorInput','labelCDDInput','labelTitleInput','labelNoteInput'].forEach(id => {
@@ -8034,7 +8188,7 @@
       el('exemplarBatchId').value = record.batch_id || '';
       el('exemplarBibRef').value = record.target_bib_ref || '';
       el('exemplarTombo').value = record.tombo || '';
-      el('exemplarShelf').value = record.shelf_location || '';
+      fillExemplarStructuredLocation(record.shelf_location || '');
       el('exemplarNotes').value = record.notes || '';
       updateLabelPreview();
       if (refs.labelBatchPreviewId) {
@@ -9850,7 +10004,7 @@
       const search = normalizeForSearch(el('catalogExemplarSearch').value);
       let items = [...state.exemplars];
       if (search) {
-        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta].filter(Boolean).join(' ')).includes(search));
+        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
@@ -9864,6 +10018,7 @@
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
               <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
               <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
               <th>Operações</th>
@@ -9875,6 +10030,7 @@
                 <td>${ex.exemplar_id}</td>
                 <td>${sanitize(ex.tombo || '—')}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
+                <td>${sanitize(ex.shelf_location || '—')}</td>
                 <td>${sanitize(ex.autor_etiqueta || '—')}</td>
                 <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
