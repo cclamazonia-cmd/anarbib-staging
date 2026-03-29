@@ -321,8 +321,13 @@
         if (!raw) return ROUTES.CATALOGO;
         const fallback = new URL(ROUTES.CATALOGO, location.origin);
         const candidate = new URL(raw, location.origin);
+        const allowedPaths = new Set([
+          fallback.pathname,
+          '/anarbib-staging/catalogacao.html',
+          '/anarbib-conta-staging/catalogacao.html'
+        ]);
         if (candidate.origin !== fallback.origin) return ROUTES.CATALOGO;
-        if (candidate.pathname !== fallback.pathname) return ROUTES.CATALOGO;
+        if (!allowedPaths.has(candidate.pathname)) return ROUTES.CATALOGO;
         return candidate.toString();
       } catch (_) {
         return ROUTES.CATALOGO;
