@@ -675,6 +675,8 @@
     const publicBucketParam = (params.get("public_bucket") || "").trim();
     const publicPathParam = (params.get("public_path") || "").trim();
     const publicUrlParam = (params.get("public_url") || "").trim();
+    const bookIdParam = (params.get("book_id") || params.get("id") || "").trim();
+    let bookId = /^\d+$/.test(bookIdParam) ? Number(bookIdParam) : null;
     let bibRef = (params.get("ref") || "").trim();
     let bookTitle = (params.get("title") || "").trim();
     let bookSubtitle = (params.get("subtitle") || "").trim();
@@ -706,7 +708,11 @@
       "btl-sao-paulo": "btl",
       "btl-são-paulo": "btl"
     };
-    const storageKey = assetId ? `anarbib:ler:asset:${assetId}` : (bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default");
+    const storageKey = assetId
+      ? `anarbib:ler:asset:${assetId}`
+      : ((Number.isFinite(bookId) && bookId > 0)
+          ? `anarbib:ler:book:${bookId}`
+          : (bibRef ? `anarbib:ler:${bibRef}` : "anarbib:ler:default"));
 
     document.getElementById("btnNavCatalogos").href = getCatalogReturnUrlFromUrl();
 
@@ -809,9 +815,11 @@
     function getResolvedBookUrl() {
       const explicitBookReturn = getBookReturnUrlFromUrl();
       if (explicitBookReturn) return explicitBookReturn;
-      if (!bibRef) return "";
+      const hasBookId = Number.isFinite(bookId) && bookId > 0;
+      if (!bibRef && !hasBookId) return "";
       const url = new URL("livro.html", location.href);
-      url.searchParams.set("ref", bibRef);
+      if (hasBookId) url.searchParams.set("id", String(bookId));
+      if (bibRef) url.searchParams.set("ref", bibRef);
       if (libraryContext.libraryId) url.searchParams.set("library_id", libraryContext.libraryId);
       if (libraryContext.librarySlug) url.searchParams.set("library_slug", libraryContext.librarySlug);
       if (libraryContext.libraryName) url.searchParams.set("library_name", libraryContext.libraryName);
@@ -863,16 +871,25 @@
 
     function refreshReaderHeadings() {
       const displayBookTitle = getDisplayBookTitle();
+      const hasBookId = Number.isFinite(bookId) && bookId > 0;
       $("chipRef").innerHTML = bibRef
         ? `<strong>Ref.</strong> ${bibRef}`
-        : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`);
+        : (hasBookId ? `<strong>Livro</strong> ${bookId}` : (assetId ? `<strong>Asset</strong> ${assetId}` : `<strong>Ref.</strong> —`));
       applyBookNavState();
       $("subline").textContent = displayBookTitle
         ? `Abrindo ${displayBookTitle}.`
-        : (bibRef ? `Abrindo ${bibRef}.` : (assetId ? `Abrindo ${displayBookTitle || `asset ${assetId}`}.` : "Falta a referência do livro."));
+        : (bibRef
+            ? `Abrindo ${bibRef}.`
+            : (hasBookId
+                ? `Abrindo a ficha ${bookId}.`
+                : (assetId ? `Abrindo ${displayBookTitle || `asset ${assetId}`}.` : "Falta a referência do livro.")));
       $("sheetSub").textContent = displayBookTitle
         ? `Leitura de ${displayBookTitle}.`
-        : (bibRef ? `Leitura de ${bibRef}.` : (assetId ? `Leitura de ${displayBookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro."));
+        : (bibRef
+            ? `Leitura de ${bibRef}.`
+            : (hasBookId
+                ? `Leitura ligada ao livro ${bookId}.`
+                : (assetId ? `Leitura de ${displayBookTitle || `asset ${assetId}`}.` : "Abra esta página a partir da ficha do livro.")));
     }
 
     function formatPublicAssetMeta(asset = null) {
@@ -1173,6 +1190,20 @@
       return null;
     }
 
+    async function hydrateBookMetaFromBookId() {
+      if (!Number.isFinite(bookId) || bookId <= 0) return null;
+      const bookMeta = await fetchBookMetaById(bookId);
+      if (!bookMeta) return null;
+      if (!bibRef && bookMeta?.bib_ref) bibRef = String(bookMeta.bib_ref || "").trim();
+      if (!bookTitle && bookMeta?.titulo) bookTitle = String(bookMeta.titulo || "").trim();
+      if (!bookSubtitle && bookMeta?.subtitulo) bookSubtitle = String(bookMeta.subtitulo || "").trim();
+      if (!libraryContext.libraryId && bookMeta?.library_id) libraryContext.libraryId = String(bookMeta.library_id || "").trim();
+      if (!libraryContext.librarySlug && bookMeta?.library_slug) libraryContext.librarySlug = String(bookMeta.library_slug || "").trim();
+      if (!libraryContext.libraryName && bookMeta?.library_name) libraryContext.libraryName = String(bookMeta.library_name || "").trim();
+      refreshReaderHeadings();
+      return bookMeta;
+    }
+
     function buildPublicStorageUrl(bucket, path) {
       const bucketName = String(bucket || "").trim();
       const objectPath = String(path || "").trim().replace(/^\/+/, "");
@@ -1187,6 +1218,7 @@
 
     async function downloadPublicAssetBlob(pAssetId) {
       const asset = await getPublicAssetById(pAssetId);
+      if (asset?.book_id) bookId = Number(asset.book_id) || bookId;
       const bookMeta = asset?.book_id ? await fetchBookMetaById(asset.book_id) : null;
 
       if (!bibRef && asset?.bib_ref) bibRef = String(asset.bib_ref || "").trim();
@@ -1232,6 +1264,7 @@
     }
 
     async function downloadPublicPreviewBlob(bucket, path) {
+      await hydrateBookMetaFromBookId();
       const bucketName = String(bucket || "").trim();
       const objectPath = String(path || "").trim().replace(/^\/+/, "");
       if (!bucketName || !objectPath) {
@@ -1267,6 +1300,7 @@
     }
 
     async function downloadPublicUrlBlob(publicUrlInput) {
+      await hydrateBookMetaFromBookId();
       const publicUrl = String(publicUrlInput || "").trim();
       if (!publicUrl) {
         throw new Error("URL pública ausente para a leitura do PDF.");
@@ -1315,13 +1349,22 @@
     }
 
     async function downloadPdfBlob(ref) {
+      const compatRef = String(ref || bibRef || "").trim();
+      if (!compatRef) {
+        await hydrateBookMetaFromBookId();
+      }
+      const resolvedRef = String(compatRef || bibRef || "").trim();
+      if (!resolvedRef) {
+        throw new Error("Leitura restrita indisponível sem referência de compatibilidade do livro.");
+      }
+
       const session = await ensureSession();
       await ensureProfile();
-      await verifyReadAccess(ref);
+      await verifyReadAccess(resolvedRef);
 
       const requestBody = {
-        ref,
-        bib_ref: ref,
+        ref: resolvedRef,
+        bib_ref: resolvedRef,
         library_id: libraryContext.libraryId || null,
         library_slug: libraryContext.librarySlug || null,
       };
@@ -1645,7 +1688,7 @@
         console.warn("AnarBib ler v3: falha ao carregar logótipos", err);
       });
 
-      if (!assetId && !bibRef && !(publicBucketParam && publicPathParam) && !publicUrlParam) {
+      if (!assetId && !bibRef && !bookId && !(publicBucketParam && publicPathParam) && !publicUrlParam) {
         showError("Referência ausente.", "Abre esta página a partir do botão Ler na ficha do livro.");
         return;
       }

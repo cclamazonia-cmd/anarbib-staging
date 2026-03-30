@@ -1244,7 +1244,12 @@
 
     function buildLerUrl(bib_ref, bookRow = null, libraryContext = {}, digitalAccess = null) {
       const viewerUrl = new URL("ler.html", location.href);
-      if (bib_ref) viewerUrl.searchParams.set("ref", bib_ref);
+      const publishedBookId = Number(bookRow?.book_id || bookRow?.id || 0);
+      const compatBibRef = firstNonEmptyString(bib_ref, bookRow?.bib_ref);
+      if (Number.isFinite(publishedBookId) && publishedBookId > 0) {
+        viewerUrl.searchParams.set("book_id", String(publishedBookId));
+      }
+      if (compatBibRef) viewerUrl.searchParams.set("ref", compatBibRef);
       const bookTitle = firstNonEmptyString(bookRow?.titulo, bookRow?.title, bookRow?.nome);
       const bookSubtitle = firstNonEmptyString(bookRow?.subtitulo, bookRow?.subtitle);
       if (bookTitle) viewerUrl.searchParams.set("title", bookTitle);
@@ -1291,6 +1296,12 @@
     function getBibRefFromUrl() {
       const u = new URL(location.href);
       return (u.searchParams.get("ref") || u.searchParams.get("bib_ref") || "").trim();
+    }
+
+    function getBookIdFromUrl() {
+      const u = new URL(location.href);
+      const raw = (u.searchParams.get("id") || u.searchParams.get("book_id") || "").trim();
+      return /^\d+$/.test(raw) ? Number(raw) : null;
     }
 
     function getLibraryContextFromUrl() {
@@ -2058,17 +2069,18 @@
     }
 
     async function loadBook() {
-      const bib_ref = getBibRefFromUrl();
+      let bib_ref = getBibRefFromUrl();
+      const requestedBookId = getBookIdFromUrl();
       const libraryContext = getLibraryContextFromUrl();
 
-      if (!bib_ref) {
+      if (!bib_ref && !requestedBookId) {
         $("title").textContent = "Livro não encontrado";
-        $("heroIntro").textContent = "Faltou a referência na URL (ex.: livro.html?ref=0000124).";
+        $("heroIntro").textContent = "Faltou a referência ou o id na URL (ex.: livro.html?ref=0000124 ou livro.html?id=12).";
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
         document.title = "AnarBib - Livro";
-        setStatus("Faltou a referência na URL (ex.: livro.html?ref=0000124).", "warn");
+        setStatus("Faltou a referência ou o id na URL (ex.: livro.html?ref=0000124 ou livro.html?id=12).", "warn");
         return;
       }
 
@@ -2093,7 +2105,7 @@
         "has_online_reading","tombo"
       ].join(",");
 
-      if (localContextRequested && libraryContext.libraryId) {
+      if (localContextRequested && libraryContext.libraryId && bib_ref) {
         const holdingContextBook = await tryLoadBookByHoldingContext(bib_ref, libraryContext, v2Select, fallbackSelect);
         if (holdingContextBook?.booksTable && holdingContextBook?.data) {
           booksTable = holdingContextBook.booksTable;
@@ -2104,10 +2116,12 @@
       }
 
       if (!booksTable) try {
+        const v2FilterField = requestedBookId ? "id" : "bib_ref";
+        const v2FilterValue = requestedBookId || bib_ref;
         const v2 = await supabase
           .from("v_book_detail_public_v2")
           .select(v2Select)
-          .eq("bib_ref", bib_ref)
+          .eq(v2FilterField, v2FilterValue)
           .maybeSingle();
 
         if (!v2.error && v2.data) {
@@ -2137,7 +2151,7 @@
           let fallback = await supabase
             .from("v_books_public")
             .select(fallbackSelect)
-            .eq("bib_ref", bib_ref)
+            .eq(requestedBookId ? "id" : "bib_ref", requestedBookId || bib_ref)
             .limit(localContextRequested ? 50 : 1);
 
           if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
@@ -2169,7 +2183,7 @@
           const fallbackBooks = await supabase
             .from("books")
             .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
-            .eq("bib_ref", bib_ref)
+            .eq(requestedBookId ? "id" : "bib_ref", requestedBookId || bib_ref)
             .maybeSingle();
 
           if (!fallbackBooks.error && fallbackBooks.data) {
@@ -2199,7 +2213,7 @@
           const fallbackAuthor = await supabase
             .from("books")
             .select("author_id")
-            .eq("bib_ref", bib_ref)
+            .eq(data?.id != null ? "id" : "bib_ref", data?.id ?? bib_ref)
             .maybeSingle();
           if (!fallbackAuthor.error && fallbackAuthor.data?.author_id != null) {
             data.author_id = fallbackAuthor.data.author_id;
@@ -2239,6 +2253,10 @@
       const colLibraryId = findCol(keys, ["library_id"]);
       const colLibrarySlug = findCol(keys, ["library_slug"]);
       const colLibraryName = findCol(keys, ["library_name", "biblioteca"]);
+
+      if (!bib_ref && data?.bib_ref != null) {
+        bib_ref = String(data.bib_ref || "").trim();
+      }
 
       const titulo = colTit ? (data[colTit] || "") : "";
       const subtitulo = colSub ? (data[colSub] || "") : "";
