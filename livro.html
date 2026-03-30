@@ -784,6 +784,96 @@
       };
     }
 
+    function buildEffectiveReservationLibraryScope(bookRow = {}, libraryContext = {}) {
+      const directScope = resolveBookPageLibraryScope(bookRow, libraryContext);
+      if (directScope.libraryId || directScope.librarySlug || directScope.libraryName) {
+        return directScope;
+      }
+
+      const sessionScope = {
+        libraryId: currentUserContext?.libraryId,
+        librarySlug: currentUserContext?.librarySlug,
+        libraryName: currentUserContext?.libraryName
+      };
+
+      const matchedSessionHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, sessionScope);
+      if (matchedSessionHolding) {
+        return buildLibraryScopeFromHolding(matchedSessionHolding);
+      }
+
+      return sessionScope;
+    }
+
+    function isMissingFunctionError(error) {
+      const msg = String(error?.message || error || "");
+      return /function|does not exist|not exist|schema cache|fn_v2_create_reserva_by_holdings/i.test(msg);
+    }
+
+    function canFallbackHoldingResolutionError(error) {
+      const msg = String(error?.message || error || "");
+      return /permission|policy|not exist|does not exist|relation|schema cache|column|book_holdings/i.test(msg);
+    }
+
+    async function tryResolveLocalReservaHolding(bookRow = {}, bibRef = "", libraryContext = {}) {
+      const ref = String(bibRef || "").trim();
+      if (!ref) return { resolved: false, reason: "empty-ref" };
+
+      const effectiveScope = buildEffectiveReservationLibraryScope(bookRow, libraryContext);
+      const scopedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, effectiveScope);
+      const scopedHoldingId = Number(scopedHolding?.holding_id ?? scopedHolding?.id ?? 0);
+      if (Number.isFinite(scopedHoldingId) && scopedHoldingId > 0) {
+        return {
+          resolved: true,
+          source: "holding_libraries_json",
+          holdingId: scopedHoldingId,
+          libraryId: firstNonEmptyString(scopedHolding?.library_id, effectiveScope.libraryId),
+          localBibRef: firstNonEmptyString(scopedHolding?.local_bib_ref, ref)
+        };
+      }
+
+      const libraryId = String(effectiveScope?.libraryId || "").trim();
+      if (!libraryId) {
+        return { resolved: false, reason: "no-library-id" };
+      }
+
+      try {
+        const holdingsRes = await supabase
+          .from("book_holdings")
+          .select("id,book_id,library_id,local_bib_ref,available_count")
+          .eq("library_id", libraryId)
+          .eq("local_bib_ref", ref)
+          .limit(2);
+
+        if (holdingsRes.error) {
+          if (canFallbackHoldingResolutionError(holdingsRes.error)) {
+            return { resolved: false, reason: "holding-resolution-unavailable", error: holdingsRes.error };
+          }
+          throw holdingsRes.error;
+        }
+
+        const rows = holdingsRes.data || [];
+        if (!rows.length) {
+          return { resolved: false, reason: "holding-not-found", libraryId, localBibRef: ref };
+        }
+
+        const row = rows[0] || {};
+        const holdingId = Number(row?.id || 0);
+        if (!Number.isFinite(holdingId) || holdingId <= 0) {
+          return { resolved: false, reason: "invalid-holding-id", libraryId, localBibRef: ref };
+        }
+
+        return {
+          resolved: true,
+          source: "book_holdings",
+          holdingId,
+          libraryId: String(row?.library_id || libraryId),
+          localBibRef: String(row?.local_bib_ref || ref).trim()
+        };
+      } catch (err) {
+        throw err;
+      }
+    }
+
     function normalizeServiceStateRow(row) {
       if (!row || typeof row !== "object") return null;
       const allowReservationsRaw = row.allow_reservations;
@@ -1775,7 +1865,7 @@
       }
     }
 
-    async function reserve(bib_ref) {
+    async function reserve(bib_ref, bookRow = {}, libraryContext = {}) {
       setStatus("", "");
 
       if (publicServiceState?.allow_reservations === false) {
@@ -1800,15 +1890,48 @@
         return;
       }
 
-      const { error } = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
-        p_user_id: session.user.id,
-        p_bib_refs: [bib_ref],
-        p_expires_at: null,
-        p_notes: "Reserva criada pela página pública do livro."
-      });
+      let reservaError = null;
+      try {
+        const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, bib_ref, libraryContext);
+        if (holdingAttempt?.resolved) {
+          const byHoldings = await supabase.rpc("fn_v2_create_reserva_by_holdings", {
+            p_user_id: session.user.id,
+            p_holding_ids: [holdingAttempt.holdingId],
+            p_expires_at: null,
+            p_notes: "Reserva criada pela página pública do livro."
+          });
 
-      if (error) {
-        if (isDuplicateReservaErrorMessage(error.message)) {
+          if (!byHoldings.error) {
+            currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+            setReserveButtonState({
+              key: "already_reserved",
+              label: "Já reservado na sua conta",
+              cls: "ok",
+              canReserve: false,
+              allowLoginReserve: false,
+              reserveTitle: "Já reservado na sua conta"
+            });
+            setStatus("Reserva registrada.", "ok");
+            return;
+          }
+
+          if (!isMissingFunctionError(byHoldings.error) && !canFallbackHoldingResolutionError(byHoldings.error)) {
+            reservaError = byHoldings.error;
+          }
+        }
+      } catch (err) {
+        reservaError = err;
+      }
+
+      if (!reservaError) {
+        const byBibRef = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
+          p_user_id: session.user.id,
+          p_bib_refs: [bib_ref],
+          p_expires_at: null,
+          p_notes: "Reserva criada pela página pública do livro."
+        });
+
+        if (!byBibRef.error) {
           currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
           setReserveButtonState({
             key: "already_reserved",
@@ -1818,23 +1941,28 @@
             allowLoginReserve: false,
             reserveTitle: "Já reservado na sua conta"
           });
-          setStatus("Este livro já está reservado na sua conta.", "ok");
+          setStatus("Reserva registrada.", "ok");
           return;
         }
-        setStatus("Não foi possível reservar: " + error.message, "warn");
+
+        reservaError = byBibRef.error;
+      }
+
+      if (reservaError && isDuplicateReservaErrorMessage(reservaError.message)) {
+        currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+        setReserveButtonState({
+          key: "already_reserved",
+          label: "Já reservado na sua conta",
+          cls: "ok",
+          canReserve: false,
+          allowLoginReserve: false,
+          reserveTitle: "Já reservado na sua conta"
+        });
+        setStatus("Este livro já está reservado na sua conta.", "ok");
         return;
       }
 
-      currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
-      setReserveButtonState({
-        key: "already_reserved",
-        label: "Já reservado na sua conta",
-        cls: "ok",
-        canReserve: false,
-        allowLoginReserve: false,
-        reserveTitle: "Já reservado na sua conta"
-      });
-      setStatus("Reserva registrada.", "ok");
+      setStatus("Não foi possível reservar: " + String(reservaError?.message || reservaError || "erro desconhecido"), "warn");
     }
 
     async function loadBook() {
@@ -2285,7 +2413,7 @@
         }
       });
 
-      $("btnReservar").addEventListener("click", () => reserve(bib_ref));
+      $("btnReservar").addEventListener("click", () => reserve(bib_ref, data, libraryContext));
     }
 
     await setupContaButton();
