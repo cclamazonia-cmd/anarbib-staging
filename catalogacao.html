@@ -1805,7 +1805,7 @@
       <div class="panel-header">
         <div>
           <h3>Fichas de livros</h3>
-          <p>Crie ou edite um rascunho de livro antes de publicar no catálogo.</p>
+          <p>Crie ou edite um rascunho da ficha comum do documento antes de publicar no catálogo.</p>
         </div>
         <div class="inline">
           <span id="bookDraftModePill" class="pill info">Novo rascunho</span>
@@ -1844,9 +1844,9 @@
             <input type="hidden" id="bookAction" value="create" />
 
             <div class="field mode-complete-only">
-              <label for="bookBibRef">Referência</label>
-              <input id="bookBibRef" type="text" placeholder="0000123" />
-              <small>Para ficha nova, pode deixar em branco que o sistema gera depois.</small>
+              <label for="bookBibRef">Referência local / compatibilidade</label>
+              <input id="bookBibRef" type="text" placeholder="Ref. local legada / compat" />
+              <small>Identificador local de apoio e compatibilidade. Não é o pivô principal da ficha comum.</small>
             </div>
 
             <div class="field">
@@ -2304,8 +2304,8 @@
             </div>
 
             <div class="form-flow-break">
-              <strong>Exemplar digital / leitura</strong>
-              <span>Vincule aqui um PDF já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
+              <strong>Recurso digital / leitura</strong>
+              <span>Vincule aqui um recurso digital já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2314,8 +2314,8 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">PDF principal em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o PDF principal.</div>
+                    <h4 class="section-title">Recurso digital principal em edição</h4>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o recurso digital principal.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -2329,7 +2329,7 @@
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
                     <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho. O multi-CRUD virá depois.</div>
                   </div>
-                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado neste rascunho.</div>
+                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
@@ -2373,7 +2373,7 @@
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalIsPrimary" type="checkbox" checked />
-                    <span>PDF principal desta ficha</span>
+                    <span>Recurso digital principal desta ficha</span>
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalBibliographicMatch" type="checkbox" />
@@ -2381,7 +2381,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF principal carregado neste formulário.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital principal carregado neste formulário.</div>
               </div>
             </div>
 
@@ -2478,7 +2478,7 @@
       <div class="panel-header">
         <div>
           <h3>Fichas de autores</h3>
-          <p>Crie ou edite perfis de autor com fonte informada e publicação em lote.</p>
+          <p>Crie ou edite perfis de autor / autoridade com fonte informada e publicação em lote.</p>
         </div>
         <div class="inline">
           <span id="authorDraftModePill" class="pill info">Novo rascunho</span>
@@ -2709,7 +2709,7 @@
       <div class="panel-header">
         <div>
           <h3>Exemplares</h3>
-          <p>Crie ou edite rascunhos de exemplar com tombo, localização e observações físicas. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
+          <p>Crie ou edite rascunhos de exemplar local com tombo, localização e observações físicas. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
         </div>
         <div class="inline">
           <span id="exemplarDraftModePill" class="pill info">Novo rascunho</span>
@@ -2721,7 +2721,7 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de livros para exemplares</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas de livros ativas. Cada exemplar previsto gera uma linha própria. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Cada exemplar previsto gera uma linha própria de exemplar local. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
               <label for="exemplarLotImportId">Livros a carregar</label>
@@ -2735,7 +2735,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência local, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -2770,7 +2770,7 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência do livro</label>
+            <label for="exemplarBibRef">Referência local / compatibilidade</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
           </div>
 
@@ -2858,7 +2858,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo, CDD ou nota" />
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência local, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -2883,10 +2883,10 @@
 
         <div class="card">
           <h4>Rótulo do exemplar selecionado</h4>
-          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
+          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Referência: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Referência local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -2943,7 +2943,7 @@
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Referência: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Referência local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -3036,7 +3036,7 @@
       <div class="panel-header">
         <div>
           <h3>Lotes de publicação</h3>
-          <p>Crie lotes editoriais, agrupe rascunhos e publique por camadas o que hoje já está materializado no staging: documentos, autores e exemplares.</p>
+          <p>Crie lotes editoriais, agrupe rascunhos e publique por camadas o que hoje já está materializado no staging: fichas comuns, autoridades e exemplares locais.</p>
         </div>
       </div>
       <div class="panel-body">
@@ -3073,7 +3073,7 @@
           </div>
         </div>
 
-        <p class="hint" style="margin:16px 0 12px;">Os lotes abertos abaixo organizam rascunhos mistos, mas a publicação continua tipada: documento, autor e exemplar não são a mesma camada editorial.</p>
+        <p class="hint" style="margin:16px 0 12px;">Os lotes abertos abaixo organizam rascunhos mistos, mas a publicação continua tipada: ficha comum, autoridade e exemplar local não são a mesma camada editorial.</p>
         <div style="margin-top:16px;" id="batchListWrap" class="table-wrap"></div>
       </div>
     </section>
@@ -4399,7 +4399,7 @@
       const duplicateLabel = duplicate.sort_name || duplicate.preferred_name || `#${duplicate.id}`;
       showMessage(
         refs.authorMessage,
-        `Autor já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo duplicado antes de ${mode}.`,
+        `Autoridade já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar um novo duplicado antes de ${mode}.`,
         'info'
       );
       return duplicate;
@@ -4427,7 +4427,7 @@
         : (hasYear ? 'título + autoria + ano já existentes' : 'título + autoria já existentes');
       showMessage(
         refs.bookMessage,
-        `Livro já existente no catálogo (${duplicateLabel}). Abri a ficha existente para evitar uma duplicata antes de ${mode} (${duplicateReason}).`,
+        `Documento já existente no catálogo (${duplicateLabel}). Abri a ficha comum existente para evitar uma duplicata antes de ${mode} (${duplicateReason}).`,
         'info'
       );
       return duplicate;
@@ -5309,7 +5309,7 @@
       const wrapNode = refs.bookDigitalListWrap;
       if (!summaryNode || !wrapNode) return;
       if (!records.length) {
-        summaryNode.textContent = 'Nenhum recurso digital vinculado neste rascunho.';
+        summaryNode.textContent = 'Nenhum recurso digital vinculado a esta ficha ainda.';
         wrapNode.innerHTML = '';
         return;
       }
@@ -5337,7 +5337,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) nesta ficha · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o recurso digital principal.`;
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
         const familyCount = group.items.length;
@@ -5426,7 +5426,7 @@
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
-        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF principal carregado neste formulário.';
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital principal carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
@@ -5499,7 +5499,7 @@
     }
 
     async function saveBookDraftDigitalResource(draftId) {
-      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de editar o PDF principal.');
+      if (!draftId) throw new Error('Salve primeiro o rascunho da ficha comum antes de editar o recurso digital principal.');
       const normalized = buildBookDraftDigitalResourcePayload(draftId);
       if (normalized.mode === 'empty') {
         if (normalized.resourceId) {
@@ -9341,7 +9341,7 @@
         return;
       }
 
-      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
+      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar local validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
     }
 
     async function loadExemplarBatchQueue() {
@@ -9415,13 +9415,13 @@
         } else if (!snapshot.totalVisible) {
           refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) de exemplar local para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -9532,7 +9532,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar local validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -9698,7 +9698,7 @@
         refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos carregada ainda.';
         return;
       }
-      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
+      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) derivados de exemplares locais nesta fila; ${visible} visível(is) com os filtros atuais.`;
     }
 
     async function validateLabelDraftIds(ids = []) {
@@ -9757,7 +9757,7 @@
       renderLabelBatchFilterSummary(visibleItems);
 
       if (!visibleItems.length) {
-        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo pendente corresponde aos filtros atuais.</div>';
+        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo derivado pendente corresponde aos filtros atuais.</div>';
         return;
       }
 
@@ -9838,7 +9838,7 @@
       }
 
       if (!items.length) {
-        refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo de documento, autoridade ou exemplar local foi encontrado com os filtros atuais.</div>';
+        refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo de ficha comum, autoridade ou exemplar local foi encontrado com os filtros atuais.</div>';
         return;
       }
 
@@ -9978,7 +9978,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
+            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial ativa.', 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -10197,7 +10197,7 @@
       const existingDraft = Array.isArray(existingDrafts) ? existingDrafts[0] : null;
       if (existingDraft?.id) {
         await fetchDraftAndEdit('author', Number(existingDraft.id));
-        showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${existingDraft.id}).`, 'ok');
+        showMessage(refs.catalogMessage, `Rascunho de autoridade já aberto (#${existingDraft.id}).`, 'ok');
         return Number(existingDraft.id);
       }
 
@@ -10208,10 +10208,10 @@
       });
       if (error) throw error;
       const createdDraftId = extractRpcNumericId(data, ['create_author_draft_from_author', 'p_draft_id']);
-      if (!createdDraftId) throw new Error('O rascunho de autor foi criado, mas o retorno do ID veio em um formato inesperado.');
+      if (!createdDraftId) throw new Error('O rascunho de autoridade foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de autor criado (#${createdDraftId}).`, 'ok');
+      showMessage(refs.catalogMessage, `Rascunho de edição de autoridade criado (#${createdDraftId}).`, 'ok');
       await fetchDraftAndEdit('author', createdDraftId);
       return createdDraftId;
     }
@@ -10576,7 +10576,7 @@
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar ou posse local encontrado neste recorte.</div>';
+        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar local ou posse local encontrado neste recorte.</div>';
         return;
       }
       refs.catalogExemplarsWrap.innerHTML = `
@@ -10802,7 +10802,7 @@
         }
         resetBookDigitalResourceFields();
         syncBookDraftVisualState();
-        showMessage(refs.bookMessage, 'PDF desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o PDF na ficha publicada.', 'ok');
+        showMessage(refs.bookMessage, 'Recurso digital principal desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o recurso na ficha publicada.', 'ok');
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       }
@@ -10821,8 +10821,8 @@
         const duplicate = currentPublishedBookId ? null : await guardBookDuplicateBeforeSaveOrPublish('salvar este rascunho');
         if (duplicate) return;
         const payload = await reuseExistingDraftIdIfNeeded('book_drafts', getBookDraftPayload(), 'published_book_id');
-        if (!payload.titulo) throw new Error('Informe o título do livro.');
-        const saved = await saveDraft('book_drafts', payload, refs.bookMessage, 'Rascunho de livro salvo com sucesso.');
+        if (!payload.titulo) throw new Error('Informe o título do documento.');
+        const saved = await saveDraft('book_drafts', payload, refs.bookMessage, 'Rascunho de ficha comum salvo com sucesso.');
         const warnings = [];
         try {
           await saveBookDraftContributors(saved.id);
@@ -10832,13 +10832,13 @@
         try {
           await saveBookDraftDigitalResource(saved.id);
         } catch (digitalError) {
-          warnings.push(`não consegui gravar o PDF vinculado: ${digitalError.message}`);
+          warnings.push(`não consegui gravar o recurso digital principal: ${digitalError.message}`);
         }
         await fillBookForm(saved);
         if (warnings.length) {
           showMessage(refs.bookMessage, `Rascunho salvo, mas ${warnings.join(' ; ')}.`, 'error');
         } else {
-          showMessage(refs.bookMessage, 'Rascunho de livro salvo com sucesso.', 'ok');
+          showMessage(refs.bookMessage, 'Rascunho de ficha comum salvo com sucesso.', 'ok');
         }
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
@@ -10854,7 +10854,7 @@
         const payload = await reuseExistingDraftIdIfNeeded('author_drafts', getAuthorDraftPayload(), 'published_author_id');
         if (!payload.preferred_name) throw new Error('Informe o nome do autor em Nome, SOBRENOME.');
         if (payload.published_author_id) payload.action = 'update';
-        const saved = await saveDraft('author_drafts', payload, refs.authorMessage, 'Rascunho de autor salvo com sucesso.');
+        const saved = await saveDraft('author_drafts', payload, refs.authorMessage, 'Rascunho de autoridade salvo com sucesso.');
         fillAuthorForm(saved);
       } catch (error) {
         showMessage(refs.authorMessage, error.message, 'error');
@@ -10865,9 +10865,9 @@
       event.preventDefault();
       try {
         const payload = await reuseExistingDraftIdIfNeeded('exemplar_drafts', getExemplarDraftPayload(), 'published_exemplar_id');
-        if (!payload.target_bib_ref || !payload.tombo) throw new Error('Informe a referência do livro e o tombo do exemplar.');
+        if (!payload.target_bib_ref || !payload.tombo) throw new Error('Informe a referência local e o tombo do exemplar local.');
         await guardExemplarTomboBeforePersist(payload, refs.exemplarMessage);
-        const saved = await saveDraft('exemplar_drafts', payload, refs.exemplarMessage, 'Rascunho de exemplar salvo com sucesso.');
+        const saved = await saveDraft('exemplar_drafts', payload, refs.exemplarMessage, 'Rascunho de exemplar local salvo com sucesso.');
         fillExemplarForm(saved);
       } catch (error) {
         showMessage(refs.exemplarMessage, error.message, 'error');
@@ -11051,7 +11051,7 @@
         setBookDraftVisualState('published');
         showPublishedPopup('book');
         const publishMessage = `${contributorSyncMessage}${authorLinkMessage}${digitalSyncMessage}`;
-        showMessage(refs.bookMessage, `Rascunho de livro publicado com sucesso.${publishMessage}`, publishMessage ? 'error' : 'ok');
+        showMessage(refs.bookMessage, `Rascunho de ficha comum publicado com sucesso.${publishMessage}`, publishMessage ? 'error' : 'ok');
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       } finally {
@@ -11128,10 +11128,10 @@
         setAuthorDraftVisualState('published');
         setTab(currentTab);
         showPublishedPopup('author');
-        showMessage(refs.authorMessage, `Rascunho de autor publicado com sucesso.${authorLinkMessage}`, authorLinkMessage ? 'error' : 'ok');
+        showMessage(refs.authorMessage, `Rascunho de autoridade publicado com sucesso.${authorLinkMessage}`, authorLinkMessage ? 'error' : 'ok');
       } catch (error) {
         const message = /duplicate|already exists|já existe|unique/i.test(String(error?.message || ''))
-          ? 'autor já existente'
+          ? 'autoridade já existente'
           : error.message;
         showMessage(refs.authorMessage, message, 'error');
       } finally {
@@ -11163,7 +11163,7 @@
         labelDraftBaseline = serializeLabelFormState();
         setLabelDraftVisualState('published');
         showPublishedPopup('exemplar');
-        showMessage(refs.exemplarMessage, 'Rascunho de exemplar publicado com sucesso.', 'ok');
+        showMessage(refs.exemplarMessage, 'Rascunho de exemplar local publicado com sucesso.', 'ok');
       } catch (error) {
         showMessage(refs.exemplarMessage, error.message, 'error');
       } finally {
@@ -11233,7 +11233,7 @@
         await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
         setTab(currentTab);
         updateStats();
-        showMessage(refs.batchMessage, `Lote publicado por camadas. Documentos: ${data.books_published}, autores: ${data.authors_published}, exemplares: ${data.exemplars_published}.`, 'ok');
+        showMessage(refs.batchMessage, `Lote publicado por camadas. Fichas comuns: ${data.books_published}, autoridades: ${data.authors_published}, exemplares locais: ${data.exemplars_published}.`, 'ok');
       } catch (error) {
         showMessage(refs.batchMessage, error.message, 'error');
       }
