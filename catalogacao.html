@@ -1430,6 +1430,56 @@
       font-size: .88em;
     }
 
+    .book-digital-list-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .book-digital-list-item {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .book-digital-list-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .book-digital-list-title {
+      color: #fff;
+      font-size: .95rem;
+      font-weight: 800;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .book-digital-list-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .book-digital-list-meta {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+
     @media (max-width: 1520px) {
       .statusbar,
       .grid.cols-4 {
@@ -2223,14 +2273,23 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">PDF vinculado</h4>
-                    <div class="hint">Por enquanto, vincule manualmente um PDF já enviado ao armazenamento. O envio direto pelo formulário pode vir depois.</div>
+                    <h4 class="section-title">PDF principal em edição</h4>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o PDF principal.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
                     <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
                     <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
                   </div>
+                </div>
+
+                <div class="card" style="padding:12px; margin-top:12px;">
+                  <div>
+                    <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
+                    <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho. O multi-CRUD virá depois.</div>
+                  </div>
+                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado neste rascunho.</div>
+                  <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
                 <div class="grid cols-3">
@@ -2281,7 +2340,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF vinculado neste rascunho.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF principal carregado neste formulário.</div>
               </div>
             </div>
 
@@ -3110,6 +3169,7 @@
       queueSelection: new Set(),
       catalogacaoMode: 'simple',
       authorDraftLinks: [],
+      bookDigitalDraftResources: [],
     };
 
     const BOOK_ACQUISITION_MODE_OPTIONS = [
@@ -3368,6 +3428,8 @@
       bookContributorsWrap: el('bookContributorsWrap'),
       bookResponsibilityExtraWrap: el('bookResponsibilityExtraWrap'),
       bookDigitalLinkedSummary: el('bookDigitalLinkedSummary'),
+      bookDigitalListSummary: el('bookDigitalListSummary'),
+      bookDigitalListWrap: el('bookDigitalListWrap'),
       bookCoverFileName: el('bookCoverFileName'),
       authorPhotoFileName: el('authorPhotoFileName'),
       labelBatchPreviewId: el('labelBatchPreviewId'),
@@ -5076,6 +5138,83 @@
       if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !bibRef;
     }
 
+    function getBookDigitalResourceTypeLabel(resourceType = '') {
+      const labels = {
+        pdf_publico: 'PDF público',
+        pdf_restrito: 'PDF restrito',
+        audio: 'Áudio',
+        video: 'Vídeo',
+        image: 'Imagem',
+        link_externo: 'Link externo',
+      };
+      return labels[String(resourceType || '').trim()] || 'Recurso digital';
+    }
+
+    function getBookDigitalUsageLabel(usageType = '') {
+      const labels = {
+        leitura_online: 'Leitura online',
+        download: 'Download',
+        escuta_online: 'Escuta online',
+        visualizacao_online: 'Visualização online',
+        link_externo: 'Link externo',
+      };
+      return labels[String(usageType || '').trim()] || '';
+    }
+
+    function getBookDigitalResourceDisplayTitle(record = {}) {
+      return String(record?.label || record?.attribution_text || record?.source_name || '').trim()
+        || (record?.storage_bucket && record?.storage_path ? `${record.storage_bucket}/${record.storage_path}` : '')
+        || 'Recurso sem identificação complementar';
+    }
+
+    function renderBookDigitalResourceList(records = []) {
+      state.bookDigitalDraftResources = Array.isArray(records) ? [...records] : [];
+      const summaryNode = refs.bookDigitalListSummary;
+      const wrapNode = refs.bookDigitalListWrap;
+      if (!summaryNode || !wrapNode) return;
+      if (!records.length) {
+        summaryNode.textContent = 'Nenhum recurso digital vinculado neste rascunho.';
+        wrapNode.innerHTML = '';
+        return;
+      }
+      const primaryCount = records.filter(record => !!record?.is_primary).length;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
+      wrapNode.innerHTML = records.map((record) => {
+        const title = sanitize(getBookDigitalResourceDisplayTitle(record));
+        const typeLabel = sanitize(getBookDigitalResourceTypeLabel(record?.resource_type || ''));
+        const usageLabel = sanitize(getBookDigitalUsageLabel(record?.usage_type || ''));
+        const bucketPath = [record?.storage_bucket || '', record?.storage_path || ''].filter(Boolean).join('/');
+        const metaLine = [
+          typeLabel,
+          usageLabel,
+          record?.language_code ? `idioma: ${sanitize(record.language_code)}` : '',
+          bucketPath ? sanitize(bucketPath) : '',
+        ].filter(Boolean).join(' · ');
+        const sourceLine = [
+          record?.source_name ? `fonte: ${sanitize(record.source_name)}` : '',
+          record?.source_url ? sanitize(record.source_url) : '',
+          record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
+        ].filter(Boolean).join(' · ');
+        const badgeHtml = [
+          record?.is_primary ? '<span class="pill info">principal</span>' : '',
+          (String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico')
+            ? '<span class="pill ok">público</span>'
+            : '<span class="pill warn">restrito</span>',
+          record?.bibliographic_match_validated ? '<span class="pill ok">correspondência validada</span>' : '',
+        ].filter(Boolean).join('');
+        return `
+          <div class="book-digital-list-item">
+            <div class="book-digital-list-top">
+              <div class="book-digital-list-title">${title}</div>
+              <div class="book-digital-list-badges">${badgeHtml}</div>
+            </div>
+            <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
+            ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
     function fillBookDigitalResourceFields(record = null) {
       el('bookDigitalDraftResourceId').value = record?.id || '';
       el('bookDigitalLanguageCode').value = record?.language_code || '';
@@ -5092,6 +5231,7 @@
     }
 
     function resetBookDigitalResourceFields() {
+      renderBookDigitalResourceList([]);
       fillBookDigitalResourceFields(null);
     }
 
@@ -5105,11 +5245,11 @@
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
-        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF vinculado neste rascunho.';
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF principal carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
-      refs.bookDigitalLinkedSummary.textContent = `PDF vinculado: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      refs.bookDigitalLinkedSummary.textContent = `PDF principal em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
       updateBookDigitalActionButtons();
     }
 
@@ -5121,10 +5261,11 @@
         .select('*')
         .eq('book_draft_id', Number(draftId))
         .order('is_primary', { ascending: false })
-        .order('id', { ascending: true })
-        .limit(1);
+        .order('id', { ascending: true });
       if (error) throw error;
-      const record = Array.isArray(data) && data.length ? data[0] : null;
+      const records = Array.isArray(data) ? data : [];
+      renderBookDigitalResourceList(records);
+      const record = records.length ? records[0] : null;
       fillBookDigitalResourceFields(record);
       return record;
     }
@@ -5148,7 +5289,7 @@
       }
 
       if (!storageBucket || !storagePath) {
-        throw new Error('Para vincular um PDF, informe a pasta no armazenamento e o caminho do arquivo.');
+        throw new Error('Para editar o PDF principal, informe a pasta no armazenamento e o caminho do arquivo.');
       }
 
       return {
@@ -5171,20 +5312,20 @@
           rights_status: rightsStatus || null,
           is_primary: isPrimary,
           bibliographic_match_validated: bibliographicMatchValidated,
-          label: attributionText || sourceName || 'PDF vinculado',
+          label: attributionText || sourceName || 'PDF principal',
         }
       };
     }
 
     async function saveBookDraftDigitalResource(draftId) {
-      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de vincular o PDF.');
+      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de editar o PDF principal.');
       const normalized = buildBookDraftDigitalResourcePayload(draftId);
       if (normalized.mode === 'empty') {
         if (normalized.resourceId) {
           const { error } = await supabase.from('book_draft_digital_resources').delete().eq('id', Number(normalized.resourceId));
           if (error) throw error;
         }
-        fillBookDigitalResourceFields(null);
+        await loadBookDraftDigitalResource(draftId);
         return null;
       }
 
@@ -5198,7 +5339,7 @@
           .select()
           .single();
         if (error) throw error;
-        fillBookDigitalResourceFields(data);
+        await loadBookDraftDigitalResource(draftId);
         return data;
       }
 
@@ -5208,14 +5349,14 @@
         .select()
         .single();
       if (error) throw error;
-      fillBookDigitalResourceFields(data);
+      await loadBookDraftDigitalResource(draftId);
       return data;
     }
 
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF para abri-lo.');
+      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF principal para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
       let resolvedUrl = signedData?.signedUrl || '';
       if (!resolvedUrl) {
