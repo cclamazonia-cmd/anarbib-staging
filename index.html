@@ -1065,8 +1065,6 @@ const AUTHOR_PAGE_VERSION = '20260312-3';
 const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
 const CATALOG_STRUCTURAL_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global,library_id,library_slug,library_name';
 const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint';
-const CATALOG_LEGACY_WITH_AUTHORS_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
-const CATALOG_LEGACY_SELECT = 'id,bib_ref,autor,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,library_id,library_slug,library_name,available_count,loanable,created_at';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1120,7 +1118,7 @@ let lastQuery = { tokens: [], phrases: [] };
 let sortKey = 'relevance';
 let sortDir = 'asc';
 let authState = { user: null, isLibrarian: false, accessToken: null, library_id: null, library_slug: '', library_name: '', default_library_id: null, default_library_slug: '', default_library_name: '' };
-let catalogSourceVariant = 'legacy';
+let catalogSourceVariant = '';
 let personalizedAvailabilityReady = false;
 let serviceState = null;
 let selectedLibraryKeys = new Set();
@@ -2700,27 +2698,8 @@ async function loadRowsFromSupabase() {
         Accept: 'application/json'
       }
     });
-    attempts.push({
-      sourceVariant: 'legacy_with_authors',
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_with_authors?select=${encodeURIComponent(CATALOG_LEGACY_WITH_AUTHORS_SELECT)}&order=titulo.asc`,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json'
-      }
-    });
-    attempts.push({
-      sourceVariant: 'legacy',
-      url: `${SUPABASE_URL}/rest/v1/v_books_public?select=${encodeURIComponent(CATALOG_LEGACY_SELECT)}&order=titulo.asc`,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json'
-      }
-    });
-
     let data = null;
-    let sourceVariant = 'legacy';
+    let sourceVariant = '';
     let lastStatus = null;
     let lastText = '';
 
@@ -2828,7 +2807,7 @@ async function loadRowsFromSupabase() {
         _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
-        _usingCanonicalAuthorView: sourceVariant !== 'legacy'
+        _usingCanonicalAuthorView: true
       };
     });
   } catch (e) {
