@@ -1568,10 +1568,15 @@
       font-size: .9em;
     }
 
-    .catalog-published-stack {
-      display: flex;
-      flex-direction: column;
+    .catalog-published-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
+      align-items: start;
+    }
+
+    .catalog-published-card {
+      min-width: 0;
     }
 
     .book-title-stack {
@@ -1606,9 +1611,23 @@
       width: 100%;
     }
 
-    #catalogPanel table {
-      min-width: 100%;
+    #catalogPanel .catalog-published-card {
+      min-width: 0;
+    }
+
+    #catalogPanel .catalog-published-card .table-wrap {
+      overflow: auto;
+    }
+
+    #catalogPanel .catalog-published-card table {
+      min-width: 860px;
       table-layout: auto;
+    }
+
+    @media (max-width: 1400px) {
+      .catalog-published-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
   </style>
@@ -2962,7 +2981,7 @@
           <div class="field">
             <label for="catalogSearch">Buscar livros e autores</label>
             <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo as tabelas de livros publicados e de autores publicados.</small>
+            <small>Este campo único filtra ao mesmo tempo os quadros de livros, documentos não-livro e autores publicados.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
@@ -2976,13 +2995,17 @@
 
         <div id="catalogMessage" class="message"></div>
 
-        <div class="card" style="margin-bottom:16px;">
-          <h4>Livros publicados</h4>
-          <div id="catalogBooksWrap" class="table-wrap"></div>
-        </div>
-
-        <div class="catalog-published-stack">
-          <div class="card">
+        <div class="catalog-published-grid">
+          <div class="card catalog-published-card">
+            <h4>Livros, brochuras e publicações seriadas</h4>
+            <div id="catalogBooksWrap" class="table-wrap"></div>
+          </div>
+          <div class="card catalog-published-card">
+            <h4>Documentos não-livro e materiais especiais</h4>
+            <p class="hint" style="margin:0 0 12px;">Aqui entram tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais fora da leitura provisória de livros / brochuras / periódicos / boletins.</p>
+            <div id="catalogOtherDocsWrap" class="table-wrap"></div>
+          </div>
+          <div class="card catalog-published-card">
             <h4>Autores publicados</h4>
             <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
               <div class="field">
@@ -3014,14 +3037,9 @@
             </div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
-          <div class="card">
+          <div class="card catalog-published-card">
             <h4>Exemplares publicados</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
-          </div>
-          <div class="card">
-            <h4>Outros tipos de documentos</h4>
-            <p class="hint" style="margin:0 0 12px;">Separação visual provisória para tipos documentais que não entram aqui, por enquanto, na leitura de livros / brochuras / periódicos / boletins.</p>
-            <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
         </div>
       </div>
@@ -4496,6 +4514,10 @@
         book.marc_json?.colecao,
         book.ano,
         book.titulo_periodico,
+        book.tipo_material,
+        book.material_type,
+        getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''),
+        getCatalogOtherDocumentContextLine(book),
       ].filter(Boolean).join(' '));
     }
 
@@ -4520,6 +4542,24 @@
       const key = normalizeCatalogMaterialType(value);
       return labels[key] || 'Sem tipo informado';
     }
+    function getCatalogOtherDocumentContextLine(book = {}) {
+      const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
+      const detail = typeof getBookResolvedMaterialDetail === 'function' ? getBookResolvedMaterialDetail(book) : {};
+      const piecesByType = {
+        tract: [detail.emitter_org, detail.tract_campaign, detail.diffusion_place, detail.physical_format],
+        cartaz: [detail.emitter_org, detail.tract_campaign, detail.diffusion_place, detail.physical_format],
+        audio: [detail.audio_duration, detail.audio_support, detail.audio_language],
+        audiovisual: [detail.audiovisual_duration, detail.audiovisual_support, detail.audiovisual_language],
+        recurso_digital: [detail.digital_native_access, detail.digital_native_usage, detail.digital_native_restriction],
+        dossie: [detail.dossier_scope, detail.dossier_period, detail.dossier_organizations],
+      };
+      const pieces = (piecesByType[materialType] || []).map(value => compactSpaces(value || '')).filter(Boolean);
+      if (pieces.length) return pieces.join(' · ');
+      const fallback = compactSpaces(book.editora || book.publisher || book.notes || book.notas || '');
+      if (!fallback) return '—';
+      return fallback.length > 140 ? `${fallback.slice(0, 137)}...` : fallback;
+    }
+
 
     function isCatalogBookLikeItem(book = {}) {
       const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
@@ -9662,7 +9702,7 @@
       }
       items = sortCatalogItems('otherDocs', items);
       if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum outro tipo de documento encontrado.</div>';
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro encontrado.</div>';
         return;
       }
       refs.catalogOtherDocsWrap.innerHTML = `
@@ -9671,9 +9711,10 @@
             <tr>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Tipo', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autor(a) / responsável', 'otherDocs', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
+              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
+              <th>Leitura rápida</th>
               <th class="sortable">${renderSortableHeader('Ano', 'otherDocs', 'year')}</th>
               <th>Operações</th>
             </tr>
@@ -9686,6 +9727,7 @@
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
+                <td>${sanitize(getCatalogOtherDocumentContextLine(book))}</td>
                 <td>${sanitize(book.ano || '—')}</td>
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
               </tr>`).join('')}
