@@ -5231,24 +5231,6 @@
       return `família prevista: ${getBookDigitalPlannedFamilyMeta(record).label}`;
     }
 
-    function getBookDigitalResourceLocationStatusLabel(record = {}) {
-      const bucket = String(record?.storage_bucket || '').trim();
-      const path = String(record?.storage_path || '').trim();
-      const sourceUrl = String(record?.source_url || '').trim();
-      if (bucket && path && sourceUrl) return 'armazenamento local + fonte externa';
-      if (bucket && path) return 'armazenamento local';
-      if (sourceUrl) return 'fonte externa';
-      return 'sem caminho local ainda';
-    }
-
-    function getBookDigitalResourceLocationSortRank(record = {}) {
-      const label = getBookDigitalResourceLocationStatusLabel(record);
-      if (label === 'armazenamento local + fonte externa') return 0;
-      if (label === 'armazenamento local') return 1;
-      if (label === 'fonte externa') return 2;
-      return 3;
-    }
-
     function getBookDigitalResourceDisplayTitle(record = {}) {
       return String(record?.label || record?.attribution_text || record?.source_name || '').trim()
         || (record?.storage_bucket && record?.storage_path ? `${record.storage_bucket}/${record.storage_path}` : '')
@@ -5267,11 +5249,30 @@
       if (leftCurrent !== rightCurrent) return leftCurrent ? -1 : 1;
       if (!!left?.is_primary !== !!right?.is_primary) return left?.is_primary ? -1 : 1;
       if (isBookDigitalResourcePublic(left) !== isBookDigitalResourcePublic(right)) return isBookDigitalResourcePublic(left) ? -1 : 1;
-      const leftLocationRank = getBookDigitalResourceLocationSortRank(left);
-      const rightLocationRank = getBookDigitalResourceLocationSortRank(right);
-      if (leftLocationRank !== rightLocationRank) return leftLocationRank < rightLocationRank ? -1 : 1;
       if (!!left?.bibliographic_match_validated !== !!right?.bibliographic_match_validated) return left?.bibliographic_match_validated ? -1 : 1;
       return compareSortableValues(Number(left?.id || 0), Number(right?.id || 0), 'asc');
+    }
+
+    function getBookDigitalFamilyLocationSummary(records = []) {
+      const counts = {
+        localAndExternal: 0,
+        localOnly: 0,
+        externalOnly: 0,
+        noLocalPath: 0,
+      };
+      (Array.isArray(records) ? records : []).forEach((record) => {
+        const label = getBookDigitalResourceLocationStatusLabel(record);
+        if (label === 'armazenamento local + fonte externa') counts.localAndExternal += 1;
+        else if (label === 'armazenamento local') counts.localOnly += 1;
+        else if (label === 'fonte externa') counts.externalOnly += 1;
+        else counts.noLocalPath += 1;
+      });
+      return [
+        counts.localAndExternal ? `${counts.localAndExternal} local + externo` : '',
+        counts.localOnly ? `${counts.localOnly} local` : '',
+        counts.externalOnly ? `${counts.externalOnly} externo` : '',
+        counts.noLocalPath ? `${counts.noLocalPath} sem caminho local` : '',
+      ].filter(Boolean).join(' · ');
     }
 
     function renderBookDigitalResourceList(records = []) {
@@ -5328,7 +5329,6 @@
             record?.source_url ? sanitize(record.source_url) : '',
             record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
           ].filter(Boolean).join(' · ');
-          const linkStatusLine = `vínculo: ${sanitize(getBookDigitalResourceLocationStatusLabel(record))}`;
           const badgeHtml = [
             `<span class="pill info">${typeLabel}</span>`,
             usageLabel ? `<span class="pill info">${usageLabel}</span>` : '',
@@ -5347,7 +5347,6 @@
                 <div class="book-digital-list-badges">${badgeHtml}</div>
               </div>
               <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
-              <div class="book-digital-list-meta">${linkStatusLine}</div>
               ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
             </div>
           `;
@@ -5356,7 +5355,7 @@
           <div class="book-digital-family-group">
             <div class="book-digital-family-head">
               <div class="book-digital-family-title">Família prevista: ${familyTitle}</div>
-              <div class="book-digital-family-count">${familyCount} recurso(s)</div>
+              <div class="book-digital-family-count">${familyCount} recurso(s)${getBookDigitalFamilyLocationSummary(group.items) ? ` · ${sanitize(getBookDigitalFamilyLocationSummary(group.items))}` : ''}</div>
             </div>
             <div class="book-digital-family-items">${itemHtml}</div>
           </div>
