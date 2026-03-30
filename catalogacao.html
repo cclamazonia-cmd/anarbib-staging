@@ -1611,17 +1611,25 @@
       width: 100%;
     }
 
-    #catalogPanel .catalog-published-card {
-      min-width: 0;
+    #catalogPanel .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
     }
 
-    #catalogPanel .catalog-published-card .table-wrap {
-      overflow: auto;
-    }
-
-    #catalogPanel .catalog-published-card table {
-      min-width: 860px;
+    #catalogPanel table {
+      min-width: 980px;
       table-layout: auto;
+    }
+
+    #catalogPanel .catalog-other-docs-table {
+      min-width: 1180px;
+    }
+
+    .catalog-context-line {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+      min-width: 260px;
     }
 
     @media (max-width: 1400px) {
@@ -2979,9 +2987,9 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar livros e autores</label>
+            <label for="catalogSearch">Buscar documentos e autores</label>
             <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo os quadros de livros, documentos não-livro e autores publicados.</small>
+            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
@@ -3000,11 +3008,13 @@
             <h4>Livros, brochuras e publicações seriadas</h4>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
+
           <div class="card catalog-published-card">
             <h4>Documentos não-livro e materiais especiais</h4>
-            <p class="hint" style="margin:0 0 12px;">Aqui entram tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais fora da leitura provisória de livros / brochuras / periódicos / boletins.</p>
+            <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
+
           <div class="card catalog-published-card">
             <h4>Autores publicados</h4>
             <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
@@ -3037,6 +3047,7 @@
             </div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
+
           <div class="card catalog-published-card">
             <h4>Exemplares publicados</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
@@ -4542,24 +4553,6 @@
       const key = normalizeCatalogMaterialType(value);
       return labels[key] || 'Sem tipo informado';
     }
-    function getCatalogOtherDocumentContextLine(book = {}) {
-      const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
-      const detail = typeof getBookResolvedMaterialDetail === 'function' ? getBookResolvedMaterialDetail(book) : {};
-      const piecesByType = {
-        tract: [detail.emitter_org, detail.tract_campaign, detail.diffusion_place, detail.physical_format],
-        cartaz: [detail.emitter_org, detail.tract_campaign, detail.diffusion_place, detail.physical_format],
-        audio: [detail.audio_duration, detail.audio_support, detail.audio_language],
-        audiovisual: [detail.audiovisual_duration, detail.audiovisual_support, detail.audiovisual_language],
-        recurso_digital: [detail.digital_native_access, detail.digital_native_usage, detail.digital_native_restriction],
-        dossie: [detail.dossier_scope, detail.dossier_period, detail.dossier_organizations],
-      };
-      const pieces = (piecesByType[materialType] || []).map(value => compactSpaces(value || '')).filter(Boolean);
-      if (pieces.length) return pieces.join(' · ');
-      const fallback = compactSpaces(book.editora || book.publisher || book.notes || book.notas || '');
-      if (!fallback) return '—';
-      return fallback.length > 140 ? `${fallback.slice(0, 137)}...` : fallback;
-    }
-
 
     function isCatalogBookLikeItem(book = {}) {
       const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
@@ -4569,6 +4562,59 @@
     function isCatalogOtherDocumentItem(book = {}) {
       const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
       return !!materialType && !CATALOG_BOOKISH_MATERIAL_TYPES.has(materialType);
+    }
+
+    function buildCatalogQuickLine(parts = []) {
+      return parts.map(part => compactSpaces(String(part || ''))).filter(Boolean).join(' · ');
+    }
+
+    function getCatalogOtherDocumentContextLine(book = {}) {
+      const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
+      const detail = getBookResolvedMaterialDetail(book);
+      const parts = [];
+
+      switch (materialType) {
+        case 'tract':
+        case 'cartaz':
+          if (detail.tract_campaign) parts.push(`Campanha: ${detail.tract_campaign}`);
+          if (detail.emitter_org) parts.push(`Emissor: ${detail.emitter_org}`);
+          if (detail.diffusion_place) parts.push(`Difusão: ${detail.diffusion_place}`);
+          if (detail.approximate_date) parts.push(`Data/período: ${detail.approximate_date}`);
+          if (detail.physical_format) parts.push(`Formato: ${detail.physical_format}`);
+          break;
+        case 'audio':
+          if (detail.audio_duration) parts.push(`Duração: ${detail.audio_duration}`);
+          if (detail.audio_support) parts.push(`Suporte: ${detail.audio_support}`);
+          if (detail.audio_language) parts.push(`Língua: ${detail.audio_language}`);
+          if (detail.audio_participants) parts.push(`Intervenientes: ${detail.audio_participants}`);
+          break;
+        case 'audiovisual':
+          if (detail.audiovisual_duration) parts.push(`Duração: ${detail.audiovisual_duration}`);
+          if (detail.audiovisual_support) parts.push(`Suporte: ${detail.audiovisual_support}`);
+          if (detail.audiovisual_director) parts.push(`Realização: ${detail.audiovisual_director}`);
+          if (detail.audiovisual_access_note) parts.push(`Consulta: ${detail.audiovisual_access_note}`);
+          break;
+        case 'recurso_digital':
+          if (detail.digital_native_usage) parts.push(`Uso: ${detail.digital_native_usage}`);
+          if (detail.digital_native_access) parts.push(`Acesso: ${detail.digital_native_access}`);
+          if (detail.digital_native_restriction) parts.push(`Restrição: ${detail.digital_native_restriction}`);
+          if (detail.digital_native_url) parts.push(`URL: ${detail.digital_native_url}`);
+          break;
+        case 'dossie':
+          if (detail.dossier_period) parts.push(`Período: ${detail.dossier_period}`);
+          if (detail.dossier_organizations) parts.push(`Organizações: ${detail.dossier_organizations}`);
+          if (detail.dossier_scope) parts.push(`Escopo: ${detail.dossier_scope}`);
+          break;
+        default:
+          if (book.ano) parts.push(`Ano: ${book.ano}`);
+          if (book.editora || book.publisher) parts.push(`Responsável editorial: ${book.editora || book.publisher}`);
+          if (book.local_publicacao || book.place) parts.push(`Origem: ${book.local_publicacao || book.place}`);
+          break;
+      }
+
+      if (!parts.length && book.ano) parts.push(`Ano: ${book.ano}`);
+      if (!parts.length && (book.editora || book.publisher)) parts.push(`Responsável editorial: ${book.editora || book.publisher}`);
+      return buildCatalogQuickLine(parts) || 'Sem leitura rápida disponível.';
     }
 
     function getAuthorTrigram(name) {
@@ -9702,11 +9748,20 @@
       }
       items = sortCatalogItems('otherDocs', items);
       if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro encontrado.</div>';
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
         return;
       }
       refs.catalogOtherDocsWrap.innerHTML = `
-        <table>
+        <table class="catalog-other-docs-table">
+          <colgroup>
+            <col style="width:72px;">
+            <col style="width:112px;">
+            <col style="width:190px;">
+            <col style="width:26%;">
+            <col style="width:18%;">
+            <col style="width:34%;">
+            <col style="width:150px;">
+          </colgroup>
           <thead>
             <tr>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
@@ -9715,7 +9770,6 @@
               <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
               <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
               <th>Leitura rápida</th>
-              <th class="sortable">${renderSortableHeader('Ano', 'otherDocs', 'year')}</th>
               <th>Operações</th>
             </tr>
           </thead>
@@ -9727,8 +9781,7 @@
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td>${sanitize(getCatalogOtherDocumentContextLine(book))}</td>
-                <td>${sanitize(book.ano || '—')}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
               </tr>`).join('')}
           </tbody>
