@@ -3081,23 +3081,23 @@
       <div class="panel-header">
         <div>
           <h3>Catálogo publicado</h3>
-          <p>Busque fichas já publicadas e gere um rascunho de edição sem alterar imediatamente a versão do catálogo.</p>
+          <p>Busque aqui documentos publicados, autores publicados e exemplares já publicados. Esta área deve distinguir a ficha comum do documento, a autoridade publicada e a posse local já materializada em exemplar.</p>
         </div>
       </div>
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar documentos e autores</label>
-            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
+            <label for="catalogSearch">Buscar fichas comuns publicadas e autores</label>
+            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, tipo documental, coleção, biblioteca ou país…" />
+            <small>Este campo único filtra ao mesmo tempo os documentos publicados (ficha comum) e os autores publicados; quando houver contexto local já visível, ele também entra na busca.</small>
           </div>
           <div class="field">
-            <label for="catalogBatchId">Lote para o rascunho</label>
+            <label for="catalogBatchId">Lote para o novo rascunho</label>
             <select id="catalogBatchId"></select>
           </div>
           <div class="field">
-            <label for="catalogExemplarSearch">Buscar exemplares</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência" />
+            <label for="catalogExemplarSearch">Buscar exemplares / posse local</label>
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo, referência local, biblioteca ou localização" />
           </div>
         </div>
 
@@ -3105,18 +3105,18 @@
 
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
-            <h4>Livros, brochuras e publicações seriadas</h4>
+            <h4>Documentos publicados — livros, brochuras e publicações seriadas</h4>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Documentos não-livro e materiais especiais</h4>
+            <h4>Documentos publicados — materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Autores publicados</h4>
+            <h4>Autores publicados / autoridades publicadas</h4>
             <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
               <div class="field">
                 <label for="catalogAuthorAuthorityFilter">Tipo de autoridade</label>
@@ -3149,7 +3149,7 @@
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Exemplares publicados</h4>
+            <h4>Exemplares publicados / posse local</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -4481,6 +4481,7 @@
           publisher: item.editora || item.publisher || '',
           year: item.ano || '',
           total_exemplares: item.total_exemplares || 0,
+          library: getCatalogExemplarLibraryLabel(item),
         },
         otherDocs: {
           id: item.id,
@@ -4500,6 +4501,7 @@
         exemplars: {
           exemplar_id: item.exemplar_id,
           tombo: item.tombo || '',
+          library: getCatalogExemplarLibraryLabel(item),
           bib_ref: item.bib_ref || '',
           autor_etiqueta: item.autor_etiqueta || '',
           titulo_etiqueta: item.titulo_etiqueta || '',
@@ -4614,6 +4616,7 @@
     function getBookSearchIndex(book = {}) {
       return normalizeForSearch([
         book.bib_ref,
+        getCatalogBookLocalContextLine(book),
         book.titulo,
         book.title,
         book.display_title,
@@ -4669,6 +4672,21 @@
 
     function buildCatalogQuickLine(parts = []) {
       return parts.map(part => compactSpaces(String(part || ''))).filter(Boolean).join(' · ');
+    }
+
+    function getCatalogBookLocalContextLine(book = {}) {
+      const holder = compactSpaces(book.holder_library || book.holderLibrary || book.library_name || book.biblioteca || '');
+      const owner = compactSpaces(book.owner_library || book.ownerLibrary || '');
+      const mutual = compactSpaces(book.mutualization_status || book.mutualizationStatus || '');
+      const parts = [];
+      if (holder) parts.push(`Detentora: ${holder}`);
+      if (owner && owner !== holder) parts.push(`Proprietária: ${owner}`);
+      if (mutual) parts.push(`Rede: ${mutual}`);
+      return buildCatalogQuickLine(parts) || 'Sem contexto local visível.';
+    }
+
+    function getCatalogExemplarLibraryLabel(exemplar = {}) {
+      return compactSpaces(exemplar.library_name || exemplar.biblioteca || exemplar.holder_library || exemplar.owner_library || exemplar.library_slug || '') || '—';
     }
 
     function getCatalogOtherDocumentContextLine(book = {}) {
@@ -10014,7 +10032,7 @@
       }
       items = sortCatalogItems('books', items);
       if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
+        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum documento publicado encontrado neste recorte.</div>';
         return;
       }
       refs.catalogBooksWrap.innerHTML = `
@@ -10023,12 +10041,13 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência pública / compat', 'books', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
               <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
               <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
               <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
+              <th>Leitura local / rede</th>
             </tr>
           </thead>
           <tbody>
@@ -10042,6 +10061,7 @@
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
                 <td>${sanitize(book.total_exemplares || 0)}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogBookLocalContextLine(book))}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -10067,7 +10087,7 @@
       }
       items = sortCatalogItems('otherDocs', items);
       if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum material especial publicado encontrado neste recorte.</div>';
         return;
       }
       refs.catalogOtherDocsWrap.innerHTML = `
@@ -10085,7 +10105,7 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência pública / compat', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
               <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
               <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
@@ -10126,7 +10146,7 @@
       const existingDraftId = await findExistingActiveDraftId('book_drafts', 'published_book_id', publishedBookId);
       if (existingDraftId) {
         await fetchDraftAndEdit('book', existingDraftId);
-        showMessage(refs.catalogMessage, `Rascunho de livro já aberto (#${existingDraftId}).`, 'ok');
+        showMessage(refs.catalogMessage, `Rascunho de documento já aberto (#${existingDraftId}).`, 'ok');
         return existingDraftId;
       }
 
@@ -10140,7 +10160,7 @@
       if (!createdDraftId) throw new Error('O rascunho de edição foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de livro criado (#${createdDraftId}).`, 'ok');
+      showMessage(refs.catalogMessage, `Rascunho de edição de documento criado (#${createdDraftId}).`, 'ok');
       await fetchDraftAndEdit('book', createdDraftId);
       return createdDraftId;
     }
@@ -10515,7 +10535,7 @@
       const existingDraftId = await findExistingActiveDraftId('exemplar_drafts', 'published_exemplar_id', publishedExemplarId);
       if (existingDraftId) {
         await fetchDraftAndEdit('exemplar', existingDraftId);
-        showMessage(refs.catalogMessage, `Rascunho de exemplar já aberto (#${existingDraftId}).`, 'ok');
+        showMessage(refs.catalogMessage, `Rascunho de exemplar / posse local já aberto (#${existingDraftId}).`, 'ok');
         return existingDraftId;
       }
 
@@ -10527,7 +10547,7 @@
       if (error) throw error;
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de exemplar criado (#${data}).`, 'ok');
+      showMessage(refs.catalogMessage, `Rascunho de edição de exemplar / posse local criado (#${data}).`, 'ok');
       await fetchDraftAndEdit('exemplar', Number(data));
       return Number(data);
     }
@@ -10537,11 +10557,11 @@
       const search = normalizeForSearch(el('catalogExemplarSearch').value);
       let items = [...state.exemplars];
       if (search) {
-        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
+        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, getCatalogExemplarLibraryLabel(ex), ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location, ex.library_slug, ex.owner_library, ex.holder_library].filter(Boolean).join(' ')).includes(search));
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
+        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar ou posse local encontrado neste recorte.</div>';
         return;
       }
       refs.catalogExemplarsWrap.innerHTML = `
@@ -10551,7 +10571,8 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Biblioteca', 'exemplars', 'library')}</th>
+              <th class="sortable">${renderSortableHeader('Referência local', 'exemplars', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
               <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
@@ -10563,6 +10584,7 @@
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
                 <td>${ex.exemplar_id}</td>
                 <td>${sanitize(ex.tombo || '—')}</td>
+                <td>${sanitize(getCatalogExemplarLibraryLabel(ex))}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
                 <td>${sanitize(ex.shelf_location || '—')}</td>
                 <td>${sanitize(ex.autor_etiqueta || '—')}</td>
