@@ -5241,6 +5241,14 @@
       return 'sem caminho local ainda';
     }
 
+    function getBookDigitalResourceLocationSortRank(record = {}) {
+      const label = getBookDigitalResourceLocationStatusLabel(record);
+      if (label === 'armazenamento local + fonte externa') return 0;
+      if (label === 'armazenamento local') return 1;
+      if (label === 'fonte externa') return 2;
+      return 3;
+    }
+
     function getBookDigitalResourceDisplayTitle(record = {}) {
       return String(record?.label || record?.attribution_text || record?.source_name || '').trim()
         || (record?.storage_bucket && record?.storage_path ? `${record.storage_bucket}/${record.storage_path}` : '')
@@ -5259,6 +5267,9 @@
       if (leftCurrent !== rightCurrent) return leftCurrent ? -1 : 1;
       if (!!left?.is_primary !== !!right?.is_primary) return left?.is_primary ? -1 : 1;
       if (isBookDigitalResourcePublic(left) !== isBookDigitalResourcePublic(right)) return isBookDigitalResourcePublic(left) ? -1 : 1;
+      const leftLocationRank = getBookDigitalResourceLocationSortRank(left);
+      const rightLocationRank = getBookDigitalResourceLocationSortRank(right);
+      if (leftLocationRank !== rightLocationRank) return leftLocationRank < rightLocationRank ? -1 : 1;
       if (!!left?.bibliographic_match_validated !== !!right?.bibliographic_match_validated) return left?.bibliographic_match_validated ? -1 : 1;
       return compareSortableValues(Number(left?.id || 0), Number(right?.id || 0), 'asc');
     }
