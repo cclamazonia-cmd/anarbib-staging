@@ -5161,6 +5161,31 @@
       return labels[String(usageType || '').trim()] || '';
     }
 
+    function getBookDigitalPlannedFamilyLabel(record = {}) {
+      const resourceType = String(record?.resource_type || '').trim();
+      const usageType = String(record?.usage_type || '').trim();
+      const mimeType = String(record?.mime_type || '').trim().toLowerCase();
+      const storagePath = String(record?.storage_path || '').trim().toLowerCase();
+      const sourceUrl = String(record?.source_url || '').trim().toLowerCase();
+
+      if (resourceType === 'audio' || usageType === 'escuta_online' || mimeType.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a)$/i.test(storagePath)) {
+        return 'família prevista: áudio';
+      }
+      if (resourceType === 'video' || usageType === 'visualizacao_online' || mimeType.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(storagePath)) {
+        return 'família prevista: vídeo';
+      }
+      if (resourceType === 'image' || mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(storagePath)) {
+        return 'família prevista: imagem';
+      }
+      if (resourceType === 'link_externo' || usageType === 'link_externo' || (!!sourceUrl && !storagePath)) {
+        return 'família prevista: link externo';
+      }
+      if (resourceType === 'pdf_publico' || resourceType === 'pdf_restrito' || mimeType.includes('pdf') || storagePath.endsWith('.pdf')) {
+        return 'família prevista: PDF / texto';
+      }
+      return 'família prevista: recurso digital';
+    }
+
     function getBookDigitalResourceDisplayTitle(record = {}) {
       return String(record?.label || record?.attribution_text || record?.source_name || '').trim()
         || (record?.storage_bucket && record?.storage_path ? `${record.storage_bucket}/${record.storage_path}` : '')
@@ -5183,10 +5208,9 @@
         const title = sanitize(getBookDigitalResourceDisplayTitle(record));
         const typeLabel = sanitize(getBookDigitalResourceTypeLabel(record?.resource_type || ''));
         const usageLabel = sanitize(getBookDigitalUsageLabel(record?.usage_type || ''));
+        const plannedFamilyLabel = sanitize(getBookDigitalPlannedFamilyLabel(record));
         const bucketPath = [record?.storage_bucket || '', record?.storage_path || ''].filter(Boolean).join('/');
         const metaLine = [
-          typeLabel,
-          usageLabel,
           record?.language_code ? `idioma: ${sanitize(record.language_code)}` : '',
           bucketPath ? sanitize(bucketPath) : '',
         ].filter(Boolean).join(' · ');
@@ -5196,6 +5220,9 @@
           record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
         ].filter(Boolean).join(' · ');
         const badgeHtml = [
+          `<span class="pill info">${typeLabel}</span>`,
+          usageLabel ? `<span class="pill info">${usageLabel}</span>` : '',
+          `<span class="pill info">${plannedFamilyLabel}</span>`,
           record?.is_primary ? '<span class="pill info">principal</span>' : '',
           (String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico')
             ? '<span class="pill ok">público</span>'
@@ -9843,6 +9870,7 @@
         <table>
           <thead>
             <tr>
+              <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
@@ -9850,12 +9878,12 @@
               <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
               <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
-              <th>Operações</th>
             </tr>
           </thead>
           <tbody>
             ${items.map(book => `
               <tr>
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
@@ -9863,7 +9891,6 @@
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
                 <td>${sanitize(book.total_exemplares || 0)}</td>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -9895,35 +9922,35 @@
       refs.catalogOtherDocsWrap.innerHTML = `
         <table class="catalog-other-docs-table">
           <colgroup>
+            <col style="width:150px;">
             <col style="width:72px;">
             <col style="width:112px;">
             <col style="width:190px;">
-            <col style="width:26%;">
-            <col style="width:18%;">
-            <col style="width:34%;">
-            <col style="width:150px;">
+            <col style="width:24%;">
+            <col style="width:16%;">
+            <col style="width:36%;">
           </colgroup>
           <thead>
             <tr>
+              <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
               <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
               <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
               <th>Leitura rápida</th>
-              <th>Operações</th>
             </tr>
           </thead>
           <tbody>
             ${items.map(book => `
               <tr>
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -10284,11 +10311,11 @@
         <table>
           <thead>
             <tr>
+              <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'authors', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Nome para ordenação', 'authors', 'sort_name')}</th>
               <th class="sortable">${renderSortableHeader('País', 'authors', 'country')}</th>
               <th class="sortable">${renderSortableHeader('Fonte', 'authors', 'source')}</th>
-              <th>Operações</th>
             </tr>
           </thead>
           <tbody>
@@ -10297,15 +10324,15 @@
               const buttonLabel = draftMeta.buttonLabel;
               return `
               <tr>
-                <td>${author.id}</td>
-                <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
-                <td>${sanitize(author.country || '—')}</td>
-                <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
                 <td>
                   <div class="row-actions">
                     <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
                   </div>
                 </td>
+                <td>${author.id}</td>
+                <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
+                <td>${sanitize(author.country || '—')}</td>
+                <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -10370,25 +10397,25 @@
         <table>
           <thead>
             <tr>
+              <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
               <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
               <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
-              <th>Operações</th>
             </tr>
           </thead>
           <tbody>
             ${items.map(ex => `
               <tr>
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
                 <td>${ex.exemplar_id}</td>
                 <td>${sanitize(ex.tombo || '—')}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
                 <td>${sanitize(ex.shelf_location || '—')}</td>
                 <td>${sanitize(ex.autor_etiqueta || '—')}</td>
                 <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
