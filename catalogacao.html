@@ -1479,6 +1479,41 @@
       overflow-wrap: anywhere;
     }
 
+    .book-digital-family-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .book-digital-family-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 2px 2px 0;
+    }
+
+    .book-digital-family-title {
+      color: #ffe3e7;
+      font-size: .84rem;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .book-digital-family-count {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .book-digital-family-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
 
     @media (max-width: 1520px) {
       .statusbar,
@@ -5161,7 +5196,7 @@
       return labels[String(usageType || '').trim()] || '';
     }
 
-    function getBookDigitalPlannedFamilyLabel(record = {}) {
+    function getBookDigitalPlannedFamilyMeta(record = {}) {
       const resourceType = String(record?.resource_type || '').trim();
       const usageType = String(record?.usage_type || '').trim();
       const mimeType = String(record?.mime_type || '').trim().toLowerCase();
@@ -5169,21 +5204,25 @@
       const sourceUrl = String(record?.source_url || '').trim().toLowerCase();
 
       if (resourceType === 'audio' || usageType === 'escuta_online' || mimeType.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a)$/i.test(storagePath)) {
-        return 'família prevista: áudio';
+        return { key: 'audio', label: 'áudio' };
       }
       if (resourceType === 'video' || usageType === 'visualizacao_online' || mimeType.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(storagePath)) {
-        return 'família prevista: vídeo';
+        return { key: 'video', label: 'vídeo' };
       }
       if (resourceType === 'image' || mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(storagePath)) {
-        return 'família prevista: imagem';
+        return { key: 'image', label: 'imagem' };
       }
       if (resourceType === 'link_externo' || usageType === 'link_externo' || (!!sourceUrl && !storagePath)) {
-        return 'família prevista: link externo';
+        return { key: 'link_externo', label: 'link externo' };
       }
       if (resourceType === 'pdf_publico' || resourceType === 'pdf_restrito' || mimeType.includes('pdf') || storagePath.endsWith('.pdf')) {
-        return 'família prevista: PDF / texto';
+        return { key: 'pdf_texto', label: 'PDF / texto' };
       }
-      return 'família prevista: recurso digital';
+      return { key: 'recurso_digital', label: 'recurso digital' };
+    }
+
+    function getBookDigitalPlannedFamilyLabel(record = {}) {
+      return `família prevista: ${getBookDigitalPlannedFamilyMeta(record).label}`;
     }
 
     function getBookDigitalResourceDisplayTitle(record = {}) {
@@ -5203,40 +5242,70 @@
         return;
       }
       const primaryCount = records.filter(record => !!record?.is_primary).length;
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
-      wrapNode.innerHTML = records.map((record) => {
-        const title = sanitize(getBookDigitalResourceDisplayTitle(record));
-        const typeLabel = sanitize(getBookDigitalResourceTypeLabel(record?.resource_type || ''));
-        const usageLabel = sanitize(getBookDigitalUsageLabel(record?.usage_type || ''));
-        const plannedFamilyLabel = sanitize(getBookDigitalPlannedFamilyLabel(record));
-        const bucketPath = [record?.storage_bucket || '', record?.storage_path || ''].filter(Boolean).join('/');
-        const metaLine = [
-          record?.language_code ? `idioma: ${sanitize(record.language_code)}` : '',
-          bucketPath ? sanitize(bucketPath) : '',
-        ].filter(Boolean).join(' · ');
-        const sourceLine = [
-          record?.source_name ? `fonte: ${sanitize(record.source_name)}` : '',
-          record?.source_url ? sanitize(record.source_url) : '',
-          record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
-        ].filter(Boolean).join(' · ');
-        const badgeHtml = [
-          `<span class="pill info">${typeLabel}</span>`,
-          usageLabel ? `<span class="pill info">${usageLabel}</span>` : '',
-          `<span class="pill info">${plannedFamilyLabel}</span>`,
-          record?.is_primary ? '<span class="pill info">principal</span>' : '',
-          (String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico')
-            ? '<span class="pill ok">público</span>'
-            : '<span class="pill warn">restrito</span>',
-          record?.bibliographic_match_validated ? '<span class="pill ok">correspondência validada</span>' : '',
-        ].filter(Boolean).join('');
-        return `
-          <div class="book-digital-list-item">
-            <div class="book-digital-list-top">
-              <div class="book-digital-list-title">${title}</div>
-              <div class="book-digital-list-badges">${badgeHtml}</div>
+      const groupedRecords = new Map();
+      records.forEach((record) => {
+        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
+        const familyKey = familyMeta.key || 'recurso_digital';
+        if (!groupedRecords.has(familyKey)) groupedRecords.set(familyKey, { meta: familyMeta, items: [] });
+        groupedRecords.get(familyKey).items.push(record);
+      });
+      const familyOrder = ['pdf_texto', 'audio', 'video', 'image', 'link_externo', 'recurso_digital'];
+      const orderedGroups = [
+        ...familyOrder.map((key) => groupedRecords.get(key)).filter(Boolean),
+        ...Array.from(groupedRecords.entries())
+          .filter(([key]) => !familyOrder.includes(key))
+          .map(([, value]) => value),
+      ];
+      const familySummary = orderedGroups
+        .map((group) => `${group.meta.label} (${group.items.length})`)
+        .join(' · ');
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
+      wrapNode.innerHTML = orderedGroups.map((group) => {
+        const familyTitle = sanitize(group.meta.label);
+        const familyCount = group.items.length;
+        const itemHtml = group.items.map((record) => {
+          const title = sanitize(getBookDigitalResourceDisplayTitle(record));
+          const typeLabel = sanitize(getBookDigitalResourceTypeLabel(record?.resource_type || ''));
+          const usageLabel = sanitize(getBookDigitalUsageLabel(record?.usage_type || ''));
+          const plannedFamilyLabel = sanitize(getBookDigitalPlannedFamilyLabel(record));
+          const bucketPath = [record?.storage_bucket || '', record?.storage_path || ''].filter(Boolean).join('/');
+          const metaLine = [
+            record?.language_code ? `idioma: ${sanitize(record.language_code)}` : '',
+            bucketPath ? sanitize(bucketPath) : '',
+          ].filter(Boolean).join(' · ');
+          const sourceLine = [
+            record?.source_name ? `fonte: ${sanitize(record.source_name)}` : '',
+            record?.source_url ? sanitize(record.source_url) : '',
+            record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
+          ].filter(Boolean).join(' · ');
+          const badgeHtml = [
+            `<span class="pill info">${typeLabel}</span>`,
+            usageLabel ? `<span class="pill info">${usageLabel}</span>` : '',
+            `<span class="pill info">${plannedFamilyLabel}</span>`,
+            record?.is_primary ? '<span class="pill info">principal</span>' : '',
+            (String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico')
+              ? '<span class="pill ok">público</span>'
+              : '<span class="pill warn">restrito</span>',
+            record?.bibliographic_match_validated ? '<span class="pill ok">correspondência validada</span>' : '',
+          ].filter(Boolean).join('');
+          return `
+            <div class="book-digital-list-item">
+              <div class="book-digital-list-top">
+                <div class="book-digital-list-title">${title}</div>
+                <div class="book-digital-list-badges">${badgeHtml}</div>
+              </div>
+              <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
+              ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
             </div>
-            <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
-            ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
+          `;
+        }).join('');
+        return `
+          <div class="book-digital-family-group">
+            <div class="book-digital-family-head">
+              <div class="book-digital-family-title">Família prevista: ${familyTitle}</div>
+              <div class="book-digital-family-count">${familyCount} recurso(s)</div>
+            </div>
+            <div class="book-digital-family-items">${itemHtml}</div>
           </div>
         `;
       }).join('');
