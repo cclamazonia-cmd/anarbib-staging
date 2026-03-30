@@ -1817,7 +1817,7 @@
 
         <div class="split">
           <div class="card">
-            <h4>Imagem de capa / frente</h4>
+            <h4>Capa do livro</h4>
             <img id="bookCoverPreview" class="cover-preview" alt="Pré-visualização da capa" />
             <div class="field" style="margin-top:12px;">
               <label for="bookCoverFile">Arquivo da capa</label>
@@ -1844,9 +1844,9 @@
             <input type="hidden" id="bookAction" value="create" />
 
             <div class="field mode-complete-only">
-              <label for="bookBibRef">Referência local / compatibilidade</label>
-              <input id="bookBibRef" type="text" placeholder="Ref. local legada / compat" />
-              <small>Identificador local de apoio e compatibilidade. Não é o pivô principal da ficha comum.</small>
+              <label for="bookBibRef">Referência</label>
+              <input id="bookBibRef" type="text" placeholder="0000123" />
+              <small>Para ficha nova, pode deixar em branco que o sistema gera depois.</small>
             </div>
 
             <div class="field">
@@ -2030,26 +2030,26 @@
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <div class="book-quick-label-preview">
                 <div class="book-quick-label-top">
-                  <h4 class="autofill-panel-title">Prévia local de cote / etiqueta</h4>
-                  <div class="hint">Apenas visual: simula uma leitura local de exemplar a partir da ficha comum.</div>
+                  <h4 class="autofill-panel-title">Prévia rápida da etiqueta de cote</h4>
+                  <div class="hint">Apenas visual: ajuda a ver na hora como a combinação autor + CDD + título vai aparecer.</div>
                 </div>
                 <div class="book-quick-label-card">
                   <div id="bookQuickLabelCode" class="book-quick-label-code">---</div>
                   <div id="bookQuickLabelTitle" class="book-quick-label-title">Título</div>
                   <div id="bookQuickLabelAuthor" class="book-quick-label-meta">Autor: —</div>
                   <div id="bookQuickLabelCDD" class="book-quick-label-meta">CDD: —</div>
-                  <div id="bookQuickLabelShelf" class="book-quick-label-meta">Simulação local de cote ainda durante a catalogação.</div>
+                  <div id="bookQuickLabelShelf" class="book-quick-label-meta">Leitura visual da etiqueta ainda durante a catalogação.</div>
                 </div>
               </div>
             </div>
 
             <div class="field">
-              <label id="bookLoanableLabel" for="bookLoanable">Circulação local padrão</label>
+              <label id="bookLoanableLabel" for="bookLoanable">Empréstimo</label>
               <select id="bookLoanable">
-                <option value="true">Emprestável na biblioteca</option>
-                <option value="false">Somente consulta local</option>
+                <option value="true">Emprestável</option>
+                <option value="false">Somente consulta</option>
               </select>
-              <small id="bookMaterialHint" class="material-note">Livros e brochuras podem ser marcados conforme a circulação local da biblioteca.</small>
+              <small id="bookMaterialHint" class="material-note">Livros e brochuras podem ser marcados conforme o uso interno.</small>
             </div>
 
             <div class="form-flow-break">
@@ -2238,8 +2238,8 @@
             </div>
 
             <div class="form-flow-break">
-              <strong>Camada local: aquisição, proveniência e pertencimento</strong>
-              <span>Registre aqui a camada local ligada à ficha comum: entrada, origem dos metadados, pertencimento e situação de rede, sem confundir isso com circulação entre bibliotecas já em uso.</span>
+              <strong>Aquisição, proveniência e pertencimento</strong>
+              <span>Registre como o item entrou, de onde vieram os metadados e como ele pode circular no futuro, sem confundir isso com um empréstimo entre bibliotecas já em uso.</span>
             </div>
 
             <div class="field">
@@ -2253,17 +2253,17 @@
             </div>
 
             <div class="field">
-              <label for="bookMutualizationStatus">Situação do holding na rede</label>
+              <label for="bookMutualizationStatus">Situação na rede</label>
               <select id="bookMutualizationStatus"></select>
             </div>
 
             <div class="field">
-              <label for="bookOwnerLibrary">Biblioteca proprietária do holding</label>
+              <label for="bookOwnerLibrary">Biblioteca proprietária</label>
               <input id="bookOwnerLibrary" type="text" placeholder="BLMF - Belém do Pará" />
             </div>
 
             <div class="field">
-              <label for="bookHolderLibrary">Biblioteca detentora do holding</label>
+              <label for="bookHolderLibrary">Biblioteca detentora atual</label>
               <input id="bookHolderLibrary" type="text" placeholder="BLMF - Belém do Pará" />
             </div>
 
@@ -2304,8 +2304,8 @@
             </div>
 
             <div class="form-flow-break">
-              <strong>Recurso digital / leitura</strong>
-              <span>Vincule aqui um recurso digital já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
+              <strong>Exemplar digital / leitura</strong>
+              <span>Vincule aqui um PDF já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2314,8 +2314,8 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">Recurso digital principal em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o recurso digital principal.</div>
+                    <h4 class="section-title">PDF principal em edição</h4>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o PDF principal.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -2329,7 +2329,7 @@
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
                     <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho. O multi-CRUD virá depois.</div>
                   </div>
-                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
+                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado neste rascunho.</div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
@@ -2373,7 +2373,7 @@
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalIsPrimary" type="checkbox" checked />
-                    <span>Recurso digital principal desta ficha</span>
+                    <span>PDF principal desta ficha</span>
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalBibliographicMatch" type="checkbox" />
@@ -2381,7 +2381,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital principal carregado neste formulário.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF principal carregado neste formulário.</div>
               </div>
             </div>
 
@@ -2423,7 +2423,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha comum publicada.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha do livro.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -3262,8 +3262,8 @@
     const SERIAL_MATERIAL_TYPES = new Set(['periodico', 'boletim']);
     const NON_LOANABLE_MATERIAL_TYPES = new Set(['periodico', 'boletim', 'cartaz', 'recurso_digital']);
     const BOOK_MATERIAL_HINTS = {
-      livro: 'Livros podem ser marcados conforme a circulação local da biblioteca.',
-      brochura: 'Brochuras podem ser marcadas conforme a circulação local da biblioteca.',
+      livro: 'Livros podem ser marcados conforme o uso interno da biblioteca.',
+      brochura: 'Brochuras podem ser marcadas conforme o uso interno da biblioteca.',
       periodico: 'Periódicos ficam marcados como somente consulta local e usam ISSN / dados seriados.',
       boletim: 'Boletins seriados ficam marcados como somente consulta local e usam ISSN / dados de numeração.',
       tract: 'Tractos e panfletos usam o núcleo comum mais o módulo militante de campanha, difusão e materialidade.',
@@ -3282,7 +3282,7 @@
         simpleFocus: 'Título, subtítulo, responsabilidades principais, editora, local, ano, idioma, assuntos e aquisição simples.',
         completeFocus: 'Edição, coleção, páginas, notas detalhadas, identificadores finos, cote e descrição material avançada.',
         labels: {
-          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora', place: 'Local de publicação', year: 'Ano', loanable: 'Circulação local', notes: 'Resumo / notas', subjects: 'Assuntos'
+          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora', place: 'Local de publicação', year: 'Ano', loanable: 'Empréstimo', notes: 'Resumo / notas', subjects: 'Assuntos'
         },
         placeholders: {
           title: '', subtitle: '', publisher: '', place: 'São Paulo, SP - Brasil', year: '2016', notes: 'Resumo de conteúdo, notas bibliográficas ou observações internas…', subjects: 'Trabalho ; sindicalismo ; história social'
@@ -3294,7 +3294,7 @@
         simpleFocus: 'Título, responsabilidades principais, editora ou coletivo, local, ano, idioma, assuntos e aquisição simples.',
         completeFocus: 'Coleção, paginação, notas editoriais, identificadores e descrição material mais fina.',
         labels: {
-          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora / entidade responsável', place: 'Local de publicação', year: 'Ano', loanable: 'Circulação local', notes: 'Resumo / notas', subjects: 'Assuntos'
+          title: 'Título', subtitle: 'Subtítulo', publisher: 'Editora / entidade responsável', place: 'Local de publicação', year: 'Ano', loanable: 'Empréstimo', notes: 'Resumo / notas', subjects: 'Assuntos'
         },
         placeholders: {
           title: '', subtitle: '', publisher: 'Editora, coletivo ou organização responsável', place: 'São Paulo, SP - Brasil', year: '2016', notes: 'Resumo de conteúdo, notas bibliográficas ou observações internas…', subjects: 'Trabalho ; sindicalismo ; história social'
@@ -3330,7 +3330,7 @@
         simpleFocus: 'Título ou intitulado, organização emissora, data ou período, lugar de difusão, campanha e assuntos.',
         completeFocus: 'Recto/verso, formato, técnica de impressão, estado material e observações finas de circulação.',
         labels: {
-          title: 'Título / intitulado de trabalho', subtitle: 'Subtítulo / lema / chamada', publisher: 'Organização emissora', place: 'Lugar de difusão', year: 'Data / período', loanable: 'Circulação local', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
+          title: 'Título / intitulado de trabalho', subtitle: 'Subtítulo / lema / chamada', publisher: 'Organização emissora', place: 'Lugar de difusão', year: 'Data / período', loanable: 'Empréstimo', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
           title: 'Sem título formal? use um intitulado de trabalho claro', subtitle: 'Lema, chamada principal ou subtítulo', publisher: 'Sindicato, frente, coletivo, coordenação…', place: 'Belém, campus, ocupação, ato, bairro…', year: 'mai. 2013 / inverno de 2016 / sem data precisa', notes: 'Contexto político, uso do impresso, observações internas…', subjects: 'Greve ; antifascismo ; solidariedade' 
@@ -3354,7 +3354,7 @@
         simpleFocus: 'Título, intervenientes principais, duração, suporte, língua falada ou cantada e assuntos.',
         completeFocus: 'Formato do arquivo, tipo de gravação, nota de digitalização e observações avançadas de suporte.',
         labels: {
-          title: 'Título', subtitle: 'Subtítulo / série / faixa', publisher: 'Selo / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Circulação local', notes: 'Resumo / conteúdo', subjects: 'Assuntos / palavras-chave'
+          title: 'Título', subtitle: 'Subtítulo / série / faixa', publisher: 'Selo / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / conteúdo', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
           title: 'Título da gravação ou do registro sonoro', subtitle: 'Série, faixa, episódio ou recorte', publisher: 'Selo, coletivo, rádio, editora, organização…', place: 'Cidade, estúdio, rádio, local do ato…', year: '2018 / sem data precisa', notes: 'Resumo do conteúdo sonoro, contexto, observações internas…', subjects: 'Rádio livre ; memória oral ; música militante' 
@@ -3366,7 +3366,7 @@
         simpleFocus: 'Título, realização ou direção, duração, suporte, língua e assuntos.',
         completeFocus: 'Legendagem, condições de consulta, intervenientes detalhados e notas técnicas adicionais.',
         labels: {
-          title: 'Título', subtitle: 'Subtítulo / episódio / série', publisher: 'Produtora / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Circulação local', notes: 'Resumo / sinopse', subjects: 'Assuntos / palavras-chave'
+          title: 'Título', subtitle: 'Subtítulo / episódio / série', publisher: 'Produtora / entidade responsável', place: 'Lugar de produção / difusão', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / sinopse', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
           title: 'Título do filme, vídeo ou registro', subtitle: 'Episódio, série, subtítulo ou chamada', publisher: 'Coletivo realizador, produtora, associação…', place: 'Cidade, local de produção ou difusão…', year: '2019 / sem data precisa', notes: 'Sinopse, contexto político, observações de consulta…', subjects: 'Documentário ; audiovisual ; memória social' 
@@ -3390,7 +3390,7 @@
         simpleFocus: 'Título do conjunto, descrição sintética, período coberto, organizações ligadas e assuntos.',
         completeFocus: 'Nota de contexto, cronologia, vínculos fortes com campanhas, autoridades e outros conjuntos.',
         labels: {
-          title: 'Título do conjunto', subtitle: 'Subtítulo / recorte', publisher: 'Entidade organizadora', place: 'Lugar principal', year: 'Período / data', loanable: 'Circulação local', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
+          title: 'Título do conjunto', subtitle: 'Subtítulo / recorte', publisher: 'Entidade organizadora', place: 'Lugar principal', year: 'Período / data', loanable: 'Empréstimo', notes: 'Resumo / contexto', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
           title: 'Título do dossiê ou conjunto', subtitle: 'Recorte temático, territorial ou temporal', publisher: 'Coletivo, entidade ou rede organizadora…', place: 'Cidade, território, local principal…', year: '2013-2016 / primavera de 2020', notes: 'Contexto do conjunto, cronologia e observações internas…', subjects: 'Greves ; campanha ; repressão ; memória' 
@@ -3402,7 +3402,7 @@
         simpleFocus: 'Título, responsabilidades principais, data, idioma, assuntos e uma descrição breve do objeto.',
         completeFocus: 'Observações materiais, notas técnicas, vínculos documentaires et adaptações locais provisórias.',
         labels: {
-          title: 'Título', subtitle: 'Subtítulo / identificação complementar', publisher: 'Entidade responsável', place: 'Lugar principal', year: 'Ano / data', loanable: 'Circulação local', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
+          title: 'Título', subtitle: 'Subtítulo / identificação complementar', publisher: 'Entidade responsável', place: 'Lugar principal', year: 'Ano / data', loanable: 'Empréstimo', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
           title: 'Título ou identificação principal do objeto', subtitle: 'Subtítulo ou recorte complementar', publisher: 'Entidade, coletivo ou responsável', place: 'Cidade, local ou contexto principal', year: '2016 / sem data precisa', notes: 'Descreva aqui o tipo de objeto e o contexto de uso…', subjects: 'Tema ; contexto ; palavras-chave' 
@@ -5164,14 +5164,14 @@
       const publishedBookId = String(el('bookPublishedId')?.value || '').trim();
       if (publishedBookId) return `book-${publishedBookId}`;
       const compatRef = getCurrentBookCompatRef();
-      if (compatRef) return `ref-${compatRef}`;
+      if (compatRef) return compatRef;
       return 'sem-referencia';
     }
 
     function buildCatalogacaoPublicBookUrl(bibRef = '', publishedBookId = '') {
-      const normalizedBibRef = String(bibRef || getCurrentBookCompatRef()).trim();
-      const normalizedPublishedBookId = Number(publishedBookId || el('bookPublishedId')?.value || 0);
-      if (!normalizedBibRef && !normalizedPublishedBookId) return '';
+      const normalizedBibRef = String(bibRef || '').trim();
+      const normalizedPublishedBookId = Number(publishedBookId || 0);
+      if (!normalizedPublishedBookId && !normalizedBibRef) return '';
       const bookUrl = new URL('livro.html', location.href);
       if (normalizedPublishedBookId) bookUrl.searchParams.set('id', String(normalizedPublishedBookId));
       if (normalizedBibRef) bookUrl.searchParams.set('ref', normalizedBibRef);
@@ -5306,7 +5306,7 @@
       const wrapNode = refs.bookDigitalListWrap;
       if (!summaryNode || !wrapNode) return;
       if (!records.length) {
-        summaryNode.textContent = 'Nenhum recurso digital vinculado a esta ficha ainda.';
+        summaryNode.textContent = 'Nenhum recurso digital vinculado neste rascunho.';
         wrapNode.innerHTML = '';
         return;
       }
@@ -5334,7 +5334,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o recurso digital principal.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
         const familyCount = group.items.length;
@@ -5423,11 +5423,11 @@
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
-        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital principal carregado neste formulário.';
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF principal carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
-      refs.bookDigitalLinkedSummary.textContent = `Recurso digital principal em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      refs.bookDigitalLinkedSummary.textContent = `PDF principal em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
       updateBookDigitalActionButtons();
     }
 
@@ -5467,7 +5467,7 @@
       }
 
       if (!storageBucket || !storagePath) {
-        throw new Error('Para editar o recurso digital principal, informe a pasta no armazenamento e o caminho do arquivo.');
+        throw new Error('Para editar o PDF principal, informe a pasta no armazenamento e o caminho do arquivo.');
       }
 
       return {
@@ -5490,13 +5490,13 @@
           rights_status: rightsStatus || null,
           is_primary: isPrimary,
           bibliographic_match_validated: bibliographicMatchValidated,
-          label: attributionText || sourceName || 'Recurso digital principal',
+          label: attributionText || sourceName || 'PDF principal',
         }
       };
     }
 
     async function saveBookDraftDigitalResource(draftId) {
-      if (!draftId) throw new Error('Salve primeiro o rascunho da ficha comum antes de editar o recurso digital principal.');
+      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de editar o PDF principal.');
       const normalized = buildBookDraftDigitalResourcePayload(draftId);
       if (normalized.mode === 'empty') {
         if (normalized.resourceId) {
@@ -5534,7 +5534,7 @@
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do recurso digital principal para abri-lo.');
+      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF principal para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
       let resolvedUrl = signedData?.signedUrl || '';
       if (!resolvedUrl) {
@@ -5549,7 +5549,7 @@
     async function openBookDigitalReaderFromForm() {
       const viewerUrl = new URL('ler.html', location.href);
       const publishedBookId = Number(el('bookPublishedId').value || 0);
-      const bibRef = getCurrentBookCompatRef();
+      const compatRef = getCurrentBookCompatRef();
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
       const sourceName = el('bookDigitalSourceName').value.trim();
@@ -5557,7 +5557,7 @@
       const attributionText = el('bookDigitalAttributionText').value.trim();
       const rightsStatus = el('bookDigitalRightsStatus').value.trim();
       const isPublic = isBookDigitalPublicSelection();
-      const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
+      const publicBookUrl = buildCatalogacaoPublicBookUrl(compatRef, publishedBookId);
 
       const title = el('bookTitle').value.trim();
       if (title) viewerUrl.searchParams.set('title', title);
@@ -5565,6 +5565,7 @@
       if (subtitle) viewerUrl.searchParams.set('subtitle', subtitle);
       viewerUrl.searchParams.set('return_to', buildCatalogacaoReturnUrl());
       if (publicBookUrl) viewerUrl.searchParams.set('book_return_to', publicBookUrl);
+      if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
 
       const profileLibrary = getProfileDefaultLibraryContext();
       if (profileLibrary.libraryId) viewerUrl.searchParams.set('library_id', profileLibrary.libraryId);
@@ -5582,7 +5583,7 @@
           const row = Array.isArray(data) ? data[0] : data;
           if (row?.asset_id) {
             viewerUrl.searchParams.set('asset_id', String(row.asset_id));
-            if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
+            if (compatRef) viewerUrl.searchParams.set('ref', compatRef);
             window.open(viewerUrl.toString(), '_blank', 'noopener');
             return;
           }
@@ -5590,7 +5591,7 @@
 
         viewerUrl.searchParams.set('public_bucket', bucket);
         viewerUrl.searchParams.set('public_path', path);
-        if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
+        if (compatRef) viewerUrl.searchParams.set('ref', compatRef);
         if (sourceName) viewerUrl.searchParams.set('public_source_name', sourceName);
         if (sourceUrl) viewerUrl.searchParams.set('public_source_url', sourceUrl);
         if (attributionText) viewerUrl.searchParams.set('public_attribution', attributionText);
@@ -5599,8 +5600,8 @@
         return;
       }
 
-      if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
-      viewerUrl.searchParams.set('ref', bibRef);
+      if (!compatRef) throw new Error('Salve ou carregue uma ficha com referência de compatibilidade para abrir o PDF restrito no leitor.');
+      viewerUrl.searchParams.set('ref', compatRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
 
@@ -7028,7 +7029,7 @@
       setFieldLabelText(refs.bookPublisherLabel, labels.publisher, 'Editora');
       setFieldLabelText(refs.bookPlaceLabel, labels.place, 'Local de publicação');
       setFieldLabelText(refs.bookYearLabel, labels.year, 'Ano');
-      setFieldLabelText(refs.bookLoanableLabel, labels.loanable, 'Circulação local padrão');
+      setFieldLabelText(refs.bookLoanableLabel, labels.loanable, 'Empréstimo');
       setFieldLabelText(refs.bookNotesLabel, labels.notes, 'Notas');
       setFieldLabelText(refs.bookSubjectsLabel, labels.subjects, 'Assuntos');
       setFieldPlaceholder(el('bookTitle'), placeholders.title, '');
@@ -7757,7 +7758,7 @@
       if (notes) contextParts.push(truncatePreviewText(notes, 180));
 
       const accessParts = [];
-      accessParts.push(loanable ? 'Circulação local com empréstimo possível' : 'Consulta local / circulação restrita');
+      accessParts.push(loanable ? 'Empréstimo físico possível' : 'Consulta local / circulação restrita');
       if (digitalLinked) {
         accessParts.push(digitalPublic ? 'PDF público vinculado' : 'PDF restrito vinculado');
       }
@@ -10704,9 +10705,9 @@
         clearMessage(refs.bookMessage);
         const file = el('bookCoverFile').files[0];
         if (!file) throw new Error('Escolha um arquivo de capa antes do envio.');
-        const storageFolderKey = getCurrentBookStorageFolderKey();
+        const folderKey = getCurrentBookStorageFolderKey();
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `books/${storageFolderKey}/${Date.now()}-${safeName}`;
+        const path = `books/${folderKey}/${Date.now()}-${safeName}`;
         await uploadFileToBucket('covers', file, path);
         el('bookCoverPath').value = path;
         setPreviewImage(refs.bookCoverPreview, path, 'covers');
