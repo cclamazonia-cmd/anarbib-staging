@@ -2820,7 +2820,7 @@
           <div class="field" style="grid-column: span 3;">
             <label for="exemplarNotes">Observações</label>
             <textarea id="exemplarNotes" placeholder="Ex.: lombada danificada; dedicatória manuscrita; carimbo antigo; falta encarte."></textarea>
-            <small>Este formulário trata o exemplar material local. Os campos do rótulo são preenchidos e validados na aba Rótulos.</small>
+            <small>Este formulário trata o exemplar material local. Depois desta etapa, a cadeia segue para o rótulo físico derivado na aba Rótulos.</small>
           </div>
 
           <div class="actions with-danger-far" style="grid-column: span 3;">
@@ -2838,7 +2838,7 @@
       <div class="panel-header">
         <div>
           <h3>Rótulos</h3>
-          <p>Carregue um exemplar já criado para revisar autor, título, CDD e nota curta do rótulo, gerar a plancha A4 e abrir o PDF.</p>
+          <p>Carregue aqui um exemplar material local já criado para revisar o rótulo derivado dele, gerar a plancha A4 e abrir o PDF.</p>
         </div>
         <div class="inline">
           <span id="labelDraftModePill" class="pill info">Novo rótulo</span>
@@ -2850,10 +2850,10 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de exemplares para rótulos</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares ativos. Aqui você encontra cada exemplar material local já criado, abre o rótulo derivado dele e valida esta saída física quando ela estiver correta.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="labelLotImportId">Exemplares a carregar</label>
+              <label for="labelLotImportId">Exemplares locais a carregar</label>
               <select id="labelLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -2863,8 +2863,8 @@
           </div>
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
-              <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo, CDD ou nota" />
+              <label for="labelBatchSearchInput">Filtrar rótulos derivados a validar</label>
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, biblioteca, referência local, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -2889,10 +2889,10 @@
 
         <div class="card">
           <h4>Rótulo do exemplar selecionado</h4>
-          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
+          <p class="hint" style="margin:0 0 12px;">Primeiro crie e revise o exemplar material local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo físico derivado dessa posse local.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Referência: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Referência local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -2918,7 +2918,7 @@
                 <div class="autofill-actions">
                   <button id="applyLabelSuggestionBtn" type="button" class="btn-inline small secondary">Aplicar sugestão</button>
                 </div>
-                <div class="hint">A sugestão usa os dados já presentes no formulário e, se necessário, busca apoio no livro ligado ao exemplar. Nada é alterado automaticamente.</div>
+                <div class="hint">A sugestão usa os dados já presentes no formulário e, se necessário, busca apoio na ficha comum ligada ao exemplar local. Nada é alterado automaticamente.</div>
                 <div id="labelSuggestionPreview" class="author-assist-preview">
                   <div class="author-assist-preview-line">
                     <strong>Código sugerido</strong>
@@ -2949,7 +2949,7 @@
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Referência: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Referência local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -2961,7 +2961,7 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Prévia da folha A4 3 × 9</h4>
-          <p class="hint" style="margin:0 0 12px;">Selecione um lote — ou use “Sem lote” — para visualizar numa folha A4 apenas os rótulos já validados. Cada exemplar validado gera 1 posição na folha: 1 exemplar = 1 etiqueta, 2 exemplares = 2 etiquetas.</p>
+          <p class="hint" style="margin:0 0 12px;">Selecione um lote — ou use “Sem lote” — para visualizar numa folha A4 apenas os rótulos já validados de exemplares locais. Cada exemplar validado gera 1 posição na folha: 1 exemplar local = 1 etiqueta, 2 exemplares locais = 2 etiquetas.</p>
           <div class="grid cols-2" style="margin-bottom:16px; align-items:end;">
             <div class="field">
               <label for="labelBatchPreviewId">Lote da prévia</label>
@@ -9300,7 +9300,7 @@
         return;
       }
 
-      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
+      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo físico derivado.`, 'ok');
     }
 
     async function loadExemplarBatchQueue() {
@@ -9380,7 +9380,7 @@
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa da cadeia é revisar os rótulos físicos derivados na aba Rótulos.</div>';
         return;
       }
 
@@ -9491,7 +9491,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo físico derivado.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -9529,9 +9529,9 @@
       renderLabelDraftQueue();
 
       if (!state.batchLabelItems.length) {
-        showMessage(refs.labelBatchMessage, sourceId === '__all__' ? 'Não há rótulos pendentes para revisar neste momento.' : 'Este lote não tem rótulos pendentes para revisar.', 'info');
+        showMessage(refs.labelBatchMessage, sourceId === '__all__' ? 'Não há rótulos derivados pendentes para revisar neste momento.' : 'Este lote não tem rótulos derivados pendentes para revisar.', 'info');
       } else {
-        showMessage(refs.labelBatchMessage, `${state.batchLabelItems.length} rótulo(s) pendente(s) carregado(s) para revisão.`, 'ok');
+        showMessage(refs.labelBatchMessage, `${state.batchLabelItems.length} rótulo(s) derivado(s) pendente(s) carregado(s) para revisão.`, 'ok');
       }
     }
 
@@ -9654,10 +9654,10 @@
       const totalPending = [...(state.batchLabelItems || [])].filter(item => ['ready', 'published'].includes(String(item.status || 'draft')) && String(item.label_status || 'pending') === 'pending').length;
       const visible = items.length;
       if (!state.batchLabelItems.length) {
-        refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos carregada ainda.';
+        refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos derivados carregada ainda.';
         return;
       }
-      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
+      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) derivado(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
     }
 
     async function validateLabelDraftIds(ids = []) {
@@ -9707,7 +9707,7 @@
     function renderLabelDraftQueue() {
       if (!refs.labelDraftQueueWrap) return;
       if (!state.batchLabelItems.length) {
-        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Escolha um lote de exemplares — ou todos os rascunhos ativos — para abrir e validar os rótulos.</div>';
+        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Escolha um lote de exemplares locais — ou todos os rascunhos ativos — para abrir e validar os rótulos derivados.</div>';
         renderLabelBatchFilterSummary([]);
         return;
       }
@@ -9716,7 +9716,7 @@
       renderLabelBatchFilterSummary(visibleItems);
 
       if (!visibleItems.length) {
-        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo pendente corresponde aos filtros atuais.</div>';
+        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo derivado pendente corresponde aos filtros atuais.</div>';
         return;
       }
 
@@ -10614,14 +10614,14 @@
       const batchLabel = getLabelPreviewBatchLabel(batchId);
 
       if (!labels.length) {
-        refs.labelSheetSummary.textContent = batchId ? `${batchLabel} — nenhum rótulo validado disponível para prévia.` : '';
-        refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote com exemplares validados para ver a prévia dos rótulos em folha A4.</div>';
+        refs.labelSheetSummary.textContent = batchId ? `${batchLabel} — nenhum rótulo derivado validado disponível para prévia.` : '';
+        refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote com exemplares locais validados para ver a prévia dos rótulos derivados em folha A4.</div>';
         return;
       }
 
       const pages = getLabelPages(labels);
 
-      refs.labelSheetSummary.textContent = `${batchLabel} — ${labels.length} rótulo(s) validado(s) distribuído(s) em ${pages.length} página(s) de 27 posições. Clique na plancha ou use o botão para abrir o PDF.`;
+      refs.labelSheetSummary.textContent = `${batchLabel} — ${labels.length} rótulo(s) derivado(s) validado(s) distribuído(s) em ${pages.length} página(s) de 27 posições. Clique na plancha ou use o botão para abrir o PDF.`;
       refs.labelSheetWrap.innerHTML = pages.map((page, pageIndex) => `
         <div class="label-sheet-page-frame">
           <div class="label-sheet-page-meta">Página ${pageIndex + 1} · ${sanitize(batchLabel)}</div>
@@ -10654,7 +10654,7 @@
       const batchId = refs.labelBatchPreviewId?.value || '';
       if (!batchId) {
         refs.labelSheetSummary.textContent = '';
-        refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote ou selecione “Sem lote” para ver a prévia dos rótulos validados em folha A4 3 × 9.</div>';
+        refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote ou selecione “Sem lote” para ver a prévia dos rótulos derivados validados em folha A4 3 × 9.</div>';
         return;
       }
 
@@ -11445,7 +11445,7 @@
       refs.validateVisibleLabelRowsBtn.addEventListener('click', async () => {
         try {
           const count = await validateVisibleLabelDraftRows();
-          if (count) showMessage(refs.labelBatchMessage, `${count} rótulo(s) visível(is) validado(s) com sucesso.`, 'ok');
+          if (count) showMessage(refs.labelBatchMessage, `${count} rótulo(s) derivado(s) visível(is) validado(s) com sucesso.`, 'ok');
         } catch (error) {
           showMessage(refs.labelBatchMessage, error.message, 'error');
         }
