@@ -2187,7 +2187,7 @@
 
             <div class="form-flow-break">
               <strong>Exemplar digital / leitura</strong>
-              <span>Vincule aqui o recurso digital principal deste estágio. Por enquanto, o módulo continua compatível com 1 PDF principal por rascunho, sem misturar isso com exemplares físicos.</span>
+              <span>Vincule aqui um PDF já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2196,8 +2196,8 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">Recurso digital principal</h4>
-                    <div class="hint">Neste estágio, vincule manualmente 1 PDF já enviado ao armazenamento. A gestão de múltiplos recursos virá depois, sem quebrar a compatibilidade atual.</div>
+                    <h4 class="section-title">PDF vinculado</h4>
+                    <div class="hint">Por enquanto, vincule manualmente um PDF já enviado ao armazenamento. O envio direto pelo formulário pode vir depois.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -2246,7 +2246,7 @@
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalIsPrimary" type="checkbox" checked />
-                    <span>Recurso principal desta ficha (PDF neste estágio)</span>
+                    <span>PDF principal desta ficha</span>
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalBibliographicMatch" type="checkbox" />
@@ -2254,7 +2254,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital principal vinculado neste rascunho.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF vinculado neste rascunho.</div>
               </div>
             </div>
 
@@ -3018,6 +3018,11 @@
             <h4>Exemplares publicados</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
+          <div class="card">
+            <h4>Outros tipos de documentos</h4>
+            <p class="hint" style="margin:0 0 12px;">Separação visual provisória para tipos documentais que não entram aqui, por enquanto, na leitura de livros / brochuras / periódicos / boletins.</p>
+            <div id="catalogOtherDocsWrap" class="table-wrap"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -3064,6 +3069,7 @@
         books: { key: 'id', dir: 'desc' },
         authors: { key: 'sort_name', dir: 'asc' },
         exemplars: { key: 'exemplar_id', dir: 'desc' },
+        otherDocs: { key: 'id', dir: 'desc' },
       },
       publishLocks: {
         book: false,
@@ -3120,6 +3126,8 @@
       ['automatic', 'Automática'],
       ['negotiated_batch', 'Lote negociado'],
     ];
+
+    const CATALOG_BOOKISH_MATERIAL_TYPES = new Set(['livro', 'brochura', 'periodico', 'boletim']);
 
     const SERIAL_MATERIAL_TYPES = new Set(['periodico', 'boletim']);
     const NON_LOANABLE_MATERIAL_TYPES = new Set(['periodico', 'boletim', 'cartaz', 'recurso_digital']);
@@ -3310,6 +3318,7 @@
       catalogBooksWrap: el('catalogBooksWrap'),
       catalogAuthorsWrap: el('catalogAuthorsWrap'),
       catalogExemplarsWrap: el('catalogExemplarsWrap'),
+      catalogOtherDocsWrap: el('catalogOtherDocsWrap'),
       periodicalFields: el('periodicalFields'),
       bookISBNField: el('bookISBNField'),
       bookISSNField: el('bookISSNField'),
@@ -4341,6 +4350,14 @@
           year: item.ano || '',
           total_exemplares: item.total_exemplares || 0,
         },
+        otherDocs: {
+          id: item.id,
+          bib_ref: item.bib_ref,
+          material_type: getCatalogMaterialTypeLabel(item.tipo_material || item.material_type || ''),
+          title: getBookDisplayTitle(item),
+          author: item.autor || item.author || '',
+          year: item.ano || '',
+        },
         authors: {
           id: item.id,
           preferred_name: item.preferred_name || '',
@@ -4480,6 +4497,38 @@
         book.ano,
         book.titulo_periodico,
       ].filter(Boolean).join(' '));
+    }
+
+    function normalizeCatalogMaterialType(value = '') {
+      return compactSpaces(String(value || '')).toLowerCase();
+    }
+
+    function getCatalogMaterialTypeLabel(value = '') {
+      const labels = {
+        livro: 'Livro',
+        brochura: 'Brochura',
+        periodico: 'Periódico / revista',
+        boletim: 'Boletim',
+        tract: 'Tracto / panfleto',
+        cartaz: 'Cartaz',
+        audio: 'Áudio',
+        audiovisual: 'Audiovisual',
+        recurso_digital: 'Recurso digital',
+        dossie: 'Dossiê / conjunto militante',
+        outro: 'Outro',
+      };
+      const key = normalizeCatalogMaterialType(value);
+      return labels[key] || 'Sem tipo informado';
+    }
+
+    function isCatalogBookLikeItem(book = {}) {
+      const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
+      return !materialType || CATALOG_BOOKISH_MATERIAL_TYPES.has(materialType);
+    }
+
+    function isCatalogOtherDocumentItem(book = {}) {
+      const materialType = normalizeCatalogMaterialType(book.tipo_material || book.material_type || '');
+      return !!materialType && !CATALOG_BOOKISH_MATERIAL_TYPES.has(materialType);
     }
 
     function getAuthorTrigram(name) {
@@ -4877,30 +4926,6 @@
       return isPublic ? 'Público' : 'Conta ativa';
     }
 
-    function getBookDigitalResourceKindLabel(record = null) {
-      const rawType = String(record?.resource_type || '').trim().toLowerCase();
-      if (!rawType || rawType.startsWith('pdf')) return 'PDF';
-      if (rawType.startsWith('audio')) return 'Áudio';
-      if (rawType.startsWith('video') || rawType.startsWith('audiovisual')) return 'Vídeo';
-      if (rawType.startsWith('image') || rawType.startsWith('imagem')) return 'Imagem';
-      if (rawType.startsWith('link')) return 'Link externo';
-      return rawType.replace(/_/g, ' ');
-    }
-
-    function buildBookDigitalResourceSummaryText(record = null) {
-      const bucket = normalizeBookDigitalBucket(record?.storage_bucket || el('bookDigitalBucket').value.trim());
-      const path = record?.storage_path || el('bookDigitalPath').value.trim();
-      const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
-      const isPublic = record
-        ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico' || isBookDigitalPublicBucket(record.storage_bucket || ''))
-        : (!!el('bookDigitalIsPublic').checked || isBookDigitalPublicBucket(bucket));
-      const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
-      const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
-      if (!bucket || !path) return 'Nenhum recurso digital principal vinculado neste rascunho.';
-      const resourceKind = getBookDigitalResourceKindLabel(record);
-      return `Recurso digital principal: ${resourceKind} · ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
-    }
-
     function normalizeBookDigitalBucket(bucket = '') {
       const raw = String(bucket || '').trim();
       if (!raw) return '';
@@ -4985,7 +5010,20 @@
     }
 
     function updateBookDigitalResourceSummary(record = null) {
-      refs.bookDigitalLinkedSummary.textContent = buildBookDigitalResourceSummaryText(record);
+      const bucket = normalizeBookDigitalBucket(record?.storage_bucket || el('bookDigitalBucket').value.trim());
+      const path = record?.storage_path || el('bookDigitalPath').value.trim();
+      const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
+      const isPublic = record
+        ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico' || isBookDigitalPublicBucket(record.storage_bucket || ''))
+        : (!!el('bookDigitalIsPublic').checked || isBookDigitalPublicBucket(bucket));
+      const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
+      const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
+      if (!bucket || !path) {
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum PDF vinculado neste rascunho.';
+        updateBookDigitalActionButtons();
+        return;
+      }
+      refs.bookDigitalLinkedSummary.textContent = `PDF vinculado: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
       updateBookDigitalActionButtons();
     }
 
@@ -5024,7 +5062,7 @@
       }
 
       if (!storageBucket || !storagePath) {
-        throw new Error('Para vincular o recurso digital principal deste estágio, informe a pasta no armazenamento e o caminho do arquivo PDF.');
+        throw new Error('Para vincular um PDF, informe a pasta no armazenamento e o caminho do arquivo.');
       }
 
       return {
@@ -5047,13 +5085,13 @@
           rights_status: rightsStatus || null,
           is_primary: isPrimary,
           bibliographic_match_validated: bibliographicMatchValidated,
-          label: attributionText || sourceName || 'Recurso digital principal vinculado',
+          label: attributionText || sourceName || 'PDF vinculado',
         }
       };
     }
 
     async function saveBookDraftDigitalResource(draftId) {
-      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de vincular o recurso digital principal.');
+      if (!draftId) throw new Error('Salve primeiro o rascunho do livro antes de vincular o PDF.');
       const normalized = buildBookDraftDigitalResourcePayload(draftId);
       if (normalized.mode === 'empty') {
         if (normalized.resourceId) {
@@ -5091,7 +5129,7 @@
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do arquivo PDF atual para abri-lo.');
+      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do PDF para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
       let resolvedUrl = signedData?.signedUrl || '';
       if (!resolvedUrl) {
@@ -5099,7 +5137,7 @@
         resolvedUrl = publicData?.publicUrl || '';
       }
       if (signedError && !resolvedUrl) throw signedError;
-      if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este arquivo PDF.');
+      if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este PDF.');
       window.open(resolvedUrl, '_blank', 'noopener');
     }
 
@@ -5130,7 +5168,7 @@
 
       if (isPublic) {
         if (!bucket || !path) {
-          throw new Error('Informe a pasta no armazenamento e o caminho do PDF público atual para abrir no leitor.');
+          throw new Error('Informe a pasta no armazenamento e o caminho do PDF público para abrir no leitor.');
         }
 
         if (publishedBookId) {
@@ -5156,7 +5194,7 @@
         return;
       }
 
-      if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito atual no leitor.');
+      if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
       viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
@@ -7316,7 +7354,7 @@
       const accessParts = [];
       accessParts.push(loanable ? 'Empréstimo físico possível' : 'Consulta local / circulação restrita');
       if (digitalLinked) {
-        accessParts.push(digitalPublic ? 'Recurso digital público vinculado' : 'Recurso digital restrito vinculado');
+        accessParts.push(digitalPublic ? 'PDF público vinculado' : 'PDF restrito vinculado');
       }
 
       return {
@@ -7976,6 +8014,7 @@
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogExemplars();
+      renderCatalogOtherDocuments();
       if (state.queueItems?.length) {
         renderQueue();
       } else {
@@ -9564,7 +9603,7 @@
 
     function renderCatalogBooks() {
       const search = normalizeForSearch(el('catalogSearch').value);
-      let items = [...state.books];
+      let items = [...state.books].filter(isCatalogBookLikeItem);
       if (search) {
         items = items.filter(book => getBookSearchIndex(book).includes(search));
       }
@@ -9605,6 +9644,57 @@
       bindCatalogSortButtons(refs.catalogBooksWrap, renderCatalogBooks);
 
       refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
+          } catch (error) {
+            showMessage(refs.catalogMessage, error.message, 'error');
+          }
+        });
+      });
+    }
+
+    function renderCatalogOtherDocuments() {
+      const search = normalizeForSearch(el('catalogSearch').value);
+      let items = [...state.books].filter(isCatalogOtherDocumentItem);
+      if (search) {
+        items = items.filter(book => getBookSearchIndex(book).includes(search));
+      }
+      items = sortCatalogItems('otherDocs', items);
+      if (!items.length) {
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum outro tipo de documento encontrado.</div>';
+        return;
+      }
+      refs.catalogOtherDocsWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Tipo', 'otherDocs', 'material_type')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'otherDocs', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Autor(a) / responsável', 'otherDocs', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Ano', 'otherDocs', 'year')}</th>
+              <th>Operações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(book => `
+              <tr>
+                <td>${book.id}</td>
+                <td>${sanitize(book.bib_ref || '—')}</td>
+                <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${sanitize(book.autor || book.author || '—')}</td>
+                <td>${sanitize(book.ano || '—')}</td>
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+
+      bindCatalogSortButtons(refs.catalogOtherDocsWrap, renderCatalogOtherDocuments);
+
+      refs.catalogOtherDocsWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
             await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
@@ -10261,7 +10351,7 @@
         }
         resetBookDigitalResourceFields();
         syncBookDraftVisualState();
-        showMessage(refs.bookMessage, 'Recurso digital principal desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o PDF na ficha publicada.', 'ok');
+        showMessage(refs.bookMessage, 'PDF desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o PDF na ficha publicada.', 'ok');
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       }
@@ -10291,7 +10381,7 @@
         try {
           await saveBookDraftDigitalResource(saved.id);
         } catch (digitalError) {
-          warnings.push(`não consegui gravar o recurso digital principal: ${digitalError.message}`);
+          warnings.push(`não consegui gravar o PDF vinculado: ${digitalError.message}`);
         }
         await fillBookForm(saved);
         if (warnings.length) {
@@ -10493,10 +10583,10 @@
             try {
               const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
               if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
-                digitalSyncMessage = ' Não consegui confirmar a camada canônica de recursos digitais publicados.';
+                digitalSyncMessage = ' Não consegui confirmar a camada canônica de PDFs publicados.';
               }
             } catch (digitalError) {
-              digitalSyncMessage = ` Não consegui confirmar a camada canônica de recursos digitais publicados: ${digitalError.message}`;
+              digitalSyncMessage = ` Não consegui confirmar a camada canônica de PDFs publicados: ${digitalError.message}`;
             }
           }
         } catch (linkingError) {
@@ -10856,6 +10946,7 @@
     el('catalogSearch').addEventListener('input', () => {
       renderCatalogBooks();
       renderCatalogAuthors();
+      renderCatalogOtherDocuments();
     });
     el('catalogAuthorAuthorityFilter').addEventListener('change', renderCatalogAuthors);
     el('catalogAuthorSignalFilter').addEventListener('change', renderCatalogAuthors);
