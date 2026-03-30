@@ -5237,6 +5237,22 @@
         || 'Recurso sem identificação complementar';
     }
 
+    function isBookDigitalResourcePublic(record = {}) {
+      return String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico';
+    }
+
+    function compareBookDigitalResourcesForDisplay(left = {}, right = {}, currentResourceId = '') {
+      const leftId = String(left?.id || '');
+      const rightId = String(right?.id || '');
+      const leftCurrent = !!currentResourceId && leftId === currentResourceId;
+      const rightCurrent = !!currentResourceId && rightId === currentResourceId;
+      if (leftCurrent !== rightCurrent) return leftCurrent ? -1 : 1;
+      if (!!left?.is_primary !== !!right?.is_primary) return left?.is_primary ? -1 : 1;
+      if (isBookDigitalResourcePublic(left) !== isBookDigitalResourcePublic(right)) return isBookDigitalResourcePublic(left) ? -1 : 1;
+      if (!!left?.bibliographic_match_validated !== !!right?.bibliographic_match_validated) return left?.bibliographic_match_validated ? -1 : 1;
+      return compareSortableValues(Number(left?.id || 0), Number(right?.id || 0), 'asc');
+    }
+
     function renderBookDigitalResourceList(records = []) {
       state.bookDigitalDraftResources = Array.isArray(records) ? [...records] : [];
       const summaryNode = refs.bookDigitalListSummary;
@@ -5249,6 +5265,8 @@
       }
       const currentResourceId = String(el('bookDigitalDraftResourceId')?.value || '');
       const primaryCount = records.filter(record => !!record?.is_primary).length;
+      const publicCount = records.filter(record => isBookDigitalResourcePublic(record)).length;
+      const restrictedCount = Math.max(records.length - publicCount, 0);
       const groupedRecords = new Map();
       records.forEach((record) => {
         const familyMeta = getBookDigitalPlannedFamilyMeta(record);
@@ -5262,11 +5280,14 @@
         ...Array.from(groupedRecords.entries())
           .filter(([key]) => !familyOrder.includes(key))
           .map(([, value]) => value),
-      ];
+      ].map((group) => ({
+        ...group,
+        items: [...group.items].sort((left, right) => compareBookDigitalResourcesForDisplay(left, right, currentResourceId)),
+      }));
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o PDF principal.`;
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
         const familyCount = group.items.length;
@@ -5292,7 +5313,7 @@
             `<span class="pill info">${plannedFamilyLabel}</span>`,
             isCurrent ? '<span class="pill info">em edição</span>' : '',
             record?.is_primary ? '<span class="pill info">principal</span>' : '',
-            (String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico')
+            isBookDigitalResourcePublic(record)
               ? '<span class="pill ok">público</span>'
               : '<span class="pill warn">restrito</span>',
             record?.bibliographic_match_validated ? '<span class="pill ok">correspondência validada</span>' : '',
