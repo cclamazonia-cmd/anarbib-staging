@@ -5231,6 +5231,15 @@
       return `família prevista: ${getBookDigitalPlannedFamilyMeta(record).label}`;
     }
 
+    function getBookDigitalResourceLocationStatusLabel(record = {}) {
+      const hasLocal = !!(String(record?.storage_bucket || '').trim() && String(record?.storage_path || '').trim());
+      const hasExternal = !!String(record?.source_url || '').trim();
+      if (hasLocal && hasExternal) return 'armazenamento local + fonte externa';
+      if (hasLocal) return 'armazenamento local';
+      if (hasExternal) return 'fonte externa';
+      return 'sem caminho local ainda';
+    }
+
     function getBookDigitalResourceDisplayTitle(record = {}) {
       return String(record?.label || record?.attribution_text || record?.source_name || '').trim()
         || (record?.storage_bucket && record?.storage_path ? `${record.storage_bucket}/${record.storage_path}` : '')
@@ -5329,6 +5338,7 @@
             record?.source_url ? sanitize(record.source_url) : '',
             record?.rights_status ? `direitos: ${sanitize(record.rights_status)}` : '',
           ].filter(Boolean).join(' · ');
+          const linkStatusLine = sanitize(getBookDigitalResourceLocationStatusLabel(record));
           const badgeHtml = [
             `<span class="pill info">${typeLabel}</span>`,
             usageLabel ? `<span class="pill info">${usageLabel}</span>` : '',
@@ -5347,6 +5357,7 @@
                 <div class="book-digital-list-badges">${badgeHtml}</div>
               </div>
               <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
+              <div class="book-digital-list-meta">vínculo: ${linkStatusLine}</div>
               ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
             </div>
           `;
