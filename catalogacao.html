@@ -1805,7 +1805,7 @@
       <div class="panel-header">
         <div>
           <h3>Fichas de livros</h3>
-          <p>Crie ou edite aqui a ficha bibliográfica comum do documento. A posse local da biblioteca e os itens materiais ficam nas abas Exemplares e Rótulos.</p>
+          <p>Crie ou edite um rascunho de livro antes de publicar no catálogo.</p>
         </div>
         <div class="inline">
           <span id="bookDraftModePill" class="pill info">Novo rascunho</span>
@@ -1844,9 +1844,9 @@
             <input type="hidden" id="bookAction" value="create" />
 
             <div class="field mode-complete-only">
-              <label for="bookBibRef">Referência local (legado / compatibilidade)</label>
+              <label for="bookBibRef">Referência</label>
               <input id="bookBibRef" type="text" placeholder="0000123" />
-              <small>Não é o identificador principal de trabalho da ficha comum. Use apenas quando já existir uma referência local ou quando houver necessidade de compatibilidade.</small>
+              <small>Para ficha nova, pode deixar em branco que o sistema gera depois.</small>
             </div>
 
             <div class="field">
@@ -1943,7 +1943,7 @@
               <div class="section-block">
                 <div>
                   <h4 class="section-title">Identificadores e publicações seriadas</h4>
-                  <div class="hint">Use ISBN para livros e brochuras. Use ISSN e os dados abaixo quando se tratar de periódico ou outra publicação seriada. A referência local da biblioteca não é o pivô editorial principal desta ficha.</div>
+                  <div class="hint">Use ISBN para livros e brochuras. Use ISSN e os dados abaixo quando se tratar de periódico ou outra publicação seriada.</div>
                 </div>
                 <div class="grid cols-3">
                   <div id="bookISBNField" class="field">
@@ -2239,7 +2239,7 @@
 
             <div class="form-flow-break">
               <strong>Aquisição, proveniência e pertencimento</strong>
-              <span>Registre aqui a camada local da biblioteca: como o item entrou, de onde vieram os metadados e sob que regime de pertencimento ou circulação ele se insere, sem confundir isso com um empréstimo entre bibliotecas já em uso.</span>
+              <span>Registre como o item entrou, de onde vieram os metadados e como ele pode circular no futuro, sem confundir isso com um empréstimo entre bibliotecas já em uso.</span>
             </div>
 
             <div class="field">
@@ -2253,17 +2253,17 @@
             </div>
 
             <div class="field">
-              <label for="bookMutualizationStatus">Situação na rede / holding local</label>
+              <label for="bookMutualizationStatus">Situação na rede</label>
               <select id="bookMutualizationStatus"></select>
             </div>
 
             <div class="field">
-              <label for="bookOwnerLibrary">Biblioteca proprietária (holding local)</label>
+              <label for="bookOwnerLibrary">Biblioteca proprietária</label>
               <input id="bookOwnerLibrary" type="text" placeholder="BLMF - Belém do Pará" />
             </div>
 
             <div class="field">
-              <label for="bookHolderLibrary">Biblioteca detentora atual (holding local)</label>
+              <label for="bookHolderLibrary">Biblioteca detentora atual</label>
               <input id="bookHolderLibrary" type="text" placeholder="BLMF - Belém do Pará" />
             </div>
 
@@ -2304,8 +2304,8 @@
             </div>
 
             <div class="form-flow-break">
-              <strong>Recurso digital / leitura</strong>
-              <span>Vincule aqui um recurso digital já presente no armazenamento. Este bloco trata leitura e consulta digital ligada à ficha comum, sem misturar isso com exemplares físicos.</span>
+              <strong>Exemplar digital / leitura</strong>
+              <span>Vincule aqui um PDF já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2314,8 +2314,8 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">Recurso digital principal em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha comum em modo leitura. Por enquanto, o formulário continua editando apenas o recurso digital principal.</div>
+                    <h4 class="section-title">PDF principal em edição</h4>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o PDF principal.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -2326,10 +2326,10 @@
 
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
-                    <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha comum</h4>
-                    <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho da ficha comum. O multi-CRUD virá depois.</div>
+                    <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
+                    <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho. O multi-CRUD virá depois.</div>
                   </div>
-                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado neste rascunho da ficha comum.</div>
+                  <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado neste rascunho.</div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
@@ -2373,7 +2373,7 @@
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalIsPrimary" type="checkbox" checked />
-                    <span>Recurso digital principal desta ficha</span>
+                    <span>PDF principal desta ficha</span>
                   </label>
                   <label class="checkbox-inline" style="display:flex; align-items:center; gap:8px;">
                     <input id="bookDigitalBibliographicMatch" type="checkbox" />
@@ -2381,7 +2381,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital principal carregado neste formulário.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum PDF principal carregado neste formulário.</div>
               </div>
             </div>
 
@@ -2423,7 +2423,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha comum já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo nem substituir as leituras locais por biblioteca.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha do livro.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2709,7 +2709,7 @@
       <div class="panel-header">
         <div>
           <h3>Exemplares</h3>
-          <p>Crie ou edite rascunhos de exemplar com tombo, localização e observações físicas. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
+          <p>Crie ou edite aqui o exemplar material local de uma biblioteca. Esta etapa trata da posse local ligada à ficha comum e ao holding local; os ajustes do rótulo ficam na aba Rótulos.</p>
         </div>
         <div class="inline">
           <span id="exemplarDraftModePill" class="pill info">Novo rascunho</span>
@@ -2720,11 +2720,11 @@
         <div id="exemplarMessage" class="message"></div>
 
         <div class="card" style="margin-top:16px;">
-          <h4>Importação de livros para exemplares</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas de livros ativas. Cada exemplar previsto gera uma linha própria. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
+          <h4>Importação da ficha comum para exemplares locais</h4>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue fichas de livros ativas. Cada exemplar previsto gera uma linha própria já pensada como item material local ligado a uma biblioteca e a um holding local. Aqui você valida o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="exemplarLotImportId">Livros a carregar</label>
+              <label for="exemplarLotImportId">Fichas comuns a carregar</label>
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -2734,8 +2734,8 @@
           </div>
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
-              <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
+              <label for="exemplarBatchSearchInput">Filtrar linhas locais a validar</label>
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, biblioteca, referência local, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -2764,14 +2764,20 @@
           <input type="hidden" id="exemplarCurrentStatus" value="draft" />
           <input type="hidden" id="exemplarLabelStatus" value="pending" />
 
+          <div class="form-flow-break">
+            <strong>Holding local e item material</strong>
+            <span>Nesta etapa, cada linha trata de um exemplar material local ligado a uma biblioteca e a uma referência local do holding, sem transformar a ficha comum do livro em ficha de posse.</span>
+          </div>
+
           <div class="field">
             <label for="exemplarBatchId">Lote</label>
             <select id="exemplarBatchId"></select>
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência do livro</label>
+            <label for="exemplarBibRef">Referência local do holding</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
+            <small>Use aqui a referência local ligada à biblioteca e ao holding desta posse, não o identificador principal da ficha comum.</small>
           </div>
 
           <div class="field">
@@ -2780,7 +2786,7 @@
           </div>
 
           <div class="field">
-            <label for="exemplarLocationLibrary">Biblioteca</label>
+            <label for="exemplarLocationLibrary">Biblioteca do holding local</label>
             <input id="exemplarLocationLibrary" type="text" placeholder="BLMF - Belém do Pará" />
           </div>
 
@@ -2814,7 +2820,7 @@
           <div class="field" style="grid-column: span 3;">
             <label for="exemplarNotes">Observações</label>
             <textarea id="exemplarNotes" placeholder="Ex.: lombada danificada; dedicatória manuscrita; carimbo antigo; falta encarte."></textarea>
-            <small>Os campos do rótulo são preenchidos e validados na aba Rótulos.</small>
+            <small>Este formulário trata o exemplar material local. Os campos do rótulo são preenchidos e validados na aba Rótulos.</small>
           </div>
 
           <div class="actions with-danger-far" style="grid-column: span 3;">
