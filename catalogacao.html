@@ -3310,6 +3310,18 @@
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
+                  <label for="partnerImportFormatSelect">Formato de importação a preparar</label>
+                  <select id="partnerImportFormatSelect"></select>
+                  <small>Esta preparação continua local. O formato só será levado para a ficha se tu confirmares explicitamente.</small>
+                </div>
+                <div class="field">
+                  <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
+                  <select id="partnerImportMethodSelect"></select>
+                  <small>Use este campo para sinalizar a lógica de retomada local prevista, sem disparar nenhum fluxo automático.</small>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
                   <label for="partnerImportTakeSummary">Elementos a retomar</label>
                   <textarea id="partnerImportTakeSummary" rows="6" placeholder="Ex.: título paralelo; subtítulo; forma de responsabilidade; assuntos; nota útil; URL de origem."></textarea>
                 </div>
@@ -8494,6 +8506,17 @@
       }
 
       try {
+        const publicSingleRead = await withTimeout(
+          supabase.from('my_access').select(accessSelect).maybeSingle(),
+          'public.my_access single read'
+        );
+        if (!publicSingleRead.error && publicSingleRead.data) return publicSingleRead.data;
+        if (publicSingleRead.error) console.warn('public.my_access single read failed:', publicSingleRead.error);
+      } catch (error) {
+        console.warn('public.my_access single read exception:', error);
+      }
+
+      try {
         const apiRead = await withTimeout(
           supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
           'api.my_access read'
@@ -8504,6 +8527,43 @@
         console.warn('api.my_access read exception:', error);
       }
 
+      try {
+        const apiSingleRead = await withTimeout(
+          supabase.schema('api').from('my_access').select(accessSelect).maybeSingle(),
+          'api.my_access single read'
+        );
+        if (!apiSingleRead.error && apiSingleRead.data) return apiSingleRead.data;
+        if (apiSingleRead.error) console.warn('api.my_access single read failed:', apiSingleRead.error);
+      } catch (error) {
+        console.warn('api.my_access single read exception:', error);
+      }
+
+      return null;
+    }
+
+    async function fetchSessionContextRecord() {
+      try {
+        const publicRead = await withTimeout(
+          supabase.from('my_session_context').select('*').maybeSingle(),
+          'public.my_session_context read'
+        );
+        if (!publicRead.error && publicRead.data) return publicRead.data;
+        if (publicRead.error) console.warn('public.my_session_context read failed:', publicRead.error);
+      } catch (error) {
+        console.warn('public.my_session_context read exception:', error);
+      }
+
+      try {
+        const apiRead = await withTimeout(
+          supabase.schema('api').from('my_session_context').select('*').maybeSingle(),
+          'api.my_session_context read'
+        );
+        if (!apiRead.error && apiRead.data) return apiRead.data;
+        if (apiRead.error) console.warn('api.my_session_context read failed:', apiRead.error);
+      } catch (error) {
+        console.warn('api.my_session_context read exception:', error);
+      }
+
       return null;
     }
 
@@ -8511,21 +8571,38 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const data = await fetchAccessRecord(userId);
+      const [sessionContext, accessData] = await Promise.all([
+        fetchSessionContextRecord(),
+        fetchAccessRecord(userId),
+      ]);
 
-      state.profile = data || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = data?.can_access_catalogacao === true;
+      const mergedProfile = {
+        id: userId,
+        user_id: userId,
+        email: state.session?.user?.email || '',
+        ...(sessionContext || {}),
+        ...(accessData || {}),
+      };
+
+      state.profile = mergedProfile;
+      const canAccessCatalogacao = accessData?.can_access_catalogacao ?? sessionContext?.can_access_catalogacao;
+      const inferredRole = String(accessData?.role || sessionContext?.role || '').trim().toLowerCase();
+      const inferredLibrarianFlag = accessData?.is_librarian ?? sessionContext?.is_librarian;
+      state.isLibrarian = canAccessCatalogacao === true
+        || inferredLibrarianFlag === true
+        || ['bibliotecario', 'bibliotecária', 'bibliotecaire', 'librarian', 'admin'].includes(inferredRole);
 
       updateLoginButton();
 
       if (state.isLibrarian) {
-        refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
+        refs.userEmail.textContent = mergedProfile?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
         return;
       }
 
+      refs.userEmail.textContent = mergedProfile?.email || state.session?.user?.email || 'Usuário autenticado';
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
       showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
@@ -11557,6 +11634,14 @@
         await supabase.auth.signOut();
       } catch (error) {
         console.warn('signOut failed:', error);
+      } finally {
+        state.session = null;
+        state.profile = null;
+        state.isLibrarian = false;
+        refs.userEmail.textContent = 'Sem sessão';
+        refs.rolePill.textContent = 'Faça login para usar a catalogação';
+        refs.rolePill.className = 'pill danger';
+        updateLoginButton();
       }
       window.location.href = LOGIN_URL;
     });
@@ -11867,6 +11952,8 @@ function initPartnerProbeUi() {
   const comparisonLiveHintEl = document.getElementById('partnerComparisonLiveHint');
   const importSourceSummaryEl = document.getElementById('partnerImportSourceSummary');
   const importLocalSummaryEl = document.getElementById('partnerImportLocalSummary');
+  const partnerImportFormatSelectEl = document.getElementById('partnerImportFormatSelect');
+  const partnerImportMethodSelectEl = document.getElementById('partnerImportMethodSelect');
   const importTakeSummaryEl = document.getElementById('partnerImportTakeSummary');
   const importSkipSummaryEl = document.getElementById('partnerImportSkipSummary');
   const importProvenanceSummaryEl = document.getElementById('partnerImportProvenanceSummary');
@@ -11892,7 +11979,7 @@ function initPartnerProbeUi() {
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl ||
     !comparisonOperationalStateEl || !comparisonPrudenceSignalEl || !comparisonBoundaryNoteEl ||
     !comparisonLiveHintEl || !importSourceSummaryEl || !importLocalSummaryEl ||
-    !importTakeSummaryEl || !importSkipSummaryEl || !importProvenanceSummaryEl ||
+    !partnerImportFormatSelectEl || !partnerImportMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl || !importProvenanceSummaryEl ||
     !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
     !importOperationalStateEl || !importBoundaryNoteEl || !importLiveHintEl ||
     !applyComparisonBtn || !clearComparisonBtn || !applyImportPrepBtn || !clearImportPrepBtn
@@ -12143,6 +12230,8 @@ ${decisionSummary}` : '',
     lines.push(partnerDocumentActionState.importWorkspaceOpen ? 'Espaço de pré-importação aberto nesta tela.' : 'Espaço de pré-importação fechado nesta tela.');
     lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada.' : 'Política atual: importação não autorizada.');
     lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, mas sem modificação livre implícita.' : 'Política atual: mutualização continua separada ou não autorizada.');
+    lines.push(`Formato preparado: ${getSelectedOptionLabel(partnerImportFormatSelectEl)}.`);
+    lines.push(`Modo preparado: ${getSelectedOptionLabel(partnerImportMethodSelectEl)}.`);
     lines.push(String(importTakeSummaryEl.value || '').trim() ? 'Elementos a retomar já definidos.' : 'Elementos a retomar ainda não definidos.');
     lines.push(String(importSkipSummaryEl.value || '').trim() ? 'Elementos a não retomar já definidos.' : 'Elementos a não retomar ainda não definidos.');
     lines.push(String(importDecisionSummaryEl.value || '').trim() ? 'Decisão local já registrada.' : 'Decisão local ainda não registrada.');
@@ -12189,6 +12278,7 @@ ${decisionSummary}` : '',
     }
     partnerDocumentActionState.importWorkspaceOpen = true;
     importWorkspaceEl.classList.remove('is-hidden');
+    syncImportWorkspaceFormatMethodOptions();
     refreshImportWorkspaceDerivedTexts();
     setImportWorkspaceStatus('Pré-importação aberta. Define o que pode ser retomado, o que deve ficar de fora e qual nota local será preservada na ficha.');
   }
@@ -12215,6 +12305,20 @@ ${decisionSummary}` : '',
 
     if (bookSourceRecordIdEl && !String(bookSourceRecordIdEl.value || '').trim()) {
       bookSourceRecordIdEl.value = currentSlug || String(displayEl.value || '').trim();
+    }
+
+    if (bookImportFormatEl && partnerImportFormatSelectEl) {
+      const preparedFormat = String(partnerImportFormatSelectEl.value || '').trim();
+      if (preparedFormat && Array.from(bookImportFormatEl.options).some((option) => option.value === preparedFormat)) {
+        bookImportFormatEl.value = preparedFormat;
+      }
+    }
+
+    if (bookImportMethodEl && partnerImportMethodSelectEl) {
+      const preparedMethod = String(partnerImportMethodSelectEl.value || '').trim();
+      if (preparedMethod && Array.from(bookImportMethodEl.options).some((option) => option.value === preparedMethod)) {
+        bookImportMethodEl.value = preparedMethod;
+      }
     }
 
     const importNote = getImportCarryText();
@@ -12363,6 +12467,33 @@ ${comparisonNote}` : comparisonNote;
 
   function getCurrentPartnerSlug() {
     return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
+  }
+
+  function syncImportWorkspaceFormatMethodOptions() {
+    if (!partnerImportFormatSelectEl || !partnerImportMethodSelectEl || !bookImportFormatEl || !bookImportMethodEl) return;
+    if (!partnerImportFormatSelectEl.dataset.seeded) {
+      partnerImportFormatSelectEl.innerHTML = bookImportFormatEl.innerHTML;
+      partnerImportFormatSelectEl.dataset.seeded = 'true';
+    }
+    if (!partnerImportMethodSelectEl.dataset.seeded) {
+      partnerImportMethodSelectEl.innerHTML = bookImportMethodEl.innerHTML;
+      partnerImportMethodSelectEl.dataset.seeded = 'true';
+    }
+    const currentBookFormat = String(bookImportFormatEl.value || '').trim();
+    const currentBookMethod = String(bookImportMethodEl.value || '').trim();
+    partnerImportFormatSelectEl.value = currentBookFormat && Array.from(partnerImportFormatSelectEl.options).some((option) => option.value === currentBookFormat)
+      ? currentBookFormat
+      : '';
+    partnerImportMethodSelectEl.value = currentBookMethod && Array.from(partnerImportMethodSelectEl.options).some((option) => option.value === currentBookMethod)
+      ? currentBookMethod
+      : (partnerDocumentActionState.importAllowed ? 'manual' : '');
+  }
+
+  function getSelectedOptionLabel(selectEl, emptyLabel = 'Sem indicação definida') {
+    if (!selectEl) return emptyLabel;
+    const selectedOption = selectEl.options?.[selectEl.selectedIndex];
+    const label = String(selectedOption?.textContent || '').trim();
+    return label || emptyLabel;
   }
 
   function getGovernedBookPartnerSlug() {
@@ -12666,6 +12797,14 @@ ${comparisonNote}` : comparisonNote;
     });
   });
 
+  [partnerImportFormatSelectEl, partnerImportMethodSelectEl].forEach((node) => {
+    node.addEventListener('change', () => {
+      if (partnerDocumentActionState.importWorkspaceOpen) {
+        refreshImportWorkspaceDerivedTexts();
+      }
+    });
+  });
+
   [
     'bookTitle',
     'bookSubtitle',
@@ -12691,14 +12830,12 @@ ${comparisonNote}` : comparisonNote;
   refreshBookPartnerGovernanceUi({ silent: true });
 }
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       state.session = session;
       if (session) {
         refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
-        if (!state.isLibrarian) {
-          refs.rolePill.textContent = 'Sessão ativa';
-          refs.rolePill.className = 'pill info';
-        }
+        refs.rolePill.textContent = 'Sessão ativa';
+        refs.rolePill.className = 'pill info';
       } else {
         state.profile = null;
         state.isLibrarian = false;
@@ -12707,6 +12844,15 @@ ${comparisonNote}` : comparisonNote;
         refs.rolePill.className = 'pill danger';
       }
       updateLoginButton();
+
+      if (!session) return;
+      if (event === 'INITIAL_SESSION') return;
+
+      window.setTimeout(() => {
+        refreshAll(false).catch((error) => {
+          console.error('Falha ao revalidar a sessão após mudança de auth:', error);
+        });
+      }, 0);
     });
 
     window.addEventListener('hashchange', () => {
