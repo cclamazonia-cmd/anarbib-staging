@@ -2117,7 +2117,7 @@
         "has_online_reading","tombo"
       ].join(",");
 
-      if (localContextRequested && libraryContext.libraryId && bib_ref) {
+      if (!requestedBookId && localContextRequested && libraryContext.libraryId && bib_ref) {
         const holdingContextBook = await tryLoadBookByHoldingContext(bib_ref, libraryContext, v2Select, fallbackSelect);
         if (holdingContextBook?.booksTable && holdingContextBook?.data) {
           booksTable = holdingContextBook.booksTable;
