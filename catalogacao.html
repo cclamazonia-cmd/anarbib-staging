@@ -8516,192 +8516,24 @@
       if (value === true) return true;
       if (value === false || value === null || value === undefined) return false;
       const normalized = String(value).trim().toLowerCase();
-      return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'sim';
-    }
-
-    function normalizeCatalogacaoRole(value = '') {
-      return String(value || '')
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .trim();
-    }
-
-    function hasCatalogacaoLibrarySignal(row = {}) {
-      return !!normalizeInlineWhitespace(
-        row?.library_id
-        || row?.default_library_id
-        || row?.library_slug
-        || row?.default_library_slug
-        || row?.library_name
-        || row?.default_library_name
-        || ''
-      );
-    }
-
-    function hasExplicitCatalogacaoDenial(row = {}) {
-      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
-      if (row?.is_restricted === true) return true;
-      if (row?.can_access_catalogacao === false) return true;
-      return role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente';
+      return normalized === 'true' || normalized === '1' || normalized === 'yes';
     }
 
     function isCatalogacaoLibrarianRow(row = {}) {
-      if (!row || typeof row !== 'object') return false;
-      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
-      if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
-      if (row?.is_librarian === true) return true;
-      if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
-      if (isTruthyAccessFlag(row?.can_manage_catalogacao)) return true;
-      if (isTruthyAccessFlag(row?.can_access_painel)) return true;
-      if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
-      if (role.startsWith('bibliotec')) return true;
-      if (role.startsWith('bibliotecari')) return true;
-      return false;
+      const role = String(row?.role || '').trim().toLowerCase();
+      return role === 'librarian' || row?.is_librarian === true || isTruthyAccessFlag(row?.can_access_catalogacao);
     }
-
-    function buildProvisionalCatalogacaoAccess(identityRow = null, rows = [], accessError = null) {
-      const candidateRows = Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
-      const primaryRow = candidateRows.find((row) => row?.is_primary === true && !hasExplicitCatalogacaoDenial(row));
-      if (primaryRow && hasCatalogacaoLibrarySignal(primaryRow)) {
-        return {
-          ...primaryRow,
-          role: String(primaryRow?.role || 'librarian').trim() || 'librarian',
-          status: String(primaryRow?.status || 'active').trim() || 'active',
-          is_librarian: true,
-          can_access_catalogacao: true,
-        };
-      }
-
-      const identityRole = normalizeCatalogacaoRole(identityRow?.role || identityRow?.profile_role || '');
-      const hasSoftLibrarySignal = hasCatalogacaoLibrarySignal(identityRow) || candidateRows.some(hasCatalogacaoLibrarySignal);
-      const backendWasInconclusive = !!accessError;
-      const softRoleSignal = identityRole === 'admin' || identityRole === 'manager' || identityRole.startsWith('bibliotec');
-
-      if (identityRow && !hasExplicitCatalogacaoDenial(identityRow) && (softRoleSignal || (backendWasInconclusive && hasSoftLibrarySignal))) {
-        return {
-          ...identityRow,
-          role: String(identityRow?.role || 'librarian').trim() || 'librarian',
-          status: String(identityRow?.status || 'active').trim() || 'active',
-          is_librarian: true,
-          can_access_catalogacao: true,
-        };
-      }
-
-      return null;
-    }
-
-    function getCatalogacaoSessionMeta(session = null) {
-      const user = session?.user || {};
-      const appMeta = user?.app_metadata && typeof user.app_metadata === 'object' ? user.app_metadata : {};
-      const userMeta = user?.user_metadata && typeof user.user_metadata === 'object' ? user.user_metadata : {};
-      const meta = { ...appMeta, ...userMeta };
-      return {
-        role: meta.role || meta.profile_role || meta.membership_role || '',
-        library_id: meta.library_id || meta.default_library_id || meta.libraryId || '',
-        library_slug: meta.library_slug || meta.default_library_slug || meta.librarySlug || '',
-        library_name: meta.library_name || meta.default_library_name || meta.libraryName || '',
-        is_librarian: meta.is_librarian,
-        can_access_catalogacao: meta.can_access_catalogacao,
-        can_manage_catalogacao: meta.can_manage_catalogacao,
-        can_access_painel: meta.can_access_painel,
-        is_admin: meta.is_admin,
-        is_manager: meta.is_manager,
-      };
-    }
-
-    function buildCatalogacaoSessionFallback(session = null, identityRow = null, accessError = null) {
-      const user = session?.user || null;
-      if (!user?.id) return null;
-
-      const meta = getCatalogacaoSessionMeta(session);
-      const baseRow = {
-        ...(identityRow || {}),
-        id: identityRow?.id || user.id,
-        user_id: identityRow?.user_id || user.id,
-        email: identityRow?.email || user.email || '',
-        role: identityRow?.role || meta.role || '',
-        library_id: identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
-        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
-        library_name: identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
-        default_library_id: identityRow?.default_library_id || meta.library_id || '',
-        default_library_slug: identityRow?.default_library_slug || meta.library_slug || '',
-        default_library_name: identityRow?.default_library_name || meta.library_name || '',
-        is_librarian: identityRow?.is_librarian === true ? true : meta.is_librarian,
-        can_access_catalogacao: identityRow?.can_access_catalogacao === true ? true : meta.can_access_catalogacao,
-        can_manage_catalogacao: identityRow?.can_manage_catalogacao === true ? true : meta.can_manage_catalogacao,
-        can_access_painel: identityRow?.can_access_painel === true ? true : meta.can_access_painel,
-        status: String(identityRow?.status || 'active').trim() || 'active',
-      };
-
-      if (meta.is_admin === true || meta.is_manager === true) {
-        baseRow.role = String(baseRow.role || (meta.is_admin ? 'admin' : 'manager')).trim();
-      }
-
-      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
-
-      const positiveSessionSignal = isCatalogacaoLibrarianRow(baseRow)
-        || isTruthyAccessFlag(meta.is_librarian)
-        || isTruthyAccessFlag(meta.can_access_catalogacao)
-        || isTruthyAccessFlag(meta.can_manage_catalogacao)
-        || isTruthyAccessFlag(meta.can_access_painel)
-        || meta.is_admin === true
-        || meta.is_manager === true;
-
-      const hasLibrarySignal = hasCatalogacaoLibrarySignal(baseRow);
-      const backendWasInconclusive = !!accessError;
-
-      if (!positiveSessionSignal && !(backendWasInconclusive && hasLibrarySignal)) return null;
-
-      return {
-        ...baseRow,
-        role: String(baseRow.role || 'librarian').trim() || 'librarian',
-        status: String(baseRow.status || 'active').trim() || 'active',
-        is_librarian: true,
-        can_access_catalogacao: true,
-        _catalogacao_access_source: 'session_fallback',
-      };
-    }
-
-    function buildCatalogacaoNoDenialFallback(session = null, identityRow = null) {
-      const user = session?.user || null;
-      if (!user?.id) return null;
-      const meta = getCatalogacaoSessionMeta(session);
-      const candidate = {
-        ...(identityRow || {}),
-        id: identityRow?.id || user.id,
-        user_id: identityRow?.user_id || user.id,
-        email: identityRow?.email || user.email || '',
-        role: identityRow?.role || meta.role || 'librarian',
-        library_id: identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
-        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
-        library_name: identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
-        default_library_id: identityRow?.default_library_id || meta.library_id || '',
-        default_library_slug: identityRow?.default_library_slug || meta.library_slug || '',
-        default_library_name: identityRow?.default_library_name || meta.library_name || '',
-        status: String(identityRow?.status || 'active').trim() || 'active',
-      };
-      if (hasExplicitCatalogacaoDenial(candidate)) return null;
-      if (!hasCatalogacaoLibrarySignal(candidate)) return null;
-      return {
-        ...candidate,
-        is_librarian: true,
-        can_access_catalogacao: true,
-        _catalogacao_access_source: 'no_denial_fallback',
-      };
-    }
-
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
       const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
       const librarianRows = activeRows.filter((row) => {
-        if (hasExplicitCatalogacaoDenial(row)) return false;
+        if (row?.is_restricted === true) return false;
+        if (row?.can_access_catalogacao === false) return false;
         return isCatalogacaoLibrarianRow(row);
       });
       return librarianRows.find((row) => row?.is_primary === true)
         || librarianRows.find((row) => row?.can_access_catalogacao === true)
-        || librarianRows.find((row) => row?.is_librarian === true)
         || librarianRows[0]
         || null;
     }
@@ -8791,7 +8623,7 @@
       ];
 
       const directResults = await Promise.allSettled(
-        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 3600))
+        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1600))
       );
 
       for (const result of directResults) {
@@ -8811,7 +8643,7 @@
         withTimeout(
           supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
           'profiles read',
-          3200
+          1400
         ),
         withTimeout(
           supabase
@@ -8820,7 +8652,7 @@
             .eq('user_id', userId)
             .eq('status', 'active'),
           'user_library_memberships read',
-          3600
+          1600
         ),
       ]);
 
@@ -8856,7 +8688,7 @@
             const librariesRes = await withTimeout(
               supabase.from('libraries').select('id,slug,name,short_name').in('id', libraryIds),
               'libraries read',
-              3200
+              1400
             );
             if (!librariesRes?.error) {
               librariesById = new Map((librariesRes.data || []).map((row) => [normalizeLibraryId(row.id), row]));
@@ -8902,33 +8734,6 @@
           can_access_catalogacao: true,
         };
       }
-      if (!accessRow && lastError) {
-        const slowerAttempts = [
-          () => supabase.from('my_access').select('*'),
-          () => supabase.schema('api').from('my_access').select('*'),
-          () => supabase.from('my_session_context').select('*').limit(1),
-          () => supabase.schema('api').from('my_session_context').select('*').limit(1),
-        ];
-
-        for (const run of slowerAttempts) {
-          try {
-            const retryRes = await withTimeout(run(), 'catalogação access retry', 6000);
-            if (!retryRes?.error) {
-              pushRows(Array.isArray(retryRes?.data) ? retryRes.data : (retryRes?.data ? [retryRes.data] : []));
-            } else {
-              lastError = retryRes.error;
-            }
-          } catch (error) {
-            lastError = error;
-          }
-        }
-
-        accessRow = pickCurrentCatalogacaoAccess(collectedRows);
-      }
-
-      if (!accessRow) {
-        accessRow = buildProvisionalCatalogacaoAccess(identityRow, collectedRows, lastError);
-      }
 
       return { data: collectedRows, identityRow, accessRow, error: lastError };
     }
@@ -8939,20 +8744,17 @@
 
       const accessRead = await fetchAccessRecord(userId);
       const identityRow = accessRead?.identityRow || null;
-      const explicitDenial = hasExplicitCatalogacaoDenial(identityRow || {});
-      const fallbackAccess = accessRead?.accessRow
-        || buildCatalogacaoSessionFallback(state.session, identityRow, accessRead?.error)
-        || buildCatalogacaoNoDenialFallback(state.session, identityRow);
+      const accessRow = accessRead?.accessRow || null;
       const mergedProfile = {
         id: userId,
         user_id: userId,
         email: state.session?.user?.email || '',
         ...(identityRow || {}),
-        ...(fallbackAccess || {}),
+        ...(accessRow || {}),
       };
 
       state.profile = mergedProfile;
-      state.isLibrarian = !!fallbackAccess;
+      state.isLibrarian = !!accessRow;
 
       updateLoginButton();
 
@@ -8961,19 +8763,13 @@
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
-        return mergedProfile;
+        return;
       }
 
-      refs.rolePill.textContent = explicitDenial ? 'Acesso restrito' : 'Acesso bibliotecário não confirmado';
-      refs.rolePill.className = explicitDenial ? 'pill danger' : 'pill warn';
-      showMessage(
-        refs.globalMessage,
-        explicitDenial
-          ? 'Este usuário não tem permissão bibliotecária.'
-          : 'A sessão foi reconhecida, mas a leitura do acesso bibliotecário ficou inconclusiva. Tenta Atualizar novamente.',
-        'error'
-      );
-      throw new Error(explicitDenial ? 'Usuário sem permissão bibliotecária.' : (accessRead?.error?.message || 'Leitura do acesso bibliotecário inconclusiva.'));
+      refs.rolePill.textContent = 'Acesso restrito';
+      refs.rolePill.className = 'pill danger';
+      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+      throw new Error(accessRead?.error?.message || 'Usuário sem permissão bibliotecária.');
     }
 
     async function loadBatches() {
@@ -9198,19 +8994,12 @@
         refs.rolePill.textContent = 'Sessão reconhecida';
         refs.rolePill.className = 'pill info';
 
-        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 12000);
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 2600);
         if (!profileStep.ok) {
           refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
-          const explicitDenied = hasExplicitCatalogacaoDenial(state.profile || {}) || /sem permissão bibliotecária/i.test(String(profileStep?.error?.message || ''));
-          refs.rolePill.textContent = explicitDenied ? 'Acesso restrito' : 'Sessão reconhecida; acesso não confirmado';
-          refs.rolePill.className = explicitDenied ? 'pill danger' : 'pill warn';
-          showMessage(
-            refs.globalMessage,
-            explicitDenied
-              ? 'Este usuário não tem permissão bibliotecária.'
-              : 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.',
-            'error'
-          );
+          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
           updateLoginButton();
           return;
         }
