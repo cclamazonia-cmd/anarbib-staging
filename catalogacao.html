@@ -3286,6 +3286,84 @@
             </div>
           </div>
 
+          <div id="partnerImportWorkspace" class="field is-hidden" style="margin-top:12px;">
+            <div class="section-block">
+              <div class="inline">
+                <div>
+                  <h4 class="section-title">Importação controlada / preparação local</h4>
+                  <div class="hint">Este espaço prepara uma retomada local controlada, sem lançar nenhuma importação automática nem modificar livremente a notice parceira.</div>
+                </div>
+                <div class="row-actions">
+                  <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação para a ficha</button>
+                  <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
+                </div>
+              </div>
+              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a política da parceira autoriza importação nesta etapa.</div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
+                  <textarea id="partnerImportSourceSummary" rows="6" readonly placeholder="A síntese da fonte parceira aparecerá aqui."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportLocalSummary">Rascunho local em foco</label>
+                  <textarea id="partnerImportLocalSummary" rows="6" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportFormatSelect">Formato de importação a preparar</label>
+                  <select id="partnerImportFormatSelect"></select>
+                  <small>Este campo só prepara a ficha local. Nada é importado automaticamente.</small>
+                </div>
+                <div class="field">
+                  <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
+                  <select id="partnerImportMethodSelect"></select>
+                  <small>Escolhe aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportTakeSummary">Elementos a retomar</label>
+                  <textarea id="partnerImportTakeSummary" rows="6" placeholder="Ex.: subtítulo; forma de responsabilidade; assunto mais preciso; URL de origem; nota útil."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportSkipSummary">Elementos a não retomar</label>
+                  <textarea id="partnerImportSkipSummary" rows="6" placeholder="Ex.: assunto genérico demais; dado não confirmado; forma de nome menos precisa; nota técnica sem utilidade local."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportProvenanceSummary">Proveniência a conservar</label>
+                  <textarea id="partnerImportProvenanceSummary" rows="6" placeholder="Ex.: notice parceira consultada em HTML público; comparação humana; revisão local a partir do exemplar em mãos."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportDecisionSummary">Decisão local / preparação do rascunho</label>
+                  <textarea id="partnerImportDecisionSummary" rows="6" placeholder="Ex.: preparar rascunho local sem copiar assuntos; manter editora local validada; revisar ISBN antes de publicar."></textarea>
+                </div>
+              </div>
+              <div class="field">
+                <label for="partnerImportDraftPreview">Pré-visualização do rascunho local preparado</label>
+                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
+              </div>
+              <div class="field">
+                <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
+                <textarea id="partnerImportCarryPreview" rows="6" readonly placeholder="A nota local de preparação aparecerá aqui."></textarea>
+                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerImportFieldWritePreview">Escrita prevista na ficha</label>
+                <textarea id="partnerImportFieldWritePreview" rows="8" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
+                <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido ou acrescentado na ficha quando clicares em “Levar preparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerImportOperationalState">Estado operacional da preparação</label>
+                <textarea id="partnerImportOperationalState" rows="4" readonly placeholder="O estado operacional desta preparação aparecerá aqui."></textarea>
+              </div>
+              <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real.</div>
+            </div>
+          </div>
+
+
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
             <div class="field">
               <label for="partnerProbeOutput">Endpoints prováveis</label>
@@ -11806,6 +11884,25 @@ function initPartnerProbeUi() {
   const comparisonLiveHintEl = document.getElementById('partnerComparisonLiveHint');
   const applyComparisonBtn = document.getElementById('partnerApplyComparisonBtn');
   const clearComparisonBtn = document.getElementById('partnerClearComparisonBtn');
+  const importWorkspaceEl = document.getElementById('partnerImportWorkspace');
+  const importWorkspaceStatusEl = document.getElementById('partnerImportWorkspaceStatus');
+  const importSourceSummaryEl = document.getElementById('partnerImportSourceSummary');
+  const importLocalSummaryEl = document.getElementById('partnerImportLocalSummary');
+  const importFormatSelectEl = document.getElementById('partnerImportFormatSelect');
+  const importMethodSelectEl = document.getElementById('partnerImportMethodSelect');
+  const importTakeSummaryEl = document.getElementById('partnerImportTakeSummary');
+  const importSkipSummaryEl = document.getElementById('partnerImportSkipSummary');
+  const importProvenanceSummaryEl = document.getElementById('partnerImportProvenanceSummary');
+  const importDecisionSummaryEl = document.getElementById('partnerImportDecisionSummary');
+  const importDraftPreviewEl = document.getElementById('partnerImportDraftPreview');
+  const importCarryPreviewEl = document.getElementById('partnerImportCarryPreview');
+  const importFieldWritePreviewEl = document.getElementById('partnerImportFieldWritePreview');
+  const importFieldWriteHintEl = document.getElementById('partnerImportFieldWriteHint');
+  const importOperationalStateEl = document.getElementById('partnerImportOperationalState');
+  const importBoundaryNoteEl = document.getElementById('partnerImportBoundaryNote');
+  const importLiveHintEl = document.getElementById('partnerImportLiveHint');
+  const applyImportPrepBtn = document.getElementById('partnerApplyImportPrepBtn');
+  const clearImportPrepBtn = document.getElementById('partnerClearImportPrepBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -11817,7 +11914,12 @@ function initPartnerProbeUi() {
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
     !comparisonOperationalStateEl || !comparisonPrudenceSignalEl || !comparisonBoundaryNoteEl ||
-    !comparisonLiveHintEl || !applyComparisonBtn || !clearComparisonBtn
+    !comparisonLiveHintEl || !applyComparisonBtn || !clearComparisonBtn ||
+    !importWorkspaceEl || !importWorkspaceStatusEl || !importSourceSummaryEl || !importLocalSummaryEl ||
+    !importFormatSelectEl || !importMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl ||
+    !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
+    !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importBoundaryNoteEl ||
+    !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn
   ) {
     return;
   }
@@ -11843,8 +11945,15 @@ function initPartnerProbeUi() {
     compareAllowed: false,
     importAllowed: false,
     workspaceOpen: false,
+    importWorkspaceOpen: false,
   };
   const partnerOptionRegistry = new Map();
+
+  function getSelectedOptionLabel(selectEl) {
+    if (!selectEl) return '';
+    const option = selectEl.options?.[selectEl.selectedIndex] || null;
+    return String(option?.textContent || '').trim();
+  }
 
   function getCurrentPartnerLabel() {
     return String(displayEl.value || presetEl.options[presetEl.selectedIndex]?.textContent || slugEl.value || '').trim();
@@ -12202,6 +12311,257 @@ ${comparisonNote}` : comparisonNote;
     setPartnerProbeMessage('Comparação local levada para a ficha do livro sem importar automaticamente a notice parceira.', 'ok');
   }
 
+  function syncImportWorkspaceSelectOptions() {
+    if (bookImportFormatEl && importFormatSelectEl) {
+      importFormatSelectEl.innerHTML = bookImportFormatEl.innerHTML;
+      importFormatSelectEl.value = String(bookImportFormatEl.value || '').trim();
+    }
+    if (bookImportMethodEl && importMethodSelectEl) {
+      importMethodSelectEl.innerHTML = bookImportMethodEl.innerHTML;
+      importMethodSelectEl.value = String(bookImportMethodEl.value || '').trim();
+    }
+  }
+
+  function getImportSourceSummaryText() {
+    const lines = [
+      `Parceira: ${getCurrentPartnerLabel() || 'Parceira sem nome público'}`,
+      `Slug: ${getCurrentPartnerSlug() || 'Sem slug informado'}`,
+      `Base URL: ${normalizePartnerBaseUrl(baseUrlEl.value || '') || 'Sem base URL informada'}`,
+      `Família / confiança: ${getSelectedOptionLabel(familyEl) || 'Sem família'} · ${getSelectedOptionLabel(confidenceEl) || 'Sem confiança'}`,
+      `Situação relacional: ${String(relationshipStatusEl.value || '').trim() || 'Sem leitura relacional'}`,
+      `Comparação: ${String(compareAllowedEl.value || '').trim() || '—'}`,
+      `Importação: ${String(importAllowedEl.value || '').trim() || '—'}`,
+      `Último teste técnico: ${String(technicalProbeLastAtEl.value || '').trim() || 'Sem teste registrado'}`,
+    ];
+    return lines.join('\n');
+  }
+
+  function getImportCarryPreviewText() {
+    const label = getCurrentPartnerLabel() || 'Parceira sem nome público';
+    const takeSummary = String(importTakeSummaryEl.value || '').trim();
+    const skipSummary = String(importSkipSummaryEl.value || '').trim();
+    const provenanceSummary = String(importProvenanceSummaryEl.value || '').trim();
+    const decisionSummary = String(importDecisionSummaryEl.value || '').trim();
+    const formatLabel = getSelectedOptionLabel(importFormatSelectEl);
+    const methodLabel = getSelectedOptionLabel(importMethodSelectEl);
+    return [
+      `Preparação local de importação controlada com ${label}.`,
+      formatLabel ? `Formato preparado: ${formatLabel}.` : '',
+      methodLabel ? `Modo preparado: ${methodLabel}.` : '',
+      takeSummary ? `Elementos a retomar:
+${takeSummary}` : '',
+      skipSummary ? `Elementos a não retomar:
+${skipSummary}` : '',
+      provenanceSummary ? `Proveniência a conservar:
+${provenanceSummary}` : '',
+      decisionSummary ? `Decisão local / preparação do rascunho:
+${decisionSummary}` : '',
+    ].filter(Boolean).join('\n\n');
+  }
+
+  function getImportDraftPreviewText() {
+    const formatLabel = getSelectedOptionLabel(importFormatSelectEl) || 'Sem formato preparado';
+    const methodLabel = getSelectedOptionLabel(importMethodSelectEl) || 'Sem modo preparado';
+    const takeSummary = String(importTakeSummaryEl.value || '').trim() || 'Sem elementos marcados para retomada.';
+    const skipSummary = String(importSkipSummaryEl.value || '').trim() || 'Sem exclusões registradas.';
+    const provenanceSummary = String(importProvenanceSummaryEl.value || '').trim() || 'Sem observação de proveniência adicional.';
+    const decisionSummary = String(importDecisionSummaryEl.value || '').trim() || 'Sem decisão local registrada.';
+    return [
+      getCurrentLocalDraftSummary(),
+      `Formato preparado: ${formatLabel}`,
+      `Modo preparado: ${methodLabel}`,
+      `Elementos a retomar: ${takeSummary}`,
+      `Elementos a não retomar: ${skipSummary}`,
+      `Proveniência a conservar: ${provenanceSummary}`,
+      `Decisão local: ${decisionSummary}`,
+    ].join('\n\n');
+  }
+
+  function getImportFieldWritePreviewText() {
+    const currentSlug = getCurrentPartnerSlug();
+    const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
+    const currentSourceValue = String(bookPartnerSourceEl?.value || '').trim();
+    const currentSourceLabel = getSelectedOptionLabel(bookPartnerSourceEl);
+    const nextSourceValue = mappedSource && Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === mappedSource)
+      ? mappedSource
+      : Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === 'other_partner')
+        ? 'other_partner'
+        : '';
+    const nextSourceLabel = nextSourceValue
+      ? String(Array.from(bookPartnerSourceEl?.options || []).find((option) => option.value === nextSourceValue)?.textContent || '').trim()
+      : '';
+    const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
+    const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
+    const nextFormatValue = String(importFormatSelectEl?.value || '').trim();
+    const nextMethodValue = String(importMethodSelectEl?.value || '').trim();
+    const nextFormatLabel = getSelectedOptionLabel(importFormatSelectEl);
+    const nextMethodLabel = getSelectedOptionLabel(importMethodSelectEl);
+    const currentFormatValue = String(bookImportFormatEl?.value || '').trim();
+    const currentMethodValue = String(bookImportMethodEl?.value || '').trim();
+    const currentFormatLabel = getSelectedOptionLabel(bookImportFormatEl);
+    const currentMethodLabel = getSelectedOptionLabel(bookImportMethodEl);
+    const carryPreview = getImportCarryPreviewText();
+    const lines = [];
+
+    if (!nextSourceValue) {
+      lines.push('Fonte parceira: sem alteração automática prevista.');
+    } else if (currentSourceValue === nextSourceValue) {
+      lines.push(`Fonte parceira: manter ${currentSourceLabel}.`);
+    } else {
+      lines.push(`Fonte parceira: gravar ${nextSourceLabel}.`);
+    }
+
+    if (String(bookSourceRecordIdEl?.value || '').trim()) {
+      lines.push(`ID do registro de origem: manter valor atual (${String(bookSourceRecordIdEl.value || '').trim()}).`);
+    } else if (nextRecordId) {
+      lines.push(`ID do registro de origem: preencher com ${nextRecordId}.`);
+    } else {
+      lines.push('ID do registro de origem: sem escrita prevista.');
+    }
+
+    if (String(bookSourceRecordUrlEl?.value || '').trim()) {
+      lines.push(`URL do registro de origem: manter valor atual (${String(bookSourceRecordUrlEl.value || '').trim()}).`);
+    } else if (nextRecordUrl) {
+      lines.push(`URL do registro de origem: preencher com ${nextRecordUrl}.`);
+    } else {
+      lines.push('URL do registro de origem: sem escrita prevista.');
+    }
+
+    if (!nextFormatValue) {
+      lines.push(currentFormatValue ? `Formato de importação: manter ${currentFormatLabel}.` : 'Formato de importação: sem escrita prevista.');
+    } else if (currentFormatValue === nextFormatValue) {
+      lines.push(`Formato de importação: manter ${currentFormatLabel}.`);
+    } else {
+      lines.push(`Formato de importação: gravar ${nextFormatLabel}.`);
+    }
+
+    if (!nextMethodValue) {
+      lines.push(currentMethodValue ? `Modo de importação: manter ${currentMethodLabel}.` : 'Modo de importação: sem escrita prevista.');
+    } else if (currentMethodValue === nextMethodValue) {
+      lines.push(`Modo de importação: manter ${currentMethodLabel}.`);
+    } else {
+      lines.push(`Modo de importação: gravar ${nextMethodLabel}.`);
+    }
+
+    if (!carryPreview) {
+      lines.push('Nota de proveniência: sem escrita prevista enquanto a preparação não estiver suficientemente descrita.');
+    } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
+      lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
+    } else {
+      lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
+    }
+
+    return lines.join('\n');
+  }
+
+  function getImportOperationalStateText() {
+    const lines = [];
+    lines.push(partnerDocumentActionState.importWorkspaceOpen ? 'Espaço de preparação de importação aberto nesta tela.' : 'Espaço de preparação de importação fechado nesta tela.');
+    lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada sob controle local.' : 'Política atual: importação não autorizada nesta etapa.');
+    lines.push(partnerDocumentActionState.compareAllowed ? 'Comparação continua disponível como camada preparatória.' : 'Comparação não aparece disponível para esta parceira agora.');
+    lines.push(String(importFormatSelectEl?.value || '').trim() ? `Formato preparado: ${getSelectedOptionLabel(importFormatSelectEl)}.` : 'Formato preparado: ainda não escolhido.');
+    lines.push(String(importMethodSelectEl?.value || '').trim() ? `Modo preparado: ${getSelectedOptionLabel(importMethodSelectEl)}.` : 'Modo preparado: ainda não escolhido.');
+    lines.push(getImportCarryPreviewText() ? 'Há um bloco local preparado para a nota de proveniência.' : 'Ainda não há bloco local suficiente para levar à nota de proveniência.');
+    return lines.join('\n');
+  }
+
+  function refreshImportWorkspaceDerivedTexts() {
+    importSourceSummaryEl.value = getImportSourceSummaryText();
+    importLocalSummaryEl.value = getCurrentLocalDraftSummary();
+    importDraftPreviewEl.value = getImportDraftPreviewText();
+    importCarryPreviewEl.value = getImportCarryPreviewText();
+    importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
+    importOperationalStateEl.value = getImportOperationalStateText();
+    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido ou acrescentado em Fonte parceira, ID, URL, formato, modo e nota de proveniência.';
+    importLiveHintEl.textContent = 'Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.';
+    importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
+      ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, a importação segue sob revisão humana.'
+      : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
+  }
+
+  function setImportWorkspaceStatus(text = '') {
+    importWorkspaceStatusEl.textContent = text;
+  }
+
+  function closeImportWorkspace(options = {}) {
+    const reset = !!options.reset;
+    partnerDocumentActionState.importWorkspaceOpen = false;
+    importWorkspaceEl.classList.add('is-hidden');
+    if (reset) {
+      importTakeSummaryEl.value = '';
+      importSkipSummaryEl.value = '';
+      importProvenanceSummaryEl.value = '';
+      importDecisionSummaryEl.value = '';
+    }
+    syncImportWorkspaceSelectOptions();
+    refreshImportWorkspaceDerivedTexts();
+    setImportWorkspaceStatus('A preparação de importação controlada só abre quando a política da parceira autoriza importação nesta etapa.');
+  }
+
+  function openImportWorkspace() {
+    if (!partnerDocumentActionState.importAllowed) {
+      closeImportWorkspace({ reset: false });
+      return;
+    }
+    partnerDocumentActionState.importWorkspaceOpen = true;
+    importWorkspaceEl.classList.remove('is-hidden');
+    syncImportWorkspaceSelectOptions();
+    refreshImportWorkspaceDerivedTexts();
+    setImportWorkspaceStatus('Preparação local aberta. Define formato, modo, elementos a retomar, exclusões e proveniência antes de levar isso para a ficha.');
+  }
+
+  function applyImportPreparationToBookForm() {
+    if (!partnerDocumentActionState.importAllowed) {
+      setPartnerProbeMessage('Importação controlada bloqueada para esta parceira nesta etapa.', 'warn');
+      return;
+    }
+
+    const currentSlug = getCurrentPartnerSlug();
+    const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
+    if (bookPartnerSourceEl) {
+      if (mappedSource && Array.from(bookPartnerSourceEl.options).some((option) => option.value === mappedSource)) {
+        bookPartnerSourceEl.value = mappedSource;
+      } else if (Array.from(bookPartnerSourceEl.options).some((option) => option.value === 'other_partner')) {
+        bookPartnerSourceEl.value = 'other_partner';
+      }
+    }
+
+    if (bookSourceRecordUrlEl && !String(bookSourceRecordUrlEl.value || '').trim()) {
+      bookSourceRecordUrlEl.value = normalizePartnerBaseUrl(baseUrlEl.value || '');
+    }
+
+    if (bookSourceRecordIdEl && !String(bookSourceRecordIdEl.value || '').trim()) {
+      bookSourceRecordIdEl.value = currentSlug || String(displayEl.value || '').trim();
+    }
+
+    if (bookImportFormatEl && String(importFormatSelectEl.value || '').trim()) {
+      bookImportFormatEl.value = String(importFormatSelectEl.value || '').trim();
+    }
+
+    if (bookImportMethodEl && String(importMethodSelectEl.value || '').trim()) {
+      bookImportMethodEl.value = String(importMethodSelectEl.value || '').trim();
+    }
+
+    const carryPreview = getImportCarryPreviewText();
+    if (carryPreview && bookProvenanceNoteEl) {
+      const currentNote = String(bookProvenanceNoteEl.value || '').trim();
+      bookProvenanceNoteEl.value = currentNote ? `${currentNote}
+
+${carryPreview}` : carryPreview;
+    }
+
+    if (typeof refreshBookPartnerGovernanceUi === 'function') {
+      refreshBookPartnerGovernanceUi({ silent: true });
+    }
+    if (typeof setTab === 'function') {
+      setTab('booksPanel');
+    }
+
+    showMessage(refs.bookMessage, 'Preparação de importação levada para a ficha como proveniência e parâmetros locais, sem disparar importação automática.', 'ok');
+    setPartnerProbeMessage('Preparação local levada para a ficha do livro sem importar automaticamente a notice parceira.', 'ok');
+  }
+
+
   function formatPartnerTimestamp(value) {
     if (!value) return 'Sem teste registrado';
     const parsed = new Date(value);
@@ -12217,6 +12577,7 @@ ${comparisonNote}` : comparisonNote;
     policySummaryEl.value = '';
     politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
     closeCompareWorkspace({ reset: false });
+    closeImportWorkspace({ reset: false });
     setPartnerDocumentActionsState('empty');
   }
 
@@ -12235,6 +12596,9 @@ ${comparisonNote}` : comparisonNote;
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
     }
+    if (!partnerDocumentActionState.importAllowed) {
+      closeImportWorkspace({ reset: false });
+    }
 
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação ativa nem importação nesta etapa.';
@@ -12245,7 +12609,7 @@ ${comparisonNote}` : comparisonNote;
       return;
     }
     if (mode === 'import_allowed') {
-      actionHintEl.textContent = 'Comparação e importação aparecem como autorizadas pela política. Nenhuma importação automática foi ativada aqui.';
+      actionHintEl.textContent = 'Comparação e preparação de importação controlada estão autorizadas pela política. Nada daqui dispara importação automática.';
       return;
     }
     if (mode === 'not_registered') {
@@ -12262,7 +12626,7 @@ ${comparisonNote}` : comparisonNote;
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
     policySummaryEl.value = row?.policy_summary || '';
     politicalNoticeEl.textContent = row?.import_allowed
-      ? 'Importação ainda depende de revisão bibliográfica local e uso controlado.'
+      ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e uso controlado.'
       : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
     setPartnerDocumentActionsState(
       row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
@@ -12528,18 +12892,45 @@ ${comparisonNote}` : comparisonNote;
   });
 
   importActionBtn?.addEventListener('click', () => {
-    setPartnerProbeMessage(
-      partnerDocumentActionState.importAllowed
-        ? 'Importação controlada aparece como autorizada pela política, mas o fluxo documental ainda não foi ativado neste bloco.'
-        : 'Importação bloqueada para esta parceira nesta etapa.',
-      partnerDocumentActionState.importAllowed ? 'info' : 'warn'
-    );
+    if (partnerDocumentActionState.importAllowed) {
+      openImportWorkspace();
+      setPartnerProbeMessage('Preparação de importação controlada aberta em modo local assistido, sem importação automática.', 'info');
+      return;
+    }
+    setPartnerProbeMessage('Importação bloqueada para esta parceira nesta etapa.', 'warn');
+  });
+
+  applyImportPrepBtn?.addEventListener('click', () => {
+    applyImportPreparationToBookForm();
+  });
+
+  clearImportPrepBtn?.addEventListener('click', () => {
+    closeImportWorkspace({ reset: true });
+    refreshImportWorkspaceDerivedTexts();
+    setPartnerProbeMessage('Espaço de preparação limpo. Nenhuma alteração documental foi feita.', 'info');
   });
 
   [partnerNoticeSummaryEl, differenceSummaryEl, comparisonDecisionEl].forEach((node) => {
     node.addEventListener('input', () => {
       if (partnerDocumentActionState.workspaceOpen) {
         refreshComparisonWorkspaceDerivedTexts();
+      }
+    });
+  });
+
+  [importTakeSummaryEl, importSkipSummaryEl, importProvenanceSummaryEl, importDecisionSummaryEl, importFormatSelectEl, importMethodSelectEl].forEach((node) => {
+    node.addEventListener(node.tagName === 'SELECT' ? 'change' : 'input', () => {
+      if (partnerDocumentActionState.importWorkspaceOpen) {
+        refreshImportWorkspaceDerivedTexts();
+      }
+    });
+  });
+
+  [bookImportFormatEl, bookImportMethodEl].forEach((node) => {
+    node?.addEventListener('change', () => {
+      if (partnerDocumentActionState.importWorkspaceOpen) {
+        syncImportWorkspaceSelectOptions();
+        refreshImportWorkspaceDerivedTexts();
       }
     });
   });
@@ -12558,6 +12949,9 @@ ${comparisonNote}` : comparisonNote;
     document.getElementById(fieldId)?.addEventListener('input', () => {
       if (partnerDocumentActionState.workspaceOpen) {
         refreshLocalDraftComparisonSummary();
+      }
+      if (partnerDocumentActionState.importWorkspaceOpen) {
+        refreshImportWorkspaceDerivedTexts();
       }
     });
   });
