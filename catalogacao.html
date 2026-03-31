@@ -8874,7 +8874,8 @@
 
       if (!selectedEntries.length) return 0;
 
-      const confirmed = confirmDiscardAction('Os rascunhos selecionados serão enviados para a lixeira. Eles não serão apagados definitivamente e poderão ser restaurados depois. Deseja continuar?');
+      const onlyBooks = selectedEntries.every(entry => entry.type === 'book');
+      const confirmed = confirmDiscardAction(getQueueDiscardConfirmMessage(onlyBooks ? 'book' : '', selectedEntries.length));
       if (!confirmed) return 0;
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
@@ -8974,6 +8975,31 @@
         restoreOpen: 'Rascunho restaurado e aberto para edição.',
       };
       return defaultMap[action] || 'Operação concluída com sucesso.';
+    }
+
+    function getQueueDiscardConfirmMessage(itemType = '', count = 1) {
+      const quantity = Number.isFinite(Number(count)) ? Number(count) : 1;
+      if (itemType === 'book') {
+        return quantity > 1
+          ? 'As fichas comuns selecionadas serão enviadas para a lixeira. Elas não serão apagadas definitivamente e poderão ser restauradas depois. Deseja continuar?'
+          : 'Esta ficha comum será descartada e irá para a lixeira. Deseja continuar?';
+      }
+      return quantity > 1
+        ? 'Os rascunhos selecionados serão enviados para a lixeira. Eles não serão apagados definitivamente e poderão ser restaurados depois. Deseja continuar?'
+        : 'Este rascunho será descartado e irá para a lixeira. Deseja continuar?';
+    }
+
+    function getQueueDiscardSelectionFeedback(selectedEntries = []) {
+      const entries = Array.isArray(selectedEntries) ? selectedEntries : [];
+      if (!entries.length) return 'Nenhum rascunho foi enviado para a lixeira.';
+      const onlyBooks = entries.every(entry => entry?.type === 'book');
+      if (onlyBooks) {
+        const count = entries.length;
+        return count === 1
+          ? '1 ficha comum foi enviada para a lixeira.'
+          : `${count} fichas comuns foram enviadas para a lixeira.`;
+      }
+      return `${entries.length} rascunhos foram enviados para a lixeira.`;
     }
 
     function getDraftTableName(type = '') {
@@ -10032,10 +10058,14 @@
       const discardSelectedBtn = refs.queueTableWrap.querySelector('#queueDiscardSelectedBtn');
       if (discardSelectedBtn) {
         discardSelectedBtn.addEventListener('click', async () => {
+          const selectedEntries = Array.from(state.queueSelection).map(key => {
+            const [type, rawId] = String(key || '').split(':');
+            return { type, id: Number(rawId) };
+          }).filter(entry => entry.type && Number.isFinite(entry.id));
           try {
             const discardedCount = await discardSelectedQueueDrafts();
             if (discardedCount) {
-              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira.`, 'ok');
+              showMessage(refs.queueMessage, getQueueDiscardSelectionFeedback(selectedEntries), 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -10065,7 +10095,7 @@
         btn.addEventListener('click', async () => {
           const batchId = el('queueBatchAssign').value || null;
           if (!batchId) {
-            showMessage(refs.queueMessage, 'Escolha um lote aberto antes de atribuir.', 'error');
+            showMessage(refs.queueMessage, btn.dataset.type === 'book' ? 'Escolha um lote aberto antes de atribuir à ficha comum.' : 'Escolha um lote aberto antes de atribuir.', 'error');
             return;
           }
           try {
@@ -10079,7 +10109,7 @@
 
       refs.queueTableWrap.querySelectorAll('[data-action="discard-queue"]').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const confirmed = confirmDiscardAction('Este rascunho será descartado e irá para a lixeira. Deseja continuar?');
+          const confirmed = confirmDiscardAction(getQueueDiscardConfirmMessage(btn.dataset.type, 1));
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
