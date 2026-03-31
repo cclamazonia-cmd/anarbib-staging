@@ -445,7 +445,6 @@
 
     function computeBookAccessState(bookRow = {}, libraryContext = {}) {
       const loanable = bookRow?.loanable !== false;
-      const compatBibRef = firstNonEmptyString(bookRow?.bib_ref);
 
       if (!currentUserContext?.isLoggedIn) {
         if (!loanable) {
@@ -468,7 +467,7 @@
         };
       }
 
-      if (hasActiveReservationForBibRef(compatBibRef)) {
+      if (hasActiveReservationForBibRef(bookRow?.bib_ref)) {
         return {
           key: "already_reserved",
           label: "Já reservado na sua conta",
@@ -636,11 +635,6 @@
         return access;
       }
 
-      const compatBibRef = firstNonEmptyString(bibRef, bookRow?.bib_ref);
-      if (!compatBibRef) {
-        return access;
-      }
-
       try {
         const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
         if (ensureProfileError) {
@@ -653,7 +647,7 @@
       try {
         const { data: readState, error: readStateError } = await supabase.rpc(
           "fn_book_restricted_pdf_state_for_current_user",
-          { p_bib_ref: compatBibRef }
+          { p_bib_ref: bibRef }
         );
 
         if (readStateError) {
@@ -1191,7 +1185,7 @@
   try {
     const { data, error } = await supabase
       .from("v_book_detail_public_v2")
-      .select("holding_libraries_json,biblioteca,library_id,library_slug,library_name")
+      .select("book_id,holding_libraries_json,biblioteca,library_id,library_slug,library_name")
       .eq("bib_ref", bib_ref)
       .maybeSingle();
 
@@ -1205,46 +1199,61 @@
       const names = extractHoldingLibraryNames(data?.holding_libraries_json);
       if (names.length) return names.join(" / ");
 
+      const bookId = Number(data?.book_id || data?.id || 0);
+      if (Number.isFinite(bookId) && bookId > 0) {
+        const { data: holdingRows, error: holdingError } = await supabase
+          .from("book_holdings")
+          .select("library_id")
+          .eq("book_id", bookId)
+          .limit(50);
+
+        if (!holdingError && Array.isArray(holdingRows) && holdingRows.length) {
+          const libraryIds = Array.from(new Set(
+            holdingRows
+              .map((row) => String(row?.library_id || "").trim())
+              .filter(Boolean)
+          ));
+
+          if (libraryIds.length) {
+            const { data: librariesData, error: librariesError } = await supabase
+              .from("libraries")
+              .select("id,name,slug")
+              .in("id", libraryIds);
+
+            if (!librariesError && Array.isArray(librariesData) && librariesData.length) {
+              if (localContextRequested) {
+                const localLibrary = librariesData.find((row) => {
+                  const rowScope = {
+                    libraryId: firstNonEmptyString(row?.id),
+                    librarySlug: firstNonEmptyString(row?.slug),
+                    libraryName: firstNonEmptyString(row?.name)
+                  };
+                  return librariesMatch(libraryContext, rowScope);
+                });
+                const localLabel = firstNonEmptyString(localLibrary?.name);
+                if (localLabel) return String(localLabel).split(" - ")[0].trim();
+              }
+
+              const fallbackNames = [];
+              for (const row of librariesData) {
+                const cleaned = String(firstNonEmptyString(row?.name) || "")
+                  .split(" - ")[0]
+                  .trim();
+                if (cleaned && !fallbackNames.includes(cleaned)) fallbackNames.push(cleaned);
+              }
+              if (fallbackNames.length) return fallbackNames.join(" / ");
+            }
+          }
+        }
+      }
+
       const fallbackLabel = firstNonEmptyString(data?.library_name, data?.biblioteca);
       if (fallbackLabel) return String(fallbackLabel).split(" - ")[0].trim();
     }
   } catch (err) {
-    console.warn("AnarBib livro: falha ao consultar bibliotecas na v_book_detail_public_v2", err);
+    console.warn("AnarBib livro: falha ao consultar bibliotecas na cadeia holdings-first", err);
   }
 
-  try {
-    let query = supabase
-      .from("v_books_public")
-      .select("library_id,library_slug,library_name,biblioteca")
-      .eq("bib_ref", bib_ref)
-      .limit(50);
-
-    if (localContextRequested) {
-      if (libraryContext?.libraryId) query = query.eq("library_id", libraryContext.libraryId);
-      else if (libraryContext?.librarySlug) query = query.eq("library_slug", libraryContext.librarySlug);
-    }
-
-    const { data, error } = await query;
-
-    if (!error && Array.isArray(data) && data.length) {
-      if (localContextRequested) {
-        const label = firstNonEmptyString(data[0]?.library_name, data[0]?.biblioteca);
-        if (label) return String(label).split(" - ")[0].trim();
-      }
-
-      const names = [];
-      for (const row of data) {
-        const preferred = firstNonEmptyString(row?.library_name, row?.biblioteca);
-        const cleaned = String(preferred || "")
-          .split(" - ")[0]
-          .trim();
-        if (cleaned && !names.includes(cleaned)) names.push(cleaned);
-      }
-      if (names.length) return names.join(" / ");
-    }
-  } catch (err) {
-    console.warn("AnarBib livro: falha ao consultar bibliotecas na v_books_public", err);
-  }
   return preferredLocal ? String(preferredLocal).split(" - ")[0].trim() : "";
 }
 
@@ -1976,7 +1985,6 @@
 
     async function reserve(bib_ref, bookRow = {}, libraryContext = {}) {
       setStatus("", "");
-      const compatBibRef = firstNonEmptyString(bib_ref, bookRow?.bib_ref);
 
       if (publicServiceState?.allow_reservations === false) {
         setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
@@ -2002,7 +2010,7 @@
 
       let reservaError = null;
       try {
-        const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, compatBibRef, libraryContext);
+        const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, bib_ref, libraryContext);
         if (holdingAttempt?.resolved) {
           const byHoldings = await supabase.rpc("fn_v2_create_reserva_by_holdings", {
             p_user_id: session.user.id,
@@ -2012,7 +2020,7 @@
           });
 
           if (!byHoldings.error) {
-            if (compatBibRef) currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
+            currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
             setReserveButtonState({
               key: "already_reserved",
               label: "Já reservado na sua conta",
@@ -2034,20 +2042,15 @@
       }
 
       if (!reservaError) {
-        if (!compatBibRef) {
-          setStatus("Reserva indisponível sem referência de compatibilidade ou holding local resolvido.", "warn");
-          return;
-        }
-
         const byBibRef = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
           p_user_id: session.user.id,
-          p_bib_refs: [compatBibRef],
+          p_bib_refs: [bib_ref],
           p_expires_at: null,
           p_notes: "Reserva criada pela página pública do livro."
         });
 
         if (!byBibRef.error) {
-          currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
+          currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
           setReserveButtonState({
             key: "already_reserved",
             label: "Já reservado na sua conta",
@@ -2064,7 +2067,7 @@
       }
 
       if (reservaError && isDuplicateReservaErrorMessage(reservaError.message)) {
-        if (compatBibRef) currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
+        currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
         setReserveButtonState({
           key: "already_reserved",
           label: "Já reservado na sua conta",
@@ -2117,7 +2120,7 @@
         "has_online_reading","tombo"
       ].join(",");
 
-      if (!requestedBookId && localContextRequested && libraryContext.libraryId && bib_ref) {
+      if (localContextRequested && libraryContext.libraryId && bib_ref) {
         const holdingContextBook = await tryLoadBookByHoldingContext(bib_ref, libraryContext, v2Select, fallbackSelect);
         if (holdingContextBook?.booksTable && holdingContextBook?.data) {
           booksTable = holdingContextBook.booksTable;
@@ -2493,18 +2496,12 @@
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
-        const compatBibRef = firstNonEmptyString(bib_ref, data?.bib_ref);
-        const targetLerUrl = buildLerUrl(compatBibRef, data, libraryContext, publicDigitalAccess);
+        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, publicDigitalAccess);
         const hasAnyDigitalAccess = publicDigitalAccess.hasDigitalAvailability || restrictedDigitalAccess.hasRestrictedAccess;
         if (!hasAnyDigitalAccess) return;
 
         if (publicDigitalAccess.assetId || publicDigitalAccess.previewBucket || publicDigitalAccess.previewPath || publicDigitalAccess.previewUrl) {
           location.assign(targetLerUrl);
-          return;
-        }
-
-        if (!compatBibRef) {
-          setStatus("Leitura restrita indisponível sem referência de compatibilidade deste livro.", "warn");
           return;
         }
 
@@ -2520,7 +2517,7 @@
           if (!restrictedRow) {
             const { data: readState, error: readStateError } = await supabase.rpc(
               "fn_book_restricted_pdf_state_for_current_user",
-              { p_bib_ref: compatBibRef }
+              { p_bib_ref: bib_ref }
             );
 
             if (readStateError) {
