@@ -11058,9 +11058,41 @@
       showMessage(target, 'Rascunho marcado como pronto.', 'ok');
     }
 
+    function getFormDiscardConfirmMessage(table, target) {
+      if (table === 'book_drafts') {
+        return 'Esta ficha comum será descartada e irá para a lixeira. Deseja continuar?';
+      }
+      if (table === 'author_drafts') {
+        return 'Esta ficha de autor será descartada e irá para a lixeira. Deseja continuar?';
+      }
+      if (table === 'exemplar_drafts' && target === refs.labelMessage) {
+        return 'Este rótulo será descartado e irá para a lixeira. Deseja continuar?';
+      }
+      if (table === 'exemplar_drafts') {
+        return 'Este exemplar local será descartado e irá para a lixeira. Deseja continuar?';
+      }
+      return 'Este rascunho será descartado e irá para a lixeira. Deseja continuar?';
+    }
+
+    function getFormDiscardSuccessMessage(table, target) {
+      if (table === 'book_drafts') {
+        return 'Ficha comum descartada com sucesso.';
+      }
+      if (table === 'author_drafts') {
+        return 'Ficha de autor descartada com sucesso.';
+      }
+      if (table === 'exemplar_drafts' && target === refs.labelMessage) {
+        return 'Rótulo descartado com sucesso.';
+      }
+      if (table === 'exemplar_drafts') {
+        return 'Exemplar local descartado com sucesso.';
+      }
+      return 'Rascunho descartado com sucesso.';
+    }
+
     async function discardDraft(table, id, target, resetFn) {
       if (!id) throw new Error('Salve o rascunho antes de descartá-lo.');
-      const confirmed = confirmDiscardAction('Este rascunho será descartado e irá para a lixeira. Deseja continuar?');
+      const confirmed = confirmDiscardAction(getFormDiscardConfirmMessage(table, target));
       if (!confirmed) return;
       const currentTab = getActiveCatalogacaoTab();
       const numericId = Number(id);
@@ -11073,7 +11105,7 @@
       updateStats();
       resetFn();
       setTab(currentTab);
-      showMessage(target, 'Rascunho descartado com sucesso.', 'ok');
+      showMessage(target, getFormDiscardSuccessMessage(table, target), 'ok');
     }
 
     el('bookReadyBtn').addEventListener('click', async () => {
