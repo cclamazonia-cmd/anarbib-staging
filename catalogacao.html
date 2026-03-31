@@ -1753,7 +1753,7 @@
       <div class="toolbar-meta">
         <div class="toolbar-actions toolbar-actions-status">
           <span id="userEmail" class="pill info">Sem sessão</span>
-          <span id="rolePill" class="pill danger">Faça login para usar a catalogação</span>
+          <span id="rolePill" class="pill warn">Verificando acesso…</span>
         </div>
         <div class="toolbar-actions toolbar-actions-main">
           <button id="refreshAllBtn" class="button secondary">Atualizar</button>
@@ -3170,12 +3170,6 @@
               <input id="partnerBaseUrlInput" type="text" placeholder="https://www.cira.ch/catalogue">
             </div>
           </div>
-
-          <div class="field" style="margin-bottom:12px;">
-            <label for="partnerUrlHelperOutput">Leitura rápida da URL colada</label>
-            <textarea id="partnerUrlHelperOutput" rows="4" readonly placeholder="Cole uma URL pública para receber uma ajuda de pré-preenchimento local."></textarea>
-            <small>Ajuda de pré-preenchimento apenas: a URL pode sugerir nome público, slug, base URL, família lógica, confiança, país e match provável, mas não salva nada, não decide situação relacional e não autoriza comparação, importação ou mutualização.</small>
-          </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
@@ -3719,7 +3713,6 @@
       userEmail: el('userEmail'),
       rolePill: el('rolePill'),
       loginBtn: el('loginBtn'),
-      refreshAllBtn: el('refreshAllBtn'),
       catalogModeSimpleBtn: el('catalogModeSimpleBtn'),
       catalogModeCompleteBtn: el('catalogModeCompleteBtn'),
       catalogModeHint: el('catalogModeHint'),
@@ -8472,6 +8465,70 @@
     let catalogacaoAuthSyncInFlight = false;
     let catalogacaoUiRefreshInFlight = false;
     let catalogacaoLastPassiveSessionProbeAt = 0;
+    let catalogacaoAuthSyncSerial = 0;
+    let catalogacaoAuthBootstrapping = true;
+    const CATALOGACAO_AUTH_STORAGE_KEYS = new Set(['sb-uflwmikiyjfnikiphtcp-auth-token', 'anarbib-staging-auth']);
+    const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
+    const CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 8;
+
+    function getCatalogacaoAccessCacheStorage() {
+      try {
+        return window?.sessionStorage || null;
+      } catch (error) {
+        console.warn('sessionStorage indisponível para o cache local de acesso da catalogação.', error);
+        return null;
+      }
+    }
+
+    function readCatalogacaoAccessCache(userId = '') {
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage || !userId) return null;
+      try {
+        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (String(parsed.user_id || '').trim() !== String(userId || '').trim()) return null;
+        if (!parsed.row || typeof parsed.row !== 'object') return null;
+        const savedAt = Number(parsed.saved_at || 0);
+        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          return null;
+        }
+        return parsed.row;
+      } catch (error) {
+        console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
+        return null;
+      }
+    }
+
+    function writeCatalogacaoAccessCache(userId = '', row = null) {
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage || !userId || !row || typeof row !== 'object') return;
+      try {
+        storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, JSON.stringify({
+          user_id: String(userId || '').trim(),
+          saved_at: Date.now(),
+          row,
+        }));
+      } catch (error) {
+        console.warn('Falha ao gravar o cache local de acesso da catalogação.', error);
+      }
+    }
+
+    function clearCatalogacaoAccessCache() {
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage) return;
+      try {
+        storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+      } catch (error) {
+        console.warn('Falha ao limpar o cache local de acesso da catalogação.', error);
+      }
+    }
+
+    function wait(ms = 0) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
 
     function updateLoginButton() {
       if (!refs.loginBtn) return;
@@ -8512,34 +8569,217 @@
       btn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
     }
 
+    function isCatalogacaoAuthStorageKey(key = '') {
+      return CATALOGACAO_AUTH_STORAGE_KEYS.has(String(key || '').trim());
+    }
+
     function isTruthyAccessFlag(value) {
       if (value === true) return true;
       if (value === false || value === null || value === undefined) return false;
       const normalized = String(value).trim().toLowerCase();
-      return normalized === 'true' || normalized === '1' || normalized === 'yes';
+      return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'sim';
+    }
+
+    function normalizeCatalogacaoRole(value = '') {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function hasCatalogacaoLibrarySignal(row = {}) {
+      return !!normalizeInlineWhitespace(
+        row?.library_id
+        || row?.default_library_id
+        || row?.library_slug
+        || row?.default_library_slug
+        || row?.library_name
+        || row?.default_library_name
+        || ''
+      );
+    }
+
+    function hasExplicitCatalogacaoDenial(row = {}) {
+      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      if (row?.is_restricted === true) return true;
+      if (row?.can_access_catalogacao === false) return true;
+      return role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente';
     }
 
     function isCatalogacaoLibrarianRow(row = {}) {
-      const role = String(row?.role || '').trim().toLowerCase();
-      return role === 'librarian' || row?.is_librarian === true || isTruthyAccessFlag(row?.can_access_catalogacao);
+      if (!row || typeof row !== 'object') return false;
+      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
+      if (row?.is_librarian === true) return true;
+      if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_manage_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_access_painel)) return true;
+      if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
+      if (role.startsWith('bibliotec')) return true;
+      if (role.startsWith('bibliotecari')) return true;
+      return false;
     }
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
       const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
-      const librarianRows = activeRows.filter((row) => {
-        if (row?.is_restricted === true) return false;
-        if (row?.can_access_catalogacao === false) return false;
-        return isCatalogacaoLibrarianRow(row);
-      });
+      const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
       return librarianRows.find((row) => row?.is_primary === true)
         || librarianRows.find((row) => row?.can_access_catalogacao === true)
+        || librarianRows.find((row) => row?.is_librarian === true)
         || librarianRows[0]
         || null;
     }
 
-    async function getCurrentSession({ attempts = 8, delayMs = 180 } = {}) {
-      for (let i = 0; i < attempts; i += 1) {
+    function getCatalogacaoSessionMeta(session = null) {
+      const user = session?.user || null;
+      const appMeta = user?.app_metadata && typeof user.app_metadata === 'object' ? user.app_metadata : {};
+      const userMeta = user?.user_metadata && typeof user.user_metadata === 'object' ? user.user_metadata : {};
+      const pick = (...keys) => {
+        for (const source of [userMeta, appMeta]) {
+          for (const key of keys) {
+            const value = source?.[key];
+            if (value === undefined || value === null) continue;
+            if (typeof value === 'string' && !value.trim()) continue;
+            return value;
+          }
+        }
+        return '';
+      };
+      const role = normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role'));
+      const libraryId = pick('library_id', 'default_library_id');
+      const librarySlug = pick('library_slug', 'default_library_slug');
+      const libraryName = pick('library_name', 'default_library_name');
+      const canAccessCatalogacao = pick('can_access_catalogacao', 'can_manage_catalogacao');
+      const isLibrarian = pick('is_librarian');
+      return {
+        role,
+        library_id: libraryId,
+        library_slug: librarySlug,
+        library_name: libraryName,
+        can_access_catalogacao: canAccessCatalogacao,
+        is_librarian: isLibrarian,
+      };
+    }
+
+    function buildCatalogacaoSessionFallback(session = null, identityRow = null, rows = [], accessError = null) {
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const positiveSignal = isTruthyAccessFlag(meta.is_librarian) || isTruthyAccessFlag(meta.can_access_catalogacao) || roleSignal || isCatalogacaoLibrarianRow(baseRow);
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+
+      if (!positiveSignal && !(accessError && librarySignal)) return null;
+      if (!librarySignal && !positiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'session_fallback',
+      };
+    }
+
+    function buildCatalogacaoNoDenialFallback(session = null, identityRow = null, rows = [], accessError = null) {
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (hasCatalogacaoLibrarySignal(row) || isCatalogacaoLibrarianRow(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+      const permissiveSignal = isCatalogacaoLibrarianRow(baseRow) || roleSignal || (accessError && librarySignal);
+
+      if (!librarySignal && !permissiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'no_denial_fallback',
+      };
+    }
+
+    function buildProvisionalCatalogacaoAccess(identityRow = null, rows = [], accessError = null) {
+      const candidateRows = Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
+      const primaryRow = candidateRows.find((row) => row?.is_primary === true && !hasExplicitCatalogacaoDenial(row));
+      if (primaryRow && hasCatalogacaoLibrarySignal(primaryRow)) {
+        return {
+          ...primaryRow,
+          role: String(primaryRow?.role || 'librarian').trim() || 'librarian',
+          status: String(primaryRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
+      const identityRole = normalizeCatalogacaoRole(identityRow?.role || identityRow?.profile_role || '');
+      const hasSoftLibrarySignal = hasCatalogacaoLibrarySignal(identityRow) || candidateRows.some(hasCatalogacaoLibrarySignal);
+      const backendWasInconclusive = !!accessError;
+      const softRoleSignal = identityRole === 'admin' || identityRole === 'manager' || identityRole.startsWith('bibliotec');
+
+      if (identityRow && !hasExplicitCatalogacaoDenial(identityRow) && (softRoleSignal || (backendWasInconclusive && hasSoftLibrarySignal))) {
+        return {
+          ...identityRow,
+          role: String(identityRow?.role || 'librarian').trim() || 'librarian',
+          status: String(identityRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
+      return null;
+    }
+
+    async function getCurrentSession({ attempts = 12, delayMs = 180 } = {}) {
+      const hasUrlAuthHint = /(?:[?#].*)(access_token|refresh_token|code|token_hash)=/i.test(`${window.location.search || ''}${window.location.hash || ''}`);
+      const totalAttempts = hasUrlAuthHint ? Math.max(attempts, 20) : attempts;
+
+      for (let i = 0; i < totalAttempts; i += 1) {
         try {
           const { data, error } = await supabase.auth.getSession();
           if (error) {
@@ -8565,14 +8805,14 @@
           console.warn('getUser falhou ao confirmar a sessão da catalogação.', error);
         }
 
-        if (i < attempts - 1) {
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        if (i < totalAttempts - 1) {
+          await wait(hasUrlAuthHint ? Math.max(delayMs, 240) : delayMs);
         }
       }
       return null;
     }
 
-    async function requireSession({ attempts = 12, delayMs = 180 } = {}) {
+    async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
       const session = await getCurrentSession({ attempts, delayMs });
       state.session = session;
       if (!state.session?.user?.id) {
@@ -8585,9 +8825,10 @@
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       updateLoginButton();
+      return state.session;
     }
 
-    function withTimeout(promise, label, ms = 1800) {
+    function withTimeout(promise, label, ms = 2200) {
       return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
@@ -8598,6 +8839,7 @@
       let lastError = null;
       const collectedRows = [];
       const seenKeys = new Set();
+      let identityRow = null;
 
       const pushRows = (rows) => {
         const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
@@ -8623,7 +8865,7 @@
       ];
 
       const directResults = await Promise.allSettled(
-        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1600))
+        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1800))
       );
 
       for (const result of directResults) {
@@ -8631,111 +8873,57 @@
           const res = result.value;
           if (!res?.error) {
             pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
-          } else {
-            lastError = res.error;
+            continue;
           }
-        } else {
-          lastError = result.reason;
+          lastError = res.error;
+          console.warn('Leitura de acesso retornou erro na catalogação.', res.error);
+          continue;
         }
+        lastError = result.reason;
+        console.warn('Leitura de acesso falhou por exceção na catalogação.', result.reason);
       }
 
       const [profileOutcome, membershipOutcome] = await Promise.allSettled([
         withTimeout(
-          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-          'profiles read',
-          1400
+          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
+          'profiles access read',
+          2400
         ),
         withTimeout(
-          supabase
-            .from('user_library_memberships')
-            .select('user_id,library_id,role,status,is_primary')
-            .eq('user_id', userId)
-            .eq('status', 'active'),
-          'user_library_memberships read',
-          1600
+          supabase.from('user_library_memberships').select('*').eq('user_id', userId),
+          'membership access read',
+          2600
         ),
       ]);
 
-      let profileRow = null;
       if (profileOutcome.status === 'fulfilled') {
-        const profileRes = profileOutcome.value;
-        if (!profileRes?.error && profileRes?.data) {
-          profileRow = profileRes.data;
-        } else if (profileRes?.error) {
-          lastError = profileRes.error;
+        const profileRead = profileOutcome.value;
+        if (!profileRead?.error) {
+          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
+          if (identityRow) pushRows(identityRow);
+        } else {
+          lastError = profileRead.error;
+          console.warn('profiles access read failed:', profileRead.error);
         }
       } else {
         lastError = profileOutcome.reason;
+        console.warn('profiles access read exception:', profileOutcome.reason);
       }
 
-      let membershipRows = [];
       if (membershipOutcome.status === 'fulfilled') {
-        const membershipRes = membershipOutcome.value;
-        if (!membershipRes?.error) {
-          membershipRows = Array.isArray(membershipRes?.data) ? membershipRes.data : [];
+        const membershipRead = membershipOutcome.value;
+        if (!membershipRead?.error) {
+          pushRows(membershipRead?.data || []);
         } else {
-          lastError = membershipRes.error;
+          lastError = membershipRead.error;
+          console.warn('membership access read failed:', membershipRead.error);
         }
       } else {
         lastError = membershipOutcome.reason;
+        console.warn('membership access read exception:', membershipOutcome.reason);
       }
 
-      if (membershipRows.length) {
-        const libraryIds = Array.from(new Set(membershipRows.map((row) => normalizeLibraryId(row?.library_id)).filter(Boolean)));
-        let librariesById = new Map();
-        if (libraryIds.length) {
-          try {
-            const librariesRes = await withTimeout(
-              supabase.from('libraries').select('id,slug,name,short_name').in('id', libraryIds),
-              'libraries read',
-              1400
-            );
-            if (!librariesRes?.error) {
-              librariesById = new Map((librariesRes.data || []).map((row) => [normalizeLibraryId(row.id), row]));
-            } else {
-              lastError = librariesRes.error;
-            }
-          } catch (error) {
-            lastError = error;
-          }
-        }
-
-        const mergedRows = membershipRows.map((row) => {
-          const lib = librariesById.get(normalizeLibraryId(row?.library_id)) || {};
-          return {
-            ...(profileRow || {}),
-            ...row,
-            id: profileRow?.id || userId,
-            email: profileRow?.email || state.session?.user?.email || '',
-            library_name: lib?.name || profileRow?.default_library_name || '',
-            library_slug: lib?.slug || profileRow?.default_library_slug || '',
-            library_short_name: lib?.short_name || '',
-            default_library_id: row?.library_id || profileRow?.default_library_id || '',
-            default_library_name: lib?.name || profileRow?.default_library_name || '',
-            default_library_slug: lib?.slug || profileRow?.default_library_slug || '',
-            is_librarian: String(row?.role || '').trim().toLowerCase() === 'librarian',
-            can_access_catalogacao: String(row?.role || '').trim().toLowerCase() === 'librarian',
-            is_restricted: !!profileRow?.is_restricted,
-          };
-        });
-
-        pushRows(mergedRows);
-      }
-
-      if (profileRow) pushRows([profileRow]);
-
-      const identityRow = collectedRows.find((row) => String(row?.id || row?.user_id || '') === String(userId || '')) || profileRow || collectedRows[0] || null;
-      let accessRow = pickCurrentCatalogacaoAccess(collectedRows);
-      if (!accessRow && identityRow?.is_librarian === true && identityRow?.is_restricted !== true) {
-        accessRow = {
-          ...identityRow,
-          role: String(identityRow?.role || 'librarian').trim() || 'librarian',
-          status: String(identityRow?.status || 'active').trim() || 'active',
-          can_access_catalogacao: true,
-        };
-      }
-
-      return { data: collectedRows, identityRow, accessRow, error: lastError };
+      return { record: pickCurrentCatalogacaoAccess(collectedRows), identityRow, allRows: collectedRows, error: lastError };
     }
 
     async function loadProfile() {
@@ -8743,33 +8931,65 @@
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
       const accessRead = await fetchAccessRecord(userId);
-      const identityRow = accessRead?.identityRow || null;
-      const accessRow = accessRead?.accessRow || null;
-      const mergedProfile = {
-        id: userId,
-        user_id: userId,
-        email: state.session?.user?.email || '',
-        ...(identityRow || {}),
-        ...(accessRow || {}),
-      };
+      const cachedAccess = readCatalogacaoAccessCache(userId);
+      const accessRow = accessRead.record
+        || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || cachedAccess
+        || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
 
-      state.profile = mergedProfile;
-      state.isLibrarian = !!accessRow;
+      state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
+
+      if (state.isLibrarian && accessRow) {
+        writeCatalogacaoAccessCache(userId, accessRow);
+      }
 
       updateLoginButton();
 
       if (state.isLibrarian) {
-        refs.userEmail.textContent = mergedProfile?.email || state.session?.user?.email || 'Usuário autenticado';
+        refs.userEmail.textContent = accessRow?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
-        return;
+        return state.profile;
+      }
+
+      clearCatalogacaoAccessCache();
+
+      if (state.session?.user?.id && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
+        refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+        refs.rolePill.className = 'pill warn';
+        throw new Error('A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.');
       }
 
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
       showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
-      throw new Error(accessRead?.error?.message || 'Usuário sem permissão bibliotecária.');
+      throw new Error('Usuário sem permissão bibliotecária.');
+    }
+
+    function resetCatalogacaoAuthChrome() {
+      state.session = null;
+      state.profile = null;
+      state.isLibrarian = false;
+      clearCatalogacaoAccessCache();
+      refs.userEmail.textContent = 'Sem sessão';
+      refs.rolePill.textContent = 'Faça login para usar a catalogação';
+      refs.rolePill.className = 'pill danger';
+      updateLoginButton();
+      updateRefreshButton(false);
+    }
+
+    async function settleCatalogacaoStep(label, task, timeoutMs = 3600) {
+      try {
+        const result = await withTimeout(Promise.resolve().then(task), label, timeoutMs);
+        return { ok: true, label, result };
+      } catch (error) {
+        console.warn(`Falha ao carregar ${label} na catalogação.`, error);
+        return { ok: false, label, error };
+      }
     }
 
     async function loadBatches() {
@@ -8955,20 +9175,6 @@
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    async function settleCatalogacaoStep(label, task, timeoutMs = 3600) {
-      try {
-        const result = await withTimeout(
-          Promise.resolve().then(task),
-          label,
-          timeoutMs
-        );
-        return { ok: true, label, result };
-      } catch (error) {
-        console.warn(`Falha ao carregar ${label} na catalogação.`, error);
-        return { ok: false, label, error };
-      }
-    }
-
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -8983,7 +9189,7 @@
       try {
         clearMessage(refs.globalMessage);
 
-        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 2600);
+        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
         if (!sessionStep.ok || !state.session?.user?.id) {
           resetCatalogacaoAuthChrome();
           showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
@@ -8994,7 +9200,7 @@
         refs.rolePill.textContent = 'Sessão reconhecida';
         refs.rolePill.className = 'pill info';
 
-        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 2600);
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 9000);
         if (!profileStep.ok) {
           refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
           refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
@@ -9006,43 +9212,27 @@
 
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
-
-        refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
-        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-        refs.rolePill.className = 'pill ok';
-
         const currentTab = getActiveCatalogacaoTab();
-        const [batchesStep, queueStep, catalogStep] = await Promise.all([
-          settleCatalogacaoStep('lotes', () => loadBatches(), 3400),
-          settleCatalogacaoStep('fila editorial', () => loadQueue(), 3400),
-          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 5200),
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([
+          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 9000),
         ]);
-
         setTab(currentTab);
-
-        let labelSheetStep = null;
         if (refs.labelBatchPreviewId?.value) {
-          labelSheetStep = await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 3200);
+          try {
+            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+          } catch (labelError) {
+            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+          }
         }
-
         updateStats();
         updateLoginButton();
 
         const failedSources = [];
-        const batchesResult = batchesStep?.result;
-        const queueResult = queueStep?.result;
-        const catalogResult = catalogStep?.result;
-
-        if (!batchesStep?.ok || batchesResult?.ok === false) failedSources.push('lotes');
-        if (!queueStep?.ok || queueResult?.ok === false) failedSources.push('fila editorial');
-        if (!catalogStep?.ok) {
-          failedSources.push('catálogo publicado');
-        } else {
-          if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
-          if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
-          if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
-        }
-        if (labelSheetStep && !labelSheetStep.ok) failedSources.push('prévia dos rótulos');
+        if (!batchesResult?.ok) failedSources.push('lotes');
+        if (!queueResult?.ok) failedSources.push('fila editorial');
+        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
 
         if (failedSources.length) {
           showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
@@ -9053,33 +9243,20 @@
         updateLoginButton();
         console.error(error);
         if (!state.session?.user?.id) {
-          refs.userEmail.textContent = 'Sem sessão';
           refs.rolePill.textContent = 'Faça login para usar a catalogação';
           refs.rolePill.className = 'pill danger';
         } else if (!state.isLibrarian) {
-          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
-          refs.rolePill.textContent = 'Não foi possível atualizar os dados';
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
           refs.rolePill.className = 'pill danger';
         }
-        if (state.session?.user?.id && error?.message) {
-          showMessage(refs.globalMessage, error.message, 'error');
-        }
+        showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
         catalogacaoUiRefreshInFlight = false;
         updateRefreshButton(false);
       }
-    }
-
-    async function queueCatalogacaoRefresh(showSuccess = false) {
-      if (catalogacaoRefreshPromise) return catalogacaoRefreshPromise;
-      catalogacaoRefreshPromise = refreshAll(showSuccess).finally(() => {
-        catalogacaoRefreshPromise = null;
-      });
-      return catalogacaoRefreshPromise;
     }
 
     async function saveDraft(table, payload, messageTarget, successText) {
@@ -11813,7 +11990,7 @@
     el('refreshAllBtn').addEventListener('click', async () => {
       updateRefreshButton(true);
       try {
-        const liveSession = await getCurrentSession({ attempts: 8, delayMs: 160 });
+        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
         await syncCatalogacaoAuthState(liveSession, {
           reloadData: !!liveSession?.user?.id,
           allowAnonymousReset: !liveSession?.user?.id,
@@ -11871,27 +12048,16 @@
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
     refs.loginBtn.addEventListener('click', async () => {
-      if (catalogacaoAuthSyncInFlight) return;
-
-      const liveSession = state.session?.user?.id
-        ? state.session
-        : await getCurrentSession({ attempts: 8, delayMs: 180 });
-      const hasSession = !!liveSession?.user?.id;
-
+      const hasSession = !!state.session?.user?.id;
       if (!hasSession) {
-        resetCatalogacaoAuthChrome();
         window.location.href = LOGIN_URL;
         return;
       }
-
       try {
         await supabase.auth.signOut();
       } catch (error) {
         console.warn('signOut failed:', error);
       }
-
-      resetCatalogacaoAuthChrome();
-      clearMessage(refs.globalMessage);
       window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
@@ -12164,7 +12330,6 @@ function initPartnerProbeUi() {
   const displayEl = document.getElementById('partnerDisplayNameInput');
   const slugEl = document.getElementById('partnerSlugInput');
   const baseUrlEl = document.getElementById('partnerBaseUrlInput');
-  const urlHelperOutputEl = document.getElementById('partnerUrlHelperOutput');
   const familyEl = document.getElementById('partnerFamilySelect');
   const confidenceEl = document.getElementById('partnerConfidenceSelect');
   const countryEl = document.getElementById('partnerCountryCodeInput');
@@ -12288,156 +12453,6 @@ function initPartnerProbeUi() {
     presetHintEl.textContent = text || 'A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.';
   }
 
-
-  function titleCasePartnerWords(value = '') {
-    return String(value || '')
-      .split(/[\s._-]+/)
-      .filter(Boolean)
-      .map((chunk) => {
-        const clean = String(chunk || '').trim();
-        if (!clean) return '';
-        if (clean.length <= 3) return clean.toUpperCase();
-        return `${clean.charAt(0).toUpperCase()}${clean.slice(1)}`;
-      })
-      .filter(Boolean)
-      .join(' ');
-  }
-
-  function findProbablePartnerMatch(normalizedBaseUrl = '', inferredSlug = '') {
-    const safeBaseUrl = normalizePartnerBaseUrl(normalizedBaseUrl || '');
-    let targetHost = '';
-    try {
-      targetHost = safeBaseUrl ? new URL(safeBaseUrl).hostname.replace(/^www\./i, '').toLowerCase() : '';
-    } catch (error) {
-      targetHost = '';
-    }
-
-    if (inferredSlug && partnerOptionRegistry.has(inferredSlug)) {
-      return partnerOptionRegistry.get(inferredSlug);
-    }
-
-    for (const option of partnerOptionRegistry.values()) {
-      if (!option) continue;
-      if (inferredSlug && normalizePartnerSlug(option.slug || '') === inferredSlug) return option;
-      try {
-        const optionHost = normalizePartnerBaseUrl(option.baseUrl || '') ? new URL(normalizePartnerBaseUrl(option.baseUrl || '')).hostname.replace(/^www\./i, '').toLowerCase() : '';
-        if (targetHost && optionHost && targetHost === optionHost) return option;
-      } catch (error) {
-        // ignore per-option URL parsing failures
-      }
-    }
-
-    return null;
-  }
-
-  function inferPartnerSuggestionFromUrl(rawUrl = '') {
-    const normalized = normalizePartnerBaseUrl(rawUrl || '');
-    if (!normalized) return null;
-
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(normalized);
-    } catch (error) {
-      return {
-        valid: false,
-        baseUrl: normalized,
-        displayName: '',
-        slug: normalizePartnerSlug(normalized),
-        family: 'unknown',
-        confidence: 'unknown',
-        countryCode: '',
-        notes: 'URL ainda não válida o suficiente para uma leitura local.',
-        match: null,
-      };
-    }
-
-    const hostname = parsedUrl.hostname.replace(/^www\./i, '').toLowerCase();
-    const pathname = String(parsedUrl.pathname || '').toLowerCase();
-    const hostParts = hostname.split('.').filter(Boolean);
-    const tld = hostParts.length ? hostParts[hostParts.length - 1] : '';
-    const countryMap = {
-      ar: 'AR', be: 'BE', br: 'BR', ch: 'CH', cl: 'CL', co: 'CO', de: 'DE', es: 'ES', fr: 'FR', it: 'IT', mx: 'MX', pt: 'PT', uy: 'UY', uk: 'GB'
-    };
-
-    let family = 'unknown';
-    let confidence = 'generic';
-    let notes = 'Leitura local feita a partir da URL pública informada. Isto continua sendo apenas ajuda de pré-preenchimento.';
-
-    if (/\/cgi-bin\/koha\/opac/i.test(normalized) || hostname.includes('koha')) {
-      family = 'koha';
-      confidence = 'strong_inference';
-      notes = 'Catálogo público Koha provável a partir da URL informada. Confirma politicamente antes de qualquer uso documental.';
-    } else if (/\/pmb\//i.test(normalized) || /opac_css|search\.php|lvl=notice_display|lvl=more_results|lvl=cmspage/i.test(normalized)) {
-      family = 'pmb';
-      confidence = 'strong_inference';
-      notes = 'Catálogo público PMB provável a partir da URL informada. Confirma politicamente antes de qualquer uso documental.';
-    }
-
-    const inferredSlug = normalizePartnerSlug(hostParts.slice(0, Math.max(1, hostParts.length - 1)).join('-') || hostname || normalized);
-    const match = findProbablePartnerMatch(normalized, inferredSlug);
-    const displayName = match?.displayName || titleCasePartnerWords(inferredSlug || hostname || 'Parceira');
-    const countryCode = match?.countryCode || countryMap[tld] || '';
-
-    return {
-      valid: true,
-      baseUrl: normalized,
-      displayName,
-      slug: match?.slug || inferredSlug,
-      family: match?.softwareFamily || family,
-      confidence: match?.softwareConfidence || confidence,
-      countryCode,
-      notes: match
-        ? `Match provável com parceira já conhecida: ${match.label}. ${notes}`
-        : notes,
-      match,
-    };
-  }
-
-  function renderPartnerUrlHelperSuggestion(suggestion) {
-    if (!urlHelperOutputEl) return;
-    if (!suggestion) {
-      urlHelperOutputEl.value = 'Cole uma URL pública de catálogo para receber uma ajuda local de pré-preenchimento. Nada será salvo, testado ou autorizado automaticamente.';
-      return;
-    }
-
-    if (!suggestion.valid) {
-      urlHelperOutputEl.value = [
-        `Base URL sugerida: ${suggestion.baseUrl || '—'}`,
-        `Slug provável: ${suggestion.slug || '—'}`,
-        'A URL ainda não pôde ser lida com segurança como catálogo público.',
-      ].join('\n');
-      return;
-    }
-
-    urlHelperOutputEl.value = [
-      `Nome público provável: ${suggestion.displayName || '—'}`,
-      `Slug provável: ${suggestion.slug || '—'}`,
-      `Base URL sugerida: ${suggestion.baseUrl || '—'}`,
-      `Família provável: ${suggestion.family || 'unknown'} · confiança: ${suggestion.confidence || 'unknown'}`,
-      `País provável: ${suggestion.countryCode || '—'}`,
-      suggestion.match ? `Match provável com parceira conhecida: ${suggestion.match.label}` : 'Match provável com parceira conhecida: nenhum match forte agora',
-      `Nota curta técnica: ${suggestion.notes || '—'}`,
-      'Lembrete político: teste técnico não vale como acordo político, nem como autorização de importação ou mutualização.',
-    ].join('\n');
-  }
-
-  function applyPartnerUrlHelperSuggestion() {
-    const suggestion = inferPartnerSuggestionFromUrl(baseUrlEl.value || '');
-    renderPartnerUrlHelperSuggestion(suggestion);
-    if (!suggestion?.valid) return;
-
-    baseUrlEl.value = suggestion.baseUrl || '';
-    if (!String(displayEl.value || '').trim()) displayEl.value = suggestion.displayName || '';
-    if (!String(slugEl.value || '').trim()) slugEl.value = suggestion.slug || '';
-    if ((!String(familyEl.value || '').trim() || familyEl.value === 'unknown') && suggestion.family) familyEl.value = suggestion.family;
-    if ((!String(confidenceEl.value || '').trim() || confidenceEl.value === 'unknown') && suggestion.confidence) confidenceEl.value = suggestion.confidence;
-    if (!String(countryEl.value || '').trim() && suggestion.countryCode) countryEl.value = suggestion.countryCode;
-    if (!String(notesEl.value || '').trim() && suggestion.notes) notesEl.value = suggestion.notes;
-    if (suggestion.match && partnerOptionRegistry.has(suggestion.match.slug)) {
-      presetEl.value = suggestion.match.slug;
-    }
-  }
-
   function buildPartnerOptionFromPreset(preset = {}) {
     const slug = normalizePartnerSlug(preset.slug || preset.displayName || preset.baseUrl || '');
     if (!slug) return null;
@@ -12530,14 +12545,12 @@ function initPartnerProbeUi() {
       renderPartnerPresetOptions(mergedRecords, preferredValue);
       const baseCount = Array.isArray(data) ? data.length : 0;
       setPartnerPresetHint(baseCount
-        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front. A base passa a ser a referência principal quando houver conflito.`
-        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front desta versão.');
-      renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
+        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front.`
+        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front.');
     } catch (error) {
       console.error('Falha ao carregar parceiras conhecidas desde a base:', error);
       renderPartnerPresetOptions(mergePartnerOptionRecords([]), preferredValue);
       setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets front desta versão.');
-      renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
       if (!silent) {
         setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui com os presets front desta versão.', 'warn');
       }
@@ -13045,13 +13058,13 @@ ${carryPreview}` : carryPreview;
   }
 
   function clearPartnerPolicyReadout() {
-    relationshipStatusEl.value = 'Sem leitura ainda';
-    compareAllowedEl.value = 'Sem leitura ainda';
-    importAllowedEl.value = 'Sem leitura ainda';
-    mutualizeAllowedEl.value = 'Sem leitura ainda';
-    technicalProbeLastAtEl.value = 'Sem teste registrado';
-    policySummaryEl.value = 'Teste técnico, comparação documental, importação e mutualização continuam separados até que a situação relacional seja lida da base.';
-    politicalNoticeEl.textContent = 'Teste técnico não vale como acordo político. Importação não vale como mutualização. Mutualização não vale como modificação livre da notice parceira.';
+    relationshipStatusEl.value = '';
+    compareAllowedEl.value = '';
+    importAllowedEl.value = '';
+    mutualizeAllowedEl.value = '';
+    technicalProbeLastAtEl.value = '';
+    policySummaryEl.value = '';
+    politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
     closeCompareWorkspace({ reset: false });
     closeImportWorkspace({ reset: false });
     setPartnerDocumentActionsState('empty');
@@ -13101,33 +13114,18 @@ ${carryPreview}` : carryPreview;
     actionHintEl.textContent = 'Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.';
   }
 
-  function buildPartnerPolicyFallbackSummary(row = {}) {
-    const relationLabel = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
-    return [
-      `Situação relacional: ${relationLabel}.`,
-      row?.compare_allowed ? 'Comparação documental: autorizada nesta etapa.' : 'Comparação documental: ainda não autorizada nesta etapa.',
-      row?.import_allowed ? 'Importação controlada: autorizada nesta etapa.' : 'Importação controlada: ainda não autorizada nesta etapa.',
-      row?.mutualize_allowed ? 'Mutualização: autorizada nesta etapa.' : 'Mutualização: ainda não autorizada nesta etapa.',
-      'Teste técnico não substitui acordo político.',
-      'Importação não equivale a mutualização.',
-      'Mutualização não equivale a modificação livre da notice parceira.',
-    ].join(' ');
-  }
-
   function setPartnerPolicyReadout(row) {
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
     compareAllowedEl.value = row?.compare_allowed ? 'Autorizada' : 'Ainda não autorizada';
     importAllowedEl.value = row?.import_allowed ? 'Autorizada' : 'Ainda não autorizada';
     mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada' : 'Ainda não autorizada';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
-    policySummaryEl.value = row?.policy_summary || buildPartnerPolicyFallbackSummary(row);
+    policySummaryEl.value = row?.policy_summary || '';
     politicalNoticeEl.textContent = row?.mutualize_allowed
-      ? 'Teste técnico não vale como acordo político. A importação e a mutualização aparecem autorizadas na base, mas seguem sob revisão bibliográfica local e sem modificação livre da notice parceira.'
+      ? 'Importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
       : row?.import_allowed
-        ? 'Teste técnico não vale como acordo político. A importação controlada aparece autorizada na base, mas não vale como mutualização e continua sob revisão local.'
-        : row?.compare_allowed
-          ? 'Teste técnico não vale como acordo político. A comparação documental aparece autorizada na base, mas a importação continua bloqueada.'
-          : 'Sem autorização ativa para comparação, importação ou mutualização nesta etapa.';
+        ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
+        : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
     setPartnerDocumentActionsState(
       row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
       row,
@@ -13295,8 +13293,7 @@ ${carryPreview}` : carryPreview;
     countryEl.value = preset.countryCode || '';
     notesEl.value = preset.notes || '';
 
-    renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
-    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}. A leitura política continua vindo da base.`, 'ok');
+    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
     refreshPartnerPolicy({ silent: true });
   }
 
@@ -13333,19 +13330,8 @@ ${carryPreview}` : carryPreview;
       notes
     });
 
-    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados. Isto continua sendo só ajuda técnica local: não salva, não testa, não autoriza comparação, não autoriza importação e não autoriza mutualização.', 'ok');
+    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados. Isso não substitui a leitura da situação relacional na base.', 'ok');
   }
-
-  renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
-
-  baseUrlEl.addEventListener('input', () => {
-    renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
-  });
-
-  baseUrlEl.addEventListener('change', () => {
-    applyPartnerUrlHelperSuggestion();
-    refreshPartnerPolicy({ silent: true });
-  });
 
   presetEl.addEventListener('change', () => {
     if (presetEl.value) {
@@ -13482,33 +13468,6 @@ ${carryPreview}` : carryPreview;
   refreshBookPartnerGovernanceUi({ silent: true });
 }
 
-    function safeInitPartnerProbeUi() {
-      try {
-        initPartnerProbeUi();
-        return true;
-      } catch (error) {
-        console.error('Falha ao iniciar localmente o módulo Catálogos parceiros.', error);
-        if (refs.catalogMessage) {
-          showMessage(refs.catalogMessage, 'O módulo Catálogos parceiros falhou ao iniciar e foi neutralizado localmente. O resto da catalogação continua disponível.', 'error');
-        }
-        return false;
-      }
-    }
-
-    let catalogacaoAuthSyncSerial = 0;
-    let catalogacaoAuthBootstrapping = true;
-
-    function resetCatalogacaoAuthChrome() {
-      state.session = null;
-      state.profile = null;
-      state.isLibrarian = false;
-      refs.userEmail.textContent = 'Sem sessão';
-      refs.rolePill.textContent = 'Faça login para usar a catalogação';
-      refs.rolePill.className = 'pill danger';
-      updateLoginButton();
-      updateRefreshButton(false);
-    }
-
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
       if (nextSession?.user?.id) return nextSession;
 
@@ -13533,7 +13492,12 @@ ${carryPreview}` : carryPreview;
         const resolvedSession = await resolveCatalogacaoSession(nextSession || null, { allowAnonymousReset });
         if (syncId !== catalogacaoAuthSyncSerial) return !!resolvedSession?.user?.id;
 
+        const previousUserId = String(state.session?.user?.id || '').trim();
         state.session = resolvedSession || null;
+        const nextUserId = String(state.session?.user?.id || '').trim();
+        if (previousUserId && nextUserId && previousUserId !== nextUserId) {
+          clearCatalogacaoAccessCache();
+        }
         updateLoginButton();
 
         if (!state.session?.user?.id) {
@@ -13587,6 +13551,13 @@ ${carryPreview}` : carryPreview;
       });
     }
 
+    window.addEventListener('storage', (event) => {
+      if (!isCatalogacaoAuthStorageKey(event?.key)) return;
+      probeCatalogacaoSessionOnVisibility('storage').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação após mudança de armazenamento auth.', error);
+      });
+    });
+
     window.addEventListener('focus', () => {
       probeCatalogacaoSessionOnVisibility('focus').catch((error) => {
         console.warn('Falha ao revalidar a sessão da catalogação no foco.', error);
@@ -13598,6 +13569,10 @@ ${carryPreview}` : carryPreview;
         console.warn('Falha ao revalidar a sessão da catalogação no retorno da página.', error);
       });
     });
+
+    updateRefreshButton(false);
+    updateLoginButton();
+    initPartnerProbeUi();
 
     const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
     catalogacaoAuthBootstrapping = false;
@@ -13611,6 +13586,7 @@ ${carryPreview}` : carryPreview;
         }
       }, 700);
     }
+
   </script>
 </body>
 </html>
