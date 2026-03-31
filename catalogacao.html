@@ -3170,6 +3170,12 @@
               <input id="partnerBaseUrlInput" type="text" placeholder="https://www.cira.ch/catalogue">
             </div>
           </div>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label for="partnerUrlHelperOutput">Leitura rápida da URL colada</label>
+            <textarea id="partnerUrlHelperOutput" rows="4" readonly placeholder="Cole uma URL pública para receber uma ajuda de pré-preenchimento local."></textarea>
+            <small>Ajuda de pré-preenchimento apenas: a URL pode sugerir nome público, slug, base URL, família lógica, confiança, país e match provável, mas não salva nada, não decide situação relacional e não autoriza comparação, importação ou mutualização.</small>
+          </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
@@ -3217,20 +3223,6 @@
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
             <small id="partnerActionHint">Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.</small>
-          </div>
-
-          <div class="field" style="margin-top:12px;">
-            <label for="partnerCatalogUrlAssistInput">Ajuda de pré-preenchimento por URL do catálogo</label>
-            <div class="grid" style="grid-template-columns:minmax(0,1.7fr) auto auto;gap:12px;align-items:end;">
-              <div class="field" style="padding:0;background:none;border:none;">
-                <label for="partnerCatalogUrlAssistInput">URL pública do catálogo</label>
-                <input id="partnerCatalogUrlAssistInput" type="url" placeholder="https://..." />
-              </div>
-              <button id="partnerAnalyzeCatalogUrlBtn" class="button secondary" type="button">Analisar URL</button>
-              <button id="partnerApplyCatalogUrlSuggestionBtn" class="button ghost" type="button">Levar sugestão para os campos</button>
-            </div>
-            <textarea id="partnerCatalogUrlSuggestionPreview" rows="7" readonly placeholder="A leitura assistida da URL aparecerá aqui, sem gravar nada automaticamente."></textarea>
-            <small id="partnerCatalogUrlAssistHint">Assistência local apenas: a URL serve para sugerir nome público, slug, base URL, família provável, confiança, país e nota curta. Nada é salvo nem autorizado automaticamente.</small>
           </div>
         
           <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
@@ -8487,10 +8479,38 @@
       }
     }
 
-    async function getCurrentSession() {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return data?.session || null;
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    async function getConfirmedCurrentSession({ attempts = 6, delayMs = 180 } = {}) {
+      for (let i = 0; i < attempts; i += 1) {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          if (data?.session?.user?.id) return data.session;
+        } catch (error) {
+          console.warn('getSession falhou ao confirmar a sessão da catalogação.', error);
+        }
+
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          if (!error && data?.user?.id) {
+            const { data: recovered, error: recoveredError } = await supabase.auth.getSession();
+            if (recoveredError) throw recoveredError;
+            if (recovered?.session?.user?.id) return recovered.session;
+          }
+        } catch (error) {
+          console.warn('getUser falhou ao confirmar a sessão da catalogação.', error);
+        }
+
+        if (i < attempts - 1) {
+          await wait(delayMs);
+        }
+      }
+      return null;
+    }
+
+    async function getCurrentSession(options = {}) {
+      return getConfirmedCurrentSession(options);
     }
 
     async function requireSession() {
@@ -8517,27 +8537,113 @@
 
     async function fetchAccessRecord(userId) {
       const accessSelect = 'id, user_id, email, public_id, first_name, last_name, is_librarian, is_restricted, can_access_conta, can_access_painel, can_access_catalogacao, default_library_id, default_library_slug, default_library_name, library_id, library_slug, library_name, role, status, is_primary';
+      const directReaders = [
+        {
+          label: 'public.my_access read',
+          run: () => withTimeout(
+            supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+            'public.my_access read'
+          ),
+        },
+        {
+          label: 'api.my_access read',
+          run: () => withTimeout(
+            supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+            'api.my_access read'
+          ),
+        },
+        {
+          label: 'public.my_session_context read',
+          run: () => withTimeout(
+            supabase.from('my_session_context').select('*').maybeSingle(),
+            'public.my_session_context read'
+          ),
+        },
+        {
+          label: 'api.my_session_context read',
+          run: () => withTimeout(
+            supabase.schema('api').from('my_session_context').select('*').maybeSingle(),
+            'api.my_session_context read'
+          ),
+        },
+      ];
 
+      for (const reader of directReaders) {
+        try {
+          const result = await reader.run();
+          if (!result?.error && result?.data) return result.data;
+          if (result?.error) console.warn(`${reader.label} failed:`, result.error);
+        } catch (error) {
+          console.warn(`${reader.label} exception:`, error);
+        }
+      }
+
+      let profileRow = null;
       try {
-        const publicRead = await withTimeout(
-          supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
-          'public.my_access read'
+        const profileRead = await withTimeout(
+          supabase.from('profiles').select('id, user_id, email, first_name, last_name').or(`id.eq.${userId},user_id.eq.${userId}`).maybeSingle(),
+          'profiles read'
         );
-        if (!publicRead.error && publicRead.data) return publicRead.data;
-        if (publicRead.error) console.warn('public.my_access read failed:', publicRead.error);
+        if (!profileRead?.error && profileRead?.data) {
+          profileRow = profileRead.data;
+        } else if (profileRead?.error) {
+          console.warn('profiles read failed:', profileRead.error);
+        }
       } catch (error) {
-        console.warn('public.my_access read exception:', error);
+        console.warn('profiles read exception:', error);
       }
 
       try {
-        const apiRead = await withTimeout(
-          supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
-          'api.my_access read'
+        const membershipRead = await withTimeout(
+          supabase
+            .from('user_library_memberships')
+            .select('user_id, library_id, role, status, is_primary')
+            .eq('user_id', userId)
+            .eq('status', 'active'),
+          'user_library_memberships read'
         );
-        if (!apiRead.error && apiRead.data) return apiRead.data;
-        if (apiRead.error) console.warn('api.my_access read failed:', apiRead.error);
+        if (!membershipRead?.error) {
+          const membershipRows = Array.isArray(membershipRead?.data) ? membershipRead.data : [];
+          const primaryMembership = membershipRows.find((row) => row?.is_primary) || membershipRows[0] || null;
+          if (primaryMembership) {
+            const normalizedRole = String(primaryMembership.role || '').trim().toLowerCase();
+            const canAccessCatalogacao = ['admin', 'owner', 'librarian', 'bibliotecario', 'bibliotecaria', 'bibliotecárie'].includes(normalizedRole);
+            return {
+              id: profileRow?.id || userId,
+              user_id: profileRow?.user_id || userId,
+              email: profileRow?.email || state.session?.user?.email || '',
+              first_name: profileRow?.first_name || '',
+              last_name: profileRow?.last_name || '',
+              role: primaryMembership.role || '',
+              status: primaryMembership.status || 'active',
+              is_primary: !!primaryMembership.is_primary,
+              library_id: primaryMembership.library_id || null,
+              default_library_id: primaryMembership.library_id || null,
+              can_access_catalogacao: canAccessCatalogacao,
+              can_access_painel: canAccessCatalogacao,
+              can_access_conta: true,
+              is_librarian: canAccessCatalogacao,
+            };
+          }
+        } else {
+          console.warn('user_library_memberships read failed:', membershipRead.error);
+        }
       } catch (error) {
-        console.warn('api.my_access read exception:', error);
+        console.warn('user_library_memberships read exception:', error);
+      }
+
+      if (profileRow) {
+        return {
+          id: profileRow.id || userId,
+          user_id: profileRow.user_id || userId,
+          email: profileRow.email || state.session?.user?.email || '',
+          first_name: profileRow.first_name || '',
+          last_name: profileRow.last_name || '',
+          can_access_catalogacao: false,
+          can_access_painel: false,
+          can_access_conta: true,
+          is_librarian: false,
+        };
       }
 
       return null;
@@ -8804,6 +8910,25 @@
           showMessage(refs.globalMessage, error.message, 'error');
         }
       }
+    }
+
+    let catalogacaoRefreshPromise = null;
+
+    function resetCatalogacaoStateAfterSignOut() {
+      state.profile = null;
+      state.isLibrarian = false;
+      refs.userEmail.textContent = 'Sem sessão';
+      refs.rolePill.textContent = 'Faça login para usar a catalogação';
+      refs.rolePill.className = 'pill danger';
+      updateLoginButton();
+    }
+
+    async function queueCatalogacaoRefresh(showSuccess = false) {
+      if (catalogacaoRefreshPromise) return catalogacaoRefreshPromise;
+      catalogacaoRefreshPromise = refreshAll(showSuccess).finally(() => {
+        catalogacaoRefreshPromise = null;
+      });
+      return catalogacaoRefreshPromise;
     }
 
     async function saveDraft(table, payload, messageTarget, successText) {
@@ -11866,6 +11991,7 @@ function initPartnerProbeUi() {
   const displayEl = document.getElementById('partnerDisplayNameInput');
   const slugEl = document.getElementById('partnerSlugInput');
   const baseUrlEl = document.getElementById('partnerBaseUrlInput');
+  const urlHelperOutputEl = document.getElementById('partnerUrlHelperOutput');
   const familyEl = document.getElementById('partnerFamilySelect');
   const confidenceEl = document.getElementById('partnerConfidenceSelect');
   const countryEl = document.getElementById('partnerCountryCodeInput');
@@ -11887,11 +12013,6 @@ function initPartnerProbeUi() {
   const compareActionBtn = document.getElementById('partnerCompareActionBtn');
   const importActionBtn = document.getElementById('partnerImportActionBtn');
   const actionHintEl = document.getElementById('partnerActionHint');
-  const catalogUrlAssistInputEl = document.getElementById('partnerCatalogUrlAssistInput');
-  const analyzeCatalogUrlBtn = document.getElementById('partnerAnalyzeCatalogUrlBtn');
-  const applyCatalogUrlSuggestionBtn = document.getElementById('partnerApplyCatalogUrlSuggestionBtn');
-  const catalogUrlSuggestionPreviewEl = document.getElementById('partnerCatalogUrlSuggestionPreview');
-  const catalogUrlAssistHintEl = document.getElementById('partnerCatalogUrlAssistHint');
   const compareWorkspaceEl = document.getElementById('partnerCompareWorkspace');
   const compareWorkspaceStatusEl = document.getElementById('partnerCompareWorkspaceStatus');
   const localDraftSummaryEl = document.getElementById('partnerLocalDraftSummary');
@@ -11935,8 +12056,6 @@ function initPartnerProbeUi() {
     !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !compareActionBtn || !importActionBtn || !actionHintEl ||
-    !catalogUrlAssistInputEl || !analyzeCatalogUrlBtn || !applyCatalogUrlSuggestionBtn ||
-    !catalogUrlSuggestionPreviewEl || !catalogUrlAssistHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
@@ -11996,192 +12115,156 @@ function initPartnerProbeUi() {
     presetHintEl.textContent = text || 'A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.';
   }
 
-  function setCatalogUrlAssistHint(text = '') {
-    if (!catalogUrlAssistHintEl) return;
-    catalogUrlAssistHintEl.textContent = text || 'Assistência local apenas: a URL serve para sugerir nome público, slug, base URL, família provável, confiança, país e nota curta. Nada é salvo nem autorizado automaticamente.';
-  }
 
-  function ensurePartnerAssistUrl(rawValue = '') {
-    const raw = String(rawValue || '').trim();
-    if (!raw) return '';
-    if (/^https?:\/\//i.test(raw)) return raw;
-    return `https://${raw.replace(/^\/+/,'')}`;
-  }
-
-  function getPartnerCountryCodeFromHostname(hostname = '') {
-    const tld = String(hostname || '').toLowerCase().split('.').filter(Boolean).pop() || '';
-    const map = {
-      br: 'BR', ar: 'AR', uy: 'UY', cl: 'CL', pe: 'PE', co: 'CO', mx: 'MX', us: 'US', ca: 'CA',
-      ch: 'CH', it: 'IT', fr: 'FR', es: 'ES', pt: 'PT', de: 'DE', be: 'BE', nl: 'NL', uk: 'GB', org: '', net: '', edu: ''
-    };
-    return map[tld] || '';
-  }
-
-  function humanizePartnerToken(value = '') {
+  function titleCasePartnerWords(value = '') {
     return String(value || '')
-      .replace(/[_-]+/g, ' ')
-      .replace(/(opac|catalogo|catalogue|catalog|acervo|biblioteca|library|www|index|default)/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .split(' ')
+      .split(/[\s._-]+/)
       .filter(Boolean)
-      .map((token) => token.length <= 3 ? token.toUpperCase() : `${token.charAt(0).toUpperCase()}${token.slice(1).toLowerCase()}`)
-      .join(' ')
-      .trim();
+      .map((chunk) => {
+        const clean = String(chunk || '').trim();
+        if (!clean) return '';
+        if (clean.length <= 3) return clean.toUpperCase();
+        return `${clean.charAt(0).toUpperCase()}${clean.slice(1)}`;
+      })
+      .filter(Boolean)
+      .join(' ');
   }
 
-  function guessPartnerDisplayNameFromUrl(urlObj) {
-    const hostnameParts = String(urlObj?.hostname || '').toLowerCase().split('.').filter(Boolean);
-    const filteredHostParts = hostnameParts.filter((part) => !['www', 'opac', 'catalog', 'catalogue', 'acervo', 'biblioteca', 'library'].includes(part));
-    const mainHost = filteredHostParts.length >= 2 ? filteredHostParts[filteredHostParts.length - 2] : (filteredHostParts[0] || '');
-    const pathParts = String(urlObj?.pathname || '').split('/').map((part) => part.trim()).filter(Boolean);
-    const usefulPath = pathParts.find((part) => !['cgi-bin', 'koha', 'opac-search.pl', 'index.php', 'search'].includes(part.toLowerCase())) || '';
-    const candidate = humanizePartnerToken(usefulPath) || humanizePartnerToken(mainHost);
-    return candidate || 'Parceira potencial';
-  }
-
-  function guessPartnerSoftwareFromUrl(urlObj) {
-    const haystack = `${String(urlObj?.hostname || '')}${String(urlObj?.pathname || '')}${String(urlObj?.search || '')}`.toLowerCase();
-    if (/(\/cgi-bin\/koha\/|koha\.pl|opac-search\.pl|cgi-bin=koha|\/koha\/opac)/i.test(haystack)) {
-      return { softwareFamily: 'koha', softwareConfidence: 'strong_inference', note: 'Traços de URL típicos de Koha detectados.' };
-    }
-    if (/(opac_css|index\.php\?lvl=|lvl=|\/pmb|\/opac\/css)/i.test(haystack)) {
-      return { softwareFamily: 'pmb', softwareConfidence: 'strong_inference', note: 'Traços de URL típicos de PMB detectados.' };
-    }
-    return { softwareFamily: 'unknown', softwareConfidence: 'generic', note: 'Família lógica não confirmada só pela URL pública.' };
-  }
-
-  function findPartnerOptionMatchByUrl(normalizedUrl = '') {
-    if (!normalizedUrl) return null;
-    let urlObj;
+  function findProbablePartnerMatch(normalizedBaseUrl = '', inferredSlug = '') {
+    const safeBaseUrl = normalizePartnerBaseUrl(normalizedBaseUrl || '');
+    let targetHost = '';
     try {
-      urlObj = new URL(normalizedUrl);
-    } catch {
-      return null;
+      targetHost = safeBaseUrl ? new URL(safeBaseUrl).hostname.replace(/^www\./i, '').toLowerCase() : '';
+    } catch (error) {
+      targetHost = '';
     }
-    let bestMatch = null;
-    let bestScore = 0;
-    partnerOptionRegistry.forEach((option) => {
-      const optionUrl = normalizePartnerBaseUrl(option.baseUrl || '');
-      let score = 0;
-      if (optionUrl && optionUrl === normalizedUrl) score = 100;
-      if (!score && optionUrl) {
-        try {
-          const optionObj = new URL(optionUrl);
-          if (optionObj.hostname === urlObj.hostname) score = Math.max(score, 70);
-          if ((optionObj.origin + optionObj.pathname).startsWith(urlObj.origin + urlObj.pathname) || (urlObj.origin + urlObj.pathname).startsWith(optionObj.origin + optionObj.pathname)) {
-            score = Math.max(score, 80);
-          }
-        } catch {}
+
+    if (inferredSlug && partnerOptionRegistry.has(inferredSlug)) {
+      return partnerOptionRegistry.get(inferredSlug);
+    }
+
+    for (const option of partnerOptionRegistry.values()) {
+      if (!option) continue;
+      if (inferredSlug && normalizePartnerSlug(option.slug || '') === inferredSlug) return option;
+      try {
+        const optionHost = normalizePartnerBaseUrl(option.baseUrl || '') ? new URL(normalizePartnerBaseUrl(option.baseUrl || '')).hostname.replace(/^www\./i, '').toLowerCase() : '';
+        if (targetHost && optionHost && targetHost === optionHost) return option;
+      } catch (error) {
+        // ignore per-option URL parsing failures
       }
-      const slugNeedle = String(option.slug || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-      const haystack = `${urlObj.hostname}${urlObj.pathname}`.toLowerCase().replace(/[^a-z0-9]+/g, '');
-      if (!score && slugNeedle && haystack.includes(slugNeedle)) score = 55;
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = option;
-      }
-    });
-    return bestScore >= 55 ? bestMatch : null;
+    }
+
+    return null;
   }
 
-  function buildCatalogUrlSuggestion(rawValue = '') {
-    const normalizedInput = ensurePartnerAssistUrl(rawValue);
-    if (!normalizedInput) return null;
-    let urlObj;
+  function inferPartnerSuggestionFromUrl(rawUrl = '') {
+    const normalized = normalizePartnerBaseUrl(rawUrl || '');
+    if (!normalized) return null;
+
+    let parsedUrl;
     try {
-      urlObj = new URL(normalizedInput);
-    } catch {
-      return { error: 'URL inválida. Revê e tenta novamente com uma URL pública completa do catálogo.' };
+      parsedUrl = new URL(normalized);
+    } catch (error) {
+      return {
+        valid: false,
+        baseUrl: normalized,
+        displayName: '',
+        slug: normalizePartnerSlug(normalized),
+        family: 'unknown',
+        confidence: 'unknown',
+        countryCode: '',
+        notes: 'URL ainda não válida o suficiente para uma leitura local.',
+        match: null,
+      };
     }
 
-    const normalizedUrl = normalizePartnerBaseUrl(urlObj.toString());
-    const matchedOption = findPartnerOptionMatchByUrl(normalizedUrl);
-    const inferredSoftware = guessPartnerSoftwareFromUrl(urlObj);
-    const countryCode = matchedOption?.countryCode || getPartnerCountryCodeFromHostname(urlObj.hostname);
-    const displayName = matchedOption?.displayName || guessPartnerDisplayNameFromUrl(urlObj);
-    const slug = matchedOption?.slug || normalizePartnerSlug(displayName || normalizedUrl);
-    const softwareFamily = matchedOption?.softwareFamily || inferredSoftware.softwareFamily;
-    const softwareConfidence = matchedOption?.softwareConfidence || inferredSoftware.softwareConfidence;
-    const noteParts = [];
-    if (matchedOption) {
-      noteParts.push(`URL aproximada de parceira já conhecida: ${matchedOption.label}.`);
-    } else {
-      noteParts.push(`Pré-preenchimento por URL pública (${urlObj.hostname}).`);
-    }
-    if (inferredSoftware.note) noteParts.push(inferredSoftware.note);
-    noteParts.push('Revisar antes de gravar ou formalizar a parceira.');
-    const suggestion = {
-      inputUrl: rawValue,
-      normalizedUrl,
-      displayName,
-      slug,
-      softwareFamily,
-      softwareConfidence,
-      countryCode,
-      notes: noteParts.join(' '),
-      matchedOption,
-      host: urlObj.hostname,
-      sourceLabel: matchedOption ? `Correspondência provável com parceira já conhecida (${matchedOption.label}).` : 'Sugestão calculada apenas a partir da URL pública informada.',
+    const hostname = parsedUrl.hostname.replace(/^www\./i, '').toLowerCase();
+    const pathname = String(parsedUrl.pathname || '').toLowerCase();
+    const hostParts = hostname.split('.').filter(Boolean);
+    const tld = hostParts.length ? hostParts[hostParts.length - 1] : '';
+    const countryMap = {
+      ar: 'AR', be: 'BE', br: 'BR', ch: 'CH', cl: 'CL', co: 'CO', de: 'DE', es: 'ES', fr: 'FR', it: 'IT', mx: 'MX', pt: 'PT', uy: 'UY', uk: 'GB'
     };
-    suggestion.previewText = [
-      `Origem da sugestão: ${suggestion.sourceLabel}`,
+
+    let family = 'unknown';
+    let confidence = 'generic';
+    let notes = 'Leitura local feita a partir da URL pública informada. Isto continua sendo apenas ajuda de pré-preenchimento.';
+
+    if (/\/cgi-bin\/koha\/opac/i.test(normalized) || hostname.includes('koha')) {
+      family = 'koha';
+      confidence = 'strong_inference';
+      notes = 'Catálogo público Koha provável a partir da URL informada. Confirma politicamente antes de qualquer uso documental.';
+    } else if (/\/pmb\//i.test(normalized) || /opac_css|search\.php|lvl=notice_display|lvl=more_results|lvl=cmspage/i.test(normalized)) {
+      family = 'pmb';
+      confidence = 'strong_inference';
+      notes = 'Catálogo público PMB provável a partir da URL informada. Confirma politicamente antes de qualquer uso documental.';
+    }
+
+    const inferredSlug = normalizePartnerSlug(hostParts.slice(0, Math.max(1, hostParts.length - 1)).join('-') || hostname || normalized);
+    const match = findProbablePartnerMatch(normalized, inferredSlug);
+    const displayName = match?.displayName || titleCasePartnerWords(inferredSlug || hostname || 'Parceira');
+    const countryCode = match?.countryCode || countryMap[tld] || '';
+
+    return {
+      valid: true,
+      baseUrl: normalized,
+      displayName,
+      slug: match?.slug || inferredSlug,
+      family: match?.softwareFamily || family,
+      confidence: match?.softwareConfidence || confidence,
+      countryCode,
+      notes: match
+        ? `Match provável com parceira já conhecida: ${match.label}. ${notes}`
+        : notes,
+      match,
+    };
+  }
+
+  function renderPartnerUrlHelperSuggestion(suggestion) {
+    if (!urlHelperOutputEl) return;
+    if (!suggestion) {
+      urlHelperOutputEl.value = 'Cole uma URL pública de catálogo para receber uma ajuda local de pré-preenchimento. Nada será salvo, testado ou autorizado automaticamente.';
+      return;
+    }
+
+    if (!suggestion.valid) {
+      urlHelperOutputEl.value = [
+        `Base URL sugerida: ${suggestion.baseUrl || '—'}`,
+        `Slug provável: ${suggestion.slug || '—'}`,
+        'A URL ainda não pôde ser lida com segurança como catálogo público.',
+      ].join('
+');
+      return;
+    }
+
+    urlHelperOutputEl.value = [
       `Nome público provável: ${suggestion.displayName || '—'}`,
       `Slug provável: ${suggestion.slug || '—'}`,
-      `Base URL sugerida: ${suggestion.normalizedUrl || '—'}`,
-      `Família lógica provável: ${suggestion.softwareFamily || '—'}`,
-      `Nível de confiança: ${suggestion.softwareConfidence || '—'}`,
+      `Base URL sugerida: ${suggestion.baseUrl || '—'}`,
+      `Família provável: ${suggestion.family || 'unknown'} · confiança: ${suggestion.confidence || 'unknown'}`,
       `País provável: ${suggestion.countryCode || '—'}`,
-      `Nota curta sugerida: ${suggestion.notes || '—'}`,
-      '',
-      'Isto é só uma ajuda de pré-preenchimento.',
-      'Nada será salvo, formalizado, importado ou autorizado sem revisão humana e ação explícita.',
+      suggestion.match ? `Match provável com parceira conhecida: ${suggestion.match.label}` : 'Match provável com parceira conhecida: nenhum match forte agora',
+      `Nota curta técnica: ${suggestion.notes || '—'}`,
+      'Lembrete político: teste técnico não vale como acordo político, nem como autorização de importação ou mutualização.',
     ].join('
 ');
-    return suggestion;
   }
 
-  let currentCatalogUrlSuggestion = null;
+  function applyPartnerUrlHelperSuggestion() {
+    const suggestion = inferPartnerSuggestionFromUrl(baseUrlEl.value || '');
+    renderPartnerUrlHelperSuggestion(suggestion);
+    if (!suggestion?.valid) return;
 
-  function renderCatalogUrlSuggestion(suggestion) {
-    currentCatalogUrlSuggestion = suggestion || null;
-    if (!suggestion) {
-      catalogUrlSuggestionPreviewEl.value = '';
-      applyCatalogUrlSuggestionBtn.disabled = true;
-      setCatalogUrlAssistHint();
-      return;
+    baseUrlEl.value = suggestion.baseUrl || '';
+    if (!String(displayEl.value || '').trim()) displayEl.value = suggestion.displayName || '';
+    if (!String(slugEl.value || '').trim()) slugEl.value = suggestion.slug || '';
+    if ((!String(familyEl.value || '').trim() || familyEl.value === 'unknown') && suggestion.family) familyEl.value = suggestion.family;
+    if ((!String(confidenceEl.value || '').trim() || confidenceEl.value === 'unknown') && suggestion.confidence) confidenceEl.value = suggestion.confidence;
+    if (!String(countryEl.value || '').trim() && suggestion.countryCode) countryEl.value = suggestion.countryCode;
+    if (!String(notesEl.value || '').trim() && suggestion.notes) notesEl.value = suggestion.notes;
+    if (suggestion.match && partnerOptionRegistry.has(suggestion.match.slug)) {
+      presetEl.value = suggestion.match.slug;
     }
-    if (suggestion.error) {
-      catalogUrlSuggestionPreviewEl.value = suggestion.error;
-      applyCatalogUrlSuggestionBtn.disabled = true;
-      setCatalogUrlAssistHint('A URL precisa ser pública e válida antes de servir como ajuda de pré-preenchimento.');
-      return;
-    }
-    catalogUrlSuggestionPreviewEl.value = suggestion.previewText || '';
-    applyCatalogUrlSuggestionBtn.disabled = false;
-    setCatalogUrlAssistHint(suggestion.matchedOption
-      ? 'Sugestão pronta. Ela aproveita uma correspondência provável com a lista viva de parceiras conhecidas, sem gravar nada automaticamente.'
-      : 'Sugestão pronta. Ela foi calculada só pela URL pública informada e precisa de revisão humana antes de qualquer uso.');
-  }
-
-  function applyCatalogUrlSuggestionToFields() {
-    if (!currentCatalogUrlSuggestion || currentCatalogUrlSuggestion.error) {
-      setPartnerProbeMessage('Analisa primeiro uma URL válida antes de levar a sugestão para os campos.', 'warn');
-      return;
-    }
-    const suggestion = currentCatalogUrlSuggestion;
-    displayEl.value = suggestion.displayName || displayEl.value;
-    slugEl.value = suggestion.slug || slugEl.value;
-    baseUrlEl.value = suggestion.normalizedUrl || baseUrlEl.value;
-    familyEl.value = Array.from(familyEl.options).some((option) => option.value === suggestion.softwareFamily) ? suggestion.softwareFamily : 'unknown';
-    confidenceEl.value = Array.from(confidenceEl.options).some((option) => option.value === suggestion.softwareConfidence) ? suggestion.softwareConfidence : 'generic';
-    countryEl.value = suggestion.countryCode || countryEl.value;
-    notesEl.value = suggestion.notes || notesEl.value;
-    if (suggestion.slug && partnerOptionRegistry.has(suggestion.slug)) {
-      presetEl.value = suggestion.slug;
-    }
-    generatePartnerArtifacts();
-    setPartnerProbeMessage('Sugestão por URL levada para os campos locais. Revê tudo antes de salvar ou formalizar qualquer parceira.', 'ok');
   }
 
   function buildPartnerOptionFromPreset(preset = {}) {
@@ -12276,12 +12359,14 @@ function initPartnerProbeUi() {
       renderPartnerPresetOptions(mergedRecords, preferredValue);
       const baseCount = Array.isArray(data) ? data.length : 0;
       setPartnerPresetHint(baseCount
-        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front.`
-        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front.');
+        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front. A base passa a ser a referência principal quando houver conflito.`
+        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front desta versão.');
+      renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
     } catch (error) {
       console.error('Falha ao carregar parceiras conhecidas desde a base:', error);
       renderPartnerPresetOptions(mergePartnerOptionRecords([]), preferredValue);
       setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets front desta versão.');
+      renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
       if (!silent) {
         setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui com os presets front desta versão.', 'warn');
       }
@@ -12789,13 +12874,13 @@ ${carryPreview}` : carryPreview;
   }
 
   function clearPartnerPolicyReadout() {
-    relationshipStatusEl.value = '';
-    compareAllowedEl.value = '';
-    importAllowedEl.value = '';
-    mutualizeAllowedEl.value = '';
-    technicalProbeLastAtEl.value = '';
-    policySummaryEl.value = '';
-    politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
+    relationshipStatusEl.value = 'Sem leitura ainda';
+    compareAllowedEl.value = 'Sem leitura ainda';
+    importAllowedEl.value = 'Sem leitura ainda';
+    mutualizeAllowedEl.value = 'Sem leitura ainda';
+    technicalProbeLastAtEl.value = 'Sem teste registrado';
+    policySummaryEl.value = 'Teste técnico, comparação documental, importação e mutualização continuam separados até que a situação relacional seja lida da base.';
+    politicalNoticeEl.textContent = 'Teste técnico não vale como acordo político. Importação não vale como mutualização. Mutualização não vale como modificação livre da notice parceira.';
     closeCompareWorkspace({ reset: false });
     closeImportWorkspace({ reset: false });
     setPartnerDocumentActionsState('empty');
@@ -12845,18 +12930,33 @@ ${carryPreview}` : carryPreview;
     actionHintEl.textContent = 'Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.';
   }
 
+  function buildPartnerPolicyFallbackSummary(row = {}) {
+    const relationLabel = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
+    return [
+      `Situação relacional: ${relationLabel}.`,
+      row?.compare_allowed ? 'Comparação documental: autorizada nesta etapa.' : 'Comparação documental: ainda não autorizada nesta etapa.',
+      row?.import_allowed ? 'Importação controlada: autorizada nesta etapa.' : 'Importação controlada: ainda não autorizada nesta etapa.',
+      row?.mutualize_allowed ? 'Mutualização: autorizada nesta etapa.' : 'Mutualização: ainda não autorizada nesta etapa.',
+      'Teste técnico não substitui acordo político.',
+      'Importação não equivale a mutualização.',
+      'Mutualização não equivale a modificação livre da notice parceira.',
+    ].join(' ');
+  }
+
   function setPartnerPolicyReadout(row) {
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
     compareAllowedEl.value = row?.compare_allowed ? 'Autorizada' : 'Ainda não autorizada';
     importAllowedEl.value = row?.import_allowed ? 'Autorizada' : 'Ainda não autorizada';
     mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada' : 'Ainda não autorizada';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
-    policySummaryEl.value = row?.policy_summary || '';
+    policySummaryEl.value = row?.policy_summary || buildPartnerPolicyFallbackSummary(row);
     politicalNoticeEl.textContent = row?.mutualize_allowed
-      ? 'Importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
+      ? 'Teste técnico não vale como acordo político. A importação e a mutualização aparecem autorizadas na base, mas seguem sob revisão bibliográfica local e sem modificação livre da notice parceira.'
       : row?.import_allowed
-        ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
-        : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
+        ? 'Teste técnico não vale como acordo político. A importação controlada aparece autorizada na base, mas não vale como mutualização e continua sob revisão local.'
+        : row?.compare_allowed
+          ? 'Teste técnico não vale como acordo político. A comparação documental aparece autorizada na base, mas a importação continua bloqueada.'
+          : 'Sem autorização ativa para comparação, importação ou mutualização nesta etapa.';
     setPartnerDocumentActionsState(
       row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
       row,
@@ -13024,7 +13124,8 @@ ${carryPreview}` : carryPreview;
     countryEl.value = preset.countryCode || '';
     notesEl.value = preset.notes || '';
 
-    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
+    renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
+    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}. A leitura política continua vindo da base.`, 'ok');
     refreshPartnerPolicy({ silent: true });
   }
 
@@ -13061,8 +13162,19 @@ ${carryPreview}` : carryPreview;
       notes
     });
 
-    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados. Isso não substitui a leitura da situação relacional na base.', 'ok');
+    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados. Isto continua sendo só ajuda técnica local: não salva, não testa, não autoriza comparação, não autoriza importação e não autoriza mutualização.', 'ok');
   }
+
+  renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
+
+  baseUrlEl.addEventListener('input', () => {
+    renderPartnerUrlHelperSuggestion(inferPartnerSuggestionFromUrl(baseUrlEl.value || ''));
+  });
+
+  baseUrlEl.addEventListener('change', () => {
+    applyPartnerUrlHelperSuggestion();
+    refreshPartnerPolicy({ silent: true });
+  });
 
   presetEl.addEventListener('change', () => {
     if (presetEl.value) {
@@ -13194,52 +13306,41 @@ ${carryPreview}` : carryPreview;
     });
   });
 
-  analyzeCatalogUrlBtn?.addEventListener('click', () => {
-    const suggestion = buildCatalogUrlSuggestion(catalogUrlAssistInputEl.value || '');
-    renderCatalogUrlSuggestion(suggestion);
-    if (!suggestion) {
-      setPartnerProbeMessage('Informa uma URL pública do catálogo para gerar a ajuda de pré-preenchimento.', 'warn');
-      return;
-    }
-    if (suggestion.error) {
-      setPartnerProbeMessage(suggestion.error, 'error');
-      return;
-    }
-    setPartnerProbeMessage('Leitura assistida da URL pronta. Revê a sugestão antes de levá-la para os campos.', 'ok');
-  });
-
-  applyCatalogUrlSuggestionBtn?.addEventListener('click', () => {
-    applyCatalogUrlSuggestionToFields();
-  });
-
-  catalogUrlAssistInputEl?.addEventListener('change', () => {
-    catalogUrlAssistInputEl.value = ensurePartnerAssistUrl(catalogUrlAssistInputEl.value || '');
-  });
-
-  Promise.resolve(loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() }))
-    .catch((error) => console.warn('Catálogos parceiros: não consegui atualizar a lista inicial.', error));
-  Promise.resolve(refreshPartnerPolicy({ silent: true }))
-    .catch((error) => console.warn('Catálogos parceiros: não consegui ler a política inicial.', error));
-  Promise.resolve(refreshBookPartnerGovernanceUi({ silent: true }))
-    .catch((error) => console.warn('Catálogos parceiros: não consegui atualizar a governança inicial.', error));
+  loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
+  refreshPartnerPolicy({ silent: true });
+  refreshBookPartnerGovernanceUi({ silent: true });
 }
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    function safeInitPartnerProbeUi() {
+      try {
+        initPartnerProbeUi();
+        return true;
+      } catch (error) {
+        console.error('Falha ao iniciar localmente o módulo Catálogos parceiros.', error);
+        if (refs.catalogMessage) {
+          showMessage(refs.catalogMessage, 'O módulo Catálogos parceiros falhou ao iniciar e foi neutralizado localmente. O resto da catalogação continua disponível.', 'error');
+        }
+        return false;
+      }
+    }
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
       state.session = session;
-      if (session) {
+      const eventName = String(event || '').trim().toUpperCase();
+      if (session?.user?.id) {
         refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
         if (!state.isLibrarian) {
           refs.rolePill.textContent = 'Sessão ativa';
           refs.rolePill.className = 'pill info';
         }
-      } else {
-        state.profile = null;
-        state.isLibrarian = false;
-        refs.userEmail.textContent = 'Sem sessão';
-        refs.rolePill.textContent = 'Faça login para usar a catalogação';
-        refs.rolePill.className = 'pill danger';
+        updateLoginButton();
+        if (['SIGNED_IN', 'USER_UPDATED', 'INITIAL_SESSION', 'TOKEN_REFRESHED'].includes(eventName)) {
+          await queueCatalogacaoRefresh(false);
+        }
+        return;
       }
-      updateLoginButton();
+
+      resetCatalogacaoStateAfterSignOut();
     });
 
     window.addEventListener('hashchange', () => {
@@ -13257,12 +13358,16 @@ ${carryPreview}` : carryPreview;
     renderLabelSheet([], '');
     renderTrash();
     updateLoginButton();
-    try {
-      initPartnerProbeUi();
-    } catch (error) {
-      console.warn('Catálogos parceiros: inicialização isolada com falha.', error);
-    }
-    refreshAll();
+    safeInitPartnerProbeUi();
+    queueCatalogacaoRefresh();
+    setTimeout(async () => {
+      if (state.session?.user?.id) return;
+      const lateSession = await getConfirmedCurrentSession({ attempts: 10, delayMs: 200 });
+      if (lateSession?.user?.id) {
+        state.session = lateSession;
+        await queueCatalogacaoRefresh(false);
+      }
+    }, 700);
   </script>
 </body>
 </html>
