@@ -11982,8 +11982,7 @@ function initPartnerProbeUi() {
       `Idioma: ${language}`,
       bibRef ? `Referência local: ${bibRef}` : '',
       `Assuntos: ${subjects}`,
-    ].filter(Boolean).join('
-');
+    ].filter(Boolean).join('\n');
   }
 
   function getCurrentComparisonNote() {
@@ -11999,9 +11998,7 @@ ${partnerSummary}` : '',
 ${differenceSummary}` : '',
       decisionSummary ? `Decisão local / próximos passos:
 ${decisionSummary}` : '',
-    ].filter(Boolean).join('
-
-');
+    ].filter(Boolean).join('\n\n');
   }
 
   function getComparisonFieldWritePreviewText() {
@@ -12055,8 +12052,7 @@ ${decisionSummary}` : '',
       lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   function getComparisonChecklistText() {
@@ -12077,8 +12073,7 @@ ${decisionSummary}` : '',
       partnerDocumentActionState.compareAllowed ? '• comparação autorizada pela política atual' : '• comparação ainda não autorizada pela política atual',
       partnerDocumentActionState.importAllowed ? '• importação aparece autorizada, mas continua fora deste microfluxo' : '• importação permanece fora deste microfluxo',
     ];
-    return checklist.join('
-');
+    return checklist.join('\n');
   }
 
   function getComparisonPreviewText() {
@@ -12091,9 +12086,7 @@ ${decisionSummary}` : '',
       partnerSummary ? `Notice parceira resumida: ${partnerSummary}` : 'Notice parceira resumida: ainda não preenchida.',
       differenceSummary ? `Diferenças: ${differenceSummary}` : 'Diferenças: ainda não registradas.',
       decisionSummary ? `Decisão local: ${decisionSummary}` : 'Decisão local: ainda não registrada.',
-    ].join('
-
-');
+    ].join('\n\n');
   }
 
   function getComparisonOperationalStateText() {
@@ -12104,8 +12097,7 @@ ${decisionSummary}` : '',
     lines.push(String(partnerNoticeSummaryEl.value || '').trim() ? 'Resumo manual da notice parceira já preenchido.' : 'Resumo manual da notice parceira ainda vazio.');
     lines.push(String(differenceSummaryEl.value || '').trim() ? 'Diferenças locais já registradas.' : 'Diferenças locais ainda não registradas.');
     lines.push(String(comparisonDecisionEl.value || '').trim() ? 'Decisão local já registrada.' : 'Decisão local ainda não registrada.');
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   function getComparisonPrudenceSignalText() {
