@@ -543,7 +543,7 @@
 
       try {
         const { data, error } = await supabase
-          .from("author_detail_public")
+          .from("authors")
           .select("*")
           .eq("id", authorId)
           .limit(1)
@@ -551,7 +551,7 @@
         if (!error && data) return data;
       } catch (_) {}
 
-      const rows = await fetchRest(`author_detail_public?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
+      const rows = await fetchRest(`authors?select=*&id=eq.${encodeURIComponent(authorId)}&limit=1`);
       return rows[0] || null;
     }
 
@@ -694,7 +694,7 @@
 
       if (!author) {
         $("nameLine").textContent = "Autor não encontrado";
-        $("heroIntro").textContent = "Não encontrei este autor na superfície pública author_detail_public.";
+        $("heroIntro").textContent = "Não encontrei este autor na base pública atual do catálogo.";
         $("bioLine").textContent = "Confira o link de origem ou volte ao catálogo para tentar de novo.";
         setPhoto("");
         document.title = "AnarBib - Autor não encontrado";
