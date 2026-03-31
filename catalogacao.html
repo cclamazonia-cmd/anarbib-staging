@@ -3439,98 +3439,14 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
     import { supabase } from './js/blmf-supabase.js';
-
-    const PARTNER_HELPERS_FALLBACK = {
-      PARTNER_PRESETS: [],
-      buildCapabilityProbe(baseUrl) {
-        const normalizedBaseUrl = String(baseUrl || '').trim();
-        return normalizedBaseUrl ? [{ capability_key: 'catalog_home', endpoint_url: normalizedBaseUrl }] : [];
-      },
-      buildPartnerSeedSql({ slug = '', displayName = '', baseUrl = '', softwareFamily = 'unknown', softwareConfidence = 'unknown', countryCode = '', notes = '' } = {}) {
-        const escapeSql = (value) => String(value || '').replace(/'/g, "''");
-        if (!slug || !displayName || !baseUrl) {
-          return '-- Preenche nome público, slug e base URL para gerar o SQL local.';
-        }
-        return [
-          'insert into public.catalog_partners (slug, display_name, base_url, software_family, software_confidence, country_code, notes)',
-          `values ('${escapeSql(slug)}', '${escapeSql(displayName)}', '${escapeSql(baseUrl)}', '${escapeSql(softwareFamily)}', '${escapeSql(softwareConfidence)}', ${countryCode ? "'" + escapeSql(countryCode) + "'" : 'null'}, ${notes ? "'" + escapeSql(notes) + "'" : 'null'})`,
-          'on conflict (slug) do update set',
-          `  display_name = excluded.display_name,`,
-          `  base_url = excluded.base_url,`,
-          `  software_family = excluded.software_family,`,
-          `  software_confidence = excluded.software_confidence,`,
-          `  country_code = excluded.country_code,`,
-          `  notes = excluded.notes;`
-        ].join('\n');
-      },
-      formatProbeReport(probes = []) {
-        if (!Array.isArray(probes) || !probes.length) {
-          return 'Sem endpoints prováveis calculados nesta versão local.';
-        }
-        return probes.map((probe) => {
-          const capability = String(probe?.capability_key || probe?.capability || 'capability').trim();
-          const url = String(probe?.endpoint_url || probe?.url || '').trim();
-          return [capability ? `Capacidade: ${capability}` : '', url ? `URL: ${url}` : ''].filter(Boolean).join('\n');
-        }).filter(Boolean).join('\n\n');
-      },
-      normalizePartnerBaseUrl(value = '') {
-        const trimmed = String(value || '').trim();
-        if (!trimmed) return '';
-        if (/^https?:\/\//i.test(trimmed)) return trimmed;
-        return `https://${trimmed.replace(/^\/+/, '')}`;
-      },
-      normalizePartnerSlug(value = '') {
-        return String(value || '')
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[̀-ͯ]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-      },
-    };
-
-    let PARTNER_PRESETS = PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
-    let buildCapabilityProbe = PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
-    let buildPartnerSeedSql = PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
-    let formatProbeReport = PARTNER_HELPERS_FALLBACK.formatProbeReport;
-    let normalizePartnerBaseUrl = PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
-    let normalizePartnerSlug = PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
-    let partnerHelpersLoadState = 'idle';
-    let partnerHelpersLoadPromise = null;
-
-    async function ensurePartnerHelpersLoaded() {
-      if (partnerHelpersLoadState === 'ready') {
-        return { usedFallback: false };
-      }
-      if (partnerHelpersLoadPromise) {
-        return partnerHelpersLoadPromise;
-      }
-      partnerHelpersLoadState = 'loading';
-      partnerHelpersLoadPromise = import('./js/partners.js')
-        .then((mod) => {
-          PARTNER_PRESETS = Array.isArray(mod?.PARTNER_PRESETS) ? mod.PARTNER_PRESETS : PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
-          buildCapabilityProbe = typeof mod?.buildCapabilityProbe === 'function' ? mod.buildCapabilityProbe : PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
-          buildPartnerSeedSql = typeof mod?.buildPartnerSeedSql === 'function' ? mod.buildPartnerSeedSql : PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
-          formatProbeReport = typeof mod?.formatProbeReport === 'function' ? mod.formatProbeReport : PARTNER_HELPERS_FALLBACK.formatProbeReport;
-          normalizePartnerBaseUrl = typeof mod?.normalizePartnerBaseUrl === 'function' ? mod.normalizePartnerBaseUrl : PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
-          normalizePartnerSlug = typeof mod?.normalizePartnerSlug === 'function' ? mod.normalizePartnerSlug : PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
-          partnerHelpersLoadState = 'ready';
-          return { usedFallback: false };
-        })
-        .catch((error) => {
-          console.error('Falha ao carregar ./js/partners.js. O bloco de parceiros seguirá em modo local reduzido.', error);
-          PARTNER_PRESETS = PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
-          buildCapabilityProbe = PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
-          buildPartnerSeedSql = PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
-          formatProbeReport = PARTNER_HELPERS_FALLBACK.formatProbeReport;
-          normalizePartnerBaseUrl = PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
-          normalizePartnerSlug = PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
-          partnerHelpersLoadState = 'fallback';
-          return { usedFallback: true, error };
-        });
-      return partnerHelpersLoadPromise;
-    }
+    import {
+      PARTNER_PRESETS,
+      buildCapabilityProbe,
+      buildPartnerSeedSql,
+      formatProbeReport,
+      normalizePartnerBaseUrl,
+      normalizePartnerSlug
+    } from './js/partners.js';
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
@@ -12408,8 +12324,7 @@ async function copyPartnerTextFrom(id, successMessage) {
   }
 }
 
-async function initPartnerProbeUi() {
-  const partnerHelpersState = await ensurePartnerHelpersLoaded();
+function initPartnerProbeUi() {
   const presetEl = document.getElementById('partnerPresetSelect');
   const presetHintEl = document.getElementById('partnerPresetHint');
   const displayEl = document.getElementById('partnerDisplayNameInput');
@@ -13548,48 +13463,10 @@ ${carryPreview}` : carryPreview;
     });
   });
 
-  if (partnerHelpersState?.usedFallback) {
-    setPartnerProbeMessage('O arquivo local de helpers de parceiras não carregou completamente. O bloco segue ativo em modo reduzido, sem derrubar a página.', 'warn');
-  }
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
   refreshBookPartnerGovernanceUi({ silent: true });
 }
-
-    function disablePartnerProbeAfterBootstrapFailure(error) {
-      console.error('Falha ao iniciar o bloco Catálogos parceiros na catalogação:', error);
-      const messageEl = document.getElementById('partnerProbeMessage');
-      if (messageEl) {
-        messageEl.textContent = 'O bloco “Catálogos parceiros” foi neutralizado localmente porque encontrou um erro de inicialização. O restante da página continua disponível.';
-        messageEl.style.color = '#fde5b6';
-      }
-      [
-        'partnerRefreshPolicyBtn',
-        'partnerGenerateBtn',
-        'partnerCopyReportBtn',
-        'partnerCopySeedBtn',
-        'partnerOpenBaseBtn',
-        'partnerCompareActionBtn',
-        'partnerImportActionBtn',
-        'partnerApplyComparisonBtn',
-        'partnerClearComparisonBtn',
-        'partnerApplyImportPrepBtn',
-        'partnerClearImportPrepBtn'
-      ].forEach((id) => {
-        const node = document.getElementById(id);
-        if (node) node.disabled = true;
-      });
-      document.getElementById('partnerCompareWorkspace')?.classList.add('is-hidden');
-      document.getElementById('partnerImportWorkspace')?.classList.add('is-hidden');
-    }
-
-    async function bootPartnerProbeUiSafely() {
-      try {
-        await initPartnerProbeUi();
-      } catch (error) {
-        disablePartnerProbeAfterBootstrapFailure(error);
-      }
-    }
 
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
       if (nextSession?.user?.id) return nextSession;
@@ -13653,12 +13530,16 @@ ${carryPreview}` : carryPreview;
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
-      const shouldReload = eventName === 'SIGNED_IN' || eventName === 'USER_UPDATED' || eventName === 'INITIAL_SESSION' || eventName === 'TOKEN_REFRESHED';
-      const allowAnonymousReset = eventName === 'SIGNED_OUT';
-      await syncCatalogacaoAuthState(session, { reloadData: shouldReload, allowAnonymousReset });
+      if (eventName === 'SIGNED_OUT') {
+        await syncCatalogacaoAuthState(null, { reloadData: false, allowAnonymousReset: true });
+        return;
+      }
+      if (eventName !== 'SIGNED_IN') return;
+      await syncCatalogacaoAuthState(session, { reloadData: true, allowAnonymousReset: false });
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
+      if (state.session?.user?.id) return;
       const now = Date.now();
       if (catalogacaoAuthSyncInFlight) return;
       if (now - catalogacaoLastPassiveSessionProbeAt < 1200) return;
@@ -13695,7 +13576,7 @@ ${carryPreview}` : carryPreview;
 
     updateRefreshButton(false);
     updateLoginButton();
-    bootPartnerProbeUiSafely();
+    initPartnerProbeUi();
 
     const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
     catalogacaoAuthBootstrapping = false;
