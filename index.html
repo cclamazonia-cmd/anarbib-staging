@@ -1509,18 +1509,22 @@ function getStatusInfo(r) {
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
   const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
 
-  if (canUsePersonalizedAvailability) {
-    const localRows = getSessionScopedLocalRows(r, userLibrary);
-
+  if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
       return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
     }
 
-    const hintedStatus = localRows
-      .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
-      .find(Boolean) || mapSessionStatusHintToStatus(r?.session_status_hint);
-    if (hintedStatus) return hintedStatus;
+    const localRows = canUsePersonalizedAvailability
+      ? getSessionScopedLocalRows(r, userLibrary)
+      : getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
+
+    if (canUsePersonalizedAvailability) {
+      const hintedStatus = localRows
+        .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
+        .find(Boolean) || mapSessionStatusHintToStatus(r?.session_status_hint);
+      if (hintedStatus) return hintedStatus;
+    }
 
     if (!localRows.length) {
       return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
@@ -1529,11 +1533,14 @@ function getStatusInfo(r) {
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
     if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
 
-    const localAvailable = localRows.some((item) => Number(item?.session_available_count ?? item?.available_count ?? 0) > 0)
-      || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_available_count ?? r?.available_count ?? 0) > 0);
-    if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+    if (canUsePersonalizedAvailability) {
+      const localAvailable = localRows.some((item) => Number(item?.session_available_count ?? item?.available_count ?? 0) > 0)
+        || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_available_count ?? r?.available_count ?? 0) > 0);
+      if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+      return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    }
 
-    return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
   }
 
   if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
