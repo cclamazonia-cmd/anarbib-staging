@@ -5651,6 +5651,7 @@
       const isPublic = isBookDigitalPublicSelection();
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
 
+      if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
       const title = el('bookTitle').value.trim();
       if (title) viewerUrl.searchParams.set('title', title);
       const subtitle = el('bookSubtitle').value.trim();
@@ -7278,11 +7279,21 @@
     async function resolvePublishedBookIdFromDraft(draftId) {
       const { data: draft, error: draftError } = await supabase
         .from('book_drafts')
-        .select('published_book_id, bib_ref, titulo')
+        .select('published_book_id, isbn, bib_ref, titulo')
         .eq('id', Number(draftId))
         .single();
       if (draftError) throw draftError;
       if (draft?.published_book_id) return Number(draft.published_book_id);
+      if (draft?.isbn) {
+        const { data: book } = await supabase
+          .from('books')
+          .select('id')
+          .eq('isbn', draft.isbn)
+          .order('id', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (book?.id) return Number(book.id);
+      }
       if (draft?.bib_ref) {
         const { data: book } = await supabase
           .from('books')
