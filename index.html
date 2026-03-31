@@ -1063,7 +1063,7 @@ const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
 const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
-const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint';
+const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,legacy_available_count_global,global_available_count,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,session_holding_id,session_local_bib_ref,session_available_count,session_loanable';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -1425,7 +1425,6 @@ function mapSessionStatusHintToStatus(hint) {
   if (!normalized) return null;
   if (normalized.includes('indisponivel_para_voce')) return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
   if (normalized.includes('consultavel_no_local')) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (normalized.includes('no_acervo_da_sua_biblioteca')) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
   return null;
 }
 function rowMatchesSelectedLibraries(row) {
@@ -1468,7 +1467,7 @@ function countSessionLibraryVisibleExemplares(row, userLibrary) {
     ? row._holdingLibrariesInfo.filter((item) => rowMatchesUserLibrary(item, userLibrary))
     : [row].filter((item) => rowMatchesUserLibrary(item, userLibrary));
   return holdings.reduce((sum, holding) => {
-    const qty = Number(holding?.session_exemplares_total ?? holding?.exemplares_total ?? holding?.available_count ?? 0) || 0;
+    const qty = Number(holding?.session_available_count ?? holding?.available_count ?? 0) || 0;
     return sum + qty;
   }, 0);
 }
@@ -1495,8 +1494,8 @@ function getStatusInfo(r) {
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
     if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
 
-    const localAvailable = localRows.some((item) => Number(item?.session_exemplares_total ?? item?.exemplares_total ?? item?.available_count ?? 0) > 0)
-      || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_exemplares_total ?? r?.exemplares_total ?? r?.available_count ?? 0) > 0);
+    const localAvailable = localRows.some((item) => Number(item?.session_available_count ?? item?.available_count ?? 0) > 0)
+      || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_available_count ?? r?.available_count ?? 0) > 0);
     if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
 
     return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
@@ -2606,6 +2605,7 @@ function normalizeHoldingLibraries(value, row = null) {
       loanable: row?.loanable === false ? false : true,
       session_has_holding: !!matchesSession,
       session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : 0,
+      session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : 0,
       session_status_hint: matchesSession ? firstNonEmptyString(row?.session_status_hint) : ''
     });
   }
@@ -2786,12 +2786,16 @@ async function loadRowsFromSupabase() {
         session_library_name: firstNonEmptyString(r.session_library_name),
         session_has_holding: !!r.session_has_holding,
         session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
+        session_available_count: Number(r.session_available_count ?? 0) || 0,
         session_status_hint: firstNonEmptyString(r.session_status_hint),
+        session_holding_id: r.session_holding_id ?? null,
+        session_local_bib_ref: firstNonEmptyString(r.session_local_bib_ref),
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
-        available_count: Number(r.available_count ?? r.legacy_available_count_global ?? 0) || 0,
+        global_available_count: Number(r.global_available_count ?? r.available_count ?? r.legacy_available_count_global ?? 0) || 0,
+        available_count: Number(r.global_available_count ?? r.available_count ?? r.legacy_available_count_global ?? 0) || 0,
         created_at: r.created_at ?? null,
         availability_source: firstNonEmptyString(r.availability_source) || (sourceVariant === 'session_v1' ? 'session_v1' : sourceVariant),
         _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
@@ -3148,17 +3152,20 @@ function mergeHoldingLibraryInfoForGroup(items) {
         loanable: true,
         session_has_holding: false,
         session_exemplares_total: 0,
+        session_available_count: 0,
         session_status_hint: ''
       };
       const exemplares_total = Number(candidate.exemplares_total ?? ((candidate.library_id || candidate.library_slug || candidate.library_name || candidate.biblioteca) ? 1 : 0)) || 0;
       const available_count = Number(candidate.available_count ?? 0) || 0;
       const session_exemplares_total = Number(candidate.session_exemplares_total ?? 0) || 0;
+      const session_available_count = Number(candidate.session_available_count ?? 0) || 0;
       const session_status_hint = firstNonEmptyString(candidate.session_status_hint);
       current.exemplares_total += exemplares_total;
       current.available_count += available_count;
       current.loanable = current.loanable && (candidate.loanable === false ? false : true);
       current.session_has_holding = current.session_has_holding || !!candidate.session_has_holding;
       current.session_exemplares_total = Math.max(current.session_exemplares_total, session_exemplares_total);
+      current.session_available_count = Math.max(current.session_available_count, session_available_count);
       if ((hintPriority[session_status_hint] || 0) > (hintPriority[current.session_status_hint] || 0)) {
         current.session_status_hint = session_status_hint;
       }
