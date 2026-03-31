@@ -5279,12 +5279,13 @@
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const compatRef = getCurrentBookCompatRef();
+      const publishedBookId = Number(el('bookPublishedId')?.value || 0);
       const hasFile = !!(bucket && path);
       const isPublic = isBookDigitalPublicSelection();
       const pdfBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
       if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !compatRef;
+      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : (!compatRef && !publishedBookId);
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
