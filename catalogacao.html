@@ -1753,7 +1753,7 @@
       <div class="toolbar-meta">
         <div class="toolbar-actions toolbar-actions-status">
           <span id="userEmail" class="pill info">Sem sessão</span>
-          <span id="rolePill" class="pill warn">Verificando acesso…</span>
+          <span id="rolePill" class="pill danger">Faça login para usar a catalogação</span>
         </div>
         <div class="toolbar-actions toolbar-actions-main">
           <button id="refreshAllBtn" class="button secondary">Atualizar</button>
@@ -3719,6 +3719,7 @@
       userEmail: el('userEmail'),
       rolePill: el('rolePill'),
       loginBtn: el('loginBtn'),
+      refreshAllBtn: el('refreshAllBtn'),
       catalogModeSimpleBtn: el('catalogModeSimpleBtn'),
       catalogModeCompleteBtn: el('catalogModeCompleteBtn'),
       catalogModeHint: el('catalogModeHint'),
@@ -8469,24 +8470,46 @@
     });
 
     let catalogacaoAuthSyncInFlight = false;
+    let catalogacaoUiRefreshInFlight = false;
     let catalogacaoLastPassiveSessionProbeAt = 0;
 
     function updateLoginButton() {
       if (!refs.loginBtn) return;
+      const hasSession = !!state.session?.user?.id;
       refs.loginBtn.disabled = false;
+      refs.loginBtn.removeAttribute('aria-busy');
+
       if (catalogacaoAuthSyncInFlight) {
-        refs.loginBtn.textContent = 'Verificando sessão…';
-        refs.loginBtn.className = 'button secondary';
         refs.loginBtn.disabled = true;
+        refs.loginBtn.setAttribute('aria-busy', 'true');
+        if (hasSession) {
+          refs.loginBtn.textContent = 'Logout';
+          refs.loginBtn.className = 'button secondary';
+          refs.loginBtn.title = 'Sessão reconhecida. Sincronizando acesso…';
+        } else {
+          refs.loginBtn.textContent = 'Fazer login';
+          refs.loginBtn.className = 'button primary';
+          refs.loginBtn.title = 'Sessão ainda não confirmada.';
+        }
         return;
       }
-      if (state.session?.user?.id) {
+
+      refs.loginBtn.title = '';
+      if (hasSession) {
         refs.loginBtn.textContent = 'Logout';
         refs.loginBtn.className = 'button secondary';
       } else {
         refs.loginBtn.textContent = 'Fazer login';
         refs.loginBtn.className = 'button primary';
       }
+    }
+
+    function updateRefreshButton(isLoading = false) {
+      const btn = refs.refreshAllBtn;
+      if (!btn) return;
+      btn.disabled = !!isLoading;
+      btn.textContent = isLoading ? 'Atualizando…' : 'Atualizar';
+      btn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
     }
 
     function isTruthyAccessFlag(value) {
@@ -8564,7 +8587,7 @@
       updateLoginButton();
     }
 
-    function withTimeout(promise, label, ms = 4000) {
+    function withTimeout(promise, label, ms = 1800) {
       return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
@@ -8599,87 +8622,104 @@
         () => supabase.schema('api').from('my_session_context').select('*').limit(1),
       ];
 
-      for (const run of directAttempts) {
-        try {
-          const res = await withTimeout(run(), 'catalogação access read');
+      const directResults = await Promise.allSettled(
+        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1600))
+      );
+
+      for (const result of directResults) {
+        if (result.status === 'fulfilled') {
+          const res = result.value;
           if (!res?.error) {
             pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
           } else {
             lastError = res.error;
           }
-        } catch (error) {
-          lastError = error;
+        } else {
+          lastError = result.reason;
         }
       }
 
-      let profileRow = null;
-      try {
-        const profileRes = await withTimeout(
+      const [profileOutcome, membershipOutcome] = await Promise.allSettled([
+        withTimeout(
           supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-          'profiles read'
-        );
-        if (!profileRes?.error && profileRes?.data) {
-          profileRow = profileRes.data;
-        } else if (profileRes?.error) {
-          lastError = profileRes.error;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-
-      try {
-        const membershipRes = await withTimeout(
+          'profiles read',
+          1400
+        ),
+        withTimeout(
           supabase
             .from('user_library_memberships')
             .select('user_id,library_id,role,status,is_primary')
             .eq('user_id', userId)
             .eq('status', 'active'),
-          'user_library_memberships read'
-        );
+          'user_library_memberships read',
+          1600
+        ),
+      ]);
 
+      let profileRow = null;
+      if (profileOutcome.status === 'fulfilled') {
+        const profileRes = profileOutcome.value;
+        if (!profileRes?.error && profileRes?.data) {
+          profileRow = profileRes.data;
+        } else if (profileRes?.error) {
+          lastError = profileRes.error;
+        }
+      } else {
+        lastError = profileOutcome.reason;
+      }
+
+      let membershipRows = [];
+      if (membershipOutcome.status === 'fulfilled') {
+        const membershipRes = membershipOutcome.value;
         if (!membershipRes?.error) {
-          const membershipRows = Array.isArray(membershipRes?.data) ? membershipRes.data : [];
-          if (membershipRows.length) {
-            const libraryIds = Array.from(new Set(membershipRows.map((row) => normalizeLibraryId(row?.library_id)).filter(Boolean)));
-            let librariesById = new Map();
-            if (libraryIds.length) {
-              const librariesRes = await withTimeout(
-                supabase.from('libraries').select('id,slug,name,short_name').in('id', libraryIds),
-                'libraries read'
-              );
-              if (!librariesRes?.error) {
-                librariesById = new Map((librariesRes.data || []).map((row) => [normalizeLibraryId(row.id), row]));
-              } else {
-                lastError = librariesRes.error;
-              }
-            }
-
-            const mergedRows = membershipRows.map((row) => {
-              const lib = librariesById.get(normalizeLibraryId(row?.library_id)) || {};
-              return {
-                ...(profileRow || {}),
-                ...row,
-                id: profileRow?.id || userId,
-                email: profileRow?.email || state.session?.user?.email || '',
-                library_name: lib?.name || profileRow?.default_library_name || '',
-                library_slug: lib?.slug || profileRow?.default_library_slug || '',
-                library_short_name: lib?.short_name || '',
-                default_library_id: row?.library_id || profileRow?.default_library_id || '',
-                default_library_name: lib?.name || profileRow?.default_library_name || '',
-                default_library_slug: lib?.slug || profileRow?.default_library_slug || '',
-                is_librarian: String(row?.role || '').trim().toLowerCase() === 'librarian',
-                can_access_catalogacao: String(row?.role || '').trim().toLowerCase() === 'librarian',
-                is_restricted: !!profileRow?.is_restricted,
-              };
-            });
-
-            pushRows(mergedRows);
-          }
+          membershipRows = Array.isArray(membershipRes?.data) ? membershipRes.data : [];
         } else {
           lastError = membershipRes.error;
         }
-      } catch (error) {
-        lastError = error;
+      } else {
+        lastError = membershipOutcome.reason;
+      }
+
+      if (membershipRows.length) {
+        const libraryIds = Array.from(new Set(membershipRows.map((row) => normalizeLibraryId(row?.library_id)).filter(Boolean)));
+        let librariesById = new Map();
+        if (libraryIds.length) {
+          try {
+            const librariesRes = await withTimeout(
+              supabase.from('libraries').select('id,slug,name,short_name').in('id', libraryIds),
+              'libraries read',
+              1400
+            );
+            if (!librariesRes?.error) {
+              librariesById = new Map((librariesRes.data || []).map((row) => [normalizeLibraryId(row.id), row]));
+            } else {
+              lastError = librariesRes.error;
+            }
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        const mergedRows = membershipRows.map((row) => {
+          const lib = librariesById.get(normalizeLibraryId(row?.library_id)) || {};
+          return {
+            ...(profileRow || {}),
+            ...row,
+            id: profileRow?.id || userId,
+            email: profileRow?.email || state.session?.user?.email || '',
+            library_name: lib?.name || profileRow?.default_library_name || '',
+            library_slug: lib?.slug || profileRow?.default_library_slug || '',
+            library_short_name: lib?.short_name || '',
+            default_library_id: row?.library_id || profileRow?.default_library_id || '',
+            default_library_name: lib?.name || profileRow?.default_library_name || '',
+            default_library_slug: lib?.slug || profileRow?.default_library_slug || '',
+            is_librarian: String(row?.role || '').trim().toLowerCase() === 'librarian',
+            can_access_catalogacao: String(row?.role || '').trim().toLowerCase() === 'librarian',
+            is_restricted: !!profileRow?.is_restricted,
+          };
+        });
+
+        pushRows(mergedRows);
       }
 
       if (profileRow) pushRows([profileRow]);
@@ -8916,8 +8956,14 @@
     }
 
     async function refreshAll(showSuccess = false) {
-      refs.userEmail.textContent = 'Verificando sessão…';
-      refs.rolePill.textContent = 'Verificando acesso…';
+      catalogacaoUiRefreshInFlight = true;
+      updateRefreshButton(true);
+
+      const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
+      const hasKnownSession = !!state.session?.user?.id;
+
+      refs.userEmail.textContent = hasKnownSession ? knownEmail : 'Sem sessão';
+      refs.rolePill.textContent = hasKnownSession ? 'Atualizando dados…' : 'Conferindo sessão…';
       refs.rolePill.className = 'pill warn';
 
       try {
@@ -8955,18 +9001,24 @@
         updateLoginButton();
         console.error(error);
         if (!state.session?.user?.id) {
+          refs.userEmail.textContent = 'Sem sessão';
           refs.rolePill.textContent = 'Faça login para usar a catalogação';
           refs.rolePill.className = 'pill danger';
         } else if (!state.isLibrarian) {
+          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Não foi possível atualizar os dados';
           refs.rolePill.className = 'pill danger';
         }
         if (state.session?.user?.id && error?.message) {
           showMessage(refs.globalMessage, error.message, 'error');
         }
+      } finally {
+        catalogacaoUiRefreshInFlight = false;
+        updateRefreshButton(false);
       }
     }
 
@@ -11707,11 +11759,16 @@
     }
 
     el('refreshAllBtn').addEventListener('click', async () => {
-      const liveSession = await getCurrentSession({ attempts: 12, delayMs: 180 });
-      await syncCatalogacaoAuthState(liveSession, {
-        reloadData: !!liveSession?.user?.id,
-        allowAnonymousReset: !liveSession?.user?.id,
-      });
+      updateRefreshButton(true);
+      try {
+        const liveSession = await getCurrentSession({ attempts: 8, delayMs: 160 });
+        await syncCatalogacaoAuthState(liveSession, {
+          reloadData: !!liveSession?.user?.id,
+          allowAnonymousReset: !liveSession?.user?.id,
+        });
+      } finally {
+        updateRefreshButton(false);
+      }
     });
     el('refreshQueueBtn').addEventListener('click', loadQueue);
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
@@ -13397,6 +13454,7 @@ ${carryPreview}` : carryPreview;
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
       updateLoginButton();
+      updateRefreshButton(false);
     }
 
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
