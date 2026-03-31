@@ -635,6 +635,11 @@
         return access;
       }
 
+      const compatBibRef = firstNonEmptyString(bibRef, bookRow?.bib_ref);
+      if (!compatBibRef) {
+        return access;
+      }
+
       try {
         const { error: ensureProfileError } = await supabase.rpc("fn_ensure_current_user_profile");
         if (ensureProfileError) {
@@ -647,7 +652,7 @@
       try {
         const { data: readState, error: readStateError } = await supabase.rpc(
           "fn_book_restricted_pdf_state_for_current_user",
-          { p_bib_ref: bibRef }
+          { p_bib_ref: compatBibRef }
         );
 
         if (readStateError) {
@@ -2481,12 +2486,18 @@
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
-        const targetLerUrl = buildLerUrl(bib_ref, data, libraryContext, publicDigitalAccess);
+        const compatBibRef = firstNonEmptyString(bib_ref, data?.bib_ref);
+        const targetLerUrl = buildLerUrl(compatBibRef, data, libraryContext, publicDigitalAccess);
         const hasAnyDigitalAccess = publicDigitalAccess.hasDigitalAvailability || restrictedDigitalAccess.hasRestrictedAccess;
         if (!hasAnyDigitalAccess) return;
 
         if (publicDigitalAccess.assetId || publicDigitalAccess.previewBucket || publicDigitalAccess.previewPath || publicDigitalAccess.previewUrl) {
           location.assign(targetLerUrl);
+          return;
+        }
+
+        if (!compatBibRef) {
+          setStatus("Leitura restrita indisponível sem referência de compatibilidade deste livro.", "warn");
           return;
         }
 
@@ -2502,7 +2513,7 @@
           if (!restrictedRow) {
             const { data: readState, error: readStateError } = await supabase.rpc(
               "fn_book_restricted_pdf_state_for_current_user",
-              { p_bib_ref: bib_ref }
+              { p_bib_ref: compatBibRef }
             );
 
             if (readStateError) {
