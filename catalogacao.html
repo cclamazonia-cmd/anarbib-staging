@@ -13216,9 +13216,12 @@ ${carryPreview}` : carryPreview;
     catalogUrlAssistInputEl.value = ensurePartnerAssistUrl(catalogUrlAssistInputEl.value || '');
   });
 
-  loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
-  refreshPartnerPolicy({ silent: true });
-  refreshBookPartnerGovernanceUi({ silent: true });
+  Promise.resolve(loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() }))
+    .catch((error) => console.warn('Catálogos parceiros: não consegui atualizar a lista inicial.', error));
+  Promise.resolve(refreshPartnerPolicy({ silent: true }))
+    .catch((error) => console.warn('Catálogos parceiros: não consegui ler a política inicial.', error));
+  Promise.resolve(refreshBookPartnerGovernanceUi({ silent: true }))
+    .catch((error) => console.warn('Catálogos parceiros: não consegui atualizar a governança inicial.', error));
 }
 
     supabase.auth.onAuthStateChange((_event, session) => {
@@ -13254,7 +13257,11 @@ ${carryPreview}` : carryPreview;
     renderLabelSheet([], '');
     renderTrash();
     updateLoginButton();
-    initPartnerProbeUi();
+    try {
+      initPartnerProbeUi();
+    } catch (error) {
+      console.warn('Catálogos parceiros: inicialização isolada com falha.', error);
+    }
     refreshAll();
   </script>
 </body>
