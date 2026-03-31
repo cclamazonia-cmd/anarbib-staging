@@ -7187,11 +7187,25 @@
     async function resolvePublishedBookIdFromDraft(draftId) {
       const { data: draft, error: draftError } = await supabase
         .from('book_drafts')
-        .select('published_book_id, bib_ref, titulo')
+        .select('published_book_id, isbn, bib_ref, titulo')
         .eq('id', Number(draftId))
         .single();
       if (draftError) throw draftError;
       if (draft?.published_book_id) return Number(draft.published_book_id);
+      const isbnCandidates = Array.from(new Set([
+        String(draft?.isbn || '').trim(),
+        normalizeISBN(draft?.isbn || ''),
+      ].filter(Boolean)));
+      for (const isbnCandidate of isbnCandidates) {
+        const { data: book } = await supabase
+          .from('books')
+          .select('id')
+          .eq('isbn', isbnCandidate)
+          .order('id', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (book?.id) return Number(book.id);
+      }
       if (draft?.bib_ref) {
         const { data: book } = await supabase
           .from('books')
