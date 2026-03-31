@@ -8955,6 +8955,20 @@
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    async function settleCatalogacaoStep(label, task, timeoutMs = 3600) {
+      try {
+        const result = await withTimeout(
+          Promise.resolve().then(task),
+          label,
+          timeoutMs
+        );
+        return { ok: true, label, result };
+      } catch (error) {
+        console.warn(`Falha ao carregar ${label} na catalogação.`, error);
+        return { ok: false, label, error };
+      }
+    }
+
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -8972,25 +8986,43 @@
         await loadProfile();
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
+
+        refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+
         const currentTab = getActiveCatalogacaoTab();
-        const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+        const [batchesStep, queueStep, catalogStep] = await Promise.all([
+          settleCatalogacaoStep('lotes', () => loadBatches(), 3400),
+          settleCatalogacaoStep('fila editorial', () => loadQueue(), 3400),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 5200),
+        ]);
+
         setTab(currentTab);
+
+        let labelSheetStep = null;
         if (refs.labelBatchPreviewId?.value) {
-          try {
-            await loadLabelSheetPreview();
-          } catch (labelError) {
-            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-          }
+          labelSheetStep = await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 3200);
         }
+
         updateStats();
         updateLoginButton();
 
         const failedSources = [];
-        if (batchesResult?.ok === false) failedSources.push('lotes');
-        if (queueResult?.ok === false) failedSources.push('fila editorial');
-        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+        const batchesResult = batchesStep?.result;
+        const queueResult = queueStep?.result;
+        const catalogResult = catalogStep?.result;
+
+        if (!batchesStep?.ok || batchesResult?.ok === false) failedSources.push('lotes');
+        if (!queueStep?.ok || queueResult?.ok === false) failedSources.push('fila editorial');
+        if (!catalogStep?.ok) {
+          failedSources.push('catálogo publicado');
+        } else {
+          if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
+          if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
+          if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+        }
+        if (labelSheetStep && !labelSheetStep.ok) failedSources.push('prévia dos rótulos');
 
         if (failedSources.length) {
           showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
