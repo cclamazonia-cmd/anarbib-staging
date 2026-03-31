@@ -1391,9 +1391,12 @@ function rowMatchesUserLibrary(rowLike, userLibrary) {
   const rowLibraryId = rowLike.library_id ?? null;
   const rowLibrarySlug = firstNonEmptyString(rowLike.library_slug);
   const rowLibraryName = firstNonEmptyString(rowLike.library_name, rowLike.biblioteca);
+  const rowLibraryLabel = canonicalizeLibraryLabel(firstNonEmptyString(rowLibraryName, rowLibrarySlug), firstNonEmptyString(rowLike.bib_ref, rowLike.local_bib_ref));
+  const userLibraryLabel = canonicalizeLibraryLabel(firstNonEmptyString(userLibrary.library_name, userLibrary.library_slug), '');
   if (userLibrary.library_id && rowLibraryId && String(userLibrary.library_id) === String(rowLibraryId)) return true;
   if (userLibrary.library_slug && rowLibrarySlug && normalize(userLibrary.library_slug) === normalize(rowLibrarySlug)) return true;
   if (userLibrary.library_name && rowLibraryName && normalize(userLibrary.library_name) === normalize(rowLibraryName)) return true;
+  if (rowLibraryLabel && userLibraryLabel && getLibraryKey(rowLibraryLabel) === getLibraryKey(userLibraryLabel)) return true;
   return false;
 }
 function getRowLibraryCandidates(row) {
@@ -1425,8 +1428,6 @@ function mapSessionStatusHintToStatus(hint) {
   if (!normalized) return null;
   if (normalized.includes('indisponivel_para_voce')) return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
   if (normalized.includes('consultavel_no_local')) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  if (normalized.includes('no_acervo_da_sua_biblioteca')) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
-  if (normalized.includes('disponivel')) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
   return null;
 }
 function rowMatchesSelectedLibraries(row) {
@@ -1465,13 +1466,46 @@ function isSessionLibraryIncludedInActiveFilter(userLibrary) {
   return possibleLabels.some((label) => selectedLibraryKeys.has(getLibraryKey(label)));
 }
 function countSessionLibraryVisibleExemplares(row, userLibrary) {
-  const holdings = Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length
-    ? row._holdingLibrariesInfo.filter((item) => rowMatchesUserLibrary(item, userLibrary))
-    : [row].filter((item) => rowMatchesUserLibrary(item, userLibrary));
+  const holdings = personalizedAvailabilityReady
+    ? getSessionScopedLocalRows(row, userLibrary)
+    : (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length
+        ? row._holdingLibrariesInfo.filter((item) => rowMatchesUserLibrary(item, userLibrary))
+        : [row].filter((item) => rowMatchesUserLibrary(item, userLibrary)));
   return holdings.reduce((sum, holding) => {
     const qty = Number(holding?.session_available_count ?? holding?.available_count ?? 0) || 0;
     return sum + qty;
   }, 0);
+}
+function getSessionScopedLocalRows(row, userLibrary) {
+  const candidates = getRowLibraryCandidates(row);
+  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
+  if (directMatches.length) return directMatches;
+
+  const hintedMatches = candidates.filter((item) => {
+    const hasSessionSignal = !!(
+      item?.session_has_holding
+      || firstNonEmptyString(item?.session_status_hint)
+      || Number(item?.session_exemplares_total ?? 0) > 0
+      || Number(item?.session_available_count ?? 0) > 0
+    );
+    if (!hasSessionSignal) return false;
+    if (!userLibrary) return true;
+    if (userLibrary.library_id && item?.session_library_id && String(userLibrary.library_id) === String(item.session_library_id)) return true;
+    if (userLibrary.library_slug && item?.session_library_slug && normalize(userLibrary.library_slug) === normalize(item.session_library_slug)) return true;
+    if (userLibrary.library_name && item?.session_library_name && normalize(userLibrary.library_name) === normalize(item.session_library_name)) return true;
+    return !userLibrary.library_id && !userLibrary.library_slug && !userLibrary.library_name;
+  });
+  if (hintedMatches.length) return hintedMatches;
+
+  const rowHasSessionSignal = !!(
+    row?.session_has_holding
+    || firstNonEmptyString(row?.session_status_hint)
+    || Number(row?.session_exemplares_total ?? 0) > 0
+    || Number(row?.session_available_count ?? 0) > 0
+  );
+  if (rowHasSessionSignal) return [row];
+
+  return [];
 }
 function getStatusInfo(r) {
   const userLibrary = getUserLibraryContext();
@@ -1484,12 +1518,29 @@ function getStatusInfo(r) {
       return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
     }
 
-    const localRows = getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
-    const hintedStatus = localRows
+    const localRows = canUsePersonalizedAvailability
+      ? getSessionScopedLocalRows(r, userLibrary)
+      : getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary));
+
+    const localHintedStatus = localRows
       .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
-      .find(Boolean)
-      || mapSessionStatusHintToStatus(r?.session_status_hint);
-    if (hintedStatus) return hintedStatus;
+      .find(Boolean);
+    if (localHintedStatus) return localHintedStatus;
+
+    const rowSessionLibraryLike = {
+      library_id: r?.session_library_id ?? r?.library_id ?? null,
+      library_slug: firstNonEmptyString(r?.session_library_slug, r?.library_slug),
+      library_name: firstNonEmptyString(r?.session_library_name, r?.library_name, r?.biblioteca),
+      bib_ref: r?.bib_ref
+    };
+    const rowHintedStatus = canUsePersonalizedAvailability && rowMatchesUserLibrary(rowSessionLibraryLike, userLibrary)
+      ? mapSessionStatusHintToStatus(r?.session_status_hint)
+      : null;
+    if (rowHintedStatus) return rowHintedStatus;
+
+    if (!localRows.length) {
+      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
+    }
 
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
     if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
@@ -1498,26 +1549,8 @@ function getStatusInfo(r) {
       || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_available_count ?? r?.available_count ?? 0) > 0);
     if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
 
-    if (localRows.length) {
-      return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
-    }
-
-    if (!canUsePersonalizedAvailability) {
-      return r.loanable === false
-        ? { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' }
-        : { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
-    }
-
-    const hasSessionEvidence = !!(
-      r?.session_has_holding
-      || Number(r?.session_exemplares_total ?? 0) > 0
-      || Number(r?.session_available_count ?? 0) > 0
-      || firstNonEmptyString(r?.session_library_id, r?.session_library_slug, r?.session_library_name)
-    );
-    if (hasSessionEvidence) {
-      return r.loanable === false
-        ? { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' }
-        : { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+    if (canUsePersonalizedAvailability) {
+      return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
     }
 
     return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
@@ -2615,13 +2648,24 @@ function normalizeHoldingLibraries(value, row = null) {
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
-    const matchesSession = row?.session_has_holding && rowMatchesUserLibrary({ library_id, library_slug, library_name }, sessionLibrary);
+    const hasTopLevelSessionSignal = !!(
+      row?.session_has_holding
+      || firstNonEmptyString(row?.session_status_hint)
+      || Number(row?.session_exemplares_total ?? 0) > 0
+      || Number(row?.session_available_count ?? 0) > 0
+    );
+    const matchesSessionLibrary = rowMatchesUserLibrary({ library_id, library_slug, library_name }, sessionLibrary);
+    const isSingleHoldingFallback = source.length === 1 && hasTopLevelSessionSignal;
+    const matchesSession = !!(hasTopLevelSessionSignal && (matchesSessionLibrary || isSingleHoldingFallback));
     out.push({
       holding_id: item.holding_id ?? item.id ?? null,
       local_bib_ref: firstNonEmptyString(item.local_bib_ref, row?.bib_ref),
       library_id,
       library_slug,
       library_name,
+      session_library_id: row?.session_library_id ?? null,
+      session_library_slug: firstNonEmptyString(row?.session_library_slug),
+      session_library_name: firstNonEmptyString(row?.session_library_name),
       exemplares_total,
       tombos_json,
       loanable: row?.loanable === false ? false : true,
@@ -3531,12 +3575,12 @@ function pickPrimaryAccessContext(rows) {
   normalized.sort((a, b) => {
     const activeDiff = (b.status === 'active' ? 1 : 0) - (a.status === 'active' ? 1 : 0);
     if (activeDiff) return activeDiff;
+    const readerDiff = (b.role === 'reader' ? 1 : 0) - (a.role === 'reader' ? 1 : 0);
+    if (readerDiff) return readerDiff;
     const primaryDiff = (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
     if (primaryDiff) return primaryDiff;
     const defaultDiff = ((b.default_library_id || b.default_library_slug || b.default_library_name) ? 1 : 0) - ((a.default_library_id || a.default_library_slug || a.default_library_name) ? 1 : 0);
     if (defaultDiff) return defaultDiff;
-    const roleDiff = (a.role === 'reader' ? 1 : 0) - (b.role === 'reader' ? 1 : 0);
-    if (roleDiff) return -roleDiff;
     return 0;
   });
   return normalized[0];
