@@ -9415,7 +9415,7 @@
         return;
       }
 
-      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
+      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar local validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
     }
 
     async function loadExemplarBatchQueue() {
@@ -9469,14 +9469,14 @@
         showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas de livros ativas para importar em exemplares.' : 'Este lote não tem fichas de livros ativas para importar em exemplares.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) de livro carregada(s), gerando ${totalCopies} linha(s) de exemplar para validar.`, 'ok');
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para validar.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de livros — ou todas as fichas ativas — para gerar as linhas de exemplar livro por livro.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas ativas — para gerar as linhas de exemplar local, ficha por ficha.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -9485,17 +9485,17 @@
       const snapshot = getVisibleImportedExemplarRows();
       if (refs.exemplarBatchFilterSummary) {
         if (!snapshot.totalPending) {
-          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) já passaram desta etapa.`;
+          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) local(is) já passaram desta etapa.`;
         } else if (!snapshot.totalVisible) {
-          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
+          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) de exemplar visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -9509,10 +9509,10 @@
           <div class="batch-exemplar-book-head">
             <div>
               ${renderBookTitleStackHtml(group.title || '—', group.subtitle || '')}
-              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
+              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para esta ficha comum${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
-              <span class="pill info">Ref. ${sanitize(group.bibRef || '—')}</span>
+              <span class="pill info">Ref. local ${sanitize(group.bibRef || '—')}</span>
               ${getQueueStatusBadge(group.bookStatus || 'draft')}
               <span class="pill warn">Exemplares já cadastrados: ${sanitize(group.publishedCount)}</span>
             </div>
@@ -9606,7 +9606,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar local validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -10658,8 +10658,8 @@
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
               <th class="sortable">${renderSortableHeader('Referência local / compat.', 'exemplars', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Autor do rótulo', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Título do rótulo', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
