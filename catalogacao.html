@@ -3218,6 +3218,20 @@
             </div>
             <small id="partnerActionHint">Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.</small>
           </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="partnerCatalogUrlAssistInput">Ajuda de pré-preenchimento por URL do catálogo</label>
+            <div class="grid" style="grid-template-columns:minmax(0,1.7fr) auto auto;gap:12px;align-items:end;">
+              <div class="field" style="padding:0;background:none;border:none;">
+                <label for="partnerCatalogUrlAssistInput">URL pública do catálogo</label>
+                <input id="partnerCatalogUrlAssistInput" type="url" placeholder="https://..." />
+              </div>
+              <button id="partnerAnalyzeCatalogUrlBtn" class="button secondary" type="button">Analisar URL</button>
+              <button id="partnerApplyCatalogUrlSuggestionBtn" class="button ghost" type="button">Levar sugestão para os campos</button>
+            </div>
+            <textarea id="partnerCatalogUrlSuggestionPreview" rows="7" readonly placeholder="A leitura assistida da URL aparecerá aqui, sem gravar nada automaticamente."></textarea>
+            <small id="partnerCatalogUrlAssistHint">Assistência local apenas: a URL serve para sugerir nome público, slug, base URL, família provável, confiança, país e nota curta. Nada é salvo nem autorizado automaticamente.</small>
+          </div>
         
           <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
             <div class="section-block">
@@ -11873,6 +11887,11 @@ function initPartnerProbeUi() {
   const compareActionBtn = document.getElementById('partnerCompareActionBtn');
   const importActionBtn = document.getElementById('partnerImportActionBtn');
   const actionHintEl = document.getElementById('partnerActionHint');
+  const catalogUrlAssistInputEl = document.getElementById('partnerCatalogUrlAssistInput');
+  const analyzeCatalogUrlBtn = document.getElementById('partnerAnalyzeCatalogUrlBtn');
+  const applyCatalogUrlSuggestionBtn = document.getElementById('partnerApplyCatalogUrlSuggestionBtn');
+  const catalogUrlSuggestionPreviewEl = document.getElementById('partnerCatalogUrlSuggestionPreview');
+  const catalogUrlAssistHintEl = document.getElementById('partnerCatalogUrlAssistHint');
   const compareWorkspaceEl = document.getElementById('partnerCompareWorkspace');
   const compareWorkspaceStatusEl = document.getElementById('partnerCompareWorkspaceStatus');
   const localDraftSummaryEl = document.getElementById('partnerLocalDraftSummary');
@@ -11916,6 +11935,8 @@ function initPartnerProbeUi() {
     !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !compareActionBtn || !importActionBtn || !actionHintEl ||
+    !catalogUrlAssistInputEl || !analyzeCatalogUrlBtn || !applyCatalogUrlSuggestionBtn ||
+    !catalogUrlSuggestionPreviewEl || !catalogUrlAssistHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
@@ -11973,6 +11994,194 @@ function initPartnerProbeUi() {
   function setPartnerPresetHint(text = '') {
     if (!presetHintEl) return;
     presetHintEl.textContent = text || 'A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.';
+  }
+
+  function setCatalogUrlAssistHint(text = '') {
+    if (!catalogUrlAssistHintEl) return;
+    catalogUrlAssistHintEl.textContent = text || 'Assistência local apenas: a URL serve para sugerir nome público, slug, base URL, família provável, confiança, país e nota curta. Nada é salvo nem autorizado automaticamente.';
+  }
+
+  function ensurePartnerAssistUrl(rawValue = '') {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/,'')}`;
+  }
+
+  function getPartnerCountryCodeFromHostname(hostname = '') {
+    const tld = String(hostname || '').toLowerCase().split('.').filter(Boolean).pop() || '';
+    const map = {
+      br: 'BR', ar: 'AR', uy: 'UY', cl: 'CL', pe: 'PE', co: 'CO', mx: 'MX', us: 'US', ca: 'CA',
+      ch: 'CH', it: 'IT', fr: 'FR', es: 'ES', pt: 'PT', de: 'DE', be: 'BE', nl: 'NL', uk: 'GB', org: '', net: '', edu: ''
+    };
+    return map[tld] || '';
+  }
+
+  function humanizePartnerToken(value = '') {
+    return String(value || '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/(opac|catalogo|catalogue|catalog|acervo|biblioteca|library|www|index|default)/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((token) => token.length <= 3 ? token.toUpperCase() : `${token.charAt(0).toUpperCase()}${token.slice(1).toLowerCase()}`)
+      .join(' ')
+      .trim();
+  }
+
+  function guessPartnerDisplayNameFromUrl(urlObj) {
+    const hostnameParts = String(urlObj?.hostname || '').toLowerCase().split('.').filter(Boolean);
+    const filteredHostParts = hostnameParts.filter((part) => !['www', 'opac', 'catalog', 'catalogue', 'acervo', 'biblioteca', 'library'].includes(part));
+    const mainHost = filteredHostParts.length >= 2 ? filteredHostParts[filteredHostParts.length - 2] : (filteredHostParts[0] || '');
+    const pathParts = String(urlObj?.pathname || '').split('/').map((part) => part.trim()).filter(Boolean);
+    const usefulPath = pathParts.find((part) => !['cgi-bin', 'koha', 'opac-search.pl', 'index.php', 'search'].includes(part.toLowerCase())) || '';
+    const candidate = humanizePartnerToken(usefulPath) || humanizePartnerToken(mainHost);
+    return candidate || 'Parceira potencial';
+  }
+
+  function guessPartnerSoftwareFromUrl(urlObj) {
+    const haystack = `${String(urlObj?.hostname || '')}${String(urlObj?.pathname || '')}${String(urlObj?.search || '')}`.toLowerCase();
+    if (/(\/cgi-bin\/koha\/|koha\.pl|opac-search\.pl|cgi-bin=koha|\/koha\/opac)/i.test(haystack)) {
+      return { softwareFamily: 'koha', softwareConfidence: 'strong_inference', note: 'Traços de URL típicos de Koha detectados.' };
+    }
+    if (/(opac_css|index\.php\?lvl=|lvl=|\/pmb|\/opac\/css)/i.test(haystack)) {
+      return { softwareFamily: 'pmb', softwareConfidence: 'strong_inference', note: 'Traços de URL típicos de PMB detectados.' };
+    }
+    return { softwareFamily: 'unknown', softwareConfidence: 'generic', note: 'Família lógica não confirmada só pela URL pública.' };
+  }
+
+  function findPartnerOptionMatchByUrl(normalizedUrl = '') {
+    if (!normalizedUrl) return null;
+    let urlObj;
+    try {
+      urlObj = new URL(normalizedUrl);
+    } catch {
+      return null;
+    }
+    let bestMatch = null;
+    let bestScore = 0;
+    partnerOptionRegistry.forEach((option) => {
+      const optionUrl = normalizePartnerBaseUrl(option.baseUrl || '');
+      let score = 0;
+      if (optionUrl && optionUrl === normalizedUrl) score = 100;
+      if (!score && optionUrl) {
+        try {
+          const optionObj = new URL(optionUrl);
+          if (optionObj.hostname === urlObj.hostname) score = Math.max(score, 70);
+          if ((optionObj.origin + optionObj.pathname).startsWith(urlObj.origin + urlObj.pathname) || (urlObj.origin + urlObj.pathname).startsWith(optionObj.origin + optionObj.pathname)) {
+            score = Math.max(score, 80);
+          }
+        } catch {}
+      }
+      const slugNeedle = String(option.slug || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const haystack = `${urlObj.hostname}${urlObj.pathname}`.toLowerCase().replace(/[^a-z0-9]+/g, '');
+      if (!score && slugNeedle && haystack.includes(slugNeedle)) score = 55;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = option;
+      }
+    });
+    return bestScore >= 55 ? bestMatch : null;
+  }
+
+  function buildCatalogUrlSuggestion(rawValue = '') {
+    const normalizedInput = ensurePartnerAssistUrl(rawValue);
+    if (!normalizedInput) return null;
+    let urlObj;
+    try {
+      urlObj = new URL(normalizedInput);
+    } catch {
+      return { error: 'URL inválida. Revê e tenta novamente com uma URL pública completa do catálogo.' };
+    }
+
+    const normalizedUrl = normalizePartnerBaseUrl(urlObj.toString());
+    const matchedOption = findPartnerOptionMatchByUrl(normalizedUrl);
+    const inferredSoftware = guessPartnerSoftwareFromUrl(urlObj);
+    const countryCode = matchedOption?.countryCode || getPartnerCountryCodeFromHostname(urlObj.hostname);
+    const displayName = matchedOption?.displayName || guessPartnerDisplayNameFromUrl(urlObj);
+    const slug = matchedOption?.slug || normalizePartnerSlug(displayName || normalizedUrl);
+    const softwareFamily = matchedOption?.softwareFamily || inferredSoftware.softwareFamily;
+    const softwareConfidence = matchedOption?.softwareConfidence || inferredSoftware.softwareConfidence;
+    const noteParts = [];
+    if (matchedOption) {
+      noteParts.push(`URL aproximada de parceira já conhecida: ${matchedOption.label}.`);
+    } else {
+      noteParts.push(`Pré-preenchimento por URL pública (${urlObj.hostname}).`);
+    }
+    if (inferredSoftware.note) noteParts.push(inferredSoftware.note);
+    noteParts.push('Revisar antes de gravar ou formalizar a parceira.');
+    const suggestion = {
+      inputUrl: rawValue,
+      normalizedUrl,
+      displayName,
+      slug,
+      softwareFamily,
+      softwareConfidence,
+      countryCode,
+      notes: noteParts.join(' '),
+      matchedOption,
+      host: urlObj.hostname,
+      sourceLabel: matchedOption ? `Correspondência provável com parceira já conhecida (${matchedOption.label}).` : 'Sugestão calculada apenas a partir da URL pública informada.',
+    };
+    suggestion.previewText = [
+      `Origem da sugestão: ${suggestion.sourceLabel}`,
+      `Nome público provável: ${suggestion.displayName || '—'}`,
+      `Slug provável: ${suggestion.slug || '—'}`,
+      `Base URL sugerida: ${suggestion.normalizedUrl || '—'}`,
+      `Família lógica provável: ${suggestion.softwareFamily || '—'}`,
+      `Nível de confiança: ${suggestion.softwareConfidence || '—'}`,
+      `País provável: ${suggestion.countryCode || '—'}`,
+      `Nota curta sugerida: ${suggestion.notes || '—'}`,
+      '',
+      'Isto é só uma ajuda de pré-preenchimento.',
+      'Nada será salvo, formalizado, importado ou autorizado sem revisão humana e ação explícita.',
+    ].join('
+');
+    return suggestion;
+  }
+
+  let currentCatalogUrlSuggestion = null;
+
+  function renderCatalogUrlSuggestion(suggestion) {
+    currentCatalogUrlSuggestion = suggestion || null;
+    if (!suggestion) {
+      catalogUrlSuggestionPreviewEl.value = '';
+      applyCatalogUrlSuggestionBtn.disabled = true;
+      setCatalogUrlAssistHint();
+      return;
+    }
+    if (suggestion.error) {
+      catalogUrlSuggestionPreviewEl.value = suggestion.error;
+      applyCatalogUrlSuggestionBtn.disabled = true;
+      setCatalogUrlAssistHint('A URL precisa ser pública e válida antes de servir como ajuda de pré-preenchimento.');
+      return;
+    }
+    catalogUrlSuggestionPreviewEl.value = suggestion.previewText || '';
+    applyCatalogUrlSuggestionBtn.disabled = false;
+    setCatalogUrlAssistHint(suggestion.matchedOption
+      ? 'Sugestão pronta. Ela aproveita uma correspondência provável com a lista viva de parceiras conhecidas, sem gravar nada automaticamente.'
+      : 'Sugestão pronta. Ela foi calculada só pela URL pública informada e precisa de revisão humana antes de qualquer uso.');
+  }
+
+  function applyCatalogUrlSuggestionToFields() {
+    if (!currentCatalogUrlSuggestion || currentCatalogUrlSuggestion.error) {
+      setPartnerProbeMessage('Analisa primeiro uma URL válida antes de levar a sugestão para os campos.', 'warn');
+      return;
+    }
+    const suggestion = currentCatalogUrlSuggestion;
+    displayEl.value = suggestion.displayName || displayEl.value;
+    slugEl.value = suggestion.slug || slugEl.value;
+    baseUrlEl.value = suggestion.normalizedUrl || baseUrlEl.value;
+    familyEl.value = Array.from(familyEl.options).some((option) => option.value === suggestion.softwareFamily) ? suggestion.softwareFamily : 'unknown';
+    confidenceEl.value = Array.from(confidenceEl.options).some((option) => option.value === suggestion.softwareConfidence) ? suggestion.softwareConfidence : 'generic';
+    countryEl.value = suggestion.countryCode || countryEl.value;
+    notesEl.value = suggestion.notes || notesEl.value;
+    if (suggestion.slug && partnerOptionRegistry.has(suggestion.slug)) {
+      presetEl.value = suggestion.slug;
+    }
+    generatePartnerArtifacts();
+    setPartnerProbeMessage('Sugestão por URL levada para os campos locais. Revê tudo antes de salvar ou formalizar qualquer parceira.', 'ok');
   }
 
   function buildPartnerOptionFromPreset(preset = {}) {
@@ -12983,6 +13192,28 @@ ${carryPreview}` : carryPreview;
         refreshImportWorkspaceDerivedTexts();
       }
     });
+  });
+
+  analyzeCatalogUrlBtn?.addEventListener('click', () => {
+    const suggestion = buildCatalogUrlSuggestion(catalogUrlAssistInputEl.value || '');
+    renderCatalogUrlSuggestion(suggestion);
+    if (!suggestion) {
+      setPartnerProbeMessage('Informa uma URL pública do catálogo para gerar a ajuda de pré-preenchimento.', 'warn');
+      return;
+    }
+    if (suggestion.error) {
+      setPartnerProbeMessage(suggestion.error, 'error');
+      return;
+    }
+    setPartnerProbeMessage('Leitura assistida da URL pronta. Revê a sugestão antes de levá-la para os campos.', 'ok');
+  });
+
+  applyCatalogUrlSuggestionBtn?.addEventListener('click', () => {
+    applyCatalogUrlSuggestionToFields();
+  });
+
+  catalogUrlAssistInputEl?.addEventListener('change', () => {
+    catalogUrlAssistInputEl.value = ensurePartnerAssistUrl(catalogUrlAssistInputEl.value || '');
   });
 
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
