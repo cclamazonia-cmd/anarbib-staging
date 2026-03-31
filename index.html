@@ -2681,15 +2681,6 @@ async function loadRowsFromSupabase() {
       });
     }
     attempts.push({
-      sourceVariant: 'structural_v1',
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_structural_v1?select=${encodeURIComponent(CATALOG_STRUCTURAL_SELECT)}&order=titulo.asc`,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json'
-      }
-    });
-    attempts.push({
       sourceVariant: 'catalog_v2',
       url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
       headers: {
