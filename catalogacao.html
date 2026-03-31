@@ -2301,6 +2301,7 @@
               <label for="bookProvenanceNote">Nota de proveniência</label>
               <textarea id="bookProvenanceNote" placeholder="Ex.: registro retomado do CSL Milano, corrigido localmente a partir do exemplar em mãos; lote de doação; importação semi-automática validada pela biblioteca."></textarea>
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
+              <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte parceira selecionada para governança documental específica.</div>
             </div>
 
             <div class="form-flow-break">
@@ -3360,6 +3361,15 @@
       ['worldcat', 'WorldCat / OCLC'],
       ['other_partner', 'Outro parceiro'],
     ];
+
+    const BOOK_PARTNER_GOVERNANCE_SLUG_MAP = {
+      csl_milano: 'csl-milano',
+      cira_lausanne: 'cira',
+      rebal: 'rebal',
+      ficedl: 'ficedl',
+    };
+
+    let refreshBookPartnerGovernanceUi = async () => {};
 
     const BOOK_IMPORT_FORMAT_OPTIONS = [
       ['unimarc_iso2709', 'UNIMARC ISO2709'],
@@ -7738,6 +7748,7 @@
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
       updateBookPublicSurfacePreview();
+      refreshBookPartnerGovernanceUi({ silent: true });
     }
 
     function resetAuthorForm() {
@@ -8711,6 +8722,7 @@
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
       updateBookPublicSurfacePreview();
+      await refreshBookPartnerGovernanceUi({ silent: true });
     }
 
     function fillAuthorForm(record) {
@@ -11711,6 +11723,14 @@ function initPartnerProbeUi() {
     mutualizacao_autorizada: 'Mutualização autorizada',
   };
 
+  const bookPartnerSourceEl = document.getElementById('bookPartnerSource');
+  const bookSourceRecordIdEl = document.getElementById('bookSourceRecordId');
+  const bookSourceRecordUrlEl = document.getElementById('bookSourceRecordUrl');
+  const bookImportFormatEl = document.getElementById('bookImportFormat');
+  const bookImportMethodEl = document.getElementById('bookImportMethod');
+  const bookProvenanceNoteEl = document.getElementById('bookProvenanceNote');
+  const bookPartnerPolicyHintEl = document.getElementById('bookPartnerPolicyHint');
+
   function formatPartnerTimestamp(value) {
     if (!value) return 'Sem teste registrado';
     const parsed = new Date(value);
@@ -11725,6 +11745,12 @@ function initPartnerProbeUi() {
     technicalProbeLastAtEl.value = '';
     policySummaryEl.value = '';
     politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
+  }
+
+  async function fetchPartnerPolicyRowBySlug(slug) {
+    const { data, error } = await supabase.rpc('catalog_partner_policy_by_slug', { p_slug: slug });
+    if (error) throw error;
+    return Array.isArray(data) ? (data[0] || null) : data;
   }
 
   function setPartnerPolicyReadout(row) {
@@ -11742,6 +11768,100 @@ function initPartnerProbeUi() {
     return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
   }
 
+  function getGovernedBookPartnerSlug() {
+    const sourceValue = String(bookPartnerSourceEl?.value || '').trim();
+    if (!sourceValue) return '';
+    if (BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue]) return BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue];
+    if (sourceValue === 'other_partner') return getCurrentPartnerSlug();
+    return '';
+  }
+
+  function setBookPartnerGovernanceState(mode = 'free', row = null) {
+    if (!bookSourceRecordIdEl || !bookSourceRecordUrlEl || !bookImportFormatEl || !bookImportMethodEl || !bookProvenanceNoteEl || !bookPartnerPolicyHintEl) {
+      return;
+    }
+
+    const compareAllowed = !!row?.compare_allowed;
+    const importAllowed = !!row?.import_allowed;
+    const compareNodes = [bookSourceRecordIdEl, bookSourceRecordUrlEl, bookProvenanceNoteEl];
+    const importNodes = [bookImportFormatEl, bookImportMethodEl];
+
+    if (mode === 'free') {
+      compareNodes.forEach((node) => { node.disabled = false; });
+      importNodes.forEach((node) => { node.disabled = false; });
+      bookPartnerPolicyHintEl.textContent = 'Sem fonte parceira selecionada para governança documental específica.';
+      return;
+    }
+
+    if (mode === 'ungoverned_source') {
+      compareNodes.forEach((node) => { node.disabled = false; });
+      importNodes.forEach((node) => { node.disabled = false; });
+      bookPartnerPolicyHintEl.textContent = 'Esta fonte usa a camada de proveniência, mas não depende da governança de catálogos parceiros nesta etapa.';
+      return;
+    }
+
+    if (mode === 'needs_partner_slug') {
+      compareNodes.forEach((node) => { node.disabled = true; });
+      importNodes.forEach((node) => { node.disabled = true; });
+      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira no bloco “Catálogos parceiros” para liberar comparação documental aqui.';
+      return;
+    }
+
+    if (mode === 'missing_policy') {
+      compareNodes.forEach((node) => { node.disabled = true; });
+      importNodes.forEach((node) => { node.disabled = true; });
+      bookPartnerPolicyHintEl.textContent = 'Esta parceira ainda não foi formalizada na base de governança. Comparação e importação ficam bloqueadas.';
+      return;
+    }
+
+    compareNodes.forEach((node) => { node.disabled = !compareAllowed; });
+    importNodes.forEach((node) => { node.disabled = !importAllowed; });
+
+    if (importAllowed) {
+      bookPartnerPolicyHintEl.textContent = 'Comparação e importação autorizadas para esta parceira. A revisão bibliográfica local continua obrigatória.';
+      return;
+    }
+
+    if (compareAllowed) {
+      bookPartnerPolicyHintEl.textContent = 'Comparação autorizada para esta parceira. Importação continua bloqueada nesta etapa.';
+      return;
+    }
+
+    bookPartnerPolicyHintEl.textContent = 'Sem autorização para comparação ativa nem importação desta parceira nesta etapa.';
+  }
+
+  refreshBookPartnerGovernanceUi = async function refreshBookPartnerGovernanceUiImpl(options = {}) {
+    const silent = !!options.silent;
+    const sourceValue = String(bookPartnerSourceEl?.value || '').trim();
+    if (!bookPartnerSourceEl) return;
+    if (!sourceValue) {
+      setBookPartnerGovernanceState('free');
+      return;
+    }
+
+    const governedSlug = getGovernedBookPartnerSlug();
+    if (!governedSlug) {
+      const isGovernedPreset = sourceValue === 'other_partner' || Object.prototype.hasOwnProperty.call(BOOK_PARTNER_GOVERNANCE_SLUG_MAP, sourceValue);
+      setBookPartnerGovernanceState(isGovernedPreset ? 'needs_partner_slug' : 'ungoverned_source');
+      return;
+    }
+
+    try {
+      const row = await fetchPartnerPolicyRowBySlug(governedSlug);
+      if (!row) {
+        setBookPartnerGovernanceState('missing_policy');
+        return;
+      }
+      setBookPartnerGovernanceState('governed', row);
+    } catch (error) {
+      console.error('Falha ao aplicar governança parceira na ficha do livro:', error);
+      setBookPartnerGovernanceState('missing_policy');
+      if (!silent) {
+        showMessage(refs.bookMessage, 'Não consegui confirmar a situação desta parceira na base. Os campos documentários ficaram bloqueados por segurança.', 'error');
+      }
+    }
+  };
+
   async function refreshPartnerPolicy(options = {}) {
     const slug = getCurrentPartnerSlug();
     const silent = !!options.silent;
@@ -11754,9 +11874,7 @@ function initPartnerProbeUi() {
     }
 
     try {
-      const { data, error } = await supabase.rpc('catalog_partner_policy_by_slug', { p_slug: slug });
-      if (error) throw error;
-      const row = Array.isArray(data) ? (data[0] || null) : data;
+      const row = await fetchPartnerPolicyRowBySlug(slug);
 
       if (!row) {
         clearPartnerPolicyReadout();
@@ -11768,6 +11886,7 @@ function initPartnerProbeUi() {
       }
 
       setPartnerPolicyReadout(row);
+      await refreshBookPartnerGovernanceUi({ silent: true });
       if (!silent) {
         setPartnerProbeMessage(
           row.import_allowed
@@ -11781,6 +11900,7 @@ function initPartnerProbeUi() {
     } catch (error) {
       console.error('Falha ao ler política documental da parceira:', error);
       clearPartnerPolicyReadout();
+      await refreshBookPartnerGovernanceUi({ silent: true });
       setPartnerProbeMessage('Não consegui ler a situação desta parceira na base.', 'error');
     }
   }
@@ -11855,6 +11975,10 @@ function initPartnerProbeUi() {
     }
   });
 
+  bookPartnerSourceEl?.addEventListener('change', () => {
+    refreshBookPartnerGovernanceUi({ silent: true });
+  });
+
   refreshPolicyBtn?.addEventListener('click', async () => {
     await refreshPartnerPolicy();
   });
@@ -11884,6 +12008,7 @@ function initPartnerProbeUi() {
   });
 
   refreshPartnerPolicy({ silent: true });
+  refreshBookPartnerGovernanceUi({ silent: true });
 }
 
     supabase.auth.onAuthStateChange((_event, session) => {
