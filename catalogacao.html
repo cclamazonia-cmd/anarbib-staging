@@ -10129,11 +10129,11 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Referência local / compat.', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
+              <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'books', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Autoria / responsabilidade comum', 'books', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Editora / produção comum', 'books', 'publisher')}</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplares locais', 'books', 'total_exemplares')}</th>
             </tr>
           </thead>
           <tbody>
@@ -10142,7 +10142,7 @@
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${renderBookDisplayTitleHtml(book)}<div class="catalog-context-line">${sanitize(buildCatalogQuickLine(['Ficha comum publicada', getBookCollectionValue(book) ? `Coleção: ${getBookCollectionValue(book)}` : '']) || 'Ficha comum publicada')}</div></td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
@@ -10190,11 +10190,11 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida</th>
+              <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'otherDocs', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Responsável / autoria comum', 'otherDocs', 'author')}</th>
+              <th>Leitura rápida da ficha comum</th>
             </tr>
           </thead>
           <tbody>
@@ -10204,9 +10204,9 @@
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${renderBookDisplayTitleHtml(book)}<div class="catalog-context-line">${sanitize('Documento comum publicado')}</div></td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
+                <td><div class="catalog-context-line">${sanitize(buildCatalogQuickLine(['Ficha comum publicada', getCatalogOtherDocumentContextLine(book)]) || 'Ficha comum publicada')}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
