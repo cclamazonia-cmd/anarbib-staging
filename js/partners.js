@@ -48,7 +48,7 @@ export function normalizePartnerBaseUrl(baseUrl) {
 export function normalizePartnerSlug(value) {
   return String(value || "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -56,9 +56,17 @@ export function normalizePartnerSlug(value) {
 
 export function inferSoftwareFamily(baseUrl, fallback = "unknown") {
   const raw = normalizePartnerBaseUrl(baseUrl).toLowerCase();
+
   if (!raw) return fallback || "unknown";
   if (raw.includes("/cgi-bin/koha") || raw.includes("koha")) return "koha";
-  if (raw.includes("/opac_css") || raw.includes("/catalogue") || raw.includes("/catalog")) return fallback || "pmb";
+  if (
+    raw.includes("/opac_css") ||
+    raw.includes("/catalogue") ||
+    raw.includes("/catalog")
+  ) {
+    return fallback || "pmb";
+  }
+
   return fallback || "unknown";
 }
 
@@ -141,12 +149,9 @@ export function formatProbeReport(probes = []) {
       const family = String(probe.family || "").toUpperCase() || "GEN";
       const label = String(probe.label || probe.key || "").trim();
       const url = String(probe.url || "").trim();
-      return `${num}. [${family}] ${label}
-${url}`;
+      return `${num}. [${family}] ${label}\n${url}`;
     })
-    .join("
-
-");
+    .join("\n\n");
 }
 
 function escapeSqlLiteral(value) {
@@ -156,8 +161,10 @@ function escapeSqlLiteral(value) {
 export function buildPartnerSeedSql(payload = {}) {
   const displayName = String(payload.displayName || "").trim();
   const baseUrl = normalizePartnerBaseUrl(payload.baseUrl);
-  const softwareFamily = String(payload.softwareFamily || "unknown").trim() || "unknown";
-  const softwareConfidence = String(payload.softwareConfidence || "unknown").trim() || "unknown";
+  const softwareFamily =
+    String(payload.softwareFamily || "unknown").trim() || "unknown";
+  const softwareConfidence =
+    String(payload.softwareConfidence || "unknown").trim() || "unknown";
   const countryCode = String(payload.countryCode || "").trim().toUpperCase();
   const notes = String(payload.notes || "").trim();
 
@@ -199,6 +206,5 @@ export function buildPartnerSeedSql(payload = {}) {
     "  notes = excluded.notes,",
     "  is_active = excluded.is_active,",
     "  updated_at = now();"
-  ].join("
-");
+  ].join("\n");
 }
