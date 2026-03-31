@@ -8468,8 +8468,18 @@
       node.addEventListener('change', syncLabelDraftVisualState);
     });
 
+    let catalogacaoAuthSyncInFlight = false;
+    let catalogacaoLastPassiveSessionProbeAt = 0;
+
     function updateLoginButton() {
       if (!refs.loginBtn) return;
+      refs.loginBtn.disabled = false;
+      if (catalogacaoAuthSyncInFlight) {
+        refs.loginBtn.textContent = 'Verificando sessão…';
+        refs.loginBtn.className = 'button secondary';
+        refs.loginBtn.disabled = true;
+        return;
+      }
       if (state.session?.user?.id) {
         refs.loginBtn.textContent = 'Logout';
         refs.loginBtn.className = 'button secondary';
@@ -11696,7 +11706,13 @@
       refs.catalogModeCompleteBtn.addEventListener('click', () => setCatalogacaoMode('complete'));
     }
 
-    el('refreshAllBtn').addEventListener('click', () => refreshAll(true));
+    el('refreshAllBtn').addEventListener('click', async () => {
+      const liveSession = await getCurrentSession({ attempts: 12, delayMs: 180 });
+      await syncCatalogacaoAuthState(liveSession, {
+        reloadData: !!liveSession?.user?.id,
+        allowAnonymousReset: !liveSession?.user?.id,
+      });
+    });
     el('refreshQueueBtn').addEventListener('click', loadQueue);
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
     el('bookDraftResetBtn').addEventListener('click', resetBookForm);
@@ -11746,16 +11762,27 @@
     el('addCoauthorContributorBtn').addEventListener('click', () => addTypedContributor('coautor'));
     el('addOrganizationContributorBtn').addEventListener('click', () => addTypedContributor('organizacao'));
     refs.loginBtn.addEventListener('click', async () => {
-      const hasSession = !!state.session?.user?.id;
+      if (catalogacaoAuthSyncInFlight) return;
+
+      const liveSession = state.session?.user?.id
+        ? state.session
+        : await getCurrentSession({ attempts: 8, delayMs: 180 });
+      const hasSession = !!liveSession?.user?.id;
+
       if (!hasSession) {
+        resetCatalogacaoAuthChrome();
         window.location.href = LOGIN_URL;
         return;
       }
+
       try {
         await supabase.auth.signOut();
       } catch (error) {
         console.warn('signOut failed:', error);
       }
+
+      resetCatalogacaoAuthChrome();
+      clearMessage(refs.globalMessage);
       window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
@@ -13363,6 +13390,7 @@ ${carryPreview}` : carryPreview;
     let catalogacaoAuthBootstrapping = true;
 
     function resetCatalogacaoAuthChrome() {
+      state.session = null;
       state.profile = null;
       state.isLibrarian = false;
       refs.userEmail.textContent = 'Sem sessão';
@@ -13371,38 +13399,57 @@ ${carryPreview}` : carryPreview;
       updateLoginButton();
     }
 
+    async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
+      if (nextSession?.user?.id) return nextSession;
+
+      const immediateSession = await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 12, delayMs: 180 });
+      if (immediateSession?.user?.id) return immediateSession;
+
+      if (!allowAnonymousReset) {
+        await wait(320);
+        const delayedSession = await getCurrentSession({ attempts: 8, delayMs: 220 });
+        if (delayedSession?.user?.id) return delayedSession;
+      }
+
+      return null;
+    }
+
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
       const syncId = ++catalogacaoAuthSyncSerial;
-      const previousSession = state.session;
-      state.session = nextSession || null;
-
-      if (!state.session?.user?.id) {
-        state.session = await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 8, delayMs: 180 });
-      }
-      if (!state.session?.user?.id && previousSession?.user?.id && !allowAnonymousReset) {
-        state.session = previousSession;
-      }
-
+      catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
 
-      if (!state.session?.user?.id) {
-        if (allowAnonymousReset) {
-          resetCatalogacaoAuthChrome();
-        }
-        return false;
-      }
-
       try {
+        const resolvedSession = await resolveCatalogacaoSession(nextSession || null, { allowAnonymousReset });
+        if (syncId !== catalogacaoAuthSyncSerial) return !!resolvedSession?.user?.id;
+
+        state.session = resolvedSession || null;
+        updateLoginButton();
+
+        if (!state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+          return false;
+        }
+
         if (!reloadData) {
           await loadProfile();
           return true;
         }
+
         await refreshAll(false);
         if (syncId !== catalogacaoAuthSyncSerial) return true;
         return true;
       } catch (error) {
+        if (syncId === catalogacaoAuthSyncSerial && allowAnonymousReset) {
+          resetCatalogacaoAuthChrome();
+        }
         console.warn('Não consegui sincronizar a sessão da catalogação.', error);
         return false;
+      } finally {
+        if (syncId === catalogacaoAuthSyncSerial) {
+          catalogacaoAuthSyncInFlight = false;
+          updateLoginButton();
+        }
       }
     }
 
@@ -13412,6 +13459,34 @@ ${carryPreview}` : carryPreview;
       const shouldReload = eventName === 'SIGNED_IN' || eventName === 'USER_UPDATED' || eventName === 'INITIAL_SESSION' || eventName === 'TOKEN_REFRESHED';
       const allowAnonymousReset = eventName === 'SIGNED_OUT';
       await syncCatalogacaoAuthState(session, { reloadData: shouldReload, allowAnonymousReset });
+    });
+
+    async function probeCatalogacaoSessionOnVisibility(reason = '') {
+      const now = Date.now();
+      if (catalogacaoAuthSyncInFlight) return;
+      if (now - catalogacaoLastPassiveSessionProbeAt < 1200) return;
+      catalogacaoLastPassiveSessionProbeAt = now;
+      const liveSession = await getCurrentSession({ attempts: 6, delayMs: 160 });
+      const hasCurrentSession = !!state.session?.user?.id;
+      const hasLiveSession = !!liveSession?.user?.id;
+      if (!hasCurrentSession && !hasLiveSession) return;
+      if (hasCurrentSession && hasLiveSession && state.session?.user?.id === liveSession?.user?.id) return;
+      await syncCatalogacaoAuthState(liveSession, {
+        reloadData: hasLiveSession,
+        allowAnonymousReset: !hasLiveSession,
+      });
+    }
+
+    window.addEventListener('focus', () => {
+      probeCatalogacaoSessionOnVisibility('focus').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação no foco.', error);
+      });
+    });
+
+    window.addEventListener('pageshow', () => {
+      probeCatalogacaoSessionOnVisibility('pageshow').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação no retorno da página.', error);
+      });
     });
 
     const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
