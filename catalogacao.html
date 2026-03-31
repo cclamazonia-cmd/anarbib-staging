@@ -8982,8 +8982,28 @@
 
       try {
         clearMessage(refs.globalMessage);
-        await requireSession();
-        await loadProfile();
+
+        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 2600);
+        if (!sessionStep.ok || !state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+          showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
+          return;
+        }
+
+        refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida';
+        refs.rolePill.className = 'pill info';
+
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 2600);
+        if (!profileStep.ok) {
+          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
+          updateLoginButton();
+          return;
+        }
+
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
 
