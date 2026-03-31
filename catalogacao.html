@@ -5692,8 +5692,8 @@
         return;
       }
 
-      if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
-      viewerUrl.searchParams.set('ref', bibRef);
+      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir o PDF restrito no leitor.');
+      if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
 
