@@ -1062,8 +1062,8 @@ const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,global_available_count,loanable,created_at,holding_libraries_json';
-const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,holding_library_names_json,availability_source,global_available_count,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_tombos_json,session_has_holding,session_status_hint,session_holding_id,session_local_bib_ref,session_available_count,session_loanable';
+const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,loanable,created_at,holding_libraries_json';
+const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,global_available_count,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_has_holding,session_status_hint,session_available_count';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
 const PAINEL_URL = `${GH_BASE}/anarbib-conta-staging/painel.html`;
@@ -2741,11 +2741,6 @@ async function loadRowsFromSupabase() {
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       const holdingsCount = Number(r?.bibliotecas_count ?? holdingLibraries.length ?? 0) || 0;
-      const resolvedGlobalAvailableCount = Number(
-        sourceVariant === 'catalog_v2'
-          ? (r.global_available_count ?? 0)
-          : (r.global_available_count ?? r.available_count ?? 0)
-      ) || 0;
       const biblioteca = holdingsCount > 1
         ? `${holdingsCount} bibliotecas`
         : (sourceVariant === 'catalog_v2'
@@ -2793,16 +2788,13 @@ async function loadRowsFromSupabase() {
         session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
         session_available_count: Number(r.session_available_count ?? 0) || 0,
         session_status_hint: firstNonEmptyString(r.session_status_hint),
-        session_holding_id: r.session_holding_id ?? null,
-        session_local_bib_ref: firstNonEmptyString(r.session_local_bib_ref),
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
         loanable: r.loanable === false ? false : true,
-        global_available_count: resolvedGlobalAvailableCount,
-        available_count: resolvedGlobalAvailableCount,
+        global_available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
+        available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        availability_source: firstNonEmptyString(r.availability_source) || (sourceVariant === 'session_v1' ? 'session_v1' : sourceVariant),
         _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
