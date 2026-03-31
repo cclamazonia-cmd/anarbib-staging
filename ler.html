@@ -1123,9 +1123,18 @@
     }
 
     async function verifyReadAccess(ref) {
+      const compatRef = String(ref || bibRef || "").trim();
+      if (!compatRef) {
+        await hydrateBookMetaFromBookId();
+      }
+      const resolvedRef = String(compatRef || bibRef || "").trim();
+      if (!resolvedRef) {
+        throw new Error("Leitura restrita indisponível sem referência de compatibilidade do livro.");
+      }
+
       const { data: readState, error: readStateError } = await supabase.rpc(
         "fn_book_restricted_pdf_state_for_current_user",
-        { p_bib_ref: ref }
+        { p_bib_ref: resolvedRef }
       );
 
       if (readStateError) {
