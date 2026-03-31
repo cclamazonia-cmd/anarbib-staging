@@ -2403,17 +2403,17 @@
                 <div class="book-derived-summary-top">
                   <div>
                     <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Prévia curta do que esta ficha já comunica para futuras superfícies de consulta, difusão e revisão editorial.</div>
+                    <div class="hint">Prévia curta do que esta ficha comum, sua camada local e seu acesso já comunicam para futuras superfícies de consulta, difusão e revisão editorial.</div>
                   </div>
                   <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                 </div>
                 <div class="book-derived-summary-card">
                   <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
                   <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
-                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Responsabilidade, edição ou difusão: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Resumo material e contextual ainda não informado.</div>
-                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação e acesso: —</div>
-                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
+                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha comum: —</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Contexto material e local: —</div>
+                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação e acesso locais: —</div>
+                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos públicos da ficha comum: —</div>
                 </div>
               </div>
             </div>
@@ -7857,9 +7857,9 @@
       return {
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
-        meta: joinSummaryParts([author, publisher, place, year]) || 'Responsabilidade, edição ou difusão: —',
-        context: contextParts.filter(Boolean).join(' — ') || 'Resumo material e contextual ainda não informado.',
-        access: accessParts.join(' · ') || 'Circulação e acesso: —',
+        meta: joinSummaryParts([author, publisher, place, year]) || '—',
+        context: contextParts.filter(Boolean).join(' — ') || '—',
+        access: accessParts.join(' · ') || '—',
         subjects: subjects || '—',
       };
     }
@@ -7873,10 +7873,10 @@
       }
       refs.bookDerivedSummaryKind.textContent = summary.kindLabel;
       refs.bookDerivedSummaryTitle.textContent = summary.title;
-      refs.bookDerivedSummaryMeta.textContent = summary.meta;
-      refs.bookDerivedSummaryContext.textContent = summary.context;
-      refs.bookDerivedSummaryAccess.textContent = `Circulação e acesso: ${summary.access}`;
-      refs.bookDerivedSummarySubjects.textContent = `Assuntos: ${summary.subjects}`;
+      refs.bookDerivedSummaryMeta.textContent = `Ficha comum: ${summary.meta}`;
+      refs.bookDerivedSummaryContext.textContent = `Contexto material e local: ${summary.context}`;
+      refs.bookDerivedSummaryAccess.textContent = `Circulação e acesso locais: ${summary.access}`;
+      refs.bookDerivedSummarySubjects.textContent = `Assuntos públicos da ficha comum: ${summary.subjects}`;
     }
 
     function buildBookPublicSurfacePreview() {
