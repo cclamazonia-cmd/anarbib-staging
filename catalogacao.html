@@ -2735,7 +2735,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência local, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -2770,9 +2770,8 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência local / compatibilidade da ficha</label>
-            <input id="exemplarBibRef" type="text" placeholder="Ref. local legada / compat do documento" required />
-            <small>Use aqui a referência local de apoio que liga este exemplar à ficha comum publicada.</small>
+            <label for="exemplarBibRef">Referência do livro</label>
+            <input id="exemplarBibRef" type="text" placeholder="0000123" required />
           </div>
 
           <div class="field">
@@ -3089,7 +3088,7 @@
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
             <label for="catalogSearch">Buscar documentos e autores</label>
-            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência local, país…" />
+            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
             <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
           </div>
           <div class="field">
@@ -3098,7 +3097,7 @@
           </div>
           <div class="field">
             <label for="catalogExemplarSearch">Buscar exemplares</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência local" />
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência" />
           </div>
         </div>
 
@@ -3108,10 +3107,38 @@
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
           <h4>Catálogos parceiros</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Gera endpoints prováveis e um seed SQL para parceiras PMB e Koha, sem fazer requisições cruzadas no navegador.
+            Consulte aqui a situação relacional e os guardas documentários da parceira. Em catalogação, teste técnico não vale como autorização de comparação nem de importação.
           </p>
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
+
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerRelationshipStatusOutput">Situação relacional</label>
+              <input id="partnerRelationshipStatusOutput" type="text" readonly placeholder="Ainda não lida da base">
+            </div>
+
+            <div class="field">
+              <label for="partnerCompareAllowedOutput">Comparação ativa</label>
+              <input id="partnerCompareAllowedOutput" type="text" readonly placeholder="—">
+            </div>
+
+            <div class="field">
+              <label for="partnerImportAllowedOutput">Importação</label>
+              <input id="partnerImportAllowedOutput" type="text" readonly placeholder="—">
+            </div>
+
+            <div class="field">
+              <label for="partnerTechnicalProbeLastAtOutput">Último teste técnico</label>
+              <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
+            <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
+            <small id="partnerPoliticalNotice">Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.</small>
+          </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
@@ -3169,7 +3196,8 @@
           </div>
         
           <div class="actions">
-            <button id="partnerGenerateBtn" class="button primary" type="button">Gerar endpoints e seed</button>
+            <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Ler situação na base</button>
+            <button id="partnerGenerateBtn" class="button secondary" type="button">Gerar endpoints e seed</button>
             <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar relatório</button>
             <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar SQL</button>
             <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir base URL</button>
@@ -5280,13 +5308,12 @@
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const compatRef = getCurrentBookCompatRef();
-      const publishedBookId = Number(el('bookPublishedId')?.value || 0);
       const hasFile = !!(bucket && path);
       const isPublic = isBookDigitalPublicSelection();
       const pdfBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
       if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : (!compatRef && !publishedBookId);
+      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !compatRef;
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
@@ -9415,7 +9442,7 @@
         return;
       }
 
-      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar local validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
+      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
     }
 
     async function loadExemplarBatchQueue() {
@@ -9469,14 +9496,14 @@
         showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas de livros ativas para importar em exemplares.' : 'Este lote não tem fichas de livros ativas para importar em exemplares.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para validar.`, 'ok');
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) de livro carregada(s), gerando ${totalCopies} linha(s) de exemplar para validar.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas ativas — para gerar as linhas de exemplar local, ficha por ficha.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de livros — ou todas as fichas ativas — para gerar as linhas de exemplar livro por livro.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -9485,17 +9512,17 @@
       const snapshot = getVisibleImportedExemplarRows();
       if (refs.exemplarBatchFilterSummary) {
         if (!snapshot.totalPending) {
-          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) local(is) já passaram desta etapa.`;
+          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) já passaram desta etapa.`;
         } else if (!snapshot.totalVisible) {
-          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
+          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) de exemplar visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -9509,10 +9536,10 @@
           <div class="batch-exemplar-book-head">
             <div>
               ${renderBookTitleStackHtml(group.title || '—', group.subtitle || '')}
-              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para esta ficha comum${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
+              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
-              <span class="pill info">Ref. local ${sanitize(group.bibRef || '—')}</span>
+              <span class="pill info">Ref. ${sanitize(group.bibRef || '—')}</span>
               ${getQueueStatusBadge(group.bookStatus || 'draft')}
               <span class="pill warn">Exemplares já cadastrados: ${sanitize(group.publishedCount)}</span>
             </div>
@@ -9606,7 +9633,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar local validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -10128,7 +10155,7 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
               <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
               <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
@@ -10656,10 +10683,10 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor do rótulo', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título do rótulo', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11653,6 +11680,13 @@ function initPartnerProbeUi() {
   const notesEl = document.getElementById('partnerNotesInput');
   const reportEl = document.getElementById('partnerProbeOutput');
   const seedEl = document.getElementById('partnerSeedOutput');
+  const relationshipStatusEl = document.getElementById('partnerRelationshipStatusOutput');
+  const compareAllowedEl = document.getElementById('partnerCompareAllowedOutput');
+  const importAllowedEl = document.getElementById('partnerImportAllowedOutput');
+  const technicalProbeLastAtEl = document.getElementById('partnerTechnicalProbeLastAtOutput');
+  const policySummaryEl = document.getElementById('partnerPolicySummaryOutput');
+  const politicalNoticeEl = document.getElementById('partnerPoliticalNotice');
+  const refreshPolicyBtn = document.getElementById('partnerRefreshPolicyBtn');
   const generateBtn = document.getElementById('partnerGenerateBtn');
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
   const copySeedBtn = document.getElementById('partnerCopySeedBtn');
@@ -11660,9 +11694,95 @@ function initPartnerProbeUi() {
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
-    !confidenceEl || !countryEl || !notesEl || !reportEl || !seedEl
+    !confidenceEl || !countryEl || !notesEl || !reportEl || !seedEl ||
+    !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
+    !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl
   ) {
     return;
+  }
+
+  const relationshipLabels = {
+    identificada: 'Identificada',
+    contatada: 'Contatada',
+    em_discussao: 'Em discussão',
+    acordo_parcial: 'Acordo parcial',
+    acordo_tecnico: 'Acordo técnico',
+    importacao_autorizada: 'Importação autorizada',
+    mutualizacao_autorizada: 'Mutualização autorizada',
+  };
+
+  function formatPartnerTimestamp(value) {
+    if (!value) return 'Sem teste registrado';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleString('pt-BR');
+  }
+
+  function clearPartnerPolicyReadout() {
+    relationshipStatusEl.value = '';
+    compareAllowedEl.value = '';
+    importAllowedEl.value = '';
+    technicalProbeLastAtEl.value = '';
+    policySummaryEl.value = '';
+    politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
+  }
+
+  function setPartnerPolicyReadout(row) {
+    relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
+    compareAllowedEl.value = row?.compare_allowed ? 'Autorizada' : 'Ainda não autorizada';
+    importAllowedEl.value = row?.import_allowed ? 'Autorizada' : 'Ainda não autorizada';
+    technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
+    policySummaryEl.value = row?.policy_summary || '';
+    politicalNoticeEl.textContent = row?.import_allowed
+      ? 'Importação ainda depende de revisão bibliográfica local e uso controlado.'
+      : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
+  }
+
+  function getCurrentPartnerSlug() {
+    return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
+  }
+
+  async function refreshPartnerPolicy(options = {}) {
+    const slug = getCurrentPartnerSlug();
+    const silent = !!options.silent;
+    slugEl.value = slug;
+
+    if (!slug) {
+      clearPartnerPolicyReadout();
+      if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para ler a situação na base.', 'warn');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('catalog_partner_policy_by_slug', { p_slug: slug });
+      if (error) throw error;
+      const row = Array.isArray(data) ? (data[0] || null) : data;
+
+      if (!row) {
+        clearPartnerPolicyReadout();
+        relationshipStatusEl.value = 'Parceira não cadastrada';
+        policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança. Em catalogação, isso impede comparação ativa e importação.';
+        politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
+        if (!silent) setPartnerProbeMessage('Parceira ainda não cadastrada na base de governança.', 'warn');
+        return;
+      }
+
+      setPartnerPolicyReadout(row);
+      if (!silent) {
+        setPartnerProbeMessage(
+          row.import_allowed
+            ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local.'
+            : row.compare_allowed
+              ? 'Situação relacional lida da base. A comparação técnica está autorizada, sem importação.'
+              : 'Situação relacional lida da base. Sem comparação ativa e sem importação neste estágio.',
+          row.compare_allowed || row.import_allowed ? 'ok' : 'warn'
+        );
+      }
+    } catch (error) {
+      console.error('Falha ao ler política documental da parceira:', error);
+      clearPartnerPolicyReadout();
+      setPartnerProbeMessage('Não consegui ler a situação desta parceira na base.', 'error');
+    }
   }
 
   if (!presetEl.dataset.loaded) {
@@ -11688,6 +11808,7 @@ function initPartnerProbeUi() {
     notesEl.value = preset.notes || '';
 
     setPartnerProbeMessage(`Preset carregado: ${preset.label}`, 'ok');
+    refreshPartnerPolicy({ silent: true });
   }
 
   function generatePartnerArtifacts() {
@@ -11723,11 +11844,24 @@ function initPartnerProbeUi() {
       notes
     });
 
-    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados.', 'ok');
+    setPartnerProbeMessage('Endpoints prováveis e seed SQL gerados. Isso não substitui a leitura da situação relacional na base.', 'ok');
   }
 
   presetEl.addEventListener('change', () => {
-    if (presetEl.value) applyPreset(presetEl.value);
+    if (presetEl.value) {
+      applyPreset(presetEl.value);
+    } else {
+      refreshPartnerPolicy({ silent: true });
+    }
+  });
+
+  refreshPolicyBtn?.addEventListener('click', async () => {
+    await refreshPartnerPolicy();
+  });
+
+  slugEl.addEventListener('change', () => {
+    slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
+    refreshPartnerPolicy({ silent: true });
   });
 
   generateBtn?.addEventListener('click', generatePartnerArtifacts);
@@ -11748,6 +11882,8 @@ function initPartnerProbeUi() {
     }
     window.open(url, '_blank', 'noopener,noreferrer');
   });
+
+  refreshPartnerPolicy({ silent: true });
 }
 
     supabase.auth.onAuthStateChange((_event, session) => {
