@@ -2976,7 +2976,7 @@
       <div class="panel-header">
         <div>
           <h3>Fila editorial</h3>
-          <p>Consulte somente os rascunhos ativos de fichas comuns, autores e exemplares locais. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
+          <p>Consulte somente os rascunhos ativos de documentos, autores e exemplares. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
         </div>
         <div class="inline">
           <button id="refreshQueueBtn" class="button secondary">Atualizar fila</button>
@@ -2988,7 +2988,7 @@
             <label for="queueTypeFilter">Tipo</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Fichas comuns</option>
+              <option value="book">Documentos</option>
               <option value="author">Autores</option>
               <option value="exemplar">Exemplares</option>
             </select>
@@ -3003,7 +3003,7 @@
           </div>
           <div class="field">
             <label for="queueSearch">Buscar</label>
-            <input id="queueSearch" type="text" placeholder="Título da ficha, autoria, tombo, ref. local ou localização…" />
+            <input id="queueSearch" type="text" placeholder="Título, autor, tombo, referência ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -3018,7 +3018,7 @@
           <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
             <div>
               <h4 style="margin:0 0 6px;">Lixeira de rascunhos</h4>
-              <p class="small">Aqui aparecem somente os rascunhos descartados de fichas comuns, autores e exemplares locais. Você pode restaurar ou restaurar e abrir para continuar a edição.</p>
+              <p class="small">Aqui aparecem somente os rascunhos descartados de documentos, autores e exemplares. Você pode restaurar ou restaurar e abrir para continuar a edição.</p>
               <p class="small" style="margin-top:8px; color:#ffe0e0;">Atenção: ao esvaziar a lixeira, os rascunhos descartados serão apagados de forma irreversível.</p>
             </div>
             <div class="row-actions">
@@ -8917,9 +8917,9 @@
 
     function getItemTypeLabel(type = '') {
       const map = {
-        book: 'Ficha comum',
+        book: 'Documento',
         author: 'Autor',
-        exemplar: 'Exemplar local',
+        exemplar: 'Exemplar',
       };
       return map[type] || (type || '—');
     }
@@ -8930,6 +8930,50 @@
         update: 'Rascunho de edição',
       };
       return map[action] || (action || '—');
+    }
+
+    function getQueueOperationLabel(action = '', itemType = '') {
+      if (itemType === 'book') {
+        const bookMap = {
+          edit: 'Abrir ficha',
+          publish: 'Publicar ficha',
+          assign: 'Atribuir lote',
+          discard: 'Descartar ficha',
+          restore: 'Restaurar ficha',
+          restoreOpen: 'Restaurar e abrir ficha',
+        };
+        return bookMap[action] || 'Operação';
+      }
+      const defaultMap = {
+        edit: 'Editar',
+        publish: 'Publicar',
+        assign: 'Atribuir lote',
+        discard: 'Descartar',
+        restore: 'Restaurar',
+        restoreOpen: 'Restaurar e abrir',
+      };
+      return defaultMap[action] || 'Operação';
+    }
+
+    function getQueueOperationSuccessMessage(action = '', itemType = '') {
+      if (itemType === 'book') {
+        const bookMap = {
+          publish: 'Ficha comum publicada com sucesso.',
+          assign: 'Lote atribuído à ficha comum.',
+          discard: 'Ficha comum descartada a partir da fila editorial.',
+          restore: 'Ficha comum restaurada com sucesso.',
+          restoreOpen: 'Ficha comum restaurada e aberta para edição.',
+        };
+        return bookMap[action] || 'Operação concluída com sucesso.';
+      }
+      const defaultMap = {
+        publish: 'Rascunho publicado com sucesso.',
+        assign: 'Lote atribuído ao rascunho.',
+        discard: 'Rascunho descartado a partir da fila editorial.',
+        restore: 'Rascunho restaurado com sucesso.',
+        restoreOpen: 'Rascunho restaurado e aberto para edição.',
+      };
+      return defaultMap[action] || 'Operação concluída com sucesso.';
     }
 
     function getDraftTableName(type = '') {
@@ -8947,15 +8991,6 @@
       const displayTitle = String(item.display_title || '').trim();
       return state.exemplars.find(ex => String(ex.bib_ref || '').trim() === referenceCode)
         || state.exemplars.find(ex => String(ex.tombo || '').trim() === displayTitle)
-        || null;
-    }
-
-    function getQueueBookRecord(item = {}) {
-      if (item.item_type !== 'book') return null;
-      const referenceCode = String(item.reference_code || '').trim();
-      const title = String(item.display_title || '').trim();
-      return state.books.find(book => String(book.bib_ref || '').trim() === referenceCode)
-        || state.books.find(book => String(getBookDisplayTitle(book) || '').trim() === title)
         || null;
     }
 
@@ -8982,15 +9017,7 @@
     }
 
     function renderQueueComplementHtml(item = {}) {
-      if (item.item_type === 'book') {
-        const book = getQueueBookRecord(item);
-        const publication = buildCatalogQuickLine([book?.editora || book?.publisher || '', book?.ano || '']);
-        const collection = compactSpaces(getBookCollectionValue(book || {}));
-        const parts = [];
-        if (publication) parts.push(`<div><strong>Produção comum:</strong> ${sanitize(publication)}</div>`);
-        if (collection) parts.push(`<div><strong>Coleção:</strong> ${sanitize(collection)}</div>`);
-        return parts.join('') || '—';
-      }
+      if (item.item_type === 'book') return '—';
       const secondary = sanitize(getQueueSecondaryDisplay(item));
       const location = sanitize(getQueueExemplarLocationDisplay(item));
       if (item.item_type !== 'exemplar' || !location || location === '—') return secondary || '—';
@@ -9052,9 +9079,9 @@
           <thead>
             <tr>
               <th>Tipo</th>
-              <th>Referência local / compat.</th>
-              <th>Ficha / nome</th>
-              <th>Complemento / contexto</th>
+              <th>Referência</th>
+              <th>Título / nome</th>
+              <th>Complemento</th>
               <th>Lote</th>
               <th>Descartado / atualizado em</th>
               <th>Operações</th>
@@ -9071,8 +9098,8 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar</button>
-                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar e abrir</button>
+                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('restore', item.item_type))}</button>
+                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('restoreOpen', item.item_type))}</button>
                   </div>
                 </td>
               </tr>
@@ -9084,7 +9111,7 @@
         btn.addEventListener('click', async () => {
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado com sucesso.', 'ok');
+            showMessage(refs.trashMessage, getQueueOperationSuccessMessage('restore', btn.dataset.type), 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -9096,7 +9123,7 @@
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             await fetchDraftAndEdit(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado e aberto para edição.', 'ok');
+            showMessage(refs.trashMessage, getQueueOperationSuccessMessage('restoreOpen', btn.dataset.type), 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -9964,10 +9991,10 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Editar</button>
-                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Publicar</button>
-                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">Atribuir lote</button>
-                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Descartar</button>` : ''}
+                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('edit', item.item_type))}</button>
+                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('publish', item.item_type))}</button>
+                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">${sanitize(getQueueOperationLabel('assign', item.item_type))}</button>
+                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('discard', item.item_type))}</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -10027,7 +10054,7 @@
         btn.addEventListener('click', async () => {
           try {
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho publicado com sucesso.', 'ok');
+            showMessage(refs.queueMessage, getQueueOperationSuccessMessage('publish', btn.dataset.type), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -10043,7 +10070,7 @@
           }
           try {
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, 'Lote atribuído ao rascunho.', 'ok');
+            showMessage(refs.queueMessage, getQueueOperationSuccessMessage('assign', btn.dataset.type), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -10056,7 +10083,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
+            showMessage(refs.queueMessage, getQueueOperationSuccessMessage('discard', btn.dataset.type), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
