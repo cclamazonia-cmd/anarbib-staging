@@ -3711,10 +3711,7 @@ async function handleLoginClick() {
     try {
       await supabase.auth.signOut();
     } catch (e) {}
-    const cleanUrl = new URL(location.href);
-    cleanUrl.search = '';
-    cleanUrl.hash = '';
-    location.assign(cleanUrl.toString());
+    location.assign(CADASTRO_URL);
     return;
   }
   location.assign(buildCadastroUrl(location.href));
