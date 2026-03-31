@@ -8801,6 +8801,30 @@
           can_access_catalogacao: true,
         };
       }
+      if (!accessRow && lastError) {
+        const slowerAttempts = [
+          () => supabase.from('my_access').select('*'),
+          () => supabase.schema('api').from('my_access').select('*'),
+          () => supabase.from('my_session_context').select('*').limit(1),
+          () => supabase.schema('api').from('my_session_context').select('*').limit(1),
+        ];
+
+        for (const run of slowerAttempts) {
+          try {
+            const retryRes = await withTimeout(run(), 'catalogação access retry', 3200);
+            if (!retryRes?.error) {
+              pushRows(Array.isArray(retryRes?.data) ? retryRes.data : (retryRes?.data ? [retryRes.data] : []));
+            } else {
+              lastError = retryRes.error;
+            }
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        accessRow = pickCurrentCatalogacaoAccess(collectedRows);
+      }
+
       if (!accessRow) {
         accessRow = buildProvisionalCatalogacaoAccess(identityRow, collectedRows, lastError);
       }
@@ -9070,7 +9094,7 @@
         refs.rolePill.textContent = 'Sessão reconhecida';
         refs.rolePill.className = 'pill info';
 
-        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 2600);
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 5200);
         if (!profileStep.ok) {
           refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
           refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
@@ -11968,7 +11992,7 @@
 
       resetCatalogacaoAuthChrome();
       clearMessage(refs.globalMessage);
-      window.location.href = LOGIN_URL;
+      window.location.href = ROUTES.PAINEL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-contrib-action]');
