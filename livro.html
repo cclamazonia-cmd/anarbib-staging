@@ -841,24 +841,6 @@
           throw v2.error;
         }
 
-        const fallback = await supabase
-          .from("v_books_public")
-          .select(fallbackSelect)
-          .eq("library_id", libraryId)
-          .eq("bib_ref", localBibRef)
-          .limit(1);
-
-        if (!fallback.error && Array.isArray(fallback.data) && fallback.data.length) {
-          return {
-            booksTable: "v_books_public",
-            data: fallback.data[0]
-          };
-        }
-
-        if (fallback.error && !canFallbackHoldingResolutionError(fallback.error)) {
-          throw fallback.error;
-        }
-
         const fallbackBooks = await supabase
           .from("books")
           .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
