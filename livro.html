@@ -445,6 +445,7 @@
 
     function computeBookAccessState(bookRow = {}, libraryContext = {}) {
       const loanable = bookRow?.loanable !== false;
+      const compatBibRef = firstNonEmptyString(bookRow?.bib_ref);
 
       if (!currentUserContext?.isLoggedIn) {
         if (!loanable) {
@@ -467,7 +468,7 @@
         };
       }
 
-      if (hasActiveReservationForBibRef(bookRow?.bib_ref)) {
+      if (hasActiveReservationForBibRef(compatBibRef)) {
         return {
           key: "already_reserved",
           label: "Já reservado na sua conta",
@@ -1975,6 +1976,7 @@
 
     async function reserve(bib_ref, bookRow = {}, libraryContext = {}) {
       setStatus("", "");
+      const compatBibRef = firstNonEmptyString(bib_ref, bookRow?.bib_ref);
 
       if (publicServiceState?.allow_reservations === false) {
         setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
@@ -2000,7 +2002,7 @@
 
       let reservaError = null;
       try {
-        const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, bib_ref, libraryContext);
+        const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, compatBibRef, libraryContext);
         if (holdingAttempt?.resolved) {
           const byHoldings = await supabase.rpc("fn_v2_create_reserva_by_holdings", {
             p_user_id: session.user.id,
@@ -2010,7 +2012,7 @@
           });
 
           if (!byHoldings.error) {
-            currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+            if (compatBibRef) currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
             setReserveButtonState({
               key: "already_reserved",
               label: "Já reservado na sua conta",
@@ -2032,15 +2034,20 @@
       }
 
       if (!reservaError) {
+        if (!compatBibRef) {
+          setStatus("Reserva indisponível sem referência de compatibilidade ou holding local resolvido.", "warn");
+          return;
+        }
+
         const byBibRef = await supabase.rpc("fn_v2_create_reserva_by_bib_refs", {
           p_user_id: session.user.id,
-          p_bib_refs: [bib_ref],
+          p_bib_refs: [compatBibRef],
           p_expires_at: null,
           p_notes: "Reserva criada pela página pública do livro."
         });
 
         if (!byBibRef.error) {
-          currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+          currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
           setReserveButtonState({
             key: "already_reserved",
             label: "Já reservado na sua conta",
@@ -2057,7 +2064,7 @@
       }
 
       if (reservaError && isDuplicateReservaErrorMessage(reservaError.message)) {
-        currentActiveReservationBibRefs.add(normalizeBibRefValue(bib_ref));
+        if (compatBibRef) currentActiveReservationBibRefs.add(normalizeBibRefValue(compatBibRef));
         setReserveButtonState({
           key: "already_reserved",
           label: "Já reservado na sua conta",
