@@ -2423,29 +2423,29 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha comum publicada.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para a ficha comum publicada e para um contexto local simulado de abertura pública, sem ainda alterar o catálogo nem a ficha comum publicada.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
                 <div class="book-public-preview-grid">
                   <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Linha no catálogo</div>
+                    <div class="book-public-preview-eyebrow">Linha pública da ficha comum</div>
                     <div class="book-public-preview-inline">
                       <span id="bookPublicCatalogKindChip" class="book-public-preview-chip is-strong">Livro / brochura</span>
-                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Biblioteca: —</span>
+                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Contexto local: —</span>
                     </div>
                     <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Meta de exibição: —</div>
-                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Resumo curto de catálogo ainda não informado.</div>
-                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Disponibilidade e acesso: —</div>
+                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum: —</div>
+                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Contexto local simulado: —</div>
+                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Disponibilidade e acesso locais: —</div>
                   </div>
                   <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Abertura da ficha</div>
+                    <div class="book-public-preview-eyebrow">Abertura pública da ficha comum</div>
                     <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Tipo, responsabilidade e proveniência pública: —</div>
-                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha ainda não informado.</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Circulação, acesso e suporte: —</div>
-                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos públicos: —</div>
+                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Ficha comum publicada: —</div>
+                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha comum: —</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Circulação e acesso no contexto local: —</div>
+                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos públicos da ficha comum: —</div>
                   </div>
                 </div>
               </div>
@@ -2735,7 +2735,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência local, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -2770,9 +2770,8 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência local / compatibilidade da ficha</label>
-            <input id="exemplarBibRef" type="text" placeholder="Ref. local legada / compat do documento" required />
-            <small>Use aqui a referência local de apoio que liga este exemplar à ficha comum publicada.</small>
+            <label for="exemplarBibRef">Referência do livro</label>
+            <input id="exemplarBibRef" type="text" placeholder="0000123" required />
           </div>
 
           <div class="field">
@@ -3089,7 +3088,7 @@
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
             <label for="catalogSearch">Buscar documentos e autores</label>
-            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência local, país…" />
+            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
             <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
           </div>
           <div class="field">
@@ -3098,7 +3097,7 @@
           </div>
           <div class="field">
             <label for="catalogExemplarSearch">Buscar exemplares</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência local" />
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência" />
           </div>
         </div>
 
@@ -5280,13 +5279,12 @@
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const compatRef = getCurrentBookCompatRef();
-      const publishedBookId = Number(el('bookPublishedId')?.value || 0);
       const hasFile = !!(bucket && path);
       const isPublic = isBookDigitalPublicSelection();
       const pdfBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
       if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : (!compatRef && !publishedBookId);
+      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !compatRef;
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
@@ -5653,7 +5651,6 @@
       const isPublic = isBookDigitalPublicSelection();
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
 
-      if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
       const title = el('bookTitle').value.trim();
       if (title) viewerUrl.searchParams.set('title', title);
       const subtitle = el('bookSubtitle').value.trim();
@@ -5694,8 +5691,8 @@
         return;
       }
 
-      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir o PDF restrito no leitor.');
-      if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
+      if (!bibRef) throw new Error('Salve ou carregue uma ficha com referência para abrir o PDF restrito no leitor.');
+      viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
 
@@ -7281,21 +7278,11 @@
     async function resolvePublishedBookIdFromDraft(draftId) {
       const { data: draft, error: draftError } = await supabase
         .from('book_drafts')
-        .select('published_book_id, isbn, bib_ref, titulo')
+        .select('published_book_id, bib_ref, titulo')
         .eq('id', Number(draftId))
         .single();
       if (draftError) throw draftError;
       if (draft?.published_book_id) return Number(draft.published_book_id);
-      if (draft?.isbn) {
-        const { data: book } = await supabase
-          .from('books')
-          .select('id')
-          .eq('isbn', draft.isbn)
-          .order('id', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (book?.id) return Number(book.id);
-      }
       if (draft?.bib_ref) {
         const { data: book } = await supabase
           .from('books')
@@ -8104,13 +8091,13 @@
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: joinSummaryParts(catalogMetaParts) || 'Meta de exibição: —',
-        catalogSnippet: joinSummaryParts(snippetParts) || 'Resumo curto de catálogo ainda não informado.',
-        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Disponibilidade e acesso ainda não definidos.',
+        catalogMeta: joinSummaryParts(catalogMetaParts) || '—',
+        catalogSnippet: joinSummaryParts(snippetParts) || '—',
+        catalogAccess: joinSummaryParts(catalogAccessParts) || '—',
         fichaTitle: summary.title,
-        fichaMeta: joinSummaryParts(fichaMetaParts) || 'Tipo, responsabilidade e proveniência pública: —',
-        fichaBody: joinSummaryParts(fichaBodyParts) || 'Corpo mínimo da ficha ainda não informado.',
-        fichaAccess: joinSummaryParts([summary.access, supportText ? `Suporte: ${supportText}` : '']) || 'Circulação, acesso e suporte ainda não definidos.',
+        fichaMeta: joinSummaryParts(fichaMetaParts) || '—',
+        fichaBody: joinSummaryParts(fichaBodyParts) || '—',
+        fichaAccess: joinSummaryParts([summary.access, supportText ? `Suporte: ${supportText}` : '']) || '—',
         fichaSubjects: summary.subjects || '—',
       };
     }
@@ -8123,16 +8110,16 @@
         refs.bookPublicPreviewModePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
       }
       if (refs.bookPublicCatalogKindChip) refs.bookPublicCatalogKindChip.textContent = preview.kindLabel;
-      if (refs.bookPublicCatalogLibraryChip) refs.bookPublicCatalogLibraryChip.textContent = `Biblioteca: ${preview.displayLibrary}`;
+      if (refs.bookPublicCatalogLibraryChip) refs.bookPublicCatalogLibraryChip.textContent = `Contexto local: ${preview.displayLibrary}`;
       refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
-      refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
-      refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
-      refs.bookPublicCatalogAccess.textContent = `Disponibilidade e acesso: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogMeta.textContent = `Ficha comum: ${preview.catalogMeta}`;
+      refs.bookPublicCatalogSnippet.textContent = `Contexto local simulado: ${preview.catalogSnippet}`;
+      refs.bookPublicCatalogAccess.textContent = `Disponibilidade e acesso locais: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
-      refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
-      refs.bookPublicFichaBody.textContent = preview.fichaBody;
-      refs.bookPublicFichaAccess.textContent = `Circulação, acesso e suporte: ${preview.fichaAccess}`;
-      refs.bookPublicFichaSubjects.textContent = `Assuntos públicos: ${preview.fichaSubjects}`;
+      refs.bookPublicFichaMeta.textContent = `Ficha comum publicada: ${preview.fichaMeta}`;
+      refs.bookPublicFichaBody.textContent = `Corpo mínimo da ficha comum: ${preview.fichaBody}`;
+      refs.bookPublicFichaAccess.textContent = `Circulação e acesso no contexto local: ${preview.fichaAccess}`;
+      refs.bookPublicFichaSubjects.textContent = `Assuntos públicos da ficha comum: ${preview.fichaSubjects}`;
     }
 
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
@@ -9415,7 +9402,7 @@
         return;
       }
 
-      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar local validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
+      showMessage(refs.exemplarBatchMessage, `${successCount} linha(s) de exemplar validadas. Elas saíram da fila pendente e seguiram para a revisão do rótulo.`, 'ok');
     }
 
     async function loadExemplarBatchQueue() {
@@ -9469,14 +9456,14 @@
         showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas de livros ativas para importar em exemplares.' : 'Este lote não tem fichas de livros ativas para importar em exemplares.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para validar.`, 'ok');
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) de livro carregada(s), gerando ${totalCopies} linha(s) de exemplar para validar.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas ativas — para gerar as linhas de exemplar local, ficha por ficha.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de livros — ou todas as fichas ativas — para gerar as linhas de exemplar livro por livro.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -9485,17 +9472,17 @@
       const snapshot = getVisibleImportedExemplarRows();
       if (refs.exemplarBatchFilterSummary) {
         if (!snapshot.totalPending) {
-          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) local(is) já passaram desta etapa.`;
+          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) já passaram desta etapa.`;
         } else if (!snapshot.totalVisible) {
-          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
+          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) de exemplar visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -9509,10 +9496,10 @@
           <div class="batch-exemplar-book-head">
             <div>
               ${renderBookTitleStackHtml(group.title || '—', group.subtitle || '')}
-              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para esta ficha comum${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
+              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
-              <span class="pill info">Ref. local ${sanitize(group.bibRef || '—')}</span>
+              <span class="pill info">Ref. ${sanitize(group.bibRef || '—')}</span>
               ${getQueueStatusBadge(group.bookStatus || 'draft')}
               <span class="pill warn">Exemplares já cadastrados: ${sanitize(group.publishedCount)}</span>
             </div>
@@ -9606,7 +9593,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar local validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -10128,12 +10115,12 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autoria / responsabilidade comum', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora / produção comum', 'books', 'publisher')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares locais', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
             </tr>
           </thead>
           <tbody>
@@ -10142,7 +10129,7 @@
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${renderBookDisplayTitleHtml(book)}<div class="catalog-context-line">${sanitize(buildCatalogQuickLine(['Ficha comum publicada', getBookCollectionValue(book) ? `Coleção: ${getBookCollectionValue(book)}` : '']) || 'Ficha comum publicada')}</div></td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
@@ -10190,11 +10177,11 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria comum', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida da ficha comum</th>
+              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
+              <th>Leitura rápida</th>
             </tr>
           </thead>
           <tbody>
@@ -10204,9 +10191,9 @@
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>${renderBookDisplayTitleHtml(book)}<div class="catalog-context-line">${sanitize('Documento comum publicado')}</div></td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(buildCatalogQuickLine(['Ficha comum publicada', getCatalogOtherDocumentContextLine(book)]) || 'Ficha comum publicada')}</div></td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -10656,10 +10643,10 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência local / compat.', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor do rótulo', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título do rótulo', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
