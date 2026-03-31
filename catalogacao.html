@@ -3113,7 +3113,7 @@
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
 
-          <div class="grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
               <label for="partnerRelationshipStatusOutput">Situação relacional</label>
               <input id="partnerRelationshipStatusOutput" type="text" readonly placeholder="Ainda não lida da base">
@@ -3130,11 +3130,6 @@
             </div>
 
             <div class="field">
-              <label for="partnerMutualizeAllowedOutput">Mutualização</label>
-              <input id="partnerMutualizeAllowedOutput" type="text" readonly placeholder="—">
-            </div>
-
-            <div class="field">
               <label for="partnerTechnicalProbeLastAtOutput">Último teste técnico</label>
               <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
             </div>
@@ -3143,7 +3138,7 @@
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
-            <small id="partnerPoliticalNotice">Teste técnico não vale acordo político; importação autorizada não vale mutualização; mutualização não vale modificação livre das notices parceiras.</small>
+            <small id="partnerPoliticalNotice">Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.</small>
           </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -11909,6 +11904,7 @@ ${decisionSummary}` : '',
       hasDecision ? '• decisão local já formulada' : '• falta decisão local / próximos passos',
       partnerDocumentActionState.compareAllowed ? '• comparação autorizada pela política atual' : '• comparação ainda não autorizada pela política atual',
       partnerDocumentActionState.importAllowed ? '• importação aparece autorizada, mas continua fora deste microfluxo' : '• importação permanece fora deste microfluxo',
+      partnerDocumentActionState.mutualizeAllowed ? '• mutualização aparece autorizada, sem modificação livre implícita' : '• mutualização permanece separada deste microfluxo',
     ];
     return checklist.join('
 ');
@@ -12055,7 +12051,7 @@ ${comparisonNote}` : comparisonNote;
     mutualizeAllowedEl.value = '';
     technicalProbeLastAtEl.value = '';
     policySummaryEl.value = '';
-    politicalNoticeEl.textContent = 'Teste técnico não vale acordo político; importação autorizada não vale mutualização; mutualização não vale modificação livre das notices parceiras.';
+    politicalNoticeEl.textContent = 'Nenhuma importação ou mutualização é liberada aqui sem a situação relacional correspondente na base.';
     closeCompareWorkspace({ reset: false });
     setPartnerDocumentActionsState('empty');
   }
@@ -12072,6 +12068,10 @@ ${comparisonNote}` : comparisonNote;
     partnerDocumentActionState.mutualizeAllowed = !!row?.mutualize_allowed;
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
+    importActionBtn.textContent = partnerDocumentActionState.mutualizeAllowed ? 'Importação / mutualização' : 'Importação controlada';
+    importActionBtn.title = partnerDocumentActionState.mutualizeAllowed
+      ? 'A política autoriza importação e mutualização, sem liberar modificação livre nem fluxo automático aqui.'
+      : 'A política pode autorizar importação sem mutualização. O fluxo automático continua desativado aqui.';
 
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
@@ -12137,6 +12137,7 @@ ${comparisonNote}` : comparisonNote;
 
     const compareAllowed = !!row?.compare_allowed;
     const importAllowed = !!row?.import_allowed;
+    const mutualizeAllowed = !!row?.mutualize_allowed;
     const compareNodes = [bookSourceRecordIdEl, bookSourceRecordUrlEl, bookProvenanceNoteEl];
     const importNodes = [bookImportFormatEl, bookImportMethodEl];
 
@@ -12172,7 +12173,7 @@ ${comparisonNote}` : comparisonNote;
     importNodes.forEach((node) => { node.disabled = !importAllowed; });
 
     if (importAllowed) {
-      bookPartnerPolicyHintEl.textContent = row?.mutualize_allowed ? 'Comparação, importação e mutualização autorizadas. Isso não cria modificação livre: a revisão bibliográfica local continua obrigatória.' : 'Comparação e importação autorizadas para esta parceira. Mutualização continua separada e a revisão bibliográfica local continua obrigatória.';
+      bookPartnerPolicyHintEl.textContent = mutualizeAllowed ? 'Comparação, importação e mutualização autorizadas. Isso não cria modificação livre: a revisão bibliográfica local continua obrigatória.' : 'Comparação e importação autorizadas para esta parceira. Mutualização continua separada e a revisão bibliográfica local continua obrigatória.';
       return;
     }
 
@@ -12244,12 +12245,14 @@ ${comparisonNote}` : comparisonNote;
       await refreshBookPartnerGovernanceUi({ silent: true });
       if (!silent) {
         setPartnerProbeMessage(
-          row.import_allowed
-            ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local.'
-            : row.compare_allowed
-              ? 'Situação relacional lida da base. A comparação técnica está autorizada, sem importação.'
-              : 'Situação relacional lida da base. Sem comparação ativa e sem importação neste estágio.',
-          row.compare_allowed || row.import_allowed ? 'ok' : 'warn'
+          row.mutualize_allowed
+            ? 'Situação relacional lida da base. Importação e mutualização aparecem autorizadas, sempre com revisão local obrigatória.'
+            : row.import_allowed
+              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e sem mutualização automática.'
+              : row.compare_allowed
+                ? 'Situação relacional lida da base. A comparação técnica está autorizada, sem importação.'
+                : 'Situação relacional lida da base. Sem comparação ativa, sem importação e sem mutualização neste estágio.',
+          row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
         );
       }
     } catch (error) {
@@ -12383,9 +12386,11 @@ ${comparisonNote}` : comparisonNote;
 
   importActionBtn?.addEventListener('click', () => {
     setPartnerProbeMessage(
-      partnerDocumentActionState.importAllowed
-        ? 'Importação controlada aparece como autorizada pela política, mas o fluxo documental ainda não foi ativado neste bloco.'
-        : 'Importação bloqueada para esta parceira nesta etapa.',
+      partnerDocumentActionState.mutualizeAllowed
+        ? 'Importação controlada e mutualização aparecem autorizadas pela política, mas este bloco ainda não ativa fluxo automático nem modificação livre.'
+        : partnerDocumentActionState.importAllowed
+          ? 'Importação controlada aparece como autorizada pela política, mas a mutualização segue separada e o fluxo documental ainda não foi ativado neste bloco.'
+          : 'Importação bloqueada para esta parceira nesta etapa.',
       partnerDocumentActionState.importAllowed ? 'info' : 'warn'
     );
   });
