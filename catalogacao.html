@@ -3203,6 +3203,15 @@
             <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar SQL</button>
             <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir base URL</button>
           </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="partnerActionHint">Ações documentárias nesta etapa</label>
+            <div class="actions">
+              <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
+              <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
+            </div>
+            <small id="partnerActionHint">Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.</small>
+          </div>
         
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
             <div class="field">
@@ -11703,12 +11712,16 @@ function initPartnerProbeUi() {
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
   const copySeedBtn = document.getElementById('partnerCopySeedBtn');
   const openBaseBtn = document.getElementById('partnerOpenBaseBtn');
+  const compareActionBtn = document.getElementById('partnerCompareActionBtn');
+  const importActionBtn = document.getElementById('partnerImportActionBtn');
+  const actionHintEl = document.getElementById('partnerActionHint');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
     !confidenceEl || !countryEl || !notesEl || !reportEl || !seedEl ||
     !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
-    !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl
+    !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
+    !compareActionBtn || !importActionBtn || !actionHintEl
   ) {
     return;
   }
@@ -11730,6 +11743,10 @@ function initPartnerProbeUi() {
   const bookImportMethodEl = document.getElementById('bookImportMethod');
   const bookProvenanceNoteEl = document.getElementById('bookProvenanceNote');
   const bookPartnerPolicyHintEl = document.getElementById('bookPartnerPolicyHint');
+  const partnerDocumentActionState = {
+    compareAllowed: false,
+    importAllowed: false,
+  };
 
   function formatPartnerTimestamp(value) {
     if (!value) return 'Sem teste registrado';
@@ -11745,12 +11762,38 @@ function initPartnerProbeUi() {
     technicalProbeLastAtEl.value = '';
     policySummaryEl.value = '';
     politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
+    setPartnerDocumentActionsState('empty');
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
     const { data, error } = await supabase.rpc('catalog_partner_policy_by_slug', { p_slug: slug });
     if (error) throw error;
     return Array.isArray(data) ? (data[0] || null) : data;
+  }
+
+  function setPartnerDocumentActionsState(mode = 'empty', row = null) {
+    partnerDocumentActionState.compareAllowed = !!row?.compare_allowed;
+    partnerDocumentActionState.importAllowed = !!row?.import_allowed;
+    compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
+    importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
+
+    if (mode === 'registered_but_blocked') {
+      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação ativa nem importação nesta etapa.';
+      return;
+    }
+    if (mode === 'compare_only') {
+      actionHintEl.textContent = 'Comparação documental liberada como próxima camada controlada. Importação continua bloqueada.';
+      return;
+    }
+    if (mode === 'import_allowed') {
+      actionHintEl.textContent = 'Comparação e importação aparecem como autorizadas pela política. Nenhuma importação automática foi ativada aqui.';
+      return;
+    }
+    if (mode === 'not_registered') {
+      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas.';
+      return;
+    }
+    actionHintEl.textContent = 'Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.';
   }
 
   function setPartnerPolicyReadout(row) {
@@ -11762,6 +11805,10 @@ function initPartnerProbeUi() {
     politicalNoticeEl.textContent = row?.import_allowed
       ? 'Importação ainda depende de revisão bibliográfica local e uso controlado.'
       : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
+    setPartnerDocumentActionsState(
+      row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
+      row,
+    );
   }
 
   function getCurrentPartnerSlug() {
@@ -11881,6 +11928,7 @@ function initPartnerProbeUi() {
         relationshipStatusEl.value = 'Parceira não cadastrada';
         policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança. Em catalogação, isso impede comparação ativa e importação.';
         politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
+        setPartnerDocumentActionsState('not_registered');
         if (!silent) setPartnerProbeMessage('Parceira ainda não cadastrada na base de governança.', 'warn');
         return;
       }
@@ -12005,6 +12053,24 @@ function initPartnerProbeUi() {
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  compareActionBtn?.addEventListener('click', () => {
+    setPartnerProbeMessage(
+      partnerDocumentActionState.compareAllowed
+        ? 'Comparação documental aparece como próxima camada liberada. O bloco comparativo ainda será ligado sem importar nada automaticamente.'
+        : 'Comparação documental bloqueada para esta parceira nesta etapa.',
+      partnerDocumentActionState.compareAllowed ? 'info' : 'warn'
+    );
+  });
+
+  importActionBtn?.addEventListener('click', () => {
+    setPartnerProbeMessage(
+      partnerDocumentActionState.importAllowed
+        ? 'Importação controlada aparece como autorizada pela política, mas o fluxo documental ainda não foi ativado neste bloco.'
+        : 'Importação bloqueada para esta parceira nesta etapa.',
+      partnerDocumentActionState.importAllowed ? 'info' : 'warn'
+    );
   });
 
   refreshPartnerPolicy({ silent: true });
