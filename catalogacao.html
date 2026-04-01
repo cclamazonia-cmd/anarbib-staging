@@ -2209,7 +2209,7 @@
               <div class="section-block">
                 <div>
                   <h4 class="section-title">Audiovisual</h4>
-                  <div class="hint">Registre duração, suporte, responsáveis e condições de visionnage.</div>
+                  <div class="hint">Registre duração, suporte, responsáveis e condições de consulta.</div>
                 </div>
                 <div class="grid cols-3">
                   <div class="field" style="padding:0; background:none; border:none;">
@@ -3241,7 +3241,7 @@
         <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
           <h4>Recepção artesanal de catálogos externos</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa notices automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
+            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa registros automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
           </p>
 
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -3484,6 +3484,12 @@
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
             <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="partnerNextStepOutput">Próximo gesto recomendado nesta etapa</label>
+            <textarea id="partnerNextStepOutput" rows="3" readonly placeholder="A recomendação operacional aparecerá aqui."></textarea>
+            <small id="partnerNextStepHint">A recomendação abaixo traduz a matriz em um gesto prudente, sem abrir nenhum fluxo novo por si só.</small>
           </div>
 
           <div id="partnerRightsDecisionNote" class="hint" style="margin-top:8px;">
@@ -3917,7 +3923,7 @@
         guideTitle: 'Outro tipo documental',
         summary: 'Use o núcleo comum sem tentar encaixar à força um objeto singular num molde livro. A interface completa fica como apoio para observações mais finas.',
         simpleFocus: 'Título, responsabilidades principais, data, idioma, assuntos e uma descrição breve do objeto.',
-        completeFocus: 'Observações materiais, notas técnicas, vínculos documentaires et adaptações locais provisórias.',
+        completeFocus: 'Observações materiais, notas técnicas, vínculos documentários e adaptações locais provisórias.',
         labels: {
           title: 'Título', subtitle: 'Subtítulo / identificação complementar', publisher: 'Entidade responsável', place: 'Lugar principal', year: 'Ano / data', loanable: 'Circulação local', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
         },
@@ -12730,6 +12736,8 @@ function initPartnerProbeUi() {
   const partnerRightSharedEl = document.getElementById('partnerRightSharedOutput');
   const partnerRightPublishEl = document.getElementById('partnerRightPublishOutput');
   const partnerRightsSummaryEl = document.getElementById('partnerRightsSummaryOutput');
+  const partnerNextStepEl = document.getElementById('partnerNextStepOutput');
+  const partnerNextStepHintEl = document.getElementById('partnerNextStepHint');
   const refreshPolicyBtn = document.getElementById('partnerRefreshPolicyBtn');
   const generateBtn = document.getElementById('partnerGenerateBtn');
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
@@ -12798,7 +12806,7 @@ function initPartnerProbeUi() {
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl ||
     !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl ||
-    !partnerRightsSummaryEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
+    !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
@@ -13073,9 +13081,9 @@ function initPartnerProbeUi() {
     ].join('\n');
 
     if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
-      incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se quiseres, para os campos de governança documental abaixo.';
+      incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se você quiser, para os campos de governança documental abaixo.';
     } else {
-      incomingCatalogHintEl.textContent = 'Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
+      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
   }
 
@@ -13117,7 +13125,7 @@ function initPartnerProbeUi() {
     } else {
       lines.push('', 'Leitura local ainda não executada ou sem pré-visualização disponível para este formato.');
     }
-    lines.push('', 'Lembrete: esta recepção é apenas local e preparatória. Ela não cria parceira, não altera a política documental e não importa notices automaticamente.');
+    lines.push('', 'Lembrete: esta recepção é apenas local e preparatória. Ela não cria parceira, não altera a política documental e não importa registros automaticamente.');
     return lines.join('\n');
   }
 
@@ -13186,8 +13194,8 @@ function initPartnerProbeUi() {
     const file = incomingCatalogFileEl?.files?.[0] || null;
     if (!file) {
       if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = 'Nenhum arquivo local selecionado ainda.';
-      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolhe primeiro um arquivo artesanal recebido antes de pedir a leitura local.';
-      setPartnerProbeMessage('Escolhe primeiro um arquivo artesanal recebido para esta biblioteca.', 'warn');
+      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolha primeiro um arquivo artesanal recebido antes de pedir a leitura local.';
+      setPartnerProbeMessage('Escolha primeiro um arquivo artesanal recebido para esta biblioteca.', 'warn');
       return;
     }
     const kind = getIncomingCatalogFileKind(file.name);
@@ -13232,7 +13240,7 @@ function initPartnerProbeUi() {
     if (identity.territory) noteParts.push(`Território informado: ${identity.territory}.`);
     if (fileKind) noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
     if (!nextDisplayName && !identity.slug) {
-      setPartnerProbeMessage('Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
+      setPartnerProbeMessage('Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
       return;
     }
     if (displayEl && nextDisplayName) displayEl.value = nextDisplayName;
@@ -14172,6 +14180,43 @@ ${decisionSummary}` : '',
     partnerRightsSummaryEl.value = 'A parceira está formalizada, mas as ações documentárias continuam bloqueadas nesta etapa.';
   }
 
+  function setPartnerNextStepReadout(mode = 'empty', row = null, gateState = null) {
+    if (!partnerNextStepEl || !partnerNextStepHintEl) return;
+    const nextGateState = gateState || getPartnerAgreementGateState('', null);
+    const mutualizeAllowed = !!row?.mutualize_allowed && !nextGateState.catalogacaoGateBlocked;
+
+    partnerNextStepHintEl.textContent = 'A recomendação abaixo traduz a matriz em um gesto prudente, sem abrir nenhum fluxo novo por si só.';
+
+    if (mode === 'agreement_blocked') {
+      partnerNextStepEl.value = `${String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.')} Próximo gesto: registrar ou aplicar o acordo explícito no painel e voltar aqui antes de comparar ou preparar retomada local.`;
+      return;
+    }
+
+    if (mode === 'registered_but_blocked') {
+      partnerNextStepEl.value = 'Próximo gesto: manter a leitura política visível, registrar a proveniência local necessária e aguardar autorização relacional antes de comparar ou preparar retomada local.';
+      return;
+    }
+
+    if (mode === 'compare_only') {
+      partnerNextStepEl.value = 'Próximo gesto: abrir a comparação documental, resumir o registro da parceira, registrar diferenças e decidir o que entra — ou não — na ficha local.';
+      return;
+    }
+
+    if (mode === 'import_allowed') {
+      partnerNextStepEl.value = mutualizeAllowed
+        ? 'Próximo gesto: abrir a preparação local, definir formato e modo, registrar a proveniência e preparar a retomada local; a camada compartilhada continua sem modificação livre.'
+        : 'Próximo gesto: abrir a preparação local, definir formato e modo, registrar a proveniência e preparar a retomada local com revisão humana.';
+      return;
+    }
+
+    if (mode === 'not_registered') {
+      partnerNextStepEl.value = 'Próximo gesto: formalizar ou selecionar a parceira, aplicar os acordos correspondentes e só depois tentar abrir comparação ou preparação local.';
+      return;
+    }
+
+    partnerNextStepEl.value = 'Próximo gesto: ler a situação relacional desta parceira, conferir a matriz acima e só então decidir se cabe comparação, retomada local ou simples leitura política.';
+  }
+
   function clearPartnerPolicyReadout() {
     relationshipStatusEl.value = '';
     compareAllowedEl.value = '';
@@ -14187,6 +14232,7 @@ ${decisionSummary}` : '',
     setPartnerWorkspaceInputsDisabled(false);
     setPartnerDocumentActionsState('empty');
     setPartnerRightsMatrixReadout();
+    setPartnerNextStepReadout('empty');
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
@@ -14225,27 +14271,33 @@ ${decisionSummary}` : '',
 
     if (mode === 'agreement_blocked') {
       actionHintEl.textContent = `${nextGateState.noAgreementMessage} Define primeiro os acordos no painel e volta aqui para aplicá-los.`;
+      setPartnerNextStepReadout('agreement_blocked', row, nextGateState);
       return;
     }
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
+      setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
       return;
     }
     if (mode === 'compare_only') {
       actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
+      setPartnerNextStepReadout('compare_only', row, nextGateState);
       return;
     }
     if (mode === 'import_allowed') {
       actionHintEl.textContent = partnerDocumentActionState.mutualizeAllowed
         ? 'Comparação documental, preparação local de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre do registro da parceira.'
         : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
+      setPartnerNextStepReadout('import_allowed', row, nextGateState);
       return;
     }
     if (mode === 'not_registered') {
       actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
+      setPartnerNextStepReadout('not_registered', row, nextGateState);
       return;
     }
     actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
+    setPartnerNextStepReadout('empty', row, nextGateState);
   }
 
   function setPartnerPolicyReadout(row, gateState = null) {
