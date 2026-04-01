@@ -9950,6 +9950,49 @@
       ].filter(Boolean).join(' ').toLowerCase();
     }
 
+    function getQueueTypeFilterLabel(type = '') {
+      const map = {
+        book: 'somente fichas comuns',
+        author: 'somente autores',
+        exemplar: 'somente exemplares locais',
+      };
+      return map[type] || '';
+    }
+
+    function getQueueStatusFilterLabel(status = '') {
+      const map = {
+        draft: 'situação: em rascunho',
+        ready: 'situação: pronto para publicação',
+      };
+      return map[status] || '';
+    }
+
+    function buildQueueEmptyStateMessage() {
+      const parts = [];
+      const typeLabel = getQueueTypeFilterLabel(el('queueTypeFilter')?.value || '');
+      const statusLabel = getQueueStatusFilterLabel(el('queueStatusFilter')?.value || '');
+      const searchValue = compactSpaces(el('queueSearch')?.value || '');
+      if (typeLabel) parts.push(typeLabel);
+      if (statusLabel) parts.push(statusLabel);
+      if (searchValue) parts.push(`busca: “${searchValue}”`);
+      if (!parts.length) {
+        return 'Nenhum rascunho ativo está disponível na fila editorial neste momento.';
+      }
+      return `Nenhum rascunho ativo corresponde ao recorte atual (${parts.join(' · ')}).`;
+    }
+
+    function buildTrashEmptyStateMessage() {
+      return 'A lixeira está vazia no momento. Quando uma ficha comum, um autor ou um exemplar local for descartado, ele aparecerá aqui para restauração.';
+    }
+
+    function getQueueSelectionSummaryText(count = 0) {
+      return `Rascunhos ativos selecionados na fila: ${count}`;
+    }
+
+    function getTrashSelectionSummaryText(count = 0) {
+      return `Rascunhos descartados selecionados na lixeira: ${count}`;
+    }
+
     async function restoreQueueDraft(type, id) {
       const table = getDraftTableName(type);
       if (!table) throw new Error('Tipo de rascunho inválido para restauração.');
@@ -10011,7 +10054,7 @@
 
       if (!items.length) {
         clearTrashSelection();
-        refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira não contém fichas comuns, autores ou exemplares locais descartados no momento.</div>';
+        refs.trashTableWrap.innerHTML = `<div class="empty">${sanitize(buildTrashEmptyStateMessage())}</div>`;
         return;
       }
 
@@ -10022,7 +10065,7 @@
 
       refs.trashTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados na lixeira: ${state.trashSelection.size}</div>
+          <div class="small">${sanitize(getTrashSelectionSummaryText(state.trashSelection.size))}</div>
           <div class="row-actions">
             <button id="trashClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="trashRestoreSelectedBtn" class="button success" type="button" ${hasAnySelection ? '' : 'disabled'}>Restaurar selecionados</button>
@@ -10102,7 +10145,7 @@
           try {
             const restoredCount = await restoreSelectedTrashDrafts();
             if (restoredCount) {
-              showMessage(refs.trashMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram restaurados' : 'foi restaurado'} da lixeira.`, 'ok');
+              showMessage(refs.trashMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram restaurados' : 'foi restaurado'} da lixeira para a fila editorial.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -10114,7 +10157,7 @@
         btn.addEventListener('click', async () => {
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} restaurado com sucesso.`, 'ok');
+            showMessage(refs.trashMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} restaurado da lixeira para a fila editorial.`, 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -10946,7 +10989,7 @@
       }
 
       if (!items.length) {
-        refs.queueTableWrap.innerHTML = '<div class="empty">Nenhuma ficha comum, autor ou exemplar local ativo foi encontrado com os filtros atuais.</div>';
+        refs.queueTableWrap.innerHTML = `<div class="empty">${sanitize(buildQueueEmptyStateMessage())}</div>`;
         return;
       }
 
@@ -10957,7 +11000,7 @@
 
       refs.queueTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados: ${state.queueSelection.size}</div>
+          <div class="small">${sanitize(getQueueSelectionSummaryText(state.queueSelection.size))}</div>
           <div class="row-actions">
             <button id="queueClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="queueDiscardSelectedBtn" class="button warning" type="button" ${hasAnySelection ? '' : 'disabled'}>Descartar selecionados para a lixeira</button>
@@ -11043,7 +11086,7 @@
           try {
             const discardedCount = await discardSelectedQueueDrafts();
             if (discardedCount) {
-              showMessage(refs.queueMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram enviados' : 'foi enviado'} para a lixeira.`, 'ok');
+              showMessage(refs.queueMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram enviados' : 'foi enviado'} da fila editorial para a lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -11062,7 +11105,7 @@
         btn.addEventListener('click', async () => {
           try {
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} publicado com sucesso.`, 'ok');
+            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} publicado a partir da fila editorial.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11073,12 +11116,12 @@
         btn.addEventListener('click', async () => {
           const batchId = el('queueBatchAssign').value || null;
           if (!batchId) {
-            showMessage(refs.queueMessage, 'Escolha um lote aberto antes de atribuir.', 'error');
+            showMessage(refs.queueMessage, 'Escolha um lote aberto antes de atribuir este rascunho da fila editorial.', 'error');
             return;
           }
           try {
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, `Lote atribuído com sucesso para ${getQueueEntityReference(btn.dataset.type)}.`, 'ok');
+            showMessage(refs.queueMessage, `Lote atribuído com sucesso a ${getQueueEntityReference(btn.dataset.type)} na fila editorial.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11091,7 +11134,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} descartado a partir da fila editorial.`, 'ok');
+            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} enviado da fila editorial para a lixeira.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -12367,7 +12410,15 @@
         updateRefreshButton(false);
       }
     });
-    el('refreshQueueBtn').addEventListener('click', loadQueue);
+    el('refreshQueueBtn').addEventListener('click', async () => {
+      clearMessage(refs.queueMessage);
+      try {
+        await loadQueue();
+        showMessage(refs.queueMessage, 'Fila editorial atualizada. O quadro mostra somente rascunhos ativos com o recorte atual.', 'ok');
+      } catch (error) {
+        showMessage(refs.queueMessage, error.message || 'Não foi possível atualizar a fila editorial.', 'error');
+      }
+    });
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
     el('bookDraftResetBtn').addEventListener('click', resetBookForm);
     el('authorDraftResetBtn').addEventListener('click', resetAuthorForm);
@@ -12544,7 +12595,7 @@
         clearMessage(refs.trashMessage);
         try {
           await loadQueue();
-          showMessage(refs.trashMessage, 'Lixeira atualizada.', 'ok');
+          showMessage(refs.trashMessage, 'Lixeira atualizada. O quadro mostra somente rascunhos descartados disponíveis para restauração.', 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message || 'Não foi possível atualizar a lixeira.', 'error');
         }
@@ -12554,14 +12605,14 @@
       refs.emptyTrashBtn.addEventListener('click', async () => {
         const hasDiscardedDrafts = state.queueItems.some(item => item.status === 'cancelled');
         if (!hasDiscardedDrafts) {
-          showMessage(refs.trashMessage, 'A lixeira já está vazia.', 'info');
+          showMessage(refs.trashMessage, 'A lixeira já está vazia. Não há rascunhos descartados para apagar.', 'info');
           return;
         }
         const confirmed = window.confirm('Tem certeza? Esta ação vai apagar definitivamente todos os rascunhos descartados da lixeira. O processo é irreversível.');
         if (!confirmed) return;
         try {
           await emptyTrash();
-          showMessage(refs.trashMessage, 'Lixeira esvaziada com sucesso. A operação é irreversível.', 'ok');
+          showMessage(refs.trashMessage, 'Lixeira esvaziada com sucesso. Todos os rascunhos descartados foram apagados de forma irreversível.', 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message, 'error');
         }
