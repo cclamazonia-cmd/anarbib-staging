@@ -1857,7 +1857,7 @@
       <button class="tab-btn tab-btn-separator" data-tab="queuePanel">Fila editorial</button>
       <button class="tab-btn" data-tab="batchesPanel">Lotes</button>
       <button class="tab-btn" data-tab="catalogPanel">Catálogo já publicado</button>
-      <button class="tab-btn" data-tab="partnerCatalogsPanel">Catálogos de parceiros externos</button>
+      <button class="tab-btn" data-tab="partnerCatalogsPanel">Catálogos de parceiras externas</button>
     </div>
 
     <section id="booksPanel" class="panel active">
@@ -3347,6 +3347,17 @@
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
             <small id="partnerPoliticalNotice">Sem leitura política ainda: teste técnico, sozinho, não libera comparação documental, importação nem mutualização.</small>
           </div>
+
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerAgreementStatusOutput">Acordo explícito neste painel</label>
+              <input id="partnerAgreementStatusOutput" type="text" readonly placeholder="Ainda não verificado">
+            </div>
+            <div class="field">
+              <label for="partnerCatalogacaoGateOutput">Regra de uso em catalogação</label>
+              <input id="partnerCatalogacaoGateOutput" type="text" readonly placeholder="Ainda não aplicada">
+            </div>
+          </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
@@ -3428,7 +3439,7 @@
           </div>
         
           <div class="actions">
-            <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Ler situação na base</button>
+            <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Aplicar acordos desta parceira</button>
             <button id="partnerGenerateBtn" class="button secondary" type="button">Gerar endpoints e seed</button>
             <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar relatório</button>
             <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar SQL</button>
@@ -3441,7 +3452,7 @@
               <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
-            <small id="partnerActionHint">Sem leitura política ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
+            <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
           </div>
         
           <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
@@ -3669,6 +3680,7 @@
       },
       bnLookup: null,
       queueSelection: new Set(),
+      trashSelection: new Set(),
       catalogacaoMode: 'simple',
       authorDraftLinks: [],
       bookDigitalDraftResources: [],
@@ -5468,6 +5480,10 @@
 
     function clearQueueSelection() {
       state.queueSelection.clear();
+    }
+
+    function clearTrashSelection() {
+      state.trashSelection.clear();
     }
 
     function updateStats() {
@@ -8744,13 +8760,13 @@
       refs.loginBtn.removeAttribute('aria-busy');
 
       if (catalogacaoAuthSyncInFlight) {
-        refs.loginBtn.disabled = true;
         refs.loginBtn.setAttribute('aria-busy', 'true');
         if (hasSession) {
           refs.loginBtn.textContent = 'Logout';
           refs.loginBtn.className = 'button secondary';
-          refs.loginBtn.title = 'Sessão reconhecida. Sincronizando acesso…';
+          refs.loginBtn.title = 'Sessão ativa. Você já pode sair sem esperar a sincronização terminar.';
         } else {
+          refs.loginBtn.disabled = true;
           refs.loginBtn.textContent = 'Fazer login';
           refs.loginBtn.className = 'button primary';
           refs.loginBtn.title = 'Sessão ainda não confirmada.';
@@ -9238,7 +9254,9 @@
         console.warn('loadQueue failed:', error);
         state.queueItems = [];
         clearQueueSelection();
+        clearTrashSelection();
         renderQueue();
+        renderTrash();
         return { ok: false, source: 'queue', error };
       }
       let queueItems = data || [];
@@ -9274,7 +9292,9 @@
 
       state.queueItems = queueItems;
       clearQueueSelection();
+      clearTrashSelection();
       renderQueue();
+      renderTrash();
       return { ok: true, source: 'queue' };
     }
 
@@ -9911,6 +9931,38 @@
       updateStats();
     }
 
+    async function restoreSelectedTrashDrafts() {
+      const tableMap = { book: 'book_drafts', author: 'author_drafts', exemplar: 'exemplar_drafts' };
+      const selectedEntries = [...state.trashSelection].map(key => {
+        const [type, rawId] = String(key || '').split(':');
+        return { type, id: Number(rawId) };
+      }).filter(entry => tableMap[entry.type] && Number.isFinite(entry.id));
+
+      if (!selectedEntries.length) return 0;
+
+      const confirmed = window.confirm('Os rascunhos selecionados serão restaurados da lixeira. Deseja continuar?');
+      if (!confirmed) return 0;
+
+      const groupedIds = selectedEntries.reduce((acc, entry) => {
+        if (!acc[entry.type]) acc[entry.type] = [];
+        acc[entry.type].push(entry.id);
+        return acc;
+      }, {});
+
+      for (const [type, ids] of Object.entries(groupedIds)) {
+        const { error } = await supabase
+          .from(tableMap[type])
+          .update({ status: 'draft', updated_by: state.profile.id })
+          .in('id', ids);
+        if (error) throw error;
+      }
+
+      clearTrashSelection();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
+      updateStats();
+      return selectedEntries.length;
+    }
+
     async function emptyTrash() {
       const tables = ['book_drafts', 'author_drafts', 'exemplar_drafts'];
       for (const table of tables) {
@@ -9929,14 +9981,28 @@
         .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
 
       if (!items.length) {
+        clearTrashSelection();
         refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira está vazia no momento.</div>';
         return;
       }
 
+      const visibleKeys = items.map(item => getQueueSelectionKey(item.item_type, item.draft_id));
+      const selectedVisibleCount = visibleKeys.filter(key => state.trashSelection.has(key)).length;
+      const allVisibleSelected = visibleKeys.length > 0 && selectedVisibleCount === visibleKeys.length;
+      const hasAnySelection = state.trashSelection.size > 0;
+
       refs.trashTableWrap.innerHTML = `
+        <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+          <div class="small">Selecionados na lixeira: ${state.trashSelection.size}</div>
+          <div class="row-actions">
+            <button id="trashClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
+            <button id="trashRestoreSelectedBtn" class="button success" type="button" ${hasAnySelection ? '' : 'disabled'}>Restaurar selecionados</button>
+          </div>
+        </div>
         <table>
           <thead>
             <tr>
+              <th style="width:52px; text-align:center;"><input id="trashSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis da lixeira" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
               <th>Tipo</th>
               <th>Referência</th>
               <th>Título / nome</th>
@@ -9947,8 +10013,11 @@
             </tr>
           </thead>
           <tbody>
-            ${items.map(item => `
+            ${items.map(item => {
+              const selectionKey = getQueueSelectionKey(item.item_type, item.draft_id);
+              return `
               <tr>
+                <td style="text-align:center;"><input class="trash-row-select" type="checkbox" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" ${state.trashSelection.has(selectionKey) ? 'checked' : ''} aria-label="Selecionar rascunho da lixeira" /></td>
                 <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
                 <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
@@ -9961,10 +10030,51 @@
                     <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar e abrir</button>
                   </div>
                 </td>
-              </tr>
-            `).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
+
+      const selectAllVisibleBox = refs.trashTableWrap.querySelector('#trashSelectAllVisible');
+      if (selectAllVisibleBox) {
+        selectAllVisibleBox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleKeys.length;
+        selectAllVisibleBox.addEventListener('change', () => {
+          if (selectAllVisibleBox.checked) visibleKeys.forEach(key => state.trashSelection.add(key));
+          else visibleKeys.forEach(key => state.trashSelection.delete(key));
+          renderTrash();
+        });
+      }
+
+      refs.trashTableWrap.querySelectorAll('.trash-row-select').forEach(box => {
+        box.addEventListener('change', () => {
+          const key = getQueueSelectionKey(box.dataset.type, box.dataset.id);
+          if (box.checked) state.trashSelection.add(key);
+          else state.trashSelection.delete(key);
+          renderTrash();
+        });
+      });
+
+      const clearSelectionBtn = refs.trashTableWrap.querySelector('#trashClearSelectionBtn');
+      if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', () => {
+          clearTrashSelection();
+          renderTrash();
+        });
+      }
+
+      const restoreSelectedBtn = refs.trashTableWrap.querySelector('#trashRestoreSelectedBtn');
+      if (restoreSelectedBtn) {
+        restoreSelectedBtn.addEventListener('click', async () => {
+          try {
+            const restoredCount = await restoreSelectedTrashDrafts();
+            if (restoredCount) {
+              showMessage(refs.trashMessage, `${restoredCount} rascunhos foram restaurados da lixeira.`, 'ok');
+            }
+          } catch (error) {
+            showMessage(refs.trashMessage, error.message, 'error');
+          }
+        });
+      }
 
       refs.trashTableWrap.querySelectorAll('[data-action="restore-trash"]').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -12576,6 +12686,8 @@ function initPartnerProbeUi() {
   const technicalProbeLastAtEl = document.getElementById('partnerTechnicalProbeLastAtOutput');
   const policySummaryEl = document.getElementById('partnerPolicySummaryOutput');
   const politicalNoticeEl = document.getElementById('partnerPoliticalNotice');
+  const agreementStatusEl = document.getElementById('partnerAgreementStatusOutput');
+  const catalogacaoGateEl = document.getElementById('partnerCatalogacaoGateOutput');
   const refreshPolicyBtn = document.getElementById('partnerRefreshPolicyBtn');
   const generateBtn = document.getElementById('partnerGenerateBtn');
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
@@ -12681,10 +12793,172 @@ function initPartnerProbeUi() {
     mutualizeAllowed: false,
     workspaceOpen: false,
     importWorkspaceOpen: false,
+    explicitAgreementRequired: true,
+    explicitAgreementActive: false,
+    catalogacaoGateBlocked: true,
+    noAgreementMessage: '',
+  };
+  const DOC_GOV_TABLE = 'library_document_governance';
+  const partnerGovernanceCache = {
+    libraryId: '',
+    source: 'empty',
+    governance: null,
   };
   const partnerOptionRegistry = new Map();
   let partnerUrlSuggestionState = null;
   let incomingCatalogFileAnalysis = null;
+
+  function parsePartnerAgreementList(value) {
+    if (Array.isArray(value)) {
+      return Array.from(new Set(value.map((item) => normalizePartnerSlug(item)).filter(Boolean)));
+    }
+    return Array.from(new Set(
+      String(value || '')
+        .split(/[\n,;]+/)
+        .map((item) => normalizePartnerSlug(item))
+        .filter(Boolean)
+    ));
+  }
+
+  function getDefaultPartnerAgreementMessage() {
+    return 'É preciso definir acordos de parceria com esta biblioteca no Painel antes de usar este módulo em catalogação.';
+  }
+
+  function getEmptyPartnerAgreementGovernance() {
+    return {
+      require_explicit_agreement: true,
+      explicit_agreement_partners: [],
+      no_agreement_message: getDefaultPartnerAgreementMessage(),
+    };
+  }
+
+  function normalizePartnerAgreementGovernance(config = null) {
+    const raw = config && typeof config === 'object' ? config : {};
+    const base = getEmptyPartnerAgreementGovernance();
+    const readBool = (...values) => {
+      for (const value of values) {
+        if (value === true || value === false) return value;
+        if (value === null || value === undefined) continue;
+        const normalized = String(value).trim().toLowerCase();
+        if (['true', '1', 'yes', 'sim'].includes(normalized)) return true;
+        if (['false', '0', 'no', 'nao', 'não'].includes(normalized)) return false;
+      }
+      return base.require_explicit_agreement;
+    };
+    const readString = (...values) => {
+      for (const value of values) {
+        const normalized = String(value || '').trim();
+        if (normalized) return normalized;
+      }
+      return '';
+    };
+    return {
+      require_explicit_agreement: readBool(
+        raw.require_explicit_agreement,
+        raw.catalogacao_requires_explicit_agreement,
+        raw.explicit_agreement_required,
+        raw.block_without_explicit_agreement,
+        base.require_explicit_agreement,
+      ),
+      explicit_agreement_partners: parsePartnerAgreementList(
+        raw.explicit_agreement_partners
+        || raw.partners_with_explicit_agreement
+        || raw.catalogacao_enabled_partners
+        || raw.active_partner_agreements
+        || base.explicit_agreement_partners
+      ),
+      no_agreement_message: readString(
+        raw.no_agreement_message,
+        raw.catalogacao_no_agreement_message,
+        raw.no_explicit_agreement_message,
+        base.no_agreement_message,
+      ) || base.no_agreement_message,
+    };
+  }
+
+  async function loadPartnerAgreementGovernance(force = false) {
+    const profileLibrary = getProfileDefaultLibraryContext();
+    const libraryId = compactSpaces(profileLibrary.libraryId || '');
+    if (!libraryId) {
+      partnerGovernanceCache.libraryId = '';
+      partnerGovernanceCache.source = 'missing_library';
+      partnerGovernanceCache.governance = getEmptyPartnerAgreementGovernance();
+      return partnerGovernanceCache;
+    }
+    if (!force && partnerGovernanceCache.libraryId === libraryId && partnerGovernanceCache.governance) {
+      return partnerGovernanceCache;
+    }
+    try {
+      const { data, error } = await supabase
+        .from(DOC_GOV_TABLE)
+        .select('library_id,config')
+        .eq('library_id', libraryId)
+        .maybeSingle();
+      if (error) throw error;
+      partnerGovernanceCache.libraryId = libraryId;
+      partnerGovernanceCache.source = data ? 'dedicated-table' : 'empty';
+      partnerGovernanceCache.governance = normalizePartnerAgreementGovernance(data?.config || null);
+      return partnerGovernanceCache;
+    } catch (error) {
+      console.warn('Falha ao ler a governança documental do painel para catalogação:', error);
+      partnerGovernanceCache.libraryId = libraryId;
+      partnerGovernanceCache.source = 'error';
+      partnerGovernanceCache.governance = getEmptyPartnerAgreementGovernance();
+      return partnerGovernanceCache;
+    }
+  }
+
+  function getPartnerAgreementGateState(slug = '', governanceState = null) {
+    const governance = normalizePartnerAgreementGovernance(governanceState?.governance || governanceState || null);
+    const normalizedSlug = normalizePartnerSlug(slug || '');
+    const requireExplicitAgreement = !!governance.require_explicit_agreement;
+    const explicitAgreementActive = !requireExplicitAgreement || (!!normalizedSlug && governance.explicit_agreement_partners.includes(normalizedSlug));
+    const gateBlocked = requireExplicitAgreement && !explicitAgreementActive;
+    return {
+      requireExplicitAgreement,
+      explicitAgreementActive,
+      catalogacaoGateBlocked: gateBlocked,
+      noAgreementMessage: String(governance.no_agreement_message || '').trim() || getDefaultPartnerAgreementMessage(),
+      explicitAgreementPartners: parsePartnerAgreementList(governance.explicit_agreement_partners),
+      governanceSource: governanceState?.source || 'empty',
+      libraryId: governanceState?.libraryId || '',
+    };
+  }
+
+  function formatPartnerAgreementStatus(gateState = {}, slug = '') {
+    const normalizedSlug = normalizePartnerSlug(slug || '');
+    if (!normalizedSlug) return 'Informe a parceira para consultar';
+    if (!gateState.requireExplicitAgreement) return 'Não exigido para esta biblioteca';
+    return gateState.explicitAgreementActive ? 'Acordo explícito ativo no painel' : 'Sem acordo explícito ativo no painel';
+  }
+
+  function formatPartnerCatalogacaoGate(gateState = {}, policyRow = null) {
+    if (!gateState.requireExplicitAgreement) {
+      return policyRow?.compare_allowed || policyRow?.import_allowed || policyRow?.mutualize_allowed
+        ? 'Uso liberado conforme a política documental'
+        : 'Sem ações liberadas nesta etapa';
+    }
+    return gateState.explicitAgreementActive
+      ? 'Acordos aplicados; catalogação pode seguir dentro dos limites ativos'
+      : 'Bloqueado até existir acordo explícito no painel';
+  }
+
+  function setPartnerAgreementGateReadout(gateState = {}, policyRow = null, slug = '') {
+    if (agreementStatusEl) agreementStatusEl.value = formatPartnerAgreementStatus(gateState, slug);
+    if (catalogacaoGateEl) catalogacaoGateEl.value = formatPartnerCatalogacaoGate(gateState, policyRow);
+  }
+
+  function setPartnerWorkspaceInputsDisabled(isDisabled) {
+    [
+      partnerNoticeSummaryEl, differenceSummaryEl, comparisonDecisionEl,
+      importFormatSelectEl, importMethodSelectEl, importTakeSummaryEl,
+      importSkipSummaryEl, importProvenanceSummaryEl, importDecisionSummaryEl,
+      applyComparisonBtn, clearComparisonBtn, applyImportPrepBtn, clearImportPrepBtn
+    ].forEach((node) => {
+      if (!node) return;
+      node.disabled = !!isDisabled;
+    });
+  }
 
   function formatIncomingCatalogFileSize(size = 0) {
     const value = Number(size || 0);
@@ -13802,9 +14076,12 @@ ${decisionSummary}` : '',
     mutualizeAllowedEl.value = '';
     technicalProbeLastAtEl.value = '';
     policySummaryEl.value = '';
-    politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.';
+    if (agreementStatusEl) agreementStatusEl.value = '';
+    if (catalogacaoGateEl) catalogacaoGateEl.value = '';
+    politicalNoticeEl.textContent = 'Nenhuma importação é liberada aqui sem a situação relacional correspondente na base e sem acordo explícito salvo no painel.';
     closeCompareWorkspace({ reset: false });
     closeImportWorkspace({ reset: false });
+    setPartnerWorkspaceInputsDisabled(false);
     setPartnerDocumentActionsState('empty');
   }
 
@@ -13814,15 +14091,26 @@ ${decisionSummary}` : '',
     return Array.isArray(data) ? (data[0] || null) : data;
   }
 
-  function setPartnerDocumentActionsState(mode = 'empty', row = null) {
-    partnerDocumentActionState.compareAllowed = !!row?.compare_allowed;
-    partnerDocumentActionState.importAllowed = !!row?.import_allowed;
-    partnerDocumentActionState.mutualizeAllowed = !!row?.mutualize_allowed;
+  function setPartnerDocumentActionsState(mode = 'empty', row = null, gateState = null) {
+    const nextGateState = gateState || getPartnerAgreementGateState('', null);
+    const compareAllowedByPolicy = !!row?.compare_allowed;
+    const importAllowedByPolicy = !!row?.import_allowed;
+    const mutualizeAllowedByPolicy = !!row?.mutualize_allowed;
+    const gateBlocked = !!nextGateState.catalogacaoGateBlocked;
+
+    partnerDocumentActionState.explicitAgreementRequired = !!nextGateState.requireExplicitAgreement;
+    partnerDocumentActionState.explicitAgreementActive = !!nextGateState.explicitAgreementActive;
+    partnerDocumentActionState.catalogacaoGateBlocked = gateBlocked;
+    partnerDocumentActionState.noAgreementMessage = String(nextGateState.noAgreementMessage || '').trim();
+    partnerDocumentActionState.compareAllowed = compareAllowedByPolicy && !gateBlocked;
+    partnerDocumentActionState.importAllowed = importAllowedByPolicy && !gateBlocked;
+    partnerDocumentActionState.mutualizeAllowed = mutualizeAllowedByPolicy && !gateBlocked;
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
     importActionBtn.textContent = partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed
       ? 'Preparação local de importação / mutualização'
       : 'Preparação local de importação';
+    setPartnerWorkspaceInputsDisabled(gateBlocked);
 
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
@@ -13831,6 +14119,10 @@ ${decisionSummary}` : '',
       closeImportWorkspace({ reset: false });
     }
 
+    if (mode === 'agreement_blocked') {
+      actionHintEl.textContent = `${nextGateState.noAgreementMessage} Define primeiro os acordos no painel e volta aqui para aplicá-los.`;
+      return;
+    }
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
       return;
@@ -13849,28 +14141,57 @@ ${decisionSummary}` : '',
       actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
       return;
     }
-    actionHintEl.textContent = 'Sem leitura política parceira ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
+    actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
   }
 
-  function setPartnerPolicyReadout(row) {
+  function setPartnerPolicyReadout(row, gateState = null) {
+    const nextGateState = gateState || getPartnerAgreementGateState(getCurrentPartnerSlug(), null);
+    const gateBlocked = !!nextGateState.catalogacaoGateBlocked;
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
-    compareAllowedEl.value = row?.compare_allowed ? 'Preparação local autorizada pela situação relacional' : 'Preparação local ainda não autorizada pela situação relacional';
-    importAllowedEl.value = row?.import_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
-    mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
-    technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
-    policySummaryEl.value = row?.policy_summary || '';
-    politicalNoticeEl.textContent = row?.mutualize_allowed
-      ? 'Preparação local de importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
-      : row?.import_allowed
-        ? 'Preparação local de importação ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
-        : row?.compare_allowed
-          ? 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa, e o último teste técnico não muda isso sozinho.'
-          : 'Sem autorização de comparação documental, importação ou mutualização nesta etapa. Em catalogação, o último teste técnico não basta para liberar essas ações.';
-    setPartnerDocumentActionsState(
-      row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
-      row,
-    );
+    compareAllowedEl.value = row?.compare_allowed
+      ? (gateBlocked ? 'Autorizada na política, mas bloqueada sem acordo explícito' : 'Preparação local autorizada pela situação relacional')
+      : 'Preparação local ainda não autorizada pela situação relacional';
+    importAllowedEl.value = row?.import_allowed
+      ? (gateBlocked ? 'Autorizada na política, mas bloqueada sem acordo explícito' : 'Importação controlada autorizada nesta etapa')
+      : 'Importação ainda não autorizada nesta etapa';
+    mutualizeAllowedEl.value = row?.mutualize_allowed
+      ? (gateBlocked ? 'Autorizada na política, mas bloqueada sem acordo explícito' : 'Mutualização autorizada, sem modificação livre')
+      : 'Mutualização não autorizada nesta etapa';
+    technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.last_probe_at || row?.technical_probe_last_at || row?.probe_last_at || row?.updated_at || '');
+    setPartnerAgreementGateReadout(nextGateState, row, getCurrentPartnerSlug());
+    policySummaryEl.value = [
+      `Situação relacional: ${relationshipLabels[row?.relationship_status] || row?.relationship_status || 'sem situação registrada'}.`,
+      row?.compare_allowed ? 'Comparação documental aparece autorizada pela política relacional.' : 'Comparação documental não aparece autorizada pela política relacional.',
+      row?.import_allowed ? 'Importação controlada aparece autorizada pela política relacional.' : 'Importação controlada não aparece autorizada pela política relacional.',
+      row?.mutualize_allowed ? 'Mutualização aparece autorizada pela política relacional.' : 'Mutualização não aparece autorizada pela política relacional.',
+      nextGateState.requireExplicitAgreement
+        ? (nextGateState.explicitAgreementActive
+            ? 'Há acordo explícito ativo desta biblioteca com esta parceira no painel.'
+            : nextGateState.noAgreementMessage)
+        : 'Esta biblioteca não exige acordo explícito prévio para abrir este módulo em catalogação.',
+    ].join(' ');
+    politicalNoticeEl.textContent = nextGateState.requireExplicitAgreement
+      ? (nextGateState.explicitAgreementActive
+          ? 'Os acordos desta parceira foram aplicados a partir do painel. A camada técnica continua subordinada a esses acordos e não vale como modificação livre da notice parceira.'
+          : `${nextGateState.noAgreementMessage} O teste técnico e a identificação da parceira podem continuar visíveis, mas o uso documental fica bloqueado.`)
+      : 'Acordos aplicados sem exigência de acordo explícito prévio. Ainda assim, teste técnico não substitui decisão política nem libera modificação livre da notice parceira.';
+
+    if (gateBlocked) {
+      setPartnerDocumentActionsState('agreement_blocked', row, nextGateState);
+      return;
+    }
+
+    if (row?.import_allowed) {
+      setPartnerDocumentActionsState('import_allowed', row, nextGateState);
+      return;
+    }
+    if (row?.compare_allowed) {
+      setPartnerDocumentActionsState('compare_only', row, nextGateState);
+      return;
+    }
+    setPartnerDocumentActionsState('registered_but_blocked', row, nextGateState);
   }
+
 
   function getCurrentPartnerSlug() {
     return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
@@ -13909,13 +14230,14 @@ ${decisionSummary}` : '',
     return '';
   }
 
-  function setBookPartnerGovernanceState(mode = 'free', row = null) {
+  function setBookPartnerGovernanceState(mode = 'free', row = null, gateState = null) {
     if (!bookSourceRecordIdEl || !bookSourceRecordUrlEl || !bookImportFormatEl || !bookImportMethodEl || !bookProvenanceNoteEl || !bookPartnerPolicyHintEl) {
       return;
     }
 
-    const compareAllowed = !!row?.compare_allowed;
-    const importAllowed = !!row?.import_allowed;
+    const nextGateState = gateState || getPartnerAgreementGateState('', null);
+    const compareAllowed = !!row?.compare_allowed && !nextGateState.catalogacaoGateBlocked;
+    const importAllowed = !!row?.import_allowed && !nextGateState.catalogacaoGateBlocked;
     const compareNodes = [bookSourceRecordIdEl, bookSourceRecordUrlEl, bookProvenanceNoteEl];
     const importNodes = [bookImportFormatEl, bookImportMethodEl];
 
@@ -13936,7 +14258,7 @@ ${decisionSummary}` : '',
     if (mode === 'needs_partner_slug') {
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
-      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiros externos” para liberar comparação documental aqui.';
+      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiras externas” para liberar comparação documental aqui.';
       return;
     }
 
@@ -13944,6 +14266,13 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = 'Esta parceira ainda não foi formalizada na base de governança. Comparação e importação ficam bloqueadas.';
+      return;
+    }
+
+    if (mode === 'agreement_blocked') {
+      compareNodes.forEach((node) => { node.disabled = true; });
+      importNodes.forEach((node) => { node.disabled = true; });
+      bookPartnerPolicyHintEl.textContent = `${nextGateState.noAgreementMessage} Os campos documentários desta ficha ficaram bloqueados até os acordos serem definidos no painel.`;
       return;
     }
 
@@ -13987,7 +14316,13 @@ ${decisionSummary}` : '',
         setBookPartnerGovernanceState('missing_policy');
         return;
       }
-      setBookPartnerGovernanceState('governed', row);
+      const governanceState = await loadPartnerAgreementGovernance();
+      const gateState = getPartnerAgreementGateState(governedSlug, governanceState);
+      if (gateState.catalogacaoGateBlocked) {
+        setBookPartnerGovernanceState('agreement_blocked', row, gateState);
+        return;
+      }
+      setBookPartnerGovernanceState('governed', row, gateState);
     } catch (error) {
       console.error('Falha ao aplicar governança parceira na ficha do livro:', error);
       setBookPartnerGovernanceState('missing_policy');
@@ -14004,47 +14339,58 @@ ${decisionSummary}` : '',
 
     if (!slug) {
       clearPartnerPolicyReadout();
-      if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para ler a situação na base.', 'warn');
+      if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para aplicar os acordos desta parceira.', 'warn');
       return;
     }
 
     try {
-      const row = await fetchPartnerPolicyRowBySlug(slug);
+      const [row, governanceState] = await Promise.all([
+        fetchPartnerPolicyRowBySlug(slug),
+        loadPartnerAgreementGovernance(!!options.forceGovernanceReload),
+      ]);
+      const gateState = getPartnerAgreementGateState(slug, governanceState);
 
       if (!row) {
         clearPartnerPolicyReadout();
         relationshipStatusEl.value = 'Parceira não cadastrada';
-        policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança. Em catalogação, isso impede comparação ativa e importação.';
+        setPartnerAgreementGateReadout(gateState, null, slug);
+        policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança relacional. Em catalogação, isso impede comparação ativa e importação.';
         politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
-        setPartnerDocumentActionsState('not_registered');
+        setPartnerDocumentActionsState('not_registered', null, gateState);
+        await refreshBookPartnerGovernanceUi({ silent: true });
         if (!silent) setPartnerProbeMessage('Parceira ainda não cadastrada na base de governança.', 'warn');
         return;
       }
 
-      setPartnerPolicyReadout(row);
+      setPartnerPolicyReadout(row, gateState);
       if (String(bookPartnerSourceEl?.value || '').trim() === 'other_partner' && !getBookPartnerGovernanceSlugValue()) {
         setBookPartnerGovernanceSlugValue(slug);
       }
       await refreshBookPartnerGovernanceUi({ silent: true });
       if (!silent) {
-        setPartnerProbeMessage(
-          row.mutualize_allowed
-            ? 'Situação relacional lida da base. Comparação documental, importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
-            : row.import_allowed
-              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
-              : row.compare_allowed
-                ? 'Situação relacional lida da base. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último teste técnico e não libera importação.'
-                : 'Situação relacional lida da base. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
-          row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
-        );
+        if (gateState.catalogacaoGateBlocked) {
+          setPartnerProbeMessage(`${gateState.noAgreementMessage} A leitura política continua visível, mas o uso documental desta parceira fica bloqueado aqui.`, 'warn');
+        } else {
+          setPartnerProbeMessage(
+            row.mutualize_allowed
+              ? 'Acordos desta parceira aplicados. Comparação documental, importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
+              : row.import_allowed
+                ? 'Acordos desta parceira aplicados. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
+                : row.compare_allowed
+                  ? 'Acordos desta parceira aplicados. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último teste técnico e não libera importação.'
+                  : 'Acordos desta parceira aplicados. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
+            row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
+          );
+        }
       }
     } catch (error) {
       console.error('Falha ao ler política documental da parceira:', error);
       clearPartnerPolicyReadout();
       await refreshBookPartnerGovernanceUi({ silent: true });
-      setPartnerProbeMessage('Não consegui ler a situação desta parceira na base.', 'error');
+      setPartnerProbeMessage('Não consegui aplicar os acordos desta parceira a partir da base.', 'error');
     }
   }
+
 
   renderPartnerPresetOptions(mergePartnerOptionRecords([]));
   setPartnerPresetHint();
@@ -14123,11 +14469,26 @@ ${decisionSummary}` : '',
 
   refreshPolicyBtn?.addEventListener('click', async () => {
     await loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
-    await refreshPartnerPolicy();
+    await refreshPartnerPolicy({ forceGovernanceReload: true });
   });
 
   slugEl.addEventListener('change', () => {
     slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
+    refreshPartnerPolicy({ silent: true });
+  });
+
+  displayEl.addEventListener('change', () => {
+    if (!String(slugEl.value || '').trim()) {
+      slugEl.value = normalizePartnerSlug(displayEl.value || baseUrlEl.value || '');
+    }
+    refreshPartnerPolicy({ silent: true });
+  });
+
+  baseUrlEl.addEventListener('change', () => {
+    baseUrlEl.value = normalizePartnerBaseUrl(baseUrlEl.value || '');
+    if (!String(slugEl.value || '').trim()) {
+      slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
+    }
     refreshPartnerPolicy({ silent: true });
   });
 
@@ -14368,9 +14729,8 @@ ${decisionSummary}` : '',
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
-      const shouldReload = eventName === 'SIGNED_IN' || eventName === 'USER_UPDATED' || eventName === 'INITIAL_SESSION';
       const allowAnonymousReset = eventName === 'SIGNED_OUT';
-      await syncCatalogacaoAuthState(session, { reloadData: shouldReload, allowAnonymousReset });
+      await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset });
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
@@ -14392,14 +14752,7 @@ ${decisionSummary}` : '',
     catalogacaoAuthBootstrapping = false;
     await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
 
-    if (!state.session?.user?.id) {
-      setTimeout(async () => {
-        const lateSession = await getConfirmedCurrentSession({ attempts: 10, delayMs: 200 });
-        if (lateSession?.user?.id) {
-          await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
-        }
-      }, 700);
-    }
+    // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
 
   </script>
 </body>
