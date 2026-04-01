@@ -3238,6 +3238,75 @@
         </div>
       </div>
       <div class="panel-body">
+        <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
+          <h4>Recepção artesanal de catálogos externos</h4>
+          <p class="hint" style="margin:0 0 12px;">
+            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa notices automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
+          </p>
+
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field" style="grid-column: span 2;">
+              <label for="partnerIncomingCatalogFile">Arquivo recebido</label>
+              <input id="partnerIncomingCatalogFile" class="sr-only" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.ods,.pdf,.json,.xml,.zip,text/csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,application/json,application/xml,text/xml" />
+              <div class="file-row">
+                <label for="partnerIncomingCatalogFile" class="file-button">Escolher arquivo</label>
+                <span id="partnerIncomingCatalogFileName" class="file-status">Nenhum arquivo selecionado</span>
+              </div>
+              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura é apenas local e preparatória.</small>
+            </div>
+
+            <div class="field">
+              <label for="partnerIncomingLibraryName">Nome da biblioteca</label>
+              <input id="partnerIncomingLibraryName" type="text" placeholder="Biblioteca Libertária da Maloca" />
+            </div>
+
+            <div class="field">
+              <label for="partnerIncomingLibraryShortName">Nome curto</label>
+              <input id="partnerIncomingLibraryShortName" type="text" placeholder="Biblioteca da Maloca" />
+            </div>
+          </div>
+
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerIncomingLibrarySlug">Slug sugerido / local</label>
+              <input id="partnerIncomingLibrarySlug" type="text" placeholder="biblioteca-da-maloca" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
+            </div>
+
+            <div class="field">
+              <label for="partnerIncomingLibraryAcronym">Sigla / acrônimo</label>
+              <input id="partnerIncomingLibraryAcronym" type="text" placeholder="BLM" />
+            </div>
+
+            <div class="field">
+              <label for="partnerIncomingLibraryTerritory">Cidade / território</label>
+              <input id="partnerIncomingLibraryTerritory" type="text" placeholder="Salvador, BA / Recôncavo / Amazônia..." />
+            </div>
+
+            <div class="field">
+              <label for="partnerIncomingCatalogNote">Nota curta do recebimento</label>
+              <input id="partnerIncomingCatalogNote" type="text" placeholder="Catálogo artesanal enviado por e-mail / planilha local / PDF de acervo..." />
+            </div>
+          </div>
+
+          <div class="actions" style="margin-bottom:12px;">
+            <button id="partnerReadIncomingCatalogBtn" class="button secondary" type="button">Ler arquivo local</button>
+            <button id="partnerApplyIncomingIdentityBtn" class="button secondary" type="button">Levar identificação para a governança abaixo</button>
+            <button id="partnerClearIncomingCatalogBtn" class="button ghost" type="button">Limpar recepção</button>
+          </div>
+
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+            <div class="field">
+              <label for="partnerIncomingCatalogSummary">Leitura local do arquivo recebido</label>
+              <textarea id="partnerIncomingCatalogSummary" rows="7" readonly placeholder="O resumo local do arquivo recebido aparecerá aqui."></textarea>
+            </div>
+            <div class="field">
+              <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
+              <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
+              <small id="partnerIncomingCatalogHint">Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
+            </div>
+          </div>
+        </div>
+
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
           <h4>Parceiras externas: situação relacional e governança documental</h4>
           <p class="hint" style="margin:0 0 12px;">
@@ -3283,9 +3352,9 @@
             <div class="field">
               <label for="partnerPresetSelect">Parceiro conhecido</label>
               <select id="partnerPresetSelect">
-                <option value="">Seleciona uma parceira conhecida (base canônica ou ajuda local)</option>
+                <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
               </select>
-              <small id="partnerPresetHint">A base deve prevalecer como fonte canônica quando houver correspondência. Os presets do front ficam apenas como ajuda local enquanto a parceira não estiver formalizada na base.</small>
+              <small id="partnerPresetHint">A lista combina ajuda local vinda do front com parceiras já formalizadas na base. A base deve prevalecer como fonte canônica quando houver correspondência.</small>
             </div>
         
             <div class="field">
@@ -12534,6 +12603,21 @@ function initPartnerProbeUi() {
   const applyImportPrepBtn = document.getElementById('partnerApplyImportPrepBtn');
   const clearImportPrepBtn = document.getElementById('partnerClearImportPrepBtn');
 
+  const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
+  const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
+  const incomingLibraryNameEl = document.getElementById('partnerIncomingLibraryName');
+  const incomingLibraryShortNameEl = document.getElementById('partnerIncomingLibraryShortName');
+  const incomingLibrarySlugEl = document.getElementById('partnerIncomingLibrarySlug');
+  const incomingLibraryAcronymEl = document.getElementById('partnerIncomingLibraryAcronym');
+  const incomingLibraryTerritoryEl = document.getElementById('partnerIncomingLibraryTerritory');
+  const incomingCatalogNoteEl = document.getElementById('partnerIncomingCatalogNote');
+  const readIncomingCatalogBtn = document.getElementById('partnerReadIncomingCatalogBtn');
+  const applyIncomingIdentityBtn = document.getElementById('partnerApplyIncomingIdentityBtn');
+  const clearIncomingCatalogBtn = document.getElementById('partnerClearIncomingCatalogBtn');
+  const incomingCatalogSummaryEl = document.getElementById('partnerIncomingCatalogSummary');
+  const incomingIdentityPreviewEl = document.getElementById('partnerIncomingIdentityPreview');
+  const incomingCatalogHintEl = document.getElementById('partnerIncomingCatalogHint');
+
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
     !confidenceEl || !countryEl || !notesEl || !discoveryUrlEl || !analyzeUrlBtn || !applyUrlSuggestionBtn || !clearUrlSuggestionBtn || !urlSuggestionOutputEl ||
@@ -12582,7 +12666,256 @@ function initPartnerProbeUi() {
   };
   const partnerOptionRegistry = new Map();
   let partnerUrlSuggestionState = null;
-  let partnerBaseOptionsCount = 0;
+  let incomingCatalogFileAnalysis = null;
+
+  function formatIncomingCatalogFileSize(size = 0) {
+    const value = Number(size || 0);
+    if (!Number.isFinite(value) || value <= 0) return '0 B';
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  function getIncomingCatalogFileKind(fileName = '') {
+    const lower = String(fileName || '').trim().toLowerCase();
+    if (!lower) return 'desconhecido';
+    if (lower.endsWith('.csv')) return 'csv';
+    if (lower.endsWith('.tsv')) return 'tsv';
+    if (lower.endsWith('.txt')) return 'txt';
+    if (lower.endsWith('.xlsx')) return 'xlsx';
+    if (lower.endsWith('.xls')) return 'xls';
+    if (lower.endsWith('.ods')) return 'ods';
+    if (lower.endsWith('.pdf')) return 'pdf';
+    if (lower.endsWith('.json')) return 'json';
+    if (lower.endsWith('.xml')) return 'xml';
+    if (lower.endsWith('.zip')) return 'zip';
+    return 'desconhecido';
+  }
+
+  function detectIncomingDelimitedSeparator(headerLine = '') {
+    const candidates = [
+      { sep: ';', label: 'ponto e vírgula' },
+      { sep: ',', label: 'vírgula' },
+      { sep: '\t', label: 'tabulação' },
+      { sep: '|', label: 'barra vertical' },
+    ];
+    const scored = candidates
+      .map((item) => ({ ...item, count: String(headerLine || '').split(item.sep).length }))
+      .sort((a, b) => b.count - a.count);
+    return scored[0] && scored[0].count > 1 ? scored[0] : { sep: ',', label: 'vírgula', count: 1 };
+  }
+
+  function buildIncomingCatalogIdentity() {
+    const libraryName = normalizeInlineWhitespace(incomingLibraryNameEl?.value || '');
+    const shortName = normalizeInlineWhitespace(incomingLibraryShortNameEl?.value || '');
+    const acronym = normalizeInlineWhitespace(incomingLibraryAcronymEl?.value || '').toUpperCase();
+    const territory = normalizeInlineWhitespace(incomingLibraryTerritoryEl?.value || '');
+    const note = normalizeInlineWhitespace(incomingCatalogNoteEl?.value || '');
+    const slugSource = normalizeInlineWhitespace(incomingLibrarySlugEl?.value || '')
+      || normalizeInlineWhitespace(shortName || libraryName || acronym || '');
+    const slug = normalizePartnerSlug(slugSource);
+    return { libraryName, shortName, slug, acronym, territory, note };
+  }
+
+  function renderIncomingCatalogIdentityPreview() {
+    if (!incomingIdentityPreviewEl || !incomingCatalogHintEl) return;
+    const identity = buildIncomingCatalogIdentity();
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const fileKind = file ? getIncomingCatalogFileKind(file.name) : '—';
+    const noteParts = [];
+    if (identity.note) noteParts.push(identity.note);
+    if (file && fileKind && fileKind !== 'desconhecido') noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
+    incomingIdentityPreviewEl.value = [
+      `Nome da biblioteca → ${identity.libraryName || '—'}`,
+      `Nome curto → ${identity.shortName || '—'}`,
+      `Slug local → ${identity.slug || '—'}`,
+      `Sigla / acrônimo → ${identity.acronym || '—'}`,
+      `Cidade / território → ${identity.territory || '—'}`,
+      `Nota curta → ${noteParts.join(' ') || '—'}`,
+      `Leitura desta etapa → recepção artesanal local; sem importação automática; sem decisão política automática.`
+    ].join('\n');
+
+    if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
+      incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se quiseres, para os campos de governança documental abaixo.';
+    } else {
+      incomingCatalogHintEl.textContent = 'Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
+    }
+  }
+
+  function updateIncomingCatalogFileName() {
+    if (!incomingCatalogFileNameEl) return;
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    incomingCatalogFileNameEl.textContent = file ? `${file.name} · ${formatIncomingCatalogFileSize(file.size)}` : 'Nenhum arquivo selecionado';
+  }
+
+  function resetIncomingCatalogReception({ keepIdentity = false } = {}) {
+    incomingCatalogFileAnalysis = null;
+    if (incomingCatalogFileEl) incomingCatalogFileEl.value = '';
+    updateIncomingCatalogFileName();
+    if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = '';
+    if (!keepIdentity) {
+      [incomingLibraryNameEl, incomingLibraryShortNameEl, incomingLibrarySlugEl, incomingLibraryAcronymEl, incomingLibraryTerritoryEl, incomingCatalogNoteEl].forEach((node) => {
+        if (node) node.value = '';
+      });
+    }
+    renderIncomingCatalogIdentityPreview();
+    if (incomingCatalogHintEl) {
+      incomingCatalogHintEl.textContent = 'Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.';
+    }
+  }
+
+  function buildIncomingCatalogSummaryText(file, analysis = null) {
+    if (!file) {
+      return 'Nenhum arquivo local selecionado ainda.';
+    }
+    const kind = getIncomingCatalogFileKind(file.name);
+    const lines = [
+      `Arquivo recebido: ${file.name}`,
+      `Formato detectado: ${kind.toUpperCase()}`,
+      `Tamanho: ${formatIncomingCatalogFileSize(file.size)}`,
+      `Última modificação: ${file.lastModified ? new Date(file.lastModified).toLocaleString('pt-BR') : '—'}`,
+    ];
+    if (analysis?.summaryLines?.length) {
+      lines.push('', ...analysis.summaryLines);
+    } else {
+      lines.push('', 'Leitura local ainda não executada ou sem pré-visualização disponível para este formato.');
+    }
+    lines.push('', 'Lembrete: esta recepção é apenas local e preparatória. Ela não cria parceira, não altera a política documental e não importa notices automaticamente.');
+    return lines.join('\n');
+  }
+
+  function summarizeIncomingDelimitedText(text = '', delimiterLabel = 'vírgula') {
+    const rawLines = String(text || '').split(/\r?\n/).filter((line) => line.trim());
+    const headerLine = rawLines[0] || '';
+    const separator = detectIncomingDelimitedSeparator(headerLine);
+    const columns = headerLine ? headerLine.split(separator.sep).map((item) => normalizeInlineWhitespace(item)) : [];
+    const sampleLine = rawLines[1] || '';
+    const sampleValues = sampleLine ? sampleLine.split(separator.sep).map((item) => normalizeInlineWhitespace(item)) : [];
+    const previewPairs = columns.slice(0, 5).map((column, index) => `${column || `coluna ${index + 1}`}: ${sampleValues[index] || '—'}`);
+    return {
+      summaryLines: [
+        `Leitura local do cabeçalho: delimitador provável = ${separator.label}.`,
+        `Colunas detectadas: ${columns.length || 0}.`,
+        `Campos principais: ${columns.slice(0, 8).join(' | ') || '—'}.`,
+        `Primeira linha de dados (prévia): ${previewPairs.join(' · ') || '—'}.`,
+        `Linhas lidas nesta prévia local: ${rawLines.length || 0}.`,
+      ]
+    };
+  }
+
+  function summarizeIncomingTextFile(text = '', fileKind = 'txt') {
+    if (fileKind === 'csv' || fileKind === 'tsv') {
+      return summarizeIncomingDelimitedText(text, fileKind === 'tsv' ? 'tabulação' : 'vírgula');
+    }
+    if (fileKind === 'json') {
+      const preview = normalizeInlineWhitespace(text).slice(0, 320);
+      return {
+        summaryLines: [
+          'Arquivo JSON lido localmente.',
+          `Prévia do conteúdo: ${preview || '—'}.`,
+        ]
+      };
+    }
+    if (fileKind === 'xml') {
+      const preview = normalizeInlineWhitespace(text).slice(0, 320);
+      return {
+        summaryLines: [
+          'Arquivo XML lido localmente.',
+          `Prévia do conteúdo: ${preview || '—'}.`,
+        ]
+      };
+    }
+    const lines = String(text || '').split(/\r?\n/).filter((line) => line.trim());
+    return {
+      summaryLines: [
+        'Arquivo textual lido localmente.',
+        `Primeira linha: ${normalizeInlineWhitespace(lines[0] || '') || '—'}.`,
+        `Segunda linha: ${normalizeInlineWhitespace(lines[1] || '') || '—'}.`,
+        `Linhas lidas nesta prévia local: ${lines.length || 0}.`,
+      ]
+    };
+  }
+
+  function readIncomingCatalogTextPreview(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('Falha ao ler o arquivo local.'));
+      reader.readAsText(file.slice(0, 160000), 'utf-8');
+    });
+  }
+
+  async function analyzeIncomingCatalogFile() {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    if (!file) {
+      if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = 'Nenhum arquivo local selecionado ainda.';
+      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolhe primeiro um arquivo artesanal recebido antes de pedir a leitura local.';
+      setPartnerProbeMessage('Escolhe primeiro um arquivo artesanal recebido para esta biblioteca.', 'warn');
+      return;
+    }
+    const kind = getIncomingCatalogFileKind(file.name);
+    try {
+      if (['csv', 'tsv', 'txt', 'json', 'xml'].includes(kind)) {
+        const textPreview = await readIncomingCatalogTextPreview(file);
+        incomingCatalogFileAnalysis = summarizeIncomingTextFile(textPreview, kind);
+      } else {
+        incomingCatalogFileAnalysis = {
+          summaryLines: [
+            `Formato ${kind.toUpperCase()} detectado.`,
+            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato virá depois, de forma controlada.',
+          ]
+        };
+      }
+      if (incomingCatalogSummaryEl) {
+        incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, incomingCatalogFileAnalysis);
+      }
+      if (incomingCatalogHintEl) {
+        incomingCatalogHintEl.textContent = 'Leitura local concluída. Agora podes ligar esta recepção artesanal à identificação da biblioteca e, se precisares, levá-la para a governança abaixo.';
+      }
+      setPartnerProbeMessage('Arquivo artesanal lido localmente. Nenhuma importação nem decisão política foi feita.', 'info');
+    } catch (error) {
+      incomingCatalogFileAnalysis = null;
+      if (incomingCatalogSummaryEl) {
+        incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, null);
+      }
+      if (incomingCatalogHintEl) {
+        incomingCatalogHintEl.textContent = 'Não consegui ler a prévia local deste arquivo. Mesmo assim, podes registrar a identificação da biblioteca e seguir sem importação automática.';
+      }
+      setPartnerProbeMessage(`Não consegui ler a prévia local do arquivo: ${error?.message || error}`, 'warn');
+    }
+  }
+
+  function applyIncomingIdentityToGovernance() {
+    const identity = buildIncomingCatalogIdentity();
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const fileKind = file ? getIncomingCatalogFileKind(file.name) : '';
+    const nextDisplayName = identity.shortName || identity.libraryName || identity.acronym;
+    const noteParts = [];
+    if (identity.note) noteParts.push(identity.note);
+    if (identity.territory) noteParts.push(`Território informado: ${identity.territory}.`);
+    if (fileKind) noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
+    if (!nextDisplayName && !identity.slug) {
+      setPartnerProbeMessage('Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
+      return;
+    }
+    if (displayEl && nextDisplayName) displayEl.value = nextDisplayName;
+    if (slugEl && identity.slug) slugEl.value = identity.slug;
+    if (notesEl && noteParts.length) {
+      const noteText = noteParts.join(' ');
+      const current = normalizeInlineWhitespace(notesEl.value || '');
+      if (!current) {
+        notesEl.value = noteText;
+      } else if (!current.includes(noteText)) {
+        notesEl.value = `${current} ${noteText}`.trim();
+      }
+    }
+    if (familyEl && !String(familyEl.value || '').trim()) familyEl.value = 'unknown';
+    if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
+    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar notices.', 'ok');
+  }
 
   function clearPartnerUrlSuggestionReadout() {
     partnerUrlSuggestionState = null;
@@ -12772,8 +13105,6 @@ function initPartnerProbeUi() {
     if (suggestion.match && presetEl.querySelector(`option[value="${suggestion.match.slug}"]`)) {
       presetEl.value = suggestion.match.slug;
     }
-    syncPresetSelectionFromCurrentPartnerFields();
-    refreshPartnerKnownPartnerHint();
     generatePartnerArtifacts();
     refreshPartnerPolicy({ silent: true });
     setPartnerProbeMessage('Sugestão por URL aplicada localmente. Confere os campos antes de qualquer uso político ou documental.', 'ok');
@@ -12786,8 +13117,7 @@ function initPartnerProbeUi() {
   }
 
   function getCurrentPartnerLabel() {
-    const matched = findPartnerRegistryMatchByCurrentFields() || (presetEl?.value ? partnerOptionRegistry.get(presetEl.value) : null);
-    return String(displayEl.value || matched?.displayName || matched?.label || slugEl.value || '').trim();
+    return String(displayEl.value || presetEl.options[presetEl.selectedIndex]?.textContent || slugEl.value || '').trim();
   }
 
   function getReverseGovernedBookPartnerSource(slug) {
@@ -12796,100 +13126,7 @@ function initPartnerProbeUi() {
 
   function setPartnerPresetHint(text = '') {
     if (!presetHintEl) return;
-    presetHintEl.textContent = text || 'A base é a fonte canônica quando houver correspondência. Os presets do front ficam apenas como ajuda local.';
-  }
-
-  function isPartnerOptionBackedByBase(record = null) {
-    return String(record?.sourceTag || '').includes('base');
-  }
-
-  function getPartnerOptionDisplayLabel(record = {}) {
-    const baseLabel = String(record?.label || record?.displayName || record?.slug || '').trim();
-    if (!baseLabel) return '';
-    return `${baseLabel}${isPartnerOptionBackedByBase(record) ? ' · base' : ' · ajuda local'}`;
-  }
-
-  function getPartnerRegistryRecords() {
-    return Array.from(partnerOptionRegistry.values());
-  }
-
-  function findPartnerRegistryMatchByCurrentFields() {
-    const slug = normalizePartnerSlug(slugEl?.value || presetEl?.value || '');
-    const baseUrl = normalizePartnerBaseUrl(baseUrlEl?.value || '');
-    const displayNameKey = normalizeForSearch(displayEl?.value || '');
-    const records = getPartnerRegistryRecords();
-    const rankRecords = (items = []) => items.sort((left, right) => {
-      const leftRank = isPartnerOptionBackedByBase(left) ? 0 : 1;
-      const rightRank = isPartnerOptionBackedByBase(right) ? 0 : 1;
-      if (leftRank !== rightRank) return leftRank - rightRank;
-      return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
-    });
-
-    if (slug) {
-      const exactSlug = rankRecords(records.filter((record) => record.slug === slug))[0];
-      if (exactSlug) return exactSlug;
-    }
-
-    if (baseUrl) {
-      const exactBaseUrl = rankRecords(records.filter((record) => normalizePartnerBaseUrl(record.baseUrl || '') === baseUrl))[0];
-      if (exactBaseUrl) return exactBaseUrl;
-    }
-
-    if (displayNameKey) {
-      const exactDisplay = rankRecords(records.filter((record) => normalizeForSearch(record.displayName || record.label || '') === displayNameKey))[0];
-      if (exactDisplay) return exactDisplay;
-    }
-
-    return null;
-  }
-
-  function syncPresetSelectionFromCurrentPartnerFields() {
-    const matched = findPartnerRegistryMatchByCurrentFields();
-    if (matched && presetEl?.querySelector(`option[value="${matched.slug}"]`)) {
-      presetEl.value = matched.slug;
-      return matched;
-    }
-    return null;
-  }
-
-  function applyCanonicalPartnerRecord(record = null) {
-    if (!record) return false;
-    displayEl.value = record.displayName || displayEl.value || '';
-    slugEl.value = record.slug || slugEl.value || '';
-    baseUrlEl.value = record.baseUrl || baseUrlEl.value || '';
-    if (record.softwareFamily && familyEl.querySelector(`option[value="${record.softwareFamily}"]`)) {
-      familyEl.value = record.softwareFamily;
-    }
-    if (record.softwareConfidence && confidenceEl.querySelector(`option[value="${record.softwareConfidence}"]`)) {
-      confidenceEl.value = record.softwareConfidence;
-    }
-    if (record.countryCode) {
-      countryEl.value = record.countryCode;
-    }
-    if (record.notes) {
-      notesEl.value = record.notes;
-    }
-    if (presetEl?.querySelector(`option[value="${record.slug}"]`)) {
-      presetEl.value = record.slug;
-    }
-    return true;
-  }
-
-  function refreshPartnerKnownPartnerHint() {
-    const matched = findPartnerRegistryMatchByCurrentFields() || (presetEl?.value ? partnerOptionRegistry.get(presetEl.value) : null);
-    if (matched && isPartnerOptionBackedByBase(matched)) {
-      setPartnerPresetHint(`Parceira conhecida: ${matched.displayName || matched.label}. Esta entrada está formalizada na base e é a fonte canônica para preencher nome, slug, base URL e metadados desta parceira.`);
-      return;
-    }
-    if (matched) {
-      setPartnerPresetHint(`Parceira conhecida: ${matched.displayName || matched.label}. Esta entrada vem apenas da ajuda local do front; a base continua sendo a única fonte canônica quando houver formalização.`);
-      return;
-    }
-    if (partnerBaseOptionsCount > 0) {
-      setPartnerPresetHint(`A base trouxe ${partnerBaseOptionsCount} parceira(s) formalizada(s). Quando houver correspondência, a base prevalece; os presets seguem apenas como ajuda local.`);
-      return;
-    }
-    setPartnerPresetHint('Nenhuma parceira formalizada foi lida da base agora. Os presets seguem apenas como ajuda local desta versão.');
+    presetHintEl.textContent = text || 'A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.';
   }
 
   function buildPartnerOptionFromPreset(preset = {}) {
@@ -12951,30 +13188,24 @@ function initPartnerProbeUi() {
         merged.set(option.slug, option);
       }
     });
-    return Array.from(merged.values()).sort((left, right) => {
-      const leftRank = isPartnerOptionBackedByBase(left) ? 0 : 1;
-      const rightRank = isPartnerOptionBackedByBase(right) ? 0 : 1;
-      if (leftRank !== rightRank) return leftRank - rightRank;
-      return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
-    });
+    return Array.from(merged.values()).sort((left, right) => left.label.localeCompare(right.label, 'pt-BR', { sensitivity: 'base' }));
   }
 
   function renderPartnerPresetOptions(records = [], preferredValue = '') {
     const currentValue = String(preferredValue || presetEl.value || '').trim();
     partnerOptionRegistry.clear();
-    presetEl.innerHTML = '<option value="">Seleciona uma parceira conhecida (base canônica ou ajuda local)</option>';
+    presetEl.innerHTML = '<option value="">Seleciona uma parceira conhecida (preset ou base)</option>';
     records.forEach((record) => {
       partnerOptionRegistry.set(record.slug, record);
       const opt = document.createElement('option');
       opt.value = record.slug;
-      opt.textContent = getPartnerOptionDisplayLabel(record);
+      opt.textContent = record.label;
       opt.dataset.sourceTag = record.sourceTag || '';
       presetEl.appendChild(opt);
     });
     if (currentValue && partnerOptionRegistry.has(currentValue)) {
       presetEl.value = currentValue;
     }
-    refreshPartnerKnownPartnerHint();
   }
 
   async function loadPartnerPresetOptionsFromBase(options = {}) {
@@ -12988,16 +13219,16 @@ function initPartnerProbeUi() {
       if (error) throw error;
       const mergedRecords = mergePartnerOptionRecords(data || []);
       renderPartnerPresetOptions(mergedRecords, preferredValue);
-      partnerBaseOptionsCount = Array.isArray(data) ? data.length : 0;
-      syncPresetSelectionFromCurrentPartnerFields();
-      refreshPartnerKnownPartnerHint();
+      const baseCount = Array.isArray(data) ? data.length : 0;
+      setPartnerPresetHint(baseCount
+        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front.`
+        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front.');
     } catch (error) {
       console.error('Falha ao carregar parceiras conhecidas desde a base:', error);
-      partnerBaseOptionsCount = 0;
       renderPartnerPresetOptions(mergePartnerOptionRecords([]), preferredValue);
-      refreshPartnerKnownPartnerHint();
+      setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets front desta versão.');
       if (!silent) {
-        setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui apenas com a ajuda local desta versão.', 'warn');
+        setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui com os presets front desta versão.', 'warn');
       }
     }
   }
@@ -13709,19 +13940,12 @@ ${decisionSummary}` : '',
   };
 
   async function refreshPartnerPolicy(options = {}) {
-    const silent = !!options.silent;
-    const matchedRecord = syncPresetSelectionFromCurrentPartnerFields();
-    if (matchedRecord && isPartnerOptionBackedByBase(matchedRecord)) {
-      applyCanonicalPartnerRecord(matchedRecord);
-    }
-    refreshPartnerKnownPartnerHint();
-
     const slug = getCurrentPartnerSlug();
+    const silent = !!options.silent;
     slugEl.value = slug;
 
     if (!slug) {
       clearPartnerPolicyReadout();
-      refreshPartnerKnownPartnerHint();
       if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para ler a situação na base.', 'warn');
       return;
     }
@@ -13735,13 +13959,11 @@ ${decisionSummary}` : '',
         policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança. Em catalogação, isso impede comparação ativa e importação.';
         politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
         setPartnerDocumentActionsState('not_registered');
-        refreshPartnerKnownPartnerHint();
         if (!silent) setPartnerProbeMessage('Parceira ainda não cadastrada na base de governança.', 'warn');
         return;
       }
 
       setPartnerPolicyReadout(row);
-      refreshPartnerKnownPartnerHint();
       if (String(bookPartnerSourceEl?.value || '').trim() === 'other_partner' && !getBookPartnerGovernanceSlugValue()) {
         setBookPartnerGovernanceSlugValue(slug);
       }
@@ -13761,28 +13983,27 @@ ${decisionSummary}` : '',
     } catch (error) {
       console.error('Falha ao ler política documental da parceira:', error);
       clearPartnerPolicyReadout();
-      refreshPartnerKnownPartnerHint();
       await refreshBookPartnerGovernanceUi({ silent: true });
       setPartnerProbeMessage('Não consegui ler a situação desta parceira na base.', 'error');
     }
   }
 
   renderPartnerPresetOptions(mergePartnerOptionRecords([]));
-  refreshPartnerKnownPartnerHint();
+  setPartnerPresetHint();
 
   function applyPreset(presetSlug) {
     const preset = partnerOptionRegistry.get(presetSlug) || buildPartnerOptionFromPreset(PARTNER_PRESETS.find((item) => item.slug === presetSlug) || {});
     if (!preset) return;
 
-    applyCanonicalPartnerRecord(preset);
-    refreshPartnerKnownPartnerHint();
+    displayEl.value = preset.displayName || '';
+    slugEl.value = preset.slug || '';
+    baseUrlEl.value = preset.baseUrl || '';
+    familyEl.value = preset.softwareFamily || 'unknown';
+    confidenceEl.value = preset.softwareConfidence || 'unknown';
+    countryEl.value = preset.countryCode || '';
+    notesEl.value = preset.notes || '';
 
-    setPartnerProbeMessage(
-      isPartnerOptionBackedByBase(preset)
-        ? `Parceira carregada desde a base canônica: ${preset.displayName || preset.label}.`
-        : `Parceira carregada desde a ajuda local do front: ${preset.displayName || preset.label}.`,
-      'ok'
-    );
+    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
     refreshPartnerPolicy({ silent: true });
   }
 
@@ -13849,20 +14070,7 @@ ${decisionSummary}` : '',
 
   slugEl.addEventListener('change', () => {
     slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
-    syncPresetSelectionFromCurrentPartnerFields();
-    refreshPartnerKnownPartnerHint();
     refreshPartnerPolicy({ silent: true });
-  });
-
-  displayEl.addEventListener('change', () => {
-    syncPresetSelectionFromCurrentPartnerFields();
-    refreshPartnerKnownPartnerHint();
-  });
-
-  baseUrlEl.addEventListener('change', () => {
-    baseUrlEl.value = normalizePartnerBaseUrl(baseUrlEl.value || '');
-    syncPresetSelectionFromCurrentPartnerFields();
-    refreshPartnerKnownPartnerHint();
   });
 
   generateBtn?.addEventListener('click', generatePartnerArtifacts);
@@ -13949,6 +14157,46 @@ ${decisionSummary}` : '',
     });
   });
 
+  incomingCatalogFileEl?.addEventListener('change', () => {
+    incomingCatalogFileAnalysis = null;
+    updateIncomingCatalogFileName();
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    if (incomingCatalogSummaryEl) {
+      incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, null);
+    }
+    renderIncomingCatalogIdentityPreview();
+    if (incomingCatalogHintEl) {
+      incomingCatalogHintEl.textContent = file
+        ? 'Arquivo selecionado. Agora podes ler a prévia local e completar a identificação da biblioteca.'
+        : 'Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.';
+    }
+  });
+
+  [incomingLibraryNameEl, incomingLibraryShortNameEl, incomingLibrarySlugEl, incomingLibraryAcronymEl, incomingLibraryTerritoryEl, incomingCatalogNoteEl].forEach((node) => {
+    node?.addEventListener('input', () => {
+      if (node === incomingLibraryNameEl || node === incomingLibraryShortNameEl) {
+        const slugNode = incomingLibrarySlugEl;
+        if (slugNode && !String(slugNode.value || '').trim()) {
+          slugNode.value = normalizePartnerSlug(incomingLibraryShortNameEl?.value || incomingLibraryNameEl?.value || '');
+        }
+      }
+      renderIncomingCatalogIdentityPreview();
+    });
+  });
+
+  readIncomingCatalogBtn?.addEventListener('click', async () => {
+    await analyzeIncomingCatalogFile();
+  });
+
+  applyIncomingIdentityBtn?.addEventListener('click', () => {
+    applyIncomingIdentityToGovernance();
+  });
+
+  clearIncomingCatalogBtn?.addEventListener('click', () => {
+    resetIncomingCatalogReception();
+    setPartnerProbeMessage('Recepção artesanal limpa. Nenhuma alteração documental foi feita.', 'info');
+  });
+
   [importTakeSummaryEl, importSkipSummaryEl, importProvenanceSummaryEl, importDecisionSummaryEl, importFormatSelectEl, importMethodSelectEl].forEach((node) => {
     node.addEventListener(node.tagName === 'SELECT' ? 'change' : 'input', () => {
       if (partnerDocumentActionState.importWorkspaceOpen) {
@@ -13987,6 +14235,7 @@ ${decisionSummary}` : '',
     });
   });
 
+  resetIncomingCatalogReception({ keepIdentity: true });
   clearPartnerUrlSuggestionReadout();
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
