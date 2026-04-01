@@ -3283,9 +3283,9 @@
             <div class="field">
               <label for="partnerPresetSelect">Parceiro conhecido</label>
               <select id="partnerPresetSelect">
-                <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
+                <option value="">Seleciona uma parceira conhecida (base canônica ou ajuda local)</option>
               </select>
-              <small id="partnerPresetHint">A lista combina ajuda local vinda do front com parceiras já formalizadas na base. A base deve prevalecer como fonte canônica quando houver correspondência.</small>
+              <small id="partnerPresetHint">A base deve prevalecer como fonte canônica quando houver correspondência. Os presets do front ficam apenas como ajuda local enquanto a parceira não estiver formalizada na base.</small>
             </div>
         
             <div class="field">
@@ -12582,6 +12582,7 @@ function initPartnerProbeUi() {
   };
   const partnerOptionRegistry = new Map();
   let partnerUrlSuggestionState = null;
+  let partnerBaseOptionsCount = 0;
 
   function clearPartnerUrlSuggestionReadout() {
     partnerUrlSuggestionState = null;
@@ -12771,6 +12772,8 @@ function initPartnerProbeUi() {
     if (suggestion.match && presetEl.querySelector(`option[value="${suggestion.match.slug}"]`)) {
       presetEl.value = suggestion.match.slug;
     }
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
     generatePartnerArtifacts();
     refreshPartnerPolicy({ silent: true });
     setPartnerProbeMessage('Sugestão por URL aplicada localmente. Confere os campos antes de qualquer uso político ou documental.', 'ok');
@@ -12783,7 +12786,8 @@ function initPartnerProbeUi() {
   }
 
   function getCurrentPartnerLabel() {
-    return String(displayEl.value || presetEl.options[presetEl.selectedIndex]?.textContent || slugEl.value || '').trim();
+    const matched = findPartnerRegistryMatchByCurrentFields() || (presetEl?.value ? partnerOptionRegistry.get(presetEl.value) : null);
+    return String(displayEl.value || matched?.displayName || matched?.label || slugEl.value || '').trim();
   }
 
   function getReverseGovernedBookPartnerSource(slug) {
@@ -12792,7 +12796,100 @@ function initPartnerProbeUi() {
 
   function setPartnerPresetHint(text = '') {
     if (!presetHintEl) return;
-    presetHintEl.textContent = text || 'A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.';
+    presetHintEl.textContent = text || 'A base é a fonte canônica quando houver correspondência. Os presets do front ficam apenas como ajuda local.';
+  }
+
+  function isPartnerOptionBackedByBase(record = null) {
+    return String(record?.sourceTag || '').includes('base');
+  }
+
+  function getPartnerOptionDisplayLabel(record = {}) {
+    const baseLabel = String(record?.label || record?.displayName || record?.slug || '').trim();
+    if (!baseLabel) return '';
+    return `${baseLabel}${isPartnerOptionBackedByBase(record) ? ' · base' : ' · ajuda local'}`;
+  }
+
+  function getPartnerRegistryRecords() {
+    return Array.from(partnerOptionRegistry.values());
+  }
+
+  function findPartnerRegistryMatchByCurrentFields() {
+    const slug = normalizePartnerSlug(slugEl?.value || presetEl?.value || '');
+    const baseUrl = normalizePartnerBaseUrl(baseUrlEl?.value || '');
+    const displayNameKey = normalizeForSearch(displayEl?.value || '');
+    const records = getPartnerRegistryRecords();
+    const rankRecords = (items = []) => items.sort((left, right) => {
+      const leftRank = isPartnerOptionBackedByBase(left) ? 0 : 1;
+      const rightRank = isPartnerOptionBackedByBase(right) ? 0 : 1;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+    });
+
+    if (slug) {
+      const exactSlug = rankRecords(records.filter((record) => record.slug === slug))[0];
+      if (exactSlug) return exactSlug;
+    }
+
+    if (baseUrl) {
+      const exactBaseUrl = rankRecords(records.filter((record) => normalizePartnerBaseUrl(record.baseUrl || '') === baseUrl))[0];
+      if (exactBaseUrl) return exactBaseUrl;
+    }
+
+    if (displayNameKey) {
+      const exactDisplay = rankRecords(records.filter((record) => normalizeForSearch(record.displayName || record.label || '') === displayNameKey))[0];
+      if (exactDisplay) return exactDisplay;
+    }
+
+    return null;
+  }
+
+  function syncPresetSelectionFromCurrentPartnerFields() {
+    const matched = findPartnerRegistryMatchByCurrentFields();
+    if (matched && presetEl?.querySelector(`option[value="${matched.slug}"]`)) {
+      presetEl.value = matched.slug;
+      return matched;
+    }
+    return null;
+  }
+
+  function applyCanonicalPartnerRecord(record = null) {
+    if (!record) return false;
+    displayEl.value = record.displayName || displayEl.value || '';
+    slugEl.value = record.slug || slugEl.value || '';
+    baseUrlEl.value = record.baseUrl || baseUrlEl.value || '';
+    if (record.softwareFamily && familyEl.querySelector(`option[value="${record.softwareFamily}"]`)) {
+      familyEl.value = record.softwareFamily;
+    }
+    if (record.softwareConfidence && confidenceEl.querySelector(`option[value="${record.softwareConfidence}"]`)) {
+      confidenceEl.value = record.softwareConfidence;
+    }
+    if (record.countryCode) {
+      countryEl.value = record.countryCode;
+    }
+    if (record.notes) {
+      notesEl.value = record.notes;
+    }
+    if (presetEl?.querySelector(`option[value="${record.slug}"]`)) {
+      presetEl.value = record.slug;
+    }
+    return true;
+  }
+
+  function refreshPartnerKnownPartnerHint() {
+    const matched = findPartnerRegistryMatchByCurrentFields() || (presetEl?.value ? partnerOptionRegistry.get(presetEl.value) : null);
+    if (matched && isPartnerOptionBackedByBase(matched)) {
+      setPartnerPresetHint(`Parceira conhecida: ${matched.displayName || matched.label}. Esta entrada está formalizada na base e é a fonte canônica para preencher nome, slug, base URL e metadados desta parceira.`);
+      return;
+    }
+    if (matched) {
+      setPartnerPresetHint(`Parceira conhecida: ${matched.displayName || matched.label}. Esta entrada vem apenas da ajuda local do front; a base continua sendo a única fonte canônica quando houver formalização.`);
+      return;
+    }
+    if (partnerBaseOptionsCount > 0) {
+      setPartnerPresetHint(`A base trouxe ${partnerBaseOptionsCount} parceira(s) formalizada(s). Quando houver correspondência, a base prevalece; os presets seguem apenas como ajuda local.`);
+      return;
+    }
+    setPartnerPresetHint('Nenhuma parceira formalizada foi lida da base agora. Os presets seguem apenas como ajuda local desta versão.');
   }
 
   function buildPartnerOptionFromPreset(preset = {}) {
@@ -12854,24 +12951,30 @@ function initPartnerProbeUi() {
         merged.set(option.slug, option);
       }
     });
-    return Array.from(merged.values()).sort((left, right) => left.label.localeCompare(right.label, 'pt-BR', { sensitivity: 'base' }));
+    return Array.from(merged.values()).sort((left, right) => {
+      const leftRank = isPartnerOptionBackedByBase(left) ? 0 : 1;
+      const rightRank = isPartnerOptionBackedByBase(right) ? 0 : 1;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return String(left.label || '').localeCompare(String(right.label || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   }
 
   function renderPartnerPresetOptions(records = [], preferredValue = '') {
     const currentValue = String(preferredValue || presetEl.value || '').trim();
     partnerOptionRegistry.clear();
-    presetEl.innerHTML = '<option value="">Seleciona uma parceira conhecida (preset ou base)</option>';
+    presetEl.innerHTML = '<option value="">Seleciona uma parceira conhecida (base canônica ou ajuda local)</option>';
     records.forEach((record) => {
       partnerOptionRegistry.set(record.slug, record);
       const opt = document.createElement('option');
       opt.value = record.slug;
-      opt.textContent = record.label;
+      opt.textContent = getPartnerOptionDisplayLabel(record);
       opt.dataset.sourceTag = record.sourceTag || '';
       presetEl.appendChild(opt);
     });
     if (currentValue && partnerOptionRegistry.has(currentValue)) {
       presetEl.value = currentValue;
     }
+    refreshPartnerKnownPartnerHint();
   }
 
   async function loadPartnerPresetOptionsFromBase(options = {}) {
@@ -12885,16 +12988,16 @@ function initPartnerProbeUi() {
       if (error) throw error;
       const mergedRecords = mergePartnerOptionRecords(data || []);
       renderPartnerPresetOptions(mergedRecords, preferredValue);
-      const baseCount = Array.isArray(data) ? data.length : 0;
-      setPartnerPresetHint(baseCount
-        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front.`
-        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front.');
+      partnerBaseOptionsCount = Array.isArray(data) ? data.length : 0;
+      syncPresetSelectionFromCurrentPartnerFields();
+      refreshPartnerKnownPartnerHint();
     } catch (error) {
       console.error('Falha ao carregar parceiras conhecidas desde a base:', error);
+      partnerBaseOptionsCount = 0;
       renderPartnerPresetOptions(mergePartnerOptionRecords([]), preferredValue);
-      setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets front desta versão.');
+      refreshPartnerKnownPartnerHint();
       if (!silent) {
-        setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui com os presets front desta versão.', 'warn');
+        setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui apenas com a ajuda local desta versão.', 'warn');
       }
     }
   }
@@ -13606,12 +13709,19 @@ ${decisionSummary}` : '',
   };
 
   async function refreshPartnerPolicy(options = {}) {
-    const slug = getCurrentPartnerSlug();
     const silent = !!options.silent;
+    const matchedRecord = syncPresetSelectionFromCurrentPartnerFields();
+    if (matchedRecord && isPartnerOptionBackedByBase(matchedRecord)) {
+      applyCanonicalPartnerRecord(matchedRecord);
+    }
+    refreshPartnerKnownPartnerHint();
+
+    const slug = getCurrentPartnerSlug();
     slugEl.value = slug;
 
     if (!slug) {
       clearPartnerPolicyReadout();
+      refreshPartnerKnownPartnerHint();
       if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para ler a situação na base.', 'warn');
       return;
     }
@@ -13625,11 +13735,13 @@ ${decisionSummary}` : '',
         policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança. Em catalogação, isso impede comparação ativa e importação.';
         politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
         setPartnerDocumentActionsState('not_registered');
+        refreshPartnerKnownPartnerHint();
         if (!silent) setPartnerProbeMessage('Parceira ainda não cadastrada na base de governança.', 'warn');
         return;
       }
 
       setPartnerPolicyReadout(row);
+      refreshPartnerKnownPartnerHint();
       if (String(bookPartnerSourceEl?.value || '').trim() === 'other_partner' && !getBookPartnerGovernanceSlugValue()) {
         setBookPartnerGovernanceSlugValue(slug);
       }
@@ -13649,27 +13761,28 @@ ${decisionSummary}` : '',
     } catch (error) {
       console.error('Falha ao ler política documental da parceira:', error);
       clearPartnerPolicyReadout();
+      refreshPartnerKnownPartnerHint();
       await refreshBookPartnerGovernanceUi({ silent: true });
       setPartnerProbeMessage('Não consegui ler a situação desta parceira na base.', 'error');
     }
   }
 
   renderPartnerPresetOptions(mergePartnerOptionRecords([]));
-  setPartnerPresetHint();
+  refreshPartnerKnownPartnerHint();
 
   function applyPreset(presetSlug) {
     const preset = partnerOptionRegistry.get(presetSlug) || buildPartnerOptionFromPreset(PARTNER_PRESETS.find((item) => item.slug === presetSlug) || {});
     if (!preset) return;
 
-    displayEl.value = preset.displayName || '';
-    slugEl.value = preset.slug || '';
-    baseUrlEl.value = preset.baseUrl || '';
-    familyEl.value = preset.softwareFamily || 'unknown';
-    confidenceEl.value = preset.softwareConfidence || 'unknown';
-    countryEl.value = preset.countryCode || '';
-    notesEl.value = preset.notes || '';
+    applyCanonicalPartnerRecord(preset);
+    refreshPartnerKnownPartnerHint();
 
-    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
+    setPartnerProbeMessage(
+      isPartnerOptionBackedByBase(preset)
+        ? `Parceira carregada desde a base canônica: ${preset.displayName || preset.label}.`
+        : `Parceira carregada desde a ajuda local do front: ${preset.displayName || preset.label}.`,
+      'ok'
+    );
     refreshPartnerPolicy({ silent: true });
   }
 
@@ -13736,7 +13849,20 @@ ${decisionSummary}` : '',
 
   slugEl.addEventListener('change', () => {
     slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
     refreshPartnerPolicy({ silent: true });
+  });
+
+  displayEl.addEventListener('change', () => {
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
+  });
+
+  baseUrlEl.addEventListener('change', () => {
+    baseUrlEl.value = normalizePartnerBaseUrl(baseUrlEl.value || '');
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
   });
 
   generateBtn?.addEventListener('click', generatePartnerArtifacts);
