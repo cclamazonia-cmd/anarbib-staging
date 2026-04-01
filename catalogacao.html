@@ -1799,6 +1799,7 @@
       <button class="tab-btn tab-btn-separator" data-tab="queuePanel">Fila editorial</button>
       <button class="tab-btn" data-tab="batchesPanel">Lotes</button>
       <button class="tab-btn" data-tab="catalogPanel">Catálogo já publicado</button>
+      <button class="tab-btn" data-tab="partnerCatalogsPanel">Catálogos de parceiros externos</button>
     </div>
 
     <section id="booksPanel" class="panel active">
@@ -3105,6 +3106,67 @@
         <div id="catalogMessage" class="message"></div>
 
         
+        <div class="catalog-published-grid">
+          <div class="card catalog-published-card">
+            <h4>Livros, brochuras e publicações seriadas</h4>
+            <div id="catalogBooksWrap" class="table-wrap"></div>
+          </div>
+
+          <div class="card catalog-published-card">
+            <h4>Documentos não-livro e materiais especiais</h4>
+            <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
+            <div id="catalogOtherDocsWrap" class="table-wrap"></div>
+          </div>
+
+          <div class="card catalog-published-card">
+            <h4>Autores publicados</h4>
+            <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
+              <div class="field">
+                <label for="catalogAuthorAuthorityFilter">Tipo de autoridade</label>
+                <select id="catalogAuthorAuthorityFilter">
+                  <option value="">Todos os tipos</option>
+                  <option value="person">Pessoa</option>
+                  <option value="collective">Coletivo / organização</option>
+                  <option value="publisher_series">Editora / série / revista</option>
+                  <option value="place_campaign_theme">Lugar / campanha / tema</option>
+                  <option value="other">Outra autoridade</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="catalogAuthorSignalFilter">Sinal editorial</label>
+                <select id="catalogAuthorSignalFilter">
+                  <option value="">Todos os sinais</option>
+                  <option value="draft_active">Com rascunho ativo</option>
+                  <option value="current">Ficha aberta</option>
+                  <option value="very_close">Muito próximo da ficha aberta</option>
+                  <option value="close">Próximo da ficha aberta</option>
+                  <option value="no_signal">Sem sinal editorial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="catalogAuthorsFilterSummary">Leitura do recorte</label>
+                <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
+              </div>
+            </div>
+            <div id="catalogAuthorsWrap" class="table-wrap"></div>
+          </div>
+
+          <div class="card catalog-published-card">
+            <h4>Exemplares publicados</h4>
+            <div id="catalogExemplarsWrap" class="table-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="partnerCatalogsPanel" class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>Catálogos de parceiros externos</h3>
+          <p>Consulte, compare e prepare leituras documentárias de parceiras externas sem misturar esta camada com o catálogo já publicado.</p>
+        </div>
+      </div>
+      <div class="panel-body">
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
           <h4>Catálogos parceiros</h4>
           <p class="hint" style="margin:0 0 12px;">
@@ -3402,57 +3464,6 @@
               <label for="partnerSeedOutput">SQL de seed</label>
               <textarea id="partnerSeedOutput" rows="14" readonly placeholder="O insert em public.catalog_partners aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
             </div>
-          </div>
-        </div>
-
-        <div class="catalog-published-grid">
-          <div class="card catalog-published-card">
-            <h4>Livros, brochuras e publicações seriadas</h4>
-            <div id="catalogBooksWrap" class="table-wrap"></div>
-          </div>
-
-          <div class="card catalog-published-card">
-            <h4>Documentos não-livro e materiais especiais</h4>
-            <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
-            <div id="catalogOtherDocsWrap" class="table-wrap"></div>
-          </div>
-
-          <div class="card catalog-published-card">
-            <h4>Autores publicados</h4>
-            <div class="grid cols-3" style="margin-bottom:12px; align-items:end;">
-              <div class="field">
-                <label for="catalogAuthorAuthorityFilter">Tipo de autoridade</label>
-                <select id="catalogAuthorAuthorityFilter">
-                  <option value="">Todos os tipos</option>
-                  <option value="person">Pessoa</option>
-                  <option value="collective">Coletivo / organização</option>
-                  <option value="publisher_series">Editora / série / revista</option>
-                  <option value="place_campaign_theme">Lugar / campanha / tema</option>
-                  <option value="other">Outra autoridade</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="catalogAuthorSignalFilter">Sinal editorial</label>
-                <select id="catalogAuthorSignalFilter">
-                  <option value="">Todos os sinais</option>
-                  <option value="draft_active">Com rascunho ativo</option>
-                  <option value="current">Ficha aberta</option>
-                  <option value="very_close">Muito próximo da ficha aberta</option>
-                  <option value="close">Próximo da ficha aberta</option>
-                  <option value="no_signal">Sem sinal editorial</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="catalogAuthorsFilterSummary">Leitura do recorte</label>
-                <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
-              </div>
-            </div>
-            <div id="catalogAuthorsWrap" class="table-wrap"></div>
-          </div>
-
-          <div class="card catalog-published-card">
-            <h4>Exemplares publicados</h4>
-            <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
       </div>
@@ -6511,6 +6522,8 @@
         await loadBatches();
       } else if (activeTab === 'catalogPanel') {
         await loadCatalog();
+      } else if (activeTab === 'partnerCatalogsPanel') {
+        // O módulo de parceiros externos tem seus próprios controles locais e leitura política dedicada.
       }
 
       updateStats();
