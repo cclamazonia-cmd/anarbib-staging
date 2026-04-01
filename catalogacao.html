@@ -3109,7 +3109,7 @@
       <div class="panel-header">
         <div>
           <h3>Lotes de publicação</h3>
-          <p>Crie um lote, agrupe fichas e publique tudo de uma vez para o catálogo.</p>
+          <p>Crie um lote, reúna rascunhos ativos e publique depois com leitura mais clara do que ainda está só em preparação.</p>
         </div>
       </div>
       <div class="panel-body">
@@ -3142,7 +3142,7 @@
               <button id="publishBatchBtn" class="button success">Publicar lote selecionado</button>
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
-            <p class="hint">A publicação em lote chama a função <code>publish_catalog_batch</code> e envia para o catálogo todas as fichas em rascunho ou prontas dentro desse lote.</p>
+            <p class="hint">Esta etapa publica de uma vez o lote aberto selecionado e ajuda a distinguir o que ainda está em preparação do que já vai sair para o catálogo.</p>
           </div>
         </div>
 
@@ -11157,7 +11157,7 @@
     function renderBatchList() {
       const openBatches = state.batches.filter(batch => batch.status === 'open');
       if (!openBatches.length) {
-        refs.batchListWrap.innerHTML = '<div class="empty">Nenhum lote aberto no momento.</div>';
+        refs.batchListWrap.innerHTML = '<div class="empty">Nenhum lote aberto no momento. Cria um lote para reunir rascunhos ativos antes da publicação.</div>';
         return;
       }
       refs.batchListWrap.innerHTML = `
@@ -11195,7 +11195,7 @@
           if (!confirmed) return;
           try {
             await discardOpenBatch(batchId);
-            showMessage(refs.batchMessage, 'Lote descartado. Os rascunhos vinculados voltaram para “Sem lote”.', 'ok');
+            showMessage(refs.batchMessage, 'Lote descartado. Os rascunhos ativos ligados a ele voltaram para “Sem lote”.', 'ok');
           } catch (error) {
             showMessage(refs.batchMessage, error.message, 'error');
           }
@@ -12377,7 +12377,7 @@
         await loadBatches();
         setTab(currentTab);
         updateStats();
-        showMessage(refs.batchMessage, 'Lote criado com sucesso.', 'ok');
+        showMessage(refs.batchMessage, 'Lote criado. Já podes usá-lo para reunir rascunhos ativos antes da publicação.', 'ok');
       } catch (error) {
         showMessage(refs.batchMessage, error.message, 'error');
       }
@@ -12393,7 +12393,7 @@
         await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
         setTab(currentTab);
         updateStats();
-        showMessage(refs.batchMessage, `Lote publicado. Livros: ${data.books_published}, autores: ${data.authors_published}, exemplares: ${data.exemplars_published}.`, 'ok');
+        showMessage(refs.batchMessage, `Lote publicado. Fichas comuns: ${data.books_published}, autores: ${data.authors_published}, exemplares locais: ${data.exemplars_published}.`, 'ok');
       } catch (error) {
         showMessage(refs.batchMessage, error.message, 'error');
       }
@@ -12429,7 +12429,7 @@
         showMessage(refs.queueMessage, error.message || 'Não foi possível atualizar a fila editorial.', 'error');
       }
     });
-    el('refreshBatchesBtn').addEventListener('click', loadBatches);
+    el('refreshBatchesBtn').addEventListener('click', async () => { clearMessage(refs.batchMessage); try { await loadBatches(); showMessage(refs.batchMessage, 'Lotes atualizados. O quadro mostra somente lotes abertos para organizar ou publicar.', 'ok'); } catch (error) { showMessage(refs.batchMessage, error.message || 'Não foi possível atualizar os lotes.', 'error'); } });
     el('bookDraftResetBtn').addEventListener('click', resetBookForm);
     el('authorDraftResetBtn').addEventListener('click', resetAuthorForm);
     el('exemplarDraftResetBtn').addEventListener('click', resetExemplarForm);
