@@ -9,12 +9,12 @@
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="AnarBib" />
-  <meta property="og:title" content="Catalogação interna - AnarBib" />
+  <meta property="og:title" content="Catalogação interna - ANARBIB" />
   <meta property="og:description" content="Área bibliotecária do AnarBib para rascunhos, lotes, capas, autores e etiquetas." />
   <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <meta property="og:image:alt" content="Logotipo da Biblioteca Libertária Maxwell Ferreira" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Catalogação interna - AnarBib" />
+  <meta name="twitter:title" content="Catalogação interna - ANARBIB" />
   <meta name="twitter:description" content="Área bibliotecária para gestão editorial do catálogo." />
   <meta name="twitter:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
@@ -1794,7 +1794,7 @@
     <section class="hero">
       <div class="topbar">
         <div class="hero-copy">
-          <h1>Catalogação - AnarBib</h1>
+          <h1>Catalogação - ANARBIB</h1>
           <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
         </div>
         <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
@@ -3069,8 +3069,8 @@
         <div>
           <h3>Fila editorial</h3>
           <p>
-            Consulte somente os rascunhos ativos de fichas comuns, autores e exemplares locais.
-            Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.
+            Consulte somente os rascunhos ativos de fichas comuns, fichas de autor e exemplares locais.
+            Cada linha mantém seu contexto de trabalho e suas operações próprias; itens publicados saem desta fila e ficam no catálogo já publicado, enquanto itens descartados seguem para a lixeira.
           </p>
         </div>
         <div class="inline">
@@ -3118,8 +3118,8 @@
             <div>
               <h4 style="margin:0 0 6px;">Lixeira de rascunhos</h4>
               <p class="small">
-                Aqui aparecem somente os rascunhos descartados de fichas comuns, autores e exemplares locais.
-                Você pode restaurar ou restaurar e abrir para continuar a edição.
+                Aqui aparecem somente os rascunhos descartados de fichas comuns, fichas de autor e exemplares locais.
+                Você pode restaurar, restaurar e abrir, ou restaurar por seleção quando quiser retomar o trabalho.
               </p>
               <p class="small" style="margin-top:8px; color:#ffe0e0;">Atenção: ao esvaziar a lixeira, os rascunhos descartados serão apagados de forma irreversível.</p>
             </div>
@@ -3183,23 +3183,23 @@
       <div class="panel-header">
         <div>
           <h3>Catálogo publicado</h3>
-          <p>Busque notices já publicadas, leia a compatibilidade local, os holdings locais e os exemplares locais publicados, e gere um rascunho de edição sem alterar imediatamente a versão publicada.</p>
+          <p>Busque fichas já publicadas e gere um rascunho de edição sem alterar imediatamente a versão do catálogo.</p>
         </div>
       </div>
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar notices publicadas e autores</label>
-            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, compatibilidade local, país…" />
-            <small>Este campo único filtra ao mesmo tempo as notices publicadas e os autores publicados.</small>
+            <label for="catalogSearch">Buscar documentos e autores</label>
+            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
+            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
             <select id="catalogBatchId"></select>
           </div>
           <div class="field">
-            <label for="catalogExemplarSearch">Buscar exemplares locais publicados</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou compatibilidade local" />
+            <label for="catalogExemplarSearch">Buscar exemplares</label>
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência" />
           </div>
         </div>
 
@@ -3208,12 +3208,12 @@
         
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
-            <h4>Notices publicadas: livros, brochuras e publicações seriadas</h4>
+            <h4>Livros, brochuras e publicações seriadas</h4>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Notices publicadas: documentos não-livro e materiais especiais</h4>
+            <h4>Documentos não-livro e materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
@@ -3252,7 +3252,7 @@
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Exemplares locais publicados</h4>
+            <h4>Exemplares publicados</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -5281,50 +5281,6 @@
       if (!parts.length && book.ano) parts.push(`Ano: ${book.ano}`);
       if (!parts.length && (book.editora || book.publisher)) parts.push(`Responsável editorial: ${book.editora || book.publisher}`);
       return buildCatalogQuickLine(parts) || 'Sem leitura rápida disponível.';
-    }
-
-    function getCatalogPublishedNoticeMetaLine(book = {}) {
-      const parts = [];
-      const materialLabel = getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || '');
-      const responsibility = compactSpaces(book.autor || book.author || '');
-      const publisher = compactSpaces(book.editora || book.publisher || '');
-      const year = compactSpaces(book.ano || book.year || '');
-      if (materialLabel && materialLabel !== 'Sem tipo informado') parts.push(materialLabel);
-      if (responsibility) parts.push(responsibility);
-      if (publisher) parts.push(publisher);
-      if (year) parts.push(year);
-      return buildCatalogQuickLine(parts) || 'Notice publicada ainda sem leitura mínima.';
-    }
-
-    function getCatalogLocalHoldingLine(book = {}) {
-      const parts = [];
-      const holderLibrary = compactSpaces(book.holder_library || '');
-      const ownerLibrary = compactSpaces(book.owner_library || '');
-      const mutualizationStatus = compactSpaces(book.mutualization_status || '');
-      const acquisitionMode = compactSpaces(book.acquisition_mode || '');
-      const partnerSource = compactSpaces(book.partner_source || book.source_label || '');
-      if (holderLibrary) parts.push(`Detentora: ${holderLibrary}`);
-      if (ownerLibrary && ownerLibrary !== holderLibrary) parts.push(`Proprietária: ${ownerLibrary}`);
-      if (mutualizationStatus) parts.push(`Rede: ${mutualizationStatus}`);
-      if (acquisitionMode) parts.push(`Entrada: ${acquisitionMode}`);
-      if (partnerSource) parts.push(`Origem: ${partnerSource}`);
-      return buildCatalogQuickLine(parts) || 'Camada local / holding ainda não legível no publicado.';
-    }
-
-    function getCatalogExemplarLocalLayerLine(exemplar = {}) {
-      const location = compactSpaces(exemplar.shelf_location || '');
-      return location ? `Localização consolidada: ${location}` : 'Exemplar local sem localização consolidada.';
-    }
-
-    function getCatalogExemplarLabelLine(exemplar = {}) {
-      const parts = [];
-      const author = compactSpaces(exemplar.autor_etiqueta || '');
-      const title = compactSpaces(exemplar.titulo_etiqueta || '');
-      const cdd = compactSpaces(exemplar.cdd_etiqueta || exemplar.label_cdd_override || '');
-      if (author) parts.push(`Autor: ${author}`);
-      if (title) parts.push(`Título: ${title}`);
-      if (cdd) parts.push(`CDD: ${cdd}`);
-      return buildCatalogQuickLine(parts) || 'Leitura de etiqueta ainda não informada.';
     }
 
     function getAuthorTrigram(name) {
@@ -9926,10 +9882,10 @@
         return { type, id: Number(rawId) };
       }).filter(entry => tableMap[entry.type] && Number.isFinite(entry.id));
 
-      if (!selectedEntries.length) return 0;
+      if (!selectedEntries.length) return { count: 0, summary: '' };
 
       const confirmed = confirmDiscardAction('Os rascunhos selecionados serão enviados para a lixeira. Eles não serão apagados definitivamente e poderão ser restaurados depois. Deseja continuar?');
-      if (!confirmed) return 0;
+      if (!confirmed) return { count: 0, summary: '' };
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
         if (!acc[entry.type]) acc[entry.type] = [];
@@ -9946,12 +9902,13 @@
       }
 
       selectedEntries.forEach(entry => markQueueDraftCancelledLocally(entry.id));
+      const summary = formatQueueTypeCountSummary(selectedEntries);
       clearQueueSelection();
       renderQueue();
       renderTrash();
       await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      return selectedEntries.length;
+      return { count: selectedEntries.length, summary };
     }
 
     function confirmDiscardAction(message) {
@@ -9972,10 +9929,75 @@
     function getItemTypeLabel(type = '') {
       const map = {
         book: 'Ficha comum',
-        author: 'Autor',
+        author: 'Ficha de autor',
         exemplar: 'Exemplar local',
       };
       return map[type] || (type || '—');
+    }
+
+    function getQueueItemContext(type = '') {
+      const map = {
+        book: {
+          singular: 'ficha comum',
+          plural: 'fichas comuns',
+          editLabel: 'Abrir ficha',
+          publishLabel: 'Publicar ficha',
+          assignLabel: 'Atribuir lote',
+          discardLabel: 'Descartar ficha',
+          restoreLabel: 'Restaurar ficha',
+          restoreOpenLabel: 'Restaurar e abrir ficha',
+        },
+        author: {
+          singular: 'ficha de autor',
+          plural: 'fichas de autor',
+          editLabel: 'Abrir autor',
+          publishLabel: 'Publicar autor',
+          assignLabel: 'Atribuir lote',
+          discardLabel: 'Descartar autor',
+          restoreLabel: 'Restaurar autor',
+          restoreOpenLabel: 'Restaurar e abrir autor',
+        },
+        exemplar: {
+          singular: 'exemplar local',
+          plural: 'exemplares locais',
+          editLabel: 'Abrir exemplar',
+          publishLabel: 'Publicar exemplar',
+          assignLabel: 'Atribuir lote',
+          discardLabel: 'Descartar exemplar',
+          restoreLabel: 'Restaurar exemplar',
+          restoreOpenLabel: 'Restaurar e abrir exemplar',
+        },
+      };
+      return map[type] || {
+        singular: type || 'item',
+        plural: type || 'itens',
+        editLabel: 'Abrir',
+        publishLabel: 'Publicar',
+        assignLabel: 'Atribuir lote',
+        discardLabel: 'Descartar',
+        restoreLabel: 'Restaurar',
+        restoreOpenLabel: 'Restaurar e abrir',
+      };
+    }
+
+    function formatQueueTypeCountSummary(entries = []) {
+      const counts = entries.reduce((acc, entry) => {
+        const type = String(entry?.type || '').trim();
+        if (!type) return acc;
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {});
+      const ordered = ['book', 'author', 'exemplar']
+        .filter(type => counts[type])
+        .map(type => {
+          const count = counts[type];
+          const context = getQueueItemContext(type);
+          return `${count} ${count === 1 ? context.singular : context.plural}`;
+        });
+      if (!ordered.length) return '';
+      if (ordered.length === 1) return ordered[0];
+      if (ordered.length === 2) return `${ordered[0]} e ${ordered[1]}`;
+      return `${ordered.slice(0, -1).join(', ')} e ${ordered[ordered.length - 1]}`;
     }
 
     function getQueueActionLabel(action = '') {
@@ -10071,10 +10093,10 @@
         return { type, id: Number(rawId) };
       }).filter(entry => tableMap[entry.type] && Number.isFinite(entry.id));
 
-      if (!selectedEntries.length) return 0;
+      if (!selectedEntries.length) return { count: 0, summary: '' };
 
       const confirmed = window.confirm('Os rascunhos selecionados serão restaurados da lixeira. Deseja continuar?');
-      if (!confirmed) return 0;
+      if (!confirmed) return { count: 0, summary: '' };
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
         if (!acc[entry.type]) acc[entry.type] = [];
@@ -10090,10 +10112,11 @@
         if (error) throw error;
       }
 
+      const summary = formatQueueTypeCountSummary(selectedEntries);
       clearTrashSelection();
       await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      return selectedEntries.length;
+      return { count: selectedEntries.length, summary };
     }
 
     async function emptyTrash() {
@@ -10159,8 +10182,8 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar</button>
-                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar e abrir</button>
+                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).restoreLabel)}</button>
+                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).restoreOpenLabel)}</button>
                   </div>
                 </td>
               </tr>`;
@@ -10199,9 +10222,9 @@
       if (restoreSelectedBtn) {
         restoreSelectedBtn.addEventListener('click', async () => {
           try {
-            const restoredCount = await restoreSelectedTrashDrafts();
-            if (restoredCount) {
-              showMessage(refs.trashMessage, `${restoredCount} rascunhos foram restaurados da lixeira.`, 'ok');
+            const restoreResult = await restoreSelectedTrashDrafts();
+            if (restoreResult.count) {
+              showMessage(refs.trashMessage, `Restauração concluída: ${restoreResult.summary}.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -10213,7 +10236,7 @@
         btn.addEventListener('click', async () => {
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado com sucesso.', 'ok');
+            showMessage(refs.trashMessage, `Restauração concluída: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -10225,7 +10248,7 @@
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             await fetchDraftAndEdit(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado e aberto para edição.', 'ok');
+            showMessage(refs.trashMessage, `Restauração e abertura concluídas: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -11121,10 +11144,10 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Editar</button>
-                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Publicar</button>
-                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">Atribuir lote</button>
-                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Descartar</button>` : ''}
+                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).editLabel)}</button>
+                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).publishLabel)}</button>
+                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">${sanitize(getQueueItemContext(item.item_type).assignLabel)}</button>
+                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).discardLabel)}</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -11163,9 +11186,9 @@
       if (discardSelectedBtn) {
         discardSelectedBtn.addEventListener('click', async () => {
           try {
-            const discardedCount = await discardSelectedQueueDrafts();
-            if (discardedCount) {
-              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira.`, 'ok');
+            const discardResult = await discardSelectedQueueDrafts();
+            if (discardResult.count) {
+              showMessage(refs.queueMessage, `Envio para a lixeira concluído: ${discardResult.summary}.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -11184,7 +11207,7 @@
         btn.addEventListener('click', async () => {
           try {
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho publicado com sucesso.', 'ok');
+            showMessage(refs.queueMessage, `Publicação concluída: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11200,7 +11223,7 @@
           }
           try {
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, 'Lote atribuído ao rascunho.', 'ok');
+            showMessage(refs.queueMessage, `Lote atribuído: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11213,7 +11236,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
+            showMessage(refs.queueMessage, `Envio para a lixeira concluído: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11280,7 +11303,7 @@
       }
       items = sortCatalogItems('books', items);
       if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhuma notice publicada de livro, brochura ou seriado encontrada.</div>';
+        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
         return;
       }
       refs.catalogBooksWrap.innerHTML = `
@@ -11289,10 +11312,12 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Compat. local', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
-              <th>Camada local / holding</th>
-              <th class="sortable">${renderSortableHeader('Exemplares locais', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
+              <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11301,11 +11326,10 @@
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>
-                  ${renderBookDisplayTitleHtml(book)}
-                  <div class="catalog-context-line">${sanitize(getCatalogPublishedNoticeMetaLine(book))}</div>
-                </td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogLocalHoldingLine(book))}</div></td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${sanitize(book.autor || book.author || '—')}</td>
+                <td>${sanitize(book.editora || book.publisher || '—')}</td>
+                <td>${sanitize(book.ano || '—')}</td>
                 <td>${sanitize(book.total_exemplares || 0)}</td>
               </tr>`).join('')}
           </tbody>
@@ -11332,7 +11356,7 @@
       }
       items = sortCatalogItems('otherDocs', items);
       if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhuma notice publicada de documento não-livro ou material especial encontrada.</div>';
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
         return;
       }
       refs.catalogOtherDocsWrap.innerHTML = `
@@ -11342,17 +11366,19 @@
             <col style="width:72px;">
             <col style="width:112px;">
             <col style="width:190px;">
-            <col style="width:26%;">
-            <col style="width:35%;">
+            <col style="width:24%;">
+            <col style="width:16%;">
+            <col style="width:36%;">
           </colgroup>
           <thead>
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Compat. local', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Notice publicada / identificação', 'otherDocs', 'title')}</th>
-              <th>Camada local / leitura documental</th>
+              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
+              <th>Leitura rápida</th>
             </tr>
           </thead>
           <tbody>
@@ -11362,14 +11388,9 @@
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>
-                  ${renderBookDisplayTitleHtml(book)}
-                  <div class="catalog-context-line">${sanitize(getCatalogPublishedNoticeMetaLine(book))}</div>
-                </td>
-                <td>
-                  <div class="catalog-context-line">${sanitize(getCatalogLocalHoldingLine(book))}</div>
-                  <div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div>
-                </td>
+                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${sanitize(book.autor || book.author || '—')}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -11809,7 +11830,7 @@
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar local publicado encontrado.</div>';
+        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
         return;
       }
       refs.catalogExemplarsWrap.innerHTML = `
@@ -11819,9 +11840,10 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Compat. local', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplar local', 'exemplars', 'shelf_location')}</th>
-              <th>Etiqueta / leitura</th>
+              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
+              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11831,8 +11853,9 @@
                 <td>${ex.exemplar_id}</td>
                 <td>${sanitize(ex.tombo || '—')}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogExemplarLocalLayerLine(ex))}</div></td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogExemplarLabelLine(ex))}</div></td>
+                <td>${sanitize(ex.shelf_location || '—')}</td>
+                <td>${sanitize(ex.autor_etiqueta || '—')}</td>
+                <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
               </tr>`).join('')}
           </tbody>
         </table>`;
