@@ -9019,20 +9019,23 @@
       return null;
     }
 
-    async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
+    async function requireSession({ attempts = 40, delayMs = 150 } = {}) {
       const session = await getCurrentSession({ attempts, delayMs });
-      state.session = session;
+      state.session = session || null;
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
         updateLoginButton();
-        showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
-        throw new Error('Sem sessão');
+        return null;
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       updateLoginButton();
       return state.session;
+    }
+
+    async function getConfirmedCurrentSession({ attempts = 6, delayMs = 180 } = {}) {
+      return getCurrentSession({ attempts, delayMs });
     }
 
     function withTimeout(promise, label, ms = 2200) {
@@ -12261,12 +12264,20 @@
         window.location.href = LOGIN_URL;
         return;
       }
+
+      refs.loginBtn.disabled = true;
       try {
-        await supabase.auth.signOut();
+        await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((resolve) => setTimeout(resolve, 2500)),
+        ]);
       } catch (error) {
-        console.warn('signOut failed:', error);
+        console.warn('Não consegui encerrar a sessão da catalogação; seguindo para o login mesmo assim.', error);
+      } finally {
+        resetCatalogacaoAuthChrome();
+        refs.loginBtn.disabled = false;
+        window.location.href = LOGIN_URL;
       }
-      window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-contrib-action]');
@@ -14292,7 +14303,7 @@ ${decisionSummary}` : '',
 
       if (!allowAnonymousReset) {
         await wait(320);
-        const delayedSession = await getCurrentSession({ attempts: 8, delayMs: 220 });
+        const delayedSession = await getConfirmedCurrentSession({ attempts: 8, delayMs: 220 });
         if (delayedSession?.user?.id) return delayedSession;
       }
 
@@ -14301,15 +14312,21 @@ ${decisionSummary}` : '',
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
       const syncId = ++catalogacaoAuthSyncSerial;
+      const previousSession = state.session;
       catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
 
       try {
-        const resolvedSession = await resolveCatalogacaoSession(nextSession || null, { allowAnonymousReset });
-        if (syncId !== catalogacaoAuthSyncSerial) return !!resolvedSession?.user?.id;
+        state.session = nextSession || null;
+        if (!state.session?.user?.id) {
+          state.session = await getConfirmedCurrentSession({ attempts: allowAnonymousReset ? 4 : 8, delayMs: 180 });
+        }
+        if (!state.session?.user?.id && previousSession?.user?.id && !allowAnonymousReset) {
+          state.session = previousSession;
+        }
+        if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
 
-        const previousUserId = String(state.session?.user?.id || '').trim();
-        state.session = resolvedSession || null;
+        const previousUserId = String(previousSession?.user?.id || '').trim();
         const nextUserId = String(state.session?.user?.id || '').trim();
         if (previousUserId && nextUserId && previousUserId !== nextUserId) {
           clearCatalogacaoAccessCache();
@@ -14317,7 +14334,7 @@ ${decisionSummary}` : '',
         updateLoginButton();
 
         if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          if (allowAnonymousReset) resetCatalogacaoAuthChrome();
           return false;
         }
 
@@ -14346,13 +14363,9 @@ ${decisionSummary}` : '',
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
-      if (eventName === 'SIGNED_OUT') {
-        await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset: true });
-        return;
-      }
-      if (eventName === 'SIGNED_IN') {
-        await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset: false });
-      }
+      const shouldReload = eventName === 'SIGNED_IN' || eventName === 'USER_UPDATED' || eventName === 'INITIAL_SESSION';
+      const allowAnonymousReset = eventName === 'SIGNED_OUT';
+      await syncCatalogacaoAuthState(session, { reloadData: shouldReload, allowAnonymousReset });
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
@@ -14370,12 +14383,17 @@ ${decisionSummary}` : '',
     updateLoginButton();
     initPartnerProbeUi();
 
-    const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
+    const bootstrapCatalogacaoSession = await requireSession({ attempts: 40, delayMs: 150 });
     catalogacaoAuthBootstrapping = false;
-    await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: false, allowAnonymousReset: !bootstrapCatalogacaoSession?.user?.id });
+    await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
 
-    if (bootstrapCatalogacaoSession?.user?.id) {
-      await refreshAll(false);
+    if (!state.session?.user?.id) {
+      setTimeout(async () => {
+        const lateSession = await getConfirmedCurrentSession({ attempts: 10, delayMs: 200 });
+        if (lateSession?.user?.id) {
+          await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
+        }
+      }, 700);
     }
 
   </script>
