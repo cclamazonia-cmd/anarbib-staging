@@ -3490,12 +3490,12 @@
               <div class="field">
                 <label for="partnerComparisonCarryPreview">Prévia do que será levado para a ficha</label>
                 <textarea id="partnerComparisonCarryPreview" rows="5" readonly placeholder="A nota de proveniência preparada para a ficha aparecerá aqui."></textarea>
-                <small id="partnerComparisonLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar comparação para a ficha”.</small>
+                <small id="partnerComparisonLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar comparação para a ficha”. Esta ação só escreve campos locais e nota de proveniência.</small>
               </div>
               <div class="field">
-                <label for="partnerComparisonFieldWritePreview">Escrita prevista na ficha</label>
+                <label for="partnerComparisonFieldWritePreview">Escrita exata prevista na ficha</label>
                 <textarea id="partnerComparisonFieldWritePreview" rows="7" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
-                <small id="partnerComparisonFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido ou acrescentado na ficha quando clicares em “Levar comparação para a ficha”.</small>
+                <small id="partnerComparisonFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando clicares em “Levar comparação para a ficha”.</small>
               </div>
               <div class="field">
                 <label for="partnerComparisonOperationalState">Estado operacional da comparação</label>
@@ -3572,18 +3572,18 @@
                 </div>
               </div>
               <div class="field">
-                <label for="partnerImportDraftPreview">Pré-visualização do rascunho local preparado</label>
+                <label for="partnerImportDraftPreview">Pré-visualização local do rascunho preparado</label>
                 <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
               </div>
               <div class="field">
                 <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
                 <textarea id="partnerImportCarryPreview" rows="6" readonly placeholder="A nota local de preparação aparecerá aqui."></textarea>
-                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.</small>
+                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”. Esta ação só escreve parâmetros locais e nota de proveniência.</small>
               </div>
               <div class="field">
-                <label for="partnerImportFieldWritePreview">Escrita prevista na ficha</label>
+                <label for="partnerImportFieldWritePreview">Escrita exata prevista na ficha</label>
                 <textarea id="partnerImportFieldWritePreview" rows="8" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
-                <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido ou acrescentado na ficha quando clicares em “Levar preparação para a ficha”.</small>
+                <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando clicares em “Levar preparação para a ficha”.</small>
               </div>
               <div class="field">
                 <label for="partnerImportOperationalState">Estado operacional da preparação</label>
@@ -13276,6 +13276,7 @@ ${decisionSummary}` : '',
     const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
     const currentSourceValue = String(bookPartnerSourceEl?.value || '').trim();
     const currentSourceLabel = getSelectedOptionLabel(bookPartnerSourceEl);
+    const currentGovernanceSlug = getBookPartnerGovernanceSlugValue();
     const nextSourceValue = mappedSource && Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === mappedSource)
       ? mappedSource
       : Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === 'other_partner')
@@ -13285,6 +13286,7 @@ ${decisionSummary}` : '',
     const nextSourceLabel = nextSourceValue && nextSourceOptionIndex >= 0
       ? String(bookPartnerSourceEl.options[nextSourceOptionIndex]?.textContent || '').trim()
       : '';
+    const nextGovernanceSlug = nextSourceValue === 'other_partner' ? currentSlug : '';
     const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
     const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
     const comparisonNote = getCurrentComparisonNote();
@@ -13296,6 +13298,20 @@ ${decisionSummary}` : '',
       lines.push(`Fonte parceira: manter ${currentSourceLabel}.`);
     } else {
       lines.push(`Fonte parceira: gravar ${nextSourceLabel}.`);
+    }
+
+    if (nextSourceValue === 'other_partner') {
+      if (currentGovernanceSlug === nextGovernanceSlug) {
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
+      } else if (nextGovernanceSlug) {
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
+      } else {
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
+      }
+    } else if (currentGovernanceSlug) {
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
+    } else {
+      lines.push('Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
@@ -13324,7 +13340,8 @@ ${decisionSummary}` : '',
       lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('\n');
+    return lines.join('
+');
   }
 
   function getComparisonChecklistText() {
@@ -13383,21 +13400,24 @@ ${decisionSummary}` : '',
   }
 
   function refreshComparisonWorkspaceDerivedTexts() {
+    const comparisonNote = getCurrentComparisonNote();
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonCarryPreviewEl.value = getCurrentComparisonNote() || 'A nota de proveniência ainda não está pronta porque faltam elementos da comparação local.';
+    comparisonCarryPreviewEl.value = comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Este quadro mostra exatamente o que será escrito, mantido ou acrescentado na ficha no momento do clique.'
+      ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado na ficha no momento do clique.'
       : 'Sem comparação autorizada, este quadro permanece apenas como leitura preventiva do que ficaria bloqueado.';
     comparisonOperationalStateEl.value = getComparisonOperationalStateText();
     comparisonPrudenceSignalEl.value = getComparisonPrudenceSignalText();
     comparisonBoundaryNoteEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Esta área continua local, manual e sem importação automática, mesmo quando a política já autoriza comparação.'
+      ? 'Esta área continua local, manual e sem importação automática. Mesmo autorizada, ela só escreve campos locais e nota de proveniência.'
       : 'Sem comparação autorizada, esta área permanece apenas como lembrete de fronteira política e documental.';
-    comparisonLiveHintEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Revê o resumo, a checklist e a escrita prevista. Só o clique em “Levar comparação para a ficha” escreve a nota local de proveniência.'
-      : 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.';
+    comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
+      ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
+      : comparisonNote
+        ? 'O bloco de proveniência está pronto. Revê o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
+        : 'Ainda faltam elementos para formar o bloco de proveniência. A ficha só receberá escrita quando a comparação estiver suficientemente descrita.';
   }
 
   function refreshLocalDraftComparisonSummary() {
@@ -13547,6 +13567,7 @@ ${decisionSummary}` : '',
     const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
     const currentSourceValue = String(bookPartnerSourceEl?.value || '').trim();
     const currentSourceLabel = getSelectedOptionLabel(bookPartnerSourceEl);
+    const currentGovernanceSlug = getBookPartnerGovernanceSlugValue();
     const nextSourceValue = mappedSource && Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === mappedSource)
       ? mappedSource
       : Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === 'other_partner')
@@ -13555,6 +13576,7 @@ ${decisionSummary}` : '',
     const nextSourceLabel = nextSourceValue
       ? String(Array.from(bookPartnerSourceEl?.options || []).find((option) => option.value === nextSourceValue)?.textContent || '').trim()
       : '';
+    const nextGovernanceSlug = nextSourceValue === 'other_partner' ? currentSlug : '';
     const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
     const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
     const nextFormatValue = String(importFormatSelectEl?.value || '').trim();
@@ -13574,6 +13596,20 @@ ${decisionSummary}` : '',
       lines.push(`Fonte parceira: manter ${currentSourceLabel}.`);
     } else {
       lines.push(`Fonte parceira: gravar ${nextSourceLabel}.`);
+    }
+
+    if (nextSourceValue === 'other_partner') {
+      if (currentGovernanceSlug === nextGovernanceSlug) {
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
+      } else if (nextGovernanceSlug) {
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
+      } else {
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
+      }
+    } else if (currentGovernanceSlug) {
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
+    } else {
+      lines.push('Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
@@ -13618,7 +13654,8 @@ ${decisionSummary}` : '',
       lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('\n');
+    return lines.join('
+');
   }
 
   function getImportOperationalStateText() {
@@ -13634,16 +13671,21 @@ ${decisionSummary}` : '',
   }
 
   function refreshImportWorkspaceDerivedTexts() {
+    const carryPreview = getImportCarryPreviewText();
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importCarryPreviewEl.value = getImportCarryPreviewText();
+    importCarryPreviewEl.value = carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
-    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido ou acrescentado em Fonte parceira, ID, URL, formato, modo e nota de proveniência.';
-    importLiveHintEl.textContent = 'Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.';
+    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado em Fonte parceira, governança, ID, URL, formato, modo e nota de proveniência.';
+    importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
+      ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
+      : carryPreview
+        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revê tudo antes de levar a preparação para a ficha.'
+        : 'Ainda faltam decisões e parâmetros locais para formar a preparação que será levada para a ficha.';
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
-      ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, a importação segue sob revisão humana.'
+      ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
   }
 
@@ -13675,7 +13717,7 @@ ${decisionSummary}` : '',
     importWorkspaceEl.classList.remove('is-hidden');
     syncImportWorkspaceSelectOptions();
     refreshImportWorkspaceDerivedTexts();
-    setImportWorkspaceStatus('Preparação local aberta. Define formato, modo, elementos a retomar, exclusões e proveniência antes de levar isso para a ficha.');
+    setImportWorkspaceStatus('Preparação local aberta. Define formato, modo, elementos a retomar, exclusões e proveniência antes de levar isso para a ficha, sem importar automaticamente a notice parceira.');
   }
 
   function applyImportPreparationToBookForm() {
@@ -13725,8 +13767,8 @@ ${decisionSummary}` : '',
       setTab('booksPanel');
     }
 
-    showMessage(refs.bookMessage, 'Preparação de importação levada para a ficha como proveniência e parâmetros locais, sem disparar importação automática.', 'ok');
-    setPartnerProbeMessage('Preparação local levada para a ficha do livro sem importar automaticamente a notice parceira.', 'ok');
+    showMessage(refs.bookMessage, 'Preparação local de importação levada para a ficha como proveniência e parâmetros locais, sem disparar importação automática.', 'ok');
+    setPartnerProbeMessage('Preparação local levada para a ficha do livro sem importar automaticamente a notice parceira nem liberar mutualização por si só.', 'ok');
   }
 
 
@@ -13763,8 +13805,8 @@ ${decisionSummary}` : '',
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
     importActionBtn.textContent = partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed
-      ? 'Preparação de importação / mutualização'
-      : 'Importação controlada';
+      ? 'Preparação local de importação / mutualização'
+      : 'Preparação local de importação';
 
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
@@ -13778,13 +13820,13 @@ ${decisionSummary}` : '',
       return;
     }
     if (mode === 'compare_only') {
-      actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa.';
+      actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
       return;
     }
     if (mode === 'import_allowed') {
       actionHintEl.textContent = partnerDocumentActionState.mutualizeAllowed
         ? 'Comparação documental, preparação local de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre da notice parceira.'
-        : 'Comparação documental e preparação local de importação controlada estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
+        : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
       return;
     }
     if (mode === 'not_registered') {
@@ -13796,15 +13838,15 @@ ${decisionSummary}` : '',
 
   function setPartnerPolicyReadout(row) {
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
-    compareAllowedEl.value = row?.compare_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
+    compareAllowedEl.value = row?.compare_allowed ? 'Preparação local autorizada pela situação relacional' : 'Preparação local ainda não autorizada pela situação relacional';
     importAllowedEl.value = row?.import_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
     mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
     policySummaryEl.value = row?.policy_summary || '';
     politicalNoticeEl.textContent = row?.mutualize_allowed
-      ? 'Importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
+      ? 'Preparação local de importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
       : row?.import_allowed
-        ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
+        ? 'Preparação local de importação ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
         : row?.compare_allowed
           ? 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa, e o último teste técnico não muda isso sozinho.'
           : 'Sem autorização de comparação documental, importação ou mutualização nesta etapa. Em catalogação, o último teste técnico não basta para liberar essas ações.';
