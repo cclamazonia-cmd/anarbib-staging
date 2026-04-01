@@ -1084,72 +1084,14 @@
       background: rgba(255,255,255,.02);
     }
 
-    .cover-preview-frame {
-      position: relative;
+    .cover-preview {
       width: 100%;
       max-width: 180px;
       height: 250px;
+      object-fit: cover;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.12);
-      background: linear-gradient(180deg, rgba(38,6,10,.92), rgba(17,17,17,.96));
-      overflow: hidden;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-      display: flex;
-      align-items: stretch;
-      justify-content: stretch;
-    }
-
-    .cover-preview {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      background: transparent;
-    }
-
-    .cover-preview-placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 18px;
-      text-align: center;
-      color: #f4f4f4;
-      background: linear-gradient(180deg, rgba(38,6,10,.92), rgba(17,17,17,.96));
-    }
-
-    .cover-preview-placeholder::before {
-      content: "";
-      width: 86px;
-      height: 86px;
-      border-radius: 22px;
-      border: 1px solid rgba(255,255,255,.12);
-      background:
-        linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.04)),
-        linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.12));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-    }
-
-    .cover-preview-placeholder strong {
-      font-size: .98rem;
-      line-height: 1.2;
-    }
-
-    .cover-preview-placeholder span {
-      font-size: .84rem;
-      line-height: 1.4;
-      color: #d1d1d1;
-    }
-
-    .cover-preview-frame:not(.is-empty) .cover-preview-placeholder {
-      display: none;
-    }
-
-    .cover-preview-frame.is-empty .cover-preview {
-      display: none;
+      background: rgba(255,255,255,.04);
     }
 
     .file-row {
@@ -1857,7 +1799,6 @@
       <button class="tab-btn tab-btn-separator" data-tab="queuePanel">Fila editorial</button>
       <button class="tab-btn" data-tab="batchesPanel">Lotes</button>
       <button class="tab-btn" data-tab="catalogPanel">Catálogo já publicado</button>
-      <button class="tab-btn" data-tab="partnerCatalogsPanel">Catálogos de parceiros externos</button>
     </div>
 
     <section id="booksPanel" class="panel active">
@@ -1877,13 +1818,7 @@
         <div class="split">
           <div class="card">
             <h4>Imagem de capa / frente</h4>
-            <div class="cover-preview-frame is-empty" data-preview-kind="book">
-              <img id="bookCoverPreview" class="cover-preview" alt="Pré-visualização da capa" />
-              <div class="cover-preview-placeholder" aria-hidden="true">
-                <strong>Sem capa</strong>
-                <span>Pré-visualização indisponível</span>
-              </div>
-            </div>
+            <img id="bookCoverPreview" class="cover-preview" alt="Pré-visualização da capa" />
             <div class="field" style="margin-top:12px;">
               <label for="bookCoverFile">Arquivo da capa</label>
               <input id="bookCoverFile" class="sr-only" type="file" accept="image/*" />
@@ -2340,7 +2275,6 @@
             <div class="field mode-complete-only">
               <label for="bookPartnerSource">Fonte parceira</label>
               <select id="bookPartnerSource"></select>
-              <input id="bookPartnerGovernanceSlug" type="hidden" />
             </div>
 
             <div class="field mode-complete-only">
@@ -2558,13 +2492,7 @@
         <div class="split">
           <div class="card">
             <h4>Foto do autor</h4>
-            <div class="cover-preview-frame is-empty" data-preview-kind="author">
-              <img id="authorPhotoPreview" class="cover-preview" alt="Pré-visualização da foto do autor" />
-              <div class="cover-preview-placeholder" aria-hidden="true">
-                <strong>Sem foto</strong>
-                <span>Pré-visualização indisponível</span>
-              </div>
-            </div>
+            <img id="authorPhotoPreview" class="cover-preview" alt="Pré-visualização da foto do autor" />
             <div class="field" style="margin-top:12px;">
               <label for="authorPhotoFile">Arquivo da foto</label>
               <input id="authorPhotoFile" class="sr-only" type="file" accept="image/*" />
@@ -3177,6 +3105,283 @@
         <div id="catalogMessage" class="message"></div>
 
         
+        <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
+          <h4>Catálogos parceiros</h4>
+          <p class="hint" style="margin:0 0 12px;">
+            Consulte aqui a situação relacional e os guardas documentários da parceira. Em catalogação, teste técnico não vale como autorização de comparação nem de importação.
+          </p>
+        
+          <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
+
+          <div class="grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerRelationshipStatusOutput">Situação relacional</label>
+              <input id="partnerRelationshipStatusOutput" type="text" readonly placeholder="Ainda não lida da base">
+            </div>
+
+            <div class="field">
+              <label for="partnerCompareAllowedOutput">Comparação ativa</label>
+              <input id="partnerCompareAllowedOutput" type="text" readonly placeholder="—">
+            </div>
+
+            <div class="field">
+              <label for="partnerImportAllowedOutput">Importação</label>
+              <input id="partnerImportAllowedOutput" type="text" readonly placeholder="—">
+            </div>
+
+            <div class="field">
+              <label for="partnerMutualizeAllowedOutput">Mutualização</label>
+              <input id="partnerMutualizeAllowedOutput" type="text" readonly placeholder="—">
+            </div>
+
+            <div class="field">
+              <label for="partnerTechnicalProbeLastAtOutput">Último teste técnico</label>
+              <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
+            <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
+            <small id="partnerPoliticalNotice">Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.</small>
+          </div>
+        
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerPresetSelect">Parceiro conhecido</label>
+              <select id="partnerPresetSelect">
+                <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
+              </select>
+              <small id="partnerPresetHint">A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.</small>
+            </div>
+        
+            <div class="field">
+              <label for="partnerDisplayNameInput">Nome público</label>
+              <input id="partnerDisplayNameInput" type="text" placeholder="Ex.: CIRA Lausanne">
+            </div>
+        
+            <div class="field">
+              <label for="partnerSlugInput">Slug</label>
+              <input id="partnerSlugInput" type="text" placeholder="Ex.: cira" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
+            </div>
+        
+            <div class="field">
+              <label for="partnerBaseUrlInput">Base URL</label>
+              <input id="partnerBaseUrlInput" type="text" placeholder="https://www.cira.ch/catalogue">
+            </div>
+          </div>
+        
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerFamilySelect">Família</label>
+              <select id="partnerFamilySelect">
+                <option value="pmb">PMB</option>
+                <option value="koha">Koha</option>
+                <option value="unknown">Desconhecida</option>
+              </select>
+            </div>
+        
+            <div class="field">
+              <label for="partnerConfidenceSelect">Confiança</label>
+              <select id="partnerConfidenceSelect">
+                <option value="confirmed">Confirmado</option>
+                <option value="strong_inference">Inferência forte</option>
+                <option value="generic">Genérico</option>
+                <option value="unknown">Desconhecido</option>
+              </select>
+            </div>
+        
+            <div class="field">
+              <label for="partnerCountryCodeInput">País</label>
+              <input id="partnerCountryCodeInput" type="text" maxlength="2" placeholder="CH">
+            </div>
+        
+            <div class="field">
+              <label for="partnerNotesInput">Nota curta</label>
+              <input id="partnerNotesInput" type="text" placeholder="OPAC público PMB provável">
+            </div>
+          </div>
+        
+          <div class="actions">
+            <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Ler situação na base</button>
+            <button id="partnerGenerateBtn" class="button secondary" type="button">Gerar endpoints e seed</button>
+            <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar relatório</button>
+            <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar SQL</button>
+            <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir base URL</button>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="partnerActionHint">Ações documentárias nesta etapa</label>
+            <div class="actions">
+              <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
+              <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
+            </div>
+            <small id="partnerActionHint">Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.</small>
+          </div>
+        
+          <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
+            <div class="section-block">
+              <div class="inline">
+                <div>
+                  <h4 class="section-title">Comparação documental local</h4>
+                  <div class="hint">Use este espaço para comparar a ficha local em foco com uma notice parceira resumida manualmente, sem importar nada automaticamente.</div>
+                </div>
+                <div class="row-actions">
+                  <button id="partnerApplyComparisonBtn" class="button secondary" type="button">Levar comparação para a ficha</button>
+                  <button id="partnerClearComparisonBtn" class="button ghost" type="button">Limpar comparação</button>
+                </div>
+              </div>
+              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a política da parceira autoriza comparação documental nesta etapa.</div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
+                  <textarea id="partnerLocalDraftSummary" rows="7" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerPartnerNoticeSummary">Notice parceira / resumo manual</label>
+                  <textarea id="partnerPartnerNoticeSummary" rows="7" placeholder="Cole ou resuma aqui a notice parceira que queres comparar."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerDifferenceSummary">Diferenças e pontos de atenção</label>
+                  <textarea id="partnerDifferenceSummary" rows="6" placeholder="Ex.: subtítulo divergente; ano ausente; editora diferente; autoria invertida; assunto mais preciso na ficha local."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerComparisonDecision">Decisão local / próximos passos</label>
+                  <textarea id="partnerComparisonDecision" rows="6" placeholder="Ex.: manter a ficha local como base; registrar proveniência; revisar ISBN; verificar exemplar em mãos."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerComparisonChecklist">Checklist de leitura local</label>
+                  <textarea id="partnerComparisonChecklist" rows="6" readonly placeholder="A checklist local da comparação aparecerá aqui."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerComparisonPreview">Resumo pronto para revisão</label>
+                  <textarea id="partnerComparisonPreview" rows="6" readonly placeholder="O resumo consolidado da comparação aparecerá aqui."></textarea>
+                </div>
+              </div>
+              <div class="field">
+                <label for="partnerComparisonCarryPreview">Prévia do que será levado para a ficha</label>
+                <textarea id="partnerComparisonCarryPreview" rows="5" readonly placeholder="A nota de proveniência preparada para a ficha aparecerá aqui."></textarea>
+                <small id="partnerComparisonLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar comparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerComparisonFieldWritePreview">Escrita prevista na ficha</label>
+                <textarea id="partnerComparisonFieldWritePreview" rows="7" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
+                <small id="partnerComparisonFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido ou acrescentado na ficha quando clicares em “Levar comparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerComparisonOperationalState">Estado operacional da comparação</label>
+                <textarea id="partnerComparisonOperationalState" rows="4" readonly placeholder="O estado operacional desta comparação aparecerá aqui."></textarea>
+              </div>
+              <div class="field">
+                <label for="partnerComparisonPrudenceSignal">Sinal de prudência</label>
+                <textarea id="partnerComparisonPrudenceSignal" rows="3" readonly placeholder="O sinal de prudência da comparação aparecerá aqui."></textarea>
+              </div>
+              <div id="partnerComparisonBoundaryNote" class="hint">
+                Esta área continua local, manual e sem importação automática.
+              </div>
+              <div class="hint">
+                Podes preencher este espaço aos poucos.
+
+                Nada daqui publica, importa ou mutualiza por si só.
+              </div>
+            </div>
+          </div>
+
+          <div id="partnerImportWorkspace" class="field is-hidden" style="margin-top:12px;">
+            <div class="section-block">
+              <div class="inline">
+                <div>
+                  <h4 class="section-title">Importação controlada / preparação local</h4>
+                  <div class="hint">Este espaço prepara uma retomada local controlada, sem lançar nenhuma importação automática nem modificar livremente a notice parceira.</div>
+                </div>
+                <div class="row-actions">
+                  <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação para a ficha</button>
+                  <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
+                </div>
+              </div>
+              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a política da parceira autoriza importação nesta etapa.</div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
+                  <textarea id="partnerImportSourceSummary" rows="6" readonly placeholder="A síntese da fonte parceira aparecerá aqui."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportLocalSummary">Rascunho local em foco</label>
+                  <textarea id="partnerImportLocalSummary" rows="6" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportFormatSelect">Formato de importação a preparar</label>
+                  <select id="partnerImportFormatSelect"></select>
+                  <small>Este campo só prepara a ficha local. Nada é importado automaticamente.</small>
+                </div>
+                <div class="field">
+                  <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
+                  <select id="partnerImportMethodSelect"></select>
+                  <small>Escolhe aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportTakeSummary">Elementos a retomar</label>
+                  <textarea id="partnerImportTakeSummary" rows="6" placeholder="Ex.: subtítulo; forma de responsabilidade; assunto mais preciso; URL de origem; nota útil."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportSkipSummary">Elementos a não retomar</label>
+                  <textarea id="partnerImportSkipSummary" rows="6" placeholder="Ex.: assunto genérico demais; dado não confirmado; forma de nome menos precisa; nota técnica sem utilidade local."></textarea>
+                </div>
+              </div>
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                <div class="field">
+                  <label for="partnerImportProvenanceSummary">Proveniência a conservar</label>
+                  <textarea id="partnerImportProvenanceSummary" rows="6" placeholder="Ex.: notice parceira consultada em HTML público; comparação humana; revisão local a partir do exemplar em mãos."></textarea>
+                </div>
+                <div class="field">
+                  <label for="partnerImportDecisionSummary">Decisão local / preparação do rascunho</label>
+                  <textarea id="partnerImportDecisionSummary" rows="6" placeholder="Ex.: preparar rascunho local sem copiar assuntos; manter editora local validada; revisar ISBN antes de publicar."></textarea>
+                </div>
+              </div>
+              <div class="field">
+                <label for="partnerImportDraftPreview">Pré-visualização do rascunho local preparado</label>
+                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
+              </div>
+              <div class="field">
+                <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
+                <textarea id="partnerImportCarryPreview" rows="6" readonly placeholder="A nota local de preparação aparecerá aqui."></textarea>
+                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerImportFieldWritePreview">Escrita prevista na ficha</label>
+                <textarea id="partnerImportFieldWritePreview" rows="8" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
+                <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido ou acrescentado na ficha quando clicares em “Levar preparação para a ficha”.</small>
+              </div>
+              <div class="field">
+                <label for="partnerImportOperationalState">Estado operacional da preparação</label>
+                <textarea id="partnerImportOperationalState" rows="4" readonly placeholder="O estado operacional desta preparação aparecerá aqui."></textarea>
+              </div>
+              <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real.</div>
+            </div>
+          </div>
+
+
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
+            <div class="field">
+              <label for="partnerProbeOutput">Endpoints prováveis</label>
+              <textarea id="partnerProbeOutput" rows="14" readonly placeholder="Os endpoints prováveis aparecerão aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
+            </div>
+        
+            <div class="field">
+              <label for="partnerSeedOutput">SQL de seed</label>
+              <textarea id="partnerSeedOutput" rows="14" readonly placeholder="O insert em public.catalog_partners aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
+            </div>
+          </div>
+        </div>
+
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
             <h4>Livros, brochuras e publicações seriadas</h4>
@@ -3229,398 +3434,103 @@
         </div>
       </div>
     </section>
-
-    <section id="partnerCatalogsPanel" class="panel">
-      <div class="panel-header">
-        <div>
-          <h3>Catálogos de parceiros externos</h3>
-          <p>Camada separada para situação relacional, leitura documental, comparação local e preparação controlada. Aqui, teste técnico não vale como autorização política; importação não vale como mutualização.</p>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
-          <h4>Recepção artesanal de catálogos externos</h4>
-          <p class="hint" style="margin:0 0 12px;">
-            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa notices automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
-          </p>
-
-          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field" style="grid-column: span 2;">
-              <label for="partnerIncomingCatalogFile">Arquivo recebido</label>
-              <input id="partnerIncomingCatalogFile" class="sr-only" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.ods,.pdf,.json,.xml,.zip,text/csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,application/json,application/xml,text/xml" />
-              <div class="file-row">
-                <label for="partnerIncomingCatalogFile" class="file-button">Escolher arquivo</label>
-                <span id="partnerIncomingCatalogFileName" class="file-status">Nenhum arquivo selecionado</span>
-              </div>
-              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura é apenas local e preparatória.</small>
-            </div>
-
-            <div class="field">
-              <label for="partnerIncomingLibraryName">Nome da biblioteca</label>
-              <input id="partnerIncomingLibraryName" type="text" placeholder="Biblioteca Libertária da Maloca" />
-            </div>
-
-            <div class="field">
-              <label for="partnerIncomingLibraryShortName">Nome curto</label>
-              <input id="partnerIncomingLibraryShortName" type="text" placeholder="Biblioteca da Maloca" />
-            </div>
-          </div>
-
-          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field">
-              <label for="partnerIncomingLibrarySlug">Slug sugerido / local</label>
-              <input id="partnerIncomingLibrarySlug" type="text" placeholder="biblioteca-da-maloca" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
-            </div>
-
-            <div class="field">
-              <label for="partnerIncomingLibraryAcronym">Sigla / acrônimo</label>
-              <input id="partnerIncomingLibraryAcronym" type="text" placeholder="BLM" />
-            </div>
-
-            <div class="field">
-              <label for="partnerIncomingLibraryTerritory">Cidade / território</label>
-              <input id="partnerIncomingLibraryTerritory" type="text" placeholder="Salvador, BA / Recôncavo / Amazônia..." />
-            </div>
-
-            <div class="field">
-              <label for="partnerIncomingCatalogNote">Nota curta do recebimento</label>
-              <input id="partnerIncomingCatalogNote" type="text" placeholder="Catálogo artesanal enviado por e-mail / planilha local / PDF de acervo..." />
-            </div>
-          </div>
-
-          <div class="actions" style="margin-bottom:12px;">
-            <button id="partnerReadIncomingCatalogBtn" class="button secondary" type="button">Ler arquivo local</button>
-            <button id="partnerApplyIncomingIdentityBtn" class="button secondary" type="button">Levar identificação para a governança abaixo</button>
-            <button id="partnerClearIncomingCatalogBtn" class="button ghost" type="button">Limpar recepção</button>
-          </div>
-
-          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-            <div class="field">
-              <label for="partnerIncomingCatalogSummary">Leitura local do arquivo recebido</label>
-              <textarea id="partnerIncomingCatalogSummary" rows="7" readonly placeholder="O resumo local do arquivo recebido aparecerá aqui."></textarea>
-            </div>
-            <div class="field">
-              <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
-              <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
-              <small id="partnerIncomingCatalogHint">Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
-          <h4>Parceiras externas: situação relacional e governança documental</h4>
-          <p class="hint" style="margin:0 0 12px;">
-            Consulte aqui a situação relacional, a leitura documental e os limites de ação com cada parceira. Nesta aba, teste técnico não vale como autorização política; importação não vale como mutualização; mutualização não vale como modificação livre da notice parceira.
-          </p>
-        
-          <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
-
-          <div class="grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field">
-              <label for="partnerRelationshipStatusOutput">Situação relacional</label>
-              <input id="partnerRelationshipStatusOutput" type="text" readonly placeholder="Ainda não lida da base">
-            </div>
-
-            <div class="field">
-              <label for="partnerCompareAllowedOutput">Comparação ativa</label>
-              <input id="partnerCompareAllowedOutput" type="text" readonly placeholder="—">
-            </div>
-
-            <div class="field">
-              <label for="partnerImportAllowedOutput">Importação</label>
-              <input id="partnerImportAllowedOutput" type="text" readonly placeholder="—">
-            </div>
-
-            <div class="field">
-              <label for="partnerMutualizeAllowedOutput">Mutualização</label>
-              <input id="partnerMutualizeAllowedOutput" type="text" readonly placeholder="—">
-            </div>
-
-            <div class="field">
-              <label for="partnerTechnicalProbeLastAtOutput">Último teste técnico</label>
-              <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
-            </div>
-          </div>
-
-          <div class="field" style="margin-bottom:12px;">
-            <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
-            <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
-            <small id="partnerPoliticalNotice">Sem leitura política ainda: teste técnico, sozinho, não libera comparação documental, importação nem mutualização.</small>
-          </div>
-        
-          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field">
-              <label for="partnerPresetSelect">Parceiro conhecido</label>
-              <select id="partnerPresetSelect">
-                <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
-              </select>
-              <small id="partnerPresetHint">A lista combina ajuda local vinda do front com parceiras já formalizadas na base. A base deve prevalecer como fonte canônica quando houver correspondência.</small>
-            </div>
-        
-            <div class="field">
-              <label for="partnerDisplayNameInput">Nome público</label>
-              <input id="partnerDisplayNameInput" type="text" placeholder="Ex.: CIRA Lausanne">
-            </div>
-        
-            <div class="field">
-              <label for="partnerSlugInput">Slug</label>
-              <input id="partnerSlugInput" type="text" placeholder="Ex.: cira" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
-            </div>
-        
-            <div class="field">
-              <label for="partnerBaseUrlInput">Base URL</label>
-              <input id="partnerBaseUrlInput" type="text" placeholder="https://www.cira.ch/catalogue">
-            </div>
-          </div>
-        
-          <div class="field" style="margin-bottom:12px;">
-            <label for="partnerDiscoveryUrlInput">Ajuda de pré-preenchimento por URL pública</label>
-            <input id="partnerDiscoveryUrlInput" type="text" placeholder="Cola aqui uma URL pública de catálogo, de busca ou de notice parceira">
-            <small>Esta ajuda só sugere nome público, slug, base URL, família provável, confiança, país e nota técnica curta. Ela não salva nada na base, não importa nada e não decide nenhum estatuto relacional.</small>
-            <div class="actions" style="margin-top:10px;">
-              <button id="partnerAnalyzeUrlBtn" class="button secondary" type="button">Analisar URL</button>
-              <button id="partnerApplyUrlSuggestionBtn" class="button secondary" type="button">Aplicar sugestão local</button>
-              <button id="partnerClearUrlSuggestionBtn" class="button ghost" type="button">Limpar sugestão</button>
-            </div>
-          </div>
-
-          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field">
-              <label for="partnerUrlSuggestionOutput">Leitura da ajuda por URL</label>
-              <textarea id="partnerUrlSuggestionOutput" rows="7" readonly placeholder="A leitura técnica e prudente da URL aparecerá aqui."></textarea>
-            </div>
-            <div class="field">
-              <label for="partnerUrlSuggestionWritePreview">Prévia do que será preenchido localmente</label>
-              <textarea id="partnerUrlSuggestionWritePreview" rows="7" readonly placeholder="A prévia exata do que será copiado para os campos locais aparecerá aqui."></textarea>
-              <small id="partnerUrlSuggestionMatchHint">Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente.</small>
-            </div>
-          </div>
-
-          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
-            <div class="field">
-              <label for="partnerFamilySelect">Família</label>
-              <select id="partnerFamilySelect">
-                <option value="pmb">PMB</option>
-                <option value="koha">Koha</option>
-                <option value="unknown">Desconhecida</option>
-              </select>
-            </div>
-        
-            <div class="field">
-              <label for="partnerConfidenceSelect">Confiança</label>
-              <select id="partnerConfidenceSelect">
-                <option value="confirmed">Confirmado</option>
-                <option value="strong_inference">Inferência forte</option>
-                <option value="generic">Genérico</option>
-                <option value="unknown">Desconhecido</option>
-              </select>
-            </div>
-        
-            <div class="field">
-              <label for="partnerCountryCodeInput">País</label>
-              <input id="partnerCountryCodeInput" type="text" maxlength="2" placeholder="CH">
-            </div>
-        
-            <div class="field">
-              <label for="partnerNotesInput">Nota curta</label>
-              <input id="partnerNotesInput" type="text" placeholder="OPAC público PMB provável">
-            </div>
-          </div>
-        
-          <div class="actions">
-            <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Ler situação na base</button>
-            <button id="partnerGenerateBtn" class="button secondary" type="button">Gerar endpoints e seed</button>
-            <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar relatório</button>
-            <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar SQL</button>
-            <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir base URL</button>
-          </div>
-
-          <div class="field" style="margin-top:12px;">
-            <label for="partnerActionHint">Ações documentárias nesta etapa</label>
-            <div class="actions">
-              <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
-              <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
-            </div>
-            <small id="partnerActionHint">Sem leitura política ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
-          </div>
-        
-          <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
-            <div class="section-block">
-              <div class="inline">
-                <div>
-                  <h4 class="section-title">Comparação documental local</h4>
-                  <div class="hint">Use este espaço para comparar a ficha local em foco com uma notice parceira resumida manualmente, sem importar nada automaticamente.</div>
-                </div>
-                <div class="row-actions">
-                  <button id="partnerApplyComparisonBtn" class="button secondary" type="button">Levar comparação para a ficha</button>
-                  <button id="partnerClearComparisonBtn" class="button ghost" type="button">Limpar comparação</button>
-                </div>
-              </div>
-              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
-                  <textarea id="partnerLocalDraftSummary" rows="7" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerPartnerNoticeSummary">Notice parceira / resumo manual</label>
-                  <textarea id="partnerPartnerNoticeSummary" rows="7" placeholder="Cole ou resuma aqui a notice parceira que queres comparar."></textarea>
-                </div>
-              </div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerDifferenceSummary">Diferenças e pontos de atenção</label>
-                  <textarea id="partnerDifferenceSummary" rows="6" placeholder="Ex.: subtítulo divergente; ano ausente; editora diferente; autoria invertida; assunto mais preciso na ficha local."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonDecision">Decisão local / próximos passos</label>
-                  <textarea id="partnerComparisonDecision" rows="6" placeholder="Ex.: manter a ficha local como base; registrar proveniência; revisar ISBN; verificar exemplar em mãos."></textarea>
-                </div>
-              </div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerComparisonChecklist">Checklist de leitura local</label>
-                  <textarea id="partnerComparisonChecklist" rows="6" readonly placeholder="A checklist local da comparação aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonPreview">Resumo pronto para revisão</label>
-                  <textarea id="partnerComparisonPreview" rows="6" readonly placeholder="O resumo consolidado da comparação aparecerá aqui."></textarea>
-                </div>
-              </div>
-              <div class="field">
-                <label for="partnerComparisonCarryPreview">Prévia do que será levado para a ficha</label>
-                <textarea id="partnerComparisonCarryPreview" rows="5" readonly placeholder="A nota de proveniência preparada para a ficha aparecerá aqui."></textarea>
-                <small id="partnerComparisonLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar comparação para a ficha”. Esta ação só escreve campos locais e nota de proveniência.</small>
-              </div>
-              <div class="field">
-                <label for="partnerComparisonFieldWritePreview">Escrita exata prevista na ficha</label>
-                <textarea id="partnerComparisonFieldWritePreview" rows="7" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
-                <small id="partnerComparisonFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando clicares em “Levar comparação para a ficha”.</small>
-              </div>
-              <div class="field">
-                <label for="partnerComparisonOperationalState">Estado operacional da comparação</label>
-                <textarea id="partnerComparisonOperationalState" rows="4" readonly placeholder="O estado operacional desta comparação aparecerá aqui."></textarea>
-              </div>
-              <div class="field">
-                <label for="partnerComparisonPrudenceSignal">Sinal de prudência</label>
-                <textarea id="partnerComparisonPrudenceSignal" rows="3" readonly placeholder="O sinal de prudência da comparação aparecerá aqui."></textarea>
-              </div>
-              <div id="partnerComparisonBoundaryNote" class="hint">
-                Esta área continua local, manual e sem importação automática. Ela não altera o estatuto político da parceira e não vale como mutualização.
-              </div>
-              <div class="hint">
-                Podes preencher este espaço aos poucos.
-
-                Nada daqui publica, importa ou mutualiza por si só.
-              </div>
-            </div>
-          </div>
-
-          <div id="partnerImportWorkspace" class="field is-hidden" style="margin-top:12px;">
-            <div class="section-block">
-              <div class="inline">
-                <div>
-                  <h4 class="section-title">Importação controlada / preparação local</h4>
-                  <div class="hint">Este espaço prepara uma retomada local controlada, sem lançar nenhuma importação automática nem modificar livremente a notice parceira.</div>
-                </div>
-                <div class="row-actions">
-                  <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação para a ficha</button>
-                  <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
-                </div>
-              </div>
-              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
-                  <textarea id="partnerImportSourceSummary" rows="6" readonly placeholder="A síntese da fonte parceira aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportLocalSummary">Rascunho local em foco</label>
-                  <textarea id="partnerImportLocalSummary" rows="6" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
-                </div>
-              </div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerImportFormatSelect">Formato de importação a preparar</label>
-                  <select id="partnerImportFormatSelect"></select>
-                  <small>Este campo só prepara a ficha local. Nada é importado automaticamente.</small>
-                </div>
-                <div class="field">
-                  <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
-                  <select id="partnerImportMethodSelect"></select>
-                  <small>Escolhe aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
-                </div>
-              </div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerImportTakeSummary">Elementos a retomar</label>
-                  <textarea id="partnerImportTakeSummary" rows="6" placeholder="Ex.: subtítulo; forma de responsabilidade; assunto mais preciso; URL de origem; nota útil."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportSkipSummary">Elementos a não retomar</label>
-                  <textarea id="partnerImportSkipSummary" rows="6" placeholder="Ex.: assunto genérico demais; dado não confirmado; forma de nome menos precisa; nota técnica sem utilidade local."></textarea>
-                </div>
-              </div>
-              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                <div class="field">
-                  <label for="partnerImportProvenanceSummary">Proveniência a conservar</label>
-                  <textarea id="partnerImportProvenanceSummary" rows="6" placeholder="Ex.: notice parceira consultada em HTML público; comparação humana; revisão local a partir do exemplar em mãos."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportDecisionSummary">Decisão local / preparação do rascunho</label>
-                  <textarea id="partnerImportDecisionSummary" rows="6" placeholder="Ex.: preparar rascunho local sem copiar assuntos; manter editora local validada; revisar ISBN antes de publicar."></textarea>
-                </div>
-              </div>
-              <div class="field">
-                <label for="partnerImportDraftPreview">Pré-visualização local do rascunho preparado</label>
-                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
-              </div>
-              <div class="field">
-                <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
-                <textarea id="partnerImportCarryPreview" rows="6" readonly placeholder="A nota local de preparação aparecerá aqui."></textarea>
-                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”. Esta ação só escreve parâmetros locais e nota de proveniência.</small>
-              </div>
-              <div class="field">
-                <label for="partnerImportFieldWritePreview">Escrita exata prevista na ficha</label>
-                <textarea id="partnerImportFieldWritePreview" rows="8" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
-                <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando clicares em “Levar preparação para a ficha”.</small>
-              </div>
-              <div class="field">
-                <label for="partnerImportOperationalState">Estado operacional da preparação</label>
-                <textarea id="partnerImportOperationalState" rows="4" readonly placeholder="O estado operacional desta preparação aparecerá aqui."></textarea>
-              </div>
-              <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real. Mesmo quando a mutualização estiver autorizada, isso não vale como modificação livre da notice parceira.</div>
-            </div>
-          </div>
-
-
-          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
-            <div class="field">
-              <label for="partnerProbeOutput">Endpoints prováveis</label>
-              <textarea id="partnerProbeOutput" rows="14" readonly placeholder="Os endpoints prováveis aparecerão aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
-            </div>
-        
-            <div class="field">
-              <label for="partnerSeedOutput">SQL de seed</label>
-              <textarea id="partnerSeedOutput" rows="14" readonly placeholder="O insert em public.catalog_partners aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
     import { supabase } from './js/blmf-supabase.js';
-    import {
-      PARTNER_PRESETS,
-      buildCapabilityProbe,
-      buildPartnerSeedSql,
-      formatProbeReport,
-      normalizePartnerBaseUrl,
-      normalizePartnerSlug
-    } from './js/partners.js';
+
+    const PARTNER_HELPERS_FALLBACK = {
+      PARTNER_PRESETS: [],
+      buildCapabilityProbe(baseUrl) {
+        const normalizedBaseUrl = String(baseUrl || '').trim();
+        return normalizedBaseUrl ? [{ capability_key: 'catalog_home', endpoint_url: normalizedBaseUrl }] : [];
+      },
+      buildPartnerSeedSql({ slug = '', displayName = '', baseUrl = '', softwareFamily = 'unknown', softwareConfidence = 'unknown', countryCode = '', notes = '' } = {}) {
+        const escapeSql = (value) => String(value || '').replace(/'/g, "''");
+        if (!slug || !displayName || !baseUrl) {
+          return '-- Preenche nome público, slug e base URL para gerar o SQL local.';
+        }
+        return [
+          'insert into public.catalog_partners (slug, display_name, base_url, software_family, software_confidence, country_code, notes)',
+          `values ('${escapeSql(slug)}', '${escapeSql(displayName)}', '${escapeSql(baseUrl)}', '${escapeSql(softwareFamily)}', '${escapeSql(softwareConfidence)}', ${countryCode ? "'" + escapeSql(countryCode) + "'" : 'null'}, ${notes ? "'" + escapeSql(notes) + "'" : 'null'})`,
+          'on conflict (slug) do update set',
+          `  display_name = excluded.display_name,`,
+          `  base_url = excluded.base_url,`,
+          `  software_family = excluded.software_family,`,
+          `  software_confidence = excluded.software_confidence,`,
+          `  country_code = excluded.country_code,`,
+          `  notes = excluded.notes;`
+        ].join('\n');
+      },
+      formatProbeReport(probes = []) {
+        if (!Array.isArray(probes) || !probes.length) {
+          return 'Sem endpoints prováveis calculados nesta versão local.';
+        }
+        return probes.map((probe) => {
+          const capability = String(probe?.capability_key || probe?.capability || 'capability').trim();
+          const url = String(probe?.endpoint_url || probe?.url || '').trim();
+          return [capability ? `Capacidade: ${capability}` : '', url ? `URL: ${url}` : ''].filter(Boolean).join('\n');
+        }).filter(Boolean).join('\n\n');
+      },
+      normalizePartnerBaseUrl(value = '') {
+        const trimmed = String(value || '').trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `https://${trimmed.replace(/^\/+/, '')}`;
+      },
+      normalizePartnerSlug(value = '') {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      },
+    };
+
+    let PARTNER_PRESETS = PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
+    let buildCapabilityProbe = PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
+    let buildPartnerSeedSql = PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
+    let formatProbeReport = PARTNER_HELPERS_FALLBACK.formatProbeReport;
+    let normalizePartnerBaseUrl = PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
+    let normalizePartnerSlug = PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
+    let partnerHelpersLoadState = 'idle';
+    let partnerHelpersLoadPromise = null;
+
+    async function ensurePartnerHelpersLoaded() {
+      if (partnerHelpersLoadState === 'ready') {
+        return { usedFallback: false };
+      }
+      if (partnerHelpersLoadPromise) {
+        return partnerHelpersLoadPromise;
+      }
+      partnerHelpersLoadState = 'loading';
+      partnerHelpersLoadPromise = import('./js/partners.js')
+        .then((mod) => {
+          PARTNER_PRESETS = Array.isArray(mod?.PARTNER_PRESETS) ? mod.PARTNER_PRESETS : PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
+          buildCapabilityProbe = typeof mod?.buildCapabilityProbe === 'function' ? mod.buildCapabilityProbe : PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
+          buildPartnerSeedSql = typeof mod?.buildPartnerSeedSql === 'function' ? mod.buildPartnerSeedSql : PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
+          formatProbeReport = typeof mod?.formatProbeReport === 'function' ? mod.formatProbeReport : PARTNER_HELPERS_FALLBACK.formatProbeReport;
+          normalizePartnerBaseUrl = typeof mod?.normalizePartnerBaseUrl === 'function' ? mod.normalizePartnerBaseUrl : PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
+          normalizePartnerSlug = typeof mod?.normalizePartnerSlug === 'function' ? mod.normalizePartnerSlug : PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
+          partnerHelpersLoadState = 'ready';
+          return { usedFallback: false };
+        })
+        .catch((error) => {
+          console.error('Falha ao carregar ./js/partners.js. O bloco de parceiros seguirá em modo local reduzido.', error);
+          PARTNER_PRESETS = PARTNER_HELPERS_FALLBACK.PARTNER_PRESETS;
+          buildCapabilityProbe = PARTNER_HELPERS_FALLBACK.buildCapabilityProbe;
+          buildPartnerSeedSql = PARTNER_HELPERS_FALLBACK.buildPartnerSeedSql;
+          formatProbeReport = PARTNER_HELPERS_FALLBACK.formatProbeReport;
+          normalizePartnerBaseUrl = PARTNER_HELPERS_FALLBACK.normalizePartnerBaseUrl;
+          normalizePartnerSlug = PARTNER_HELPERS_FALLBACK.normalizePartnerSlug;
+          partnerHelpersLoadState = 'fallback';
+          return { usedFallback: true, error };
+        });
+      return partnerHelpersLoadPromise;
+    }
 
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
@@ -5399,60 +5309,35 @@
       return `${projectUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
     }
 
-    function getPreviewFrame(imgEl) {
-      return imgEl?.closest('.cover-preview-frame') || null;
-    }
-
-    function syncPreviewFrameState(imgEl, kind = 'image', isEmpty = true) {
-      const frame = getPreviewFrame(imgEl);
-      if (!frame) return;
-      frame.classList.toggle('is-empty', !!isEmpty);
-      const title = frame.querySelector('.cover-preview-placeholder strong');
-      if (title) title.textContent = kind === 'author' ? 'Sem foto' : 'Sem capa';
-    }
-
-    function applyPreviewPlaceholder(imgEl, kind = 'image') {
-      if (!imgEl) return;
-      imgEl.onerror = null;
-      imgEl.onload = null;
-      imgEl.dataset.assetFallbackApplied = '1';
-      imgEl.removeAttribute('src');
-      imgEl.alt = kind === 'author' ? 'Sem foto' : 'Sem capa';
-      syncPreviewFrameState(imgEl, kind, true);
-    }
-
     function setPreviewImage(imgEl, path, bucket) {
-      if (!imgEl) return;
       const rawPath = String(path || '').trim();
-      const kind = bucket === 'authors' ? 'author' : 'book';
       if (!rawPath) {
-        applyPreviewPlaceholder(imgEl, kind);
+        imgEl.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#d1d5db" font-family="Arial" font-size="18">Sem imagem</text></svg>`);
+        imgEl.alt = 'Sem imagem';
+        imgEl.onerror = null;
         return;
       }
-      const primaryUrl = /^(https?:|data:)/i.test(rawPath)
-        ? rawPath
-        : buildStoragePublicUrl(SUPABASE_URL, bucket, rawPath);
-      const fallbackUrl = (!/^(https?:|data:)/i.test(rawPath) && PROD_SUPABASE_URL && PROD_SUPABASE_URL !== SUPABASE_URL)
+      if (/^(https?:|data:)/i.test(rawPath)) {
+        imgEl.src = rawPath;
+        imgEl.alt = rawPath;
+        imgEl.onerror = null;
+        return;
+      }
+      const primaryUrl = buildStoragePublicUrl(SUPABASE_URL, bucket, rawPath);
+      const fallbackUrl = PROD_SUPABASE_URL && PROD_SUPABASE_URL !== SUPABASE_URL
         ? buildStoragePublicUrl(PROD_SUPABASE_URL, bucket, rawPath)
         : '';
-
-      imgEl.onload = () => {
-        imgEl.dataset.assetFallbackApplied = 'loaded';
-        syncPreviewFrameState(imgEl, kind, false);
-      };
       imgEl.onerror = () => {
         if (fallbackUrl && imgEl.dataset.assetFallbackApplied !== '1') {
           imgEl.dataset.assetFallbackApplied = '1';
           imgEl.src = fallbackUrl;
           return;
         }
-        applyPreviewPlaceholder(imgEl, kind);
+        imgEl.onerror = null;
       };
-
       imgEl.dataset.assetFallbackApplied = '0';
-      syncPreviewFrameState(imgEl, kind, true);
-      imgEl.alt = rawPath;
       imgEl.src = primaryUrl;
+      imgEl.alt = rawPath;
     }
 
     function isActiveQueueItem(item = {}) {
@@ -5523,7 +5408,6 @@
         holderLibrary: el('bookHolderLibrary').value.trim(),
         acquisitionSourceLabel: el('bookAcquisitionSourceLabel').value.trim(),
         partnerSource: el('bookPartnerSource').value || '',
-        partnerGovernanceSlug: el('bookPartnerGovernanceSlug').value.trim(),
         sourceRecordId: el('bookSourceRecordId').value.trim(),
         sourceRecordUrl: el('bookSourceRecordUrl').value.trim(),
         importFormat: el('bookImportFormat').value || '',
@@ -6688,8 +6572,6 @@
         await loadBatches();
       } else if (activeTab === 'catalogPanel') {
         await loadCatalog();
-      } else if (activeTab === 'partnerCatalogsPanel') {
-        // O módulo de parceiros externos tem seus próprios controles locais e leitura política dedicada.
       }
 
       updateStats();
@@ -7760,7 +7642,6 @@
       const holderLibraryValue = el('bookHolderLibrary').value.trim() || '';
       const acquisitionSourceLabelValue = el('bookAcquisitionSourceLabel').value.trim() || '';
       const partnerSourceValue = el('bookPartnerSource').value || '';
-      const partnerGovernanceSlugValue = normalizePartnerSlug(el('bookPartnerGovernanceSlug').value || '');
       const sourceRecordIdValue = el('bookSourceRecordId').value.trim() || '';
       const sourceRecordUrlValue = el('bookSourceRecordUrl').value.trim() || '';
       const importFormatValue = el('bookImportFormat').value || '';
@@ -7768,9 +7649,6 @@
       const provenanceNoteValue = el('bookProvenanceNote').value.trim() || '';
       const mutualizationStatusValue = el('bookMutualizationStatus').value || '';
       const acquisitionBridge = {};
-      const provenanceBridge = {
-        governance_slug: partnerGovernanceSlugValue || null,
-      };
 
       const materialDetailBridge = getBookMaterialDetailPayload(materialType);
       const materialDetailNativePayload = getBookMaterialDetailNativePayload(materialDetailBridge);
@@ -7830,7 +7708,7 @@
                 acquisitionBridge
               ),
               'anarbib_provenance',
-              provenanceBridge
+              {}
             ),
             'anarbib_network',
             {}
@@ -8095,7 +7973,6 @@
       el('bookHolderLibrary').value = '';
       el('bookAcquisitionSourceLabel').value = '';
       el('bookPartnerSource').value = '';
-      el('bookPartnerGovernanceSlug').value = '';
       el('bookSourceRecordId').value = '';
       el('bookSourceRecordUrl').value = '';
       el('bookImportFormat').value = '';
@@ -8744,16 +8621,16 @@
       refs.loginBtn.removeAttribute('aria-busy');
 
       if (catalogacaoAuthSyncInFlight) {
-        refs.loginBtn.disabled = true;
         refs.loginBtn.setAttribute('aria-busy', 'true');
         if (hasSession) {
+          refs.loginBtn.disabled = true;
           refs.loginBtn.textContent = 'Logout';
           refs.loginBtn.className = 'button secondary';
           refs.loginBtn.title = 'Sessão reconhecida. Sincronizando acesso…';
         } else {
           refs.loginBtn.textContent = 'Fazer login';
           refs.loginBtn.className = 'button primary';
-          refs.loginBtn.title = 'Sessão ainda não confirmada.';
+          refs.loginBtn.title = 'Sessão ainda não confirmada. Você já pode entrar de novo se precisar.';
         }
         return;
       }
@@ -8768,7 +8645,7 @@
       }
     }
 
-    function updateRefreshButton(isLoading = false) {
+        function updateRefreshButton(isLoading = false) {
       const btn = refs.refreshAllBtn;
       if (!btn) return;
       btn.disabled = !!isLoading;
@@ -9019,15 +8896,16 @@
       return null;
     }
 
-    async function requireSession({ attempts = 40, delayMs = 150 } = {}) {
+    async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
       const session = await getCurrentSession({ attempts, delayMs });
-      state.session = session || null;
+      state.session = session;
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
         updateLoginButton();
-        return null;
+        showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
+        throw new Error('Sem sessão');
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       updateLoginButton();
@@ -9530,7 +9408,6 @@
       el('bookHolderLibrary').value = getBookNativeOrBridgeValue(enriched, 'holder_library', acquisitionBridge.holder_library) || '';
       el('bookAcquisitionSourceLabel').value = getBookNativeOrBridgeValue(enriched, 'source_label', acquisitionBridge.source_label) || '';
       el('bookPartnerSource').value = getBookNativeOrBridgeValue(enriched, 'partner_source', provenanceBridge.partner_source) || '';
-      el('bookPartnerGovernanceSlug').value = normalizePartnerSlug(provenanceBridge.governance_slug || '');
       el('bookSourceRecordId').value = getBookNativeOrBridgeValue(enriched, 'source_record_id', provenanceBridge.source_record_id) || '';
       el('bookSourceRecordUrl').value = getBookNativeOrBridgeValue(enriched, 'source_record_url', provenanceBridge.source_record_url) || '';
       el('bookImportFormat').value = getBookNativeOrBridgeValue(enriched, 'import_format', provenanceBridge.import_format) || '';
@@ -12264,20 +12141,12 @@
         window.location.href = LOGIN_URL;
         return;
       }
-
-      refs.loginBtn.disabled = true;
       try {
-        await Promise.race([
-          supabase.auth.signOut(),
-          new Promise((resolve) => setTimeout(resolve, 2500)),
-        ]);
+        await supabase.auth.signOut();
       } catch (error) {
-        console.warn('Não consegui encerrar a sessão da catalogação; seguindo para o login mesmo assim.', error);
-      } finally {
-        resetCatalogacaoAuthChrome();
-        refs.loginBtn.disabled = false;
-        window.location.href = LOGIN_URL;
+        console.warn('signOut failed:', error);
       }
+      window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-contrib-action]');
@@ -12543,7 +12412,8 @@ async function copyPartnerTextFrom(id, successMessage) {
   }
 }
 
-function initPartnerProbeUi() {
+async function initPartnerProbeUi() {
+  const partnerHelpersState = await ensurePartnerHelpersLoaded();
   const presetEl = document.getElementById('partnerPresetSelect');
   const presetHintEl = document.getElementById('partnerPresetHint');
   const displayEl = document.getElementById('partnerDisplayNameInput');
@@ -12553,13 +12423,6 @@ function initPartnerProbeUi() {
   const confidenceEl = document.getElementById('partnerConfidenceSelect');
   const countryEl = document.getElementById('partnerCountryCodeInput');
   const notesEl = document.getElementById('partnerNotesInput');
-  const discoveryUrlEl = document.getElementById('partnerDiscoveryUrlInput');
-  const analyzeUrlBtn = document.getElementById('partnerAnalyzeUrlBtn');
-  const applyUrlSuggestionBtn = document.getElementById('partnerApplyUrlSuggestionBtn');
-  const clearUrlSuggestionBtn = document.getElementById('partnerClearUrlSuggestionBtn');
-  const urlSuggestionOutputEl = document.getElementById('partnerUrlSuggestionOutput');
-  const urlSuggestionWritePreviewEl = document.getElementById('partnerUrlSuggestionWritePreview');
-  const urlSuggestionMatchHintEl = document.getElementById('partnerUrlSuggestionMatchHint');
   const reportEl = document.getElementById('partnerProbeOutput');
   const seedEl = document.getElementById('partnerSeedOutput');
   const relationshipStatusEl = document.getElementById('partnerRelationshipStatusOutput');
@@ -12614,25 +12477,9 @@ function initPartnerProbeUi() {
   const applyImportPrepBtn = document.getElementById('partnerApplyImportPrepBtn');
   const clearImportPrepBtn = document.getElementById('partnerClearImportPrepBtn');
 
-  const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
-  const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
-  const incomingLibraryNameEl = document.getElementById('partnerIncomingLibraryName');
-  const incomingLibraryShortNameEl = document.getElementById('partnerIncomingLibraryShortName');
-  const incomingLibrarySlugEl = document.getElementById('partnerIncomingLibrarySlug');
-  const incomingLibraryAcronymEl = document.getElementById('partnerIncomingLibraryAcronym');
-  const incomingLibraryTerritoryEl = document.getElementById('partnerIncomingLibraryTerritory');
-  const incomingCatalogNoteEl = document.getElementById('partnerIncomingCatalogNote');
-  const readIncomingCatalogBtn = document.getElementById('partnerReadIncomingCatalogBtn');
-  const applyIncomingIdentityBtn = document.getElementById('partnerApplyIncomingIdentityBtn');
-  const clearIncomingCatalogBtn = document.getElementById('partnerClearIncomingCatalogBtn');
-  const incomingCatalogSummaryEl = document.getElementById('partnerIncomingCatalogSummary');
-  const incomingIdentityPreviewEl = document.getElementById('partnerIncomingIdentityPreview');
-  const incomingCatalogHintEl = document.getElementById('partnerIncomingCatalogHint');
-
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
-    !confidenceEl || !countryEl || !notesEl || !discoveryUrlEl || !analyzeUrlBtn || !applyUrlSuggestionBtn || !clearUrlSuggestionBtn || !urlSuggestionOutputEl ||
-    !urlSuggestionWritePreviewEl || !urlSuggestionMatchHintEl || !reportEl || !seedEl ||
+    !confidenceEl || !countryEl || !notesEl || !reportEl || !seedEl ||
     !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !compareActionBtn || !importActionBtn || !actionHintEl ||
@@ -12661,7 +12508,6 @@ function initPartnerProbeUi() {
   };
 
   const bookPartnerSourceEl = document.getElementById('bookPartnerSource');
-  const bookPartnerGovernanceSlugEl = document.getElementById('bookPartnerGovernanceSlug');
   const bookSourceRecordIdEl = document.getElementById('bookSourceRecordId');
   const bookSourceRecordUrlEl = document.getElementById('bookSourceRecordUrl');
   const bookImportFormatEl = document.getElementById('bookImportFormat');
@@ -12676,450 +12522,6 @@ function initPartnerProbeUi() {
     importWorkspaceOpen: false,
   };
   const partnerOptionRegistry = new Map();
-  let partnerUrlSuggestionState = null;
-  let incomingCatalogFileAnalysis = null;
-
-  function formatIncomingCatalogFileSize(size = 0) {
-    const value = Number(size || 0);
-    if (!Number.isFinite(value) || value <= 0) return '0 B';
-    if (value < 1024) return `${value} B`;
-    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-    if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  }
-
-  function getIncomingCatalogFileKind(fileName = '') {
-    const lower = String(fileName || '').trim().toLowerCase();
-    if (!lower) return 'desconhecido';
-    if (lower.endsWith('.csv')) return 'csv';
-    if (lower.endsWith('.tsv')) return 'tsv';
-    if (lower.endsWith('.txt')) return 'txt';
-    if (lower.endsWith('.xlsx')) return 'xlsx';
-    if (lower.endsWith('.xls')) return 'xls';
-    if (lower.endsWith('.ods')) return 'ods';
-    if (lower.endsWith('.pdf')) return 'pdf';
-    if (lower.endsWith('.json')) return 'json';
-    if (lower.endsWith('.xml')) return 'xml';
-    if (lower.endsWith('.zip')) return 'zip';
-    return 'desconhecido';
-  }
-
-  function detectIncomingDelimitedSeparator(headerLine = '') {
-    const candidates = [
-      { sep: ';', label: 'ponto e vírgula' },
-      { sep: ',', label: 'vírgula' },
-      { sep: '\t', label: 'tabulação' },
-      { sep: '|', label: 'barra vertical' },
-    ];
-    const scored = candidates
-      .map((item) => ({ ...item, count: String(headerLine || '').split(item.sep).length }))
-      .sort((a, b) => b.count - a.count);
-    return scored[0] && scored[0].count > 1 ? scored[0] : { sep: ',', label: 'vírgula', count: 1 };
-  }
-
-  function buildIncomingCatalogIdentity() {
-    const libraryName = normalizeInlineWhitespace(incomingLibraryNameEl?.value || '');
-    const shortName = normalizeInlineWhitespace(incomingLibraryShortNameEl?.value || '');
-    const acronym = normalizeInlineWhitespace(incomingLibraryAcronymEl?.value || '').toUpperCase();
-    const territory = normalizeInlineWhitespace(incomingLibraryTerritoryEl?.value || '');
-    const note = normalizeInlineWhitespace(incomingCatalogNoteEl?.value || '');
-    const slugSource = normalizeInlineWhitespace(incomingLibrarySlugEl?.value || '')
-      || normalizeInlineWhitespace(shortName || libraryName || acronym || '');
-    const slug = normalizePartnerSlug(slugSource);
-    return { libraryName, shortName, slug, acronym, territory, note };
-  }
-
-  function renderIncomingCatalogIdentityPreview() {
-    if (!incomingIdentityPreviewEl || !incomingCatalogHintEl) return;
-    const identity = buildIncomingCatalogIdentity();
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    const fileKind = file ? getIncomingCatalogFileKind(file.name) : '—';
-    const noteParts = [];
-    if (identity.note) noteParts.push(identity.note);
-    if (file && fileKind && fileKind !== 'desconhecido') noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
-    incomingIdentityPreviewEl.value = [
-      `Nome da biblioteca → ${identity.libraryName || '—'}`,
-      `Nome curto → ${identity.shortName || '—'}`,
-      `Slug local → ${identity.slug || '—'}`,
-      `Sigla / acrônimo → ${identity.acronym || '—'}`,
-      `Cidade / território → ${identity.territory || '—'}`,
-      `Nota curta → ${noteParts.join(' ') || '—'}`,
-      `Leitura desta etapa → recepção artesanal local; sem importação automática; sem decisão política automática.`
-    ].join('\n');
-
-    if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
-      incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se quiseres, para os campos de governança documental abaixo.';
-    } else {
-      incomingCatalogHintEl.textContent = 'Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
-    }
-  }
-
-  function updateIncomingCatalogFileName() {
-    if (!incomingCatalogFileNameEl) return;
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    incomingCatalogFileNameEl.textContent = file ? `${file.name} · ${formatIncomingCatalogFileSize(file.size)}` : 'Nenhum arquivo selecionado';
-  }
-
-  function resetIncomingCatalogReception({ keepIdentity = false } = {}) {
-    incomingCatalogFileAnalysis = null;
-    if (incomingCatalogFileEl) incomingCatalogFileEl.value = '';
-    updateIncomingCatalogFileName();
-    if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = '';
-    if (!keepIdentity) {
-      [incomingLibraryNameEl, incomingLibraryShortNameEl, incomingLibrarySlugEl, incomingLibraryAcronymEl, incomingLibraryTerritoryEl, incomingCatalogNoteEl].forEach((node) => {
-        if (node) node.value = '';
-      });
-    }
-    renderIncomingCatalogIdentityPreview();
-    if (incomingCatalogHintEl) {
-      incomingCatalogHintEl.textContent = 'Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.';
-    }
-  }
-
-  function buildIncomingCatalogSummaryText(file, analysis = null) {
-    if (!file) {
-      return 'Nenhum arquivo local selecionado ainda.';
-    }
-    const kind = getIncomingCatalogFileKind(file.name);
-    const lines = [
-      `Arquivo recebido: ${file.name}`,
-      `Formato detectado: ${kind.toUpperCase()}`,
-      `Tamanho: ${formatIncomingCatalogFileSize(file.size)}`,
-      `Última modificação: ${file.lastModified ? new Date(file.lastModified).toLocaleString('pt-BR') : '—'}`,
-    ];
-    if (analysis?.summaryLines?.length) {
-      lines.push('', ...analysis.summaryLines);
-    } else {
-      lines.push('', 'Leitura local ainda não executada ou sem pré-visualização disponível para este formato.');
-    }
-    lines.push('', 'Lembrete: esta recepção é apenas local e preparatória. Ela não cria parceira, não altera a política documental e não importa notices automaticamente.');
-    return lines.join('\n');
-  }
-
-  function summarizeIncomingDelimitedText(text = '', delimiterLabel = 'vírgula') {
-    const rawLines = String(text || '').split(/\r?\n/).filter((line) => line.trim());
-    const headerLine = rawLines[0] || '';
-    const separator = detectIncomingDelimitedSeparator(headerLine);
-    const columns = headerLine ? headerLine.split(separator.sep).map((item) => normalizeInlineWhitespace(item)) : [];
-    const sampleLine = rawLines[1] || '';
-    const sampleValues = sampleLine ? sampleLine.split(separator.sep).map((item) => normalizeInlineWhitespace(item)) : [];
-    const previewPairs = columns.slice(0, 5).map((column, index) => `${column || `coluna ${index + 1}`}: ${sampleValues[index] || '—'}`);
-    return {
-      summaryLines: [
-        `Leitura local do cabeçalho: delimitador provável = ${separator.label}.`,
-        `Colunas detectadas: ${columns.length || 0}.`,
-        `Campos principais: ${columns.slice(0, 8).join(' | ') || '—'}.`,
-        `Primeira linha de dados (prévia): ${previewPairs.join(' · ') || '—'}.`,
-        `Linhas lidas nesta prévia local: ${rawLines.length || 0}.`,
-      ]
-    };
-  }
-
-  function summarizeIncomingTextFile(text = '', fileKind = 'txt') {
-    if (fileKind === 'csv' || fileKind === 'tsv') {
-      return summarizeIncomingDelimitedText(text, fileKind === 'tsv' ? 'tabulação' : 'vírgula');
-    }
-    if (fileKind === 'json') {
-      const preview = normalizeInlineWhitespace(text).slice(0, 320);
-      return {
-        summaryLines: [
-          'Arquivo JSON lido localmente.',
-          `Prévia do conteúdo: ${preview || '—'}.`,
-        ]
-      };
-    }
-    if (fileKind === 'xml') {
-      const preview = normalizeInlineWhitespace(text).slice(0, 320);
-      return {
-        summaryLines: [
-          'Arquivo XML lido localmente.',
-          `Prévia do conteúdo: ${preview || '—'}.`,
-        ]
-      };
-    }
-    const lines = String(text || '').split(/\r?\n/).filter((line) => line.trim());
-    return {
-      summaryLines: [
-        'Arquivo textual lido localmente.',
-        `Primeira linha: ${normalizeInlineWhitespace(lines[0] || '') || '—'}.`,
-        `Segunda linha: ${normalizeInlineWhitespace(lines[1] || '') || '—'}.`,
-        `Linhas lidas nesta prévia local: ${lines.length || 0}.`,
-      ]
-    };
-  }
-
-  function readIncomingCatalogTextPreview(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error || new Error('Falha ao ler o arquivo local.'));
-      reader.readAsText(file.slice(0, 160000), 'utf-8');
-    });
-  }
-
-  async function analyzeIncomingCatalogFile() {
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    if (!file) {
-      if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = 'Nenhum arquivo local selecionado ainda.';
-      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolhe primeiro um arquivo artesanal recebido antes de pedir a leitura local.';
-      setPartnerProbeMessage('Escolhe primeiro um arquivo artesanal recebido para esta biblioteca.', 'warn');
-      return;
-    }
-    const kind = getIncomingCatalogFileKind(file.name);
-    try {
-      if (['csv', 'tsv', 'txt', 'json', 'xml'].includes(kind)) {
-        const textPreview = await readIncomingCatalogTextPreview(file);
-        incomingCatalogFileAnalysis = summarizeIncomingTextFile(textPreview, kind);
-      } else {
-        incomingCatalogFileAnalysis = {
-          summaryLines: [
-            `Formato ${kind.toUpperCase()} detectado.`,
-            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato virá depois, de forma controlada.',
-          ]
-        };
-      }
-      if (incomingCatalogSummaryEl) {
-        incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, incomingCatalogFileAnalysis);
-      }
-      if (incomingCatalogHintEl) {
-        incomingCatalogHintEl.textContent = 'Leitura local concluída. Agora podes ligar esta recepção artesanal à identificação da biblioteca e, se precisares, levá-la para a governança abaixo.';
-      }
-      setPartnerProbeMessage('Arquivo artesanal lido localmente. Nenhuma importação nem decisão política foi feita.', 'info');
-    } catch (error) {
-      incomingCatalogFileAnalysis = null;
-      if (incomingCatalogSummaryEl) {
-        incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, null);
-      }
-      if (incomingCatalogHintEl) {
-        incomingCatalogHintEl.textContent = 'Não consegui ler a prévia local deste arquivo. Mesmo assim, podes registrar a identificação da biblioteca e seguir sem importação automática.';
-      }
-      setPartnerProbeMessage(`Não consegui ler a prévia local do arquivo: ${error?.message || error}`, 'warn');
-    }
-  }
-
-  function applyIncomingIdentityToGovernance() {
-    const identity = buildIncomingCatalogIdentity();
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    const fileKind = file ? getIncomingCatalogFileKind(file.name) : '';
-    const nextDisplayName = identity.shortName || identity.libraryName || identity.acronym;
-    const noteParts = [];
-    if (identity.note) noteParts.push(identity.note);
-    if (identity.territory) noteParts.push(`Território informado: ${identity.territory}.`);
-    if (fileKind) noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
-    if (!nextDisplayName && !identity.slug) {
-      setPartnerProbeMessage('Preenche ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
-      return;
-    }
-    if (displayEl && nextDisplayName) displayEl.value = nextDisplayName;
-    if (slugEl && identity.slug) slugEl.value = identity.slug;
-    if (notesEl && noteParts.length) {
-      const noteText = noteParts.join(' ');
-      const current = normalizeInlineWhitespace(notesEl.value || '');
-      if (!current) {
-        notesEl.value = noteText;
-      } else if (!current.includes(noteText)) {
-        notesEl.value = `${current} ${noteText}`.trim();
-      }
-    }
-    if (familyEl && !String(familyEl.value || '').trim()) familyEl.value = 'unknown';
-    if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
-    syncPresetSelectionFromCurrentPartnerFields();
-    refreshPartnerKnownPartnerHint();
-    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar notices.', 'ok');
-  }
-
-  function clearPartnerUrlSuggestionReadout() {
-    partnerUrlSuggestionState = null;
-    urlSuggestionOutputEl.value = '';
-    urlSuggestionWritePreviewEl.value = '';
-    urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente nem decidir qualquer estatuto relacional.';
-  }
-
-  function inferPartnerCountryCodeFromHostname(hostname = '') {
-    const host = String(hostname || '').trim().toLowerCase();
-    if (!host) return '';
-    const ccMap = {
-      br: 'BR',
-      pt: 'PT',
-      ch: 'CH',
-      fr: 'FR',
-      be: 'BE',
-      it: 'IT',
-      es: 'ES',
-      uk: 'GB',
-      co: 'CO',
-      ar: 'AR',
-      cl: 'CL',
-      mx: 'MX',
-      uy: 'UY',
-      py: 'PY',
-      pe: 'PE',
-      bo: 'BO',
-      ec: 'EC',
-      ve: 'VE',
-      de: 'DE',
-      at: 'AT',
-      nl: 'NL',
-      ca: 'CA',
-      us: 'US',
-    };
-    const parts = host.split('.').filter(Boolean);
-    const last = parts[parts.length - 1] || '';
-    return ccMap[last] || '';
-  }
-
-  function inferPartnerSoftwareFamilyFromUrl(url = '') {
-    const value = String(url || '').trim().toLowerCase();
-    if (!value) return { family: 'unknown', confidence: 'unknown', note: 'URL vazia: sem família provável.' };
-    if (/cgi-bin\/koha|opac-detail\.pl|opac-search\.pl|search\.pl/.test(value)) {
-      return { family: 'koha', confidence: 'strong_inference', note: 'A URL lembra uma superfície pública de Koha.' };
-    }
-    if (/opac_css|index\.php\?lvl=|lvl=notice_display|lvl=search_result|\/pmb\//.test(value)) {
-      return { family: 'pmb', confidence: 'strong_inference', note: 'A URL lembra uma superfície pública de PMB.' };
-    }
-    return { family: 'unknown', confidence: 'generic', note: 'A URL não deixa clara a família do catálogo.' };
-  }
-
-  function derivePartnerBaseUrlFromDiscoveryUrl(rawUrl = '') {
-    const normalized = normalizePartnerBaseUrl(rawUrl);
-    if (!normalized) return '';
-    try {
-      const url = new URL(normalized);
-      const pathname = String(url.pathname || '').replace(/\/+$/, '');
-      const kohaMatch = pathname.match(/^(.*\/cgi-bin\/koha)(?:\/.*)?$/i);
-      if (kohaMatch?.[1]) return `${url.origin}${kohaMatch[1]}`;
-      const pmbMatch = pathname.match(/^(.*\/opac_css)(?:\/.*)?$/i);
-      if (pmbMatch?.[1]) return `${url.origin}${pmbMatch[1]}`;
-      const pathParts = pathname.split('/').filter(Boolean);
-      if (!pathParts.length) return url.origin;
-      return `${url.origin}/${pathParts[0]}`;
-    } catch (_err) {
-      return normalized;
-    }
-  }
-
-  function buildPartnerDisplayNameFromHost(hostname = '') {
-    const host = String(hostname || '').trim().toLowerCase();
-    if (!host) return '';
-    const parts = host.split('.').filter(Boolean).filter((part) => !['www', 'com', 'org', 'net', 'edu', 'gov'].includes(part));
-    const core = parts[0] || host;
-    return core
-      .split(/[-_]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-  }
-
-  function findProbablePartnerMatch({ slug = '', baseUrl = '', hostname = '' } = {}) {
-    const wantedSlug = normalizePartnerSlug(slug || '');
-    const wantedBase = normalizePartnerBaseUrl(baseUrl || '');
-    const wantedHost = String(hostname || '').trim().toLowerCase();
-    const records = Array.from(partnerOptionRegistry.values());
-    return records.find((record) => {
-      const recordSlug = normalizePartnerSlug(record.slug || '');
-      const recordBase = normalizePartnerBaseUrl(record.baseUrl || '');
-      let recordHost = '';
-      try {
-        recordHost = recordBase ? new URL(recordBase).hostname.toLowerCase() : '';
-      } catch (_err) {}
-      return (wantedSlug && recordSlug === wantedSlug)
-        || (wantedBase && recordBase && recordBase === wantedBase)
-        || (wantedHost && recordHost && recordHost === wantedHost);
-    }) || null;
-  }
-
-  function renderPartnerUrlSuggestion(suggestion = null) {
-    partnerUrlSuggestionState = suggestion || null;
-    if (!suggestion) {
-      clearPartnerUrlSuggestionReadout();
-      return;
-    }
-    const matchLabel = suggestion.match
-      ? `Match provável com parceira já conhecida: ${suggestion.match.label} (${suggestion.match.sourceTag || 'registro conhecido'}).`
-      : 'Nenhum match provável com parceira já conhecida nesta leitura local.';
-    urlSuggestionOutputEl.value = [
-      `URL analisada: ${suggestion.rawUrl}`,
-      `Base URL provável: ${suggestion.baseUrl || '—'}`,
-      `Nome público provável: ${suggestion.displayName || '—'}`,
-      `Slug provável: ${suggestion.slug || '—'}`,
-      `Família provável: ${suggestion.softwareFamily || 'unknown'}`,
-      `Nível de confiança: ${suggestion.softwareConfidence || 'unknown'}`,
-      `País provável: ${suggestion.countryCode || '—'}`,
-      `Nota técnica curta: ${suggestion.note || '—'}`,
-      matchLabel,
-      'Lembrete: isto é só ajuda de pré-preenchimento. Não salva parceira, não importa notice e não decide situação relacional.'
-    ].join('\n');
-    urlSuggestionWritePreviewEl.value = [
-      `Nome público → ${suggestion.displayName || '—'}`,
-      `Slug → ${suggestion.slug || '—'}`,
-      `Base URL → ${suggestion.baseUrl || '—'}`,
-      `Família → ${suggestion.softwareFamily || 'unknown'}`,
-      `Confiança → ${suggestion.softwareConfidence || 'unknown'}`,
-      `País → ${suggestion.countryCode || '—'}`,
-      `Nota curta → ${suggestion.note || '—'}`
-    ].join('\n');
-    urlSuggestionMatchHintEl.textContent = matchLabel;
-  }
-
-  function analyzePartnerDiscoveryUrl() {
-    const rawUrl = normalizePartnerBaseUrl(discoveryUrlEl.value);
-    discoveryUrlEl.value = rawUrl;
-    if (!rawUrl) {
-      renderPartnerUrlSuggestion(null);
-      setPartnerProbeMessage('Cola uma URL pública antes de pedir a análise.', 'warn');
-      return null;
-    }
-    let parsedUrl = null;
-    try {
-      parsedUrl = new URL(rawUrl);
-    } catch (_err) {
-      renderPartnerUrlSuggestion(null);
-      setPartnerProbeMessage('A URL colada não parece válida para esta ajuda local.', 'warn');
-      return null;
-    }
-
-    const familyGuess = inferPartnerSoftwareFamilyFromUrl(rawUrl);
-    const baseUrl = derivePartnerBaseUrlFromDiscoveryUrl(rawUrl);
-    const hostname = String(parsedUrl.hostname || '').trim().toLowerCase();
-    const fallbackSlug = normalizePartnerSlug(hostname.split('.').filter(Boolean)[0] || hostname || rawUrl);
-    const probableMatch = findProbablePartnerMatch({ slug: fallbackSlug, baseUrl, hostname });
-
-    const suggestion = {
-      rawUrl,
-      baseUrl: probableMatch?.baseUrl || baseUrl,
-      displayName: probableMatch?.displayName || buildPartnerDisplayNameFromHost(hostname) || fallbackSlug,
-      slug: probableMatch?.slug || fallbackSlug,
-      softwareFamily: probableMatch?.softwareFamily || familyGuess.family,
-      softwareConfidence: probableMatch ? 'confirmed' : familyGuess.confidence,
-      countryCode: probableMatch?.countryCode || inferPartnerCountryCodeFromHostname(hostname),
-      note: probableMatch?.notes || familyGuess.note || 'Leitura local gerada a partir de uma URL pública.',
-      match: probableMatch,
-    };
-
-    renderPartnerUrlSuggestion(suggestion);
-    setPartnerProbeMessage('Leitura por URL gerada localmente. Nada foi salvo nem importado.', 'ok');
-    return suggestion;
-  }
-
-  function applyPartnerUrlSuggestionToLocalFields() {
-    const suggestion = partnerUrlSuggestionState || analyzePartnerDiscoveryUrl();
-    if (!suggestion) return;
-    displayEl.value = suggestion.displayName || '';
-    slugEl.value = suggestion.slug || '';
-    baseUrlEl.value = suggestion.baseUrl || '';
-    familyEl.value = suggestion.softwareFamily || 'unknown';
-    confidenceEl.value = suggestion.softwareConfidence || 'unknown';
-    countryEl.value = suggestion.countryCode || '';
-    if (!String(notesEl.value || '').trim() || !suggestion.match) {
-      notesEl.value = suggestion.note || '';
-    }
-    if (suggestion.match && presetEl.querySelector(`option[value="${suggestion.match.slug}"]`)) {
-      presetEl.value = suggestion.match.slug;
-    }
-    generatePartnerArtifacts();
-    refreshPartnerPolicy({ silent: true });
-    setPartnerProbeMessage('Sugestão por URL aplicada localmente. Confere os campos antes de qualquer uso político ou documental.', 'ok');
-  }
 
   function getSelectedOptionLabel(selectEl) {
     if (!selectEl) return '';
@@ -13287,7 +12689,6 @@ ${decisionSummary}` : '',
     const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
     const currentSourceValue = String(bookPartnerSourceEl?.value || '').trim();
     const currentSourceLabel = getSelectedOptionLabel(bookPartnerSourceEl);
-    const currentGovernanceSlug = getBookPartnerGovernanceSlugValue();
     const nextSourceValue = mappedSource && Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === mappedSource)
       ? mappedSource
       : Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === 'other_partner')
@@ -13297,7 +12698,6 @@ ${decisionSummary}` : '',
     const nextSourceLabel = nextSourceValue && nextSourceOptionIndex >= 0
       ? String(bookPartnerSourceEl.options[nextSourceOptionIndex]?.textContent || '').trim()
       : '';
-    const nextGovernanceSlug = nextSourceValue === 'other_partner' ? currentSlug : '';
     const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
     const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
     const comparisonNote = getCurrentComparisonNote();
@@ -13309,20 +12709,6 @@ ${decisionSummary}` : '',
       lines.push(`Fonte parceira: manter ${currentSourceLabel}.`);
     } else {
       lines.push(`Fonte parceira: gravar ${nextSourceLabel}.`);
-    }
-
-    if (nextSourceValue === 'other_partner') {
-      if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
-      } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
-      } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
-      }
-    } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
-    } else {
-      lines.push('Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
@@ -13343,16 +12729,13 @@ ${decisionSummary}` : '',
 
     if (!comparisonNote) {
       lines.push('Nota de proveniência: sem escrita prevista enquanto a comparação não estiver suficientemente descrita.');
-    } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), comparisonNote)) {
-      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
       lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
       lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   function getComparisonChecklistText() {
@@ -13411,24 +12794,21 @@ ${decisionSummary}` : '',
   }
 
   function refreshComparisonWorkspaceDerivedTexts() {
-    const comparisonNote = getCurrentComparisonNote();
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonCarryPreviewEl.value = comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
+    comparisonCarryPreviewEl.value = getCurrentComparisonNote() || 'A nota de proveniência ainda não está pronta porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado na ficha no momento do clique.'
+      ? 'Este quadro mostra exatamente o que será escrito, mantido ou acrescentado na ficha no momento do clique.'
       : 'Sem comparação autorizada, este quadro permanece apenas como leitura preventiva do que ficaria bloqueado.';
     comparisonOperationalStateEl.value = getComparisonOperationalStateText();
     comparisonPrudenceSignalEl.value = getComparisonPrudenceSignalText();
     comparisonBoundaryNoteEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Esta área continua local, manual e sem importação automática. Mesmo autorizada, ela só escreve campos locais e nota de proveniência.'
+      ? 'Esta área continua local, manual e sem importação automática, mesmo quando a política já autoriza comparação.'
       : 'Sem comparação autorizada, esta área permanece apenas como lembrete de fronteira política e documental.';
-    comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
-      ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
-      : comparisonNote
-        ? 'O bloco de proveniência está pronto. Revê o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
-        : 'Ainda faltam elementos para formar o bloco de proveniência. A ficha só receberá escrita quando a comparação estiver suficientemente descrita.';
+    comparisonLiveHintEl.textContent = partnerDocumentActionState.compareAllowed
+      ? 'Revê o resumo, a checklist e a escrita prevista. Só o clique em “Levar comparação para a ficha” escreve a nota local de proveniência.'
+      : 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.';
   }
 
   function refreshLocalDraftComparisonSummary() {
@@ -13475,10 +12855,8 @@ ${decisionSummary}` : '',
     if (bookPartnerSourceEl) {
       if (mappedSource && Array.from(bookPartnerSourceEl.options).some((option) => option.value === mappedSource)) {
         bookPartnerSourceEl.value = mappedSource;
-        setBookPartnerGovernanceSlugValue('');
       } else if (Array.from(bookPartnerSourceEl.options).some((option) => option.value === 'other_partner')) {
         bookPartnerSourceEl.value = 'other_partner';
-        setBookPartnerGovernanceSlugValue(currentSlug);
       }
     }
 
@@ -13493,7 +12871,9 @@ ${decisionSummary}` : '',
     const comparisonNote = getCurrentComparisonNote();
     if (comparisonNote && bookProvenanceNoteEl) {
       const currentNote = String(bookProvenanceNoteEl.value || '').trim();
-      bookProvenanceNoteEl.value = appendUniquePartnerProvenanceBlock(currentNote, comparisonNote);
+      bookProvenanceNoteEl.value = currentNote ? `${currentNote}
+
+${comparisonNote}` : comparisonNote;
     }
 
     if (typeof refreshBookPartnerGovernanceUi === 'function') {
@@ -13578,7 +12958,6 @@ ${decisionSummary}` : '',
     const mappedSource = getReverseGovernedBookPartnerSource(currentSlug);
     const currentSourceValue = String(bookPartnerSourceEl?.value || '').trim();
     const currentSourceLabel = getSelectedOptionLabel(bookPartnerSourceEl);
-    const currentGovernanceSlug = getBookPartnerGovernanceSlugValue();
     const nextSourceValue = mappedSource && Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === mappedSource)
       ? mappedSource
       : Array.from(bookPartnerSourceEl?.options || []).some((option) => option.value === 'other_partner')
@@ -13587,7 +12966,6 @@ ${decisionSummary}` : '',
     const nextSourceLabel = nextSourceValue
       ? String(Array.from(bookPartnerSourceEl?.options || []).find((option) => option.value === nextSourceValue)?.textContent || '').trim()
       : '';
-    const nextGovernanceSlug = nextSourceValue === 'other_partner' ? currentSlug : '';
     const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
     const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
     const nextFormatValue = String(importFormatSelectEl?.value || '').trim();
@@ -13607,20 +12985,6 @@ ${decisionSummary}` : '',
       lines.push(`Fonte parceira: manter ${currentSourceLabel}.`);
     } else {
       lines.push(`Fonte parceira: gravar ${nextSourceLabel}.`);
-    }
-
-    if (nextSourceValue === 'other_partner') {
-      if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
-      } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
-      } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
-      }
-    } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
-    } else {
-      lines.push('Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
@@ -13657,16 +13021,13 @@ ${decisionSummary}` : '',
 
     if (!carryPreview) {
       lines.push('Nota de proveniência: sem escrita prevista enquanto a preparação não estiver suficientemente descrita.');
-    } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), carryPreview)) {
-      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
       lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
       lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   function getImportOperationalStateText() {
@@ -13682,21 +13043,16 @@ ${decisionSummary}` : '',
   }
 
   function refreshImportWorkspaceDerivedTexts() {
-    const carryPreview = getImportCarryPreviewText();
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importCarryPreviewEl.value = carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
+    importCarryPreviewEl.value = getImportCarryPreviewText();
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
-    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado em Fonte parceira, governança, ID, URL, formato, modo e nota de proveniência.';
-    importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
-      ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
-      : carryPreview
-        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revê tudo antes de levar a preparação para a ficha.'
-        : 'Ainda faltam decisões e parâmetros locais para formar a preparação que será levada para a ficha.';
+    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido ou acrescentado em Fonte parceira, ID, URL, formato, modo e nota de proveniência.';
+    importLiveHintEl.textContent = 'Nada será levado para a ficha enquanto não clicares em “Levar preparação para a ficha”.';
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
-      ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
+      ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, a importação segue sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
   }
 
@@ -13728,7 +13084,7 @@ ${decisionSummary}` : '',
     importWorkspaceEl.classList.remove('is-hidden');
     syncImportWorkspaceSelectOptions();
     refreshImportWorkspaceDerivedTexts();
-    setImportWorkspaceStatus('Preparação local aberta. Define formato, modo, elementos a retomar, exclusões e proveniência antes de levar isso para a ficha, sem importar automaticamente a notice parceira.');
+    setImportWorkspaceStatus('Preparação local aberta. Define formato, modo, elementos a retomar, exclusões e proveniência antes de levar isso para a ficha.');
   }
 
   function applyImportPreparationToBookForm() {
@@ -13742,10 +13098,8 @@ ${decisionSummary}` : '',
     if (bookPartnerSourceEl) {
       if (mappedSource && Array.from(bookPartnerSourceEl.options).some((option) => option.value === mappedSource)) {
         bookPartnerSourceEl.value = mappedSource;
-        setBookPartnerGovernanceSlugValue('');
       } else if (Array.from(bookPartnerSourceEl.options).some((option) => option.value === 'other_partner')) {
         bookPartnerSourceEl.value = 'other_partner';
-        setBookPartnerGovernanceSlugValue(currentSlug);
       }
     }
 
@@ -13768,7 +13122,9 @@ ${decisionSummary}` : '',
     const carryPreview = getImportCarryPreviewText();
     if (carryPreview && bookProvenanceNoteEl) {
       const currentNote = String(bookProvenanceNoteEl.value || '').trim();
-      bookProvenanceNoteEl.value = appendUniquePartnerProvenanceBlock(currentNote, carryPreview);
+      bookProvenanceNoteEl.value = currentNote ? `${currentNote}
+
+${carryPreview}` : carryPreview;
     }
 
     if (typeof refreshBookPartnerGovernanceUi === 'function') {
@@ -13778,8 +13134,8 @@ ${decisionSummary}` : '',
       setTab('booksPanel');
     }
 
-    showMessage(refs.bookMessage, 'Preparação local de importação levada para a ficha como proveniência e parâmetros locais, sem disparar importação automática.', 'ok');
-    setPartnerProbeMessage('Preparação local levada para a ficha do livro sem importar automaticamente a notice parceira nem liberar mutualização por si só.', 'ok');
+    showMessage(refs.bookMessage, 'Preparação de importação levada para a ficha como proveniência e parâmetros locais, sem disparar importação automática.', 'ok');
+    setPartnerProbeMessage('Preparação local levada para a ficha do livro sem importar automaticamente a notice parceira.', 'ok');
   }
 
 
@@ -13816,8 +13172,8 @@ ${decisionSummary}` : '',
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
     importActionBtn.textContent = partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed
-      ? 'Preparação local de importação / mutualização'
-      : 'Preparação local de importação';
+      ? 'Importação / mutualização'
+      : 'Importação controlada';
 
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
@@ -13827,40 +13183,38 @@ ${decisionSummary}` : '',
     }
 
     if (mode === 'registered_but_blocked') {
-      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
+      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação ativa nem importação nesta etapa.';
       return;
     }
     if (mode === 'compare_only') {
-      actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
+      actionHintEl.textContent = 'Comparação documental liberada como próxima camada controlada. Importação continua bloqueada.';
       return;
     }
     if (mode === 'import_allowed') {
       actionHintEl.textContent = partnerDocumentActionState.mutualizeAllowed
-        ? 'Comparação documental, preparação local de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre da notice parceira.'
-        : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
+        ? 'Comparação, preparação de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre.'
+        : 'Comparação e preparação de importação controlada estão autorizadas pela política. Nada daqui dispara importação automática.';
       return;
     }
     if (mode === 'not_registered') {
-      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
+      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas.';
       return;
     }
-    actionHintEl.textContent = 'Sem leitura política parceira ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
+    actionHintEl.textContent = 'Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.';
   }
 
   function setPartnerPolicyReadout(row) {
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
-    compareAllowedEl.value = row?.compare_allowed ? 'Preparação local autorizada pela situação relacional' : 'Preparação local ainda não autorizada pela situação relacional';
-    importAllowedEl.value = row?.import_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
-    mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
+    compareAllowedEl.value = row?.compare_allowed ? 'Autorizada' : 'Ainda não autorizada';
+    importAllowedEl.value = row?.import_allowed ? 'Autorizada' : 'Ainda não autorizada';
+    mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada' : 'Ainda não autorizada';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
     policySummaryEl.value = row?.policy_summary || '';
     politicalNoticeEl.textContent = row?.mutualize_allowed
-      ? 'Preparação local de importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
+      ? 'Importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
       : row?.import_allowed
-        ? 'Preparação local de importação ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
-        : row?.compare_allowed
-          ? 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa, e o último teste técnico não muda isso sozinho.'
-          : 'Sem autorização de comparação documental, importação ou mutualização nesta etapa. Em catalogação, o último teste técnico não basta para liberar essas ações.';
+        ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
+        : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
     setPartnerDocumentActionsState(
       row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
       row,
@@ -13871,36 +13225,11 @@ ${decisionSummary}` : '',
     return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
   }
 
-  function setBookPartnerGovernanceSlugValue(nextValue = '') {
-    if (!bookPartnerGovernanceSlugEl) return '';
-    const normalized = normalizePartnerSlug(nextValue || '');
-    bookPartnerGovernanceSlugEl.value = normalized;
-    return normalized;
-  }
-
-  function getBookPartnerGovernanceSlugValue() {
-    return normalizePartnerSlug(bookPartnerGovernanceSlugEl?.value || '');
-  }
-
-  function appendUniquePartnerProvenanceBlock(currentValue = '', blockValue = '') {
-    const current = String(currentValue || '').trim();
-    const block = String(blockValue || '').trim();
-    if (!block) return current;
-    if (!current) return block;
-    return current.includes(block) ? current : `${current}\n\n${block}`;
-  }
-
-  function hasPartnerProvenanceBlock(currentValue = '', blockValue = '') {
-    const current = String(currentValue || '').trim();
-    const block = String(blockValue || '').trim();
-    return !!block && !!current && current.includes(block);
-  }
-
   function getGovernedBookPartnerSlug() {
     const sourceValue = String(bookPartnerSourceEl?.value || '').trim();
     if (!sourceValue) return '';
     if (BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue]) return BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue];
-    if (sourceValue === 'other_partner') return getBookPartnerGovernanceSlugValue();
+    if (sourceValue === 'other_partner') return getCurrentPartnerSlug();
     return '';
   }
 
@@ -13931,7 +13260,7 @@ ${decisionSummary}` : '',
     if (mode === 'needs_partner_slug') {
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
-      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiros externos” para liberar comparação documental aqui.';
+      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira no bloco “Catálogos parceiros” para liberar comparação documental aqui.';
       return;
     }
 
@@ -14017,19 +13346,16 @@ ${decisionSummary}` : '',
       }
 
       setPartnerPolicyReadout(row);
-      if (String(bookPartnerSourceEl?.value || '').trim() === 'other_partner' && !getBookPartnerGovernanceSlugValue()) {
-        setBookPartnerGovernanceSlugValue(slug);
-      }
       await refreshBookPartnerGovernanceUi({ silent: true });
       if (!silent) {
         setPartnerProbeMessage(
           row.mutualize_allowed
-            ? 'Situação relacional lida da base. Comparação documental, importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
+            ? 'Situação relacional lida da base. Importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
             : row.import_allowed
-              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
+              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e sem mutualização.'
               : row.compare_allowed
-                ? 'Situação relacional lida da base. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último teste técnico e não libera importação.'
-                : 'Situação relacional lida da base. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
+                ? 'Situação relacional lida da base. A comparação técnica está autorizada, sem importação.'
+                : 'Situação relacional lida da base. Sem comparação ativa e sem importação neste estágio.',
           row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
         );
       }
@@ -14105,14 +13431,6 @@ ${decisionSummary}` : '',
   });
 
   bookPartnerSourceEl?.addEventListener('change', () => {
-    const sourceValue = String(bookPartnerSourceEl.value || '').trim();
-    if (sourceValue === 'other_partner') {
-      if (!getBookPartnerGovernanceSlugValue()) {
-        setBookPartnerGovernanceSlugValue(getCurrentPartnerSlug());
-      }
-    } else {
-      setBookPartnerGovernanceSlugValue('');
-    }
     refreshBookPartnerGovernanceUi({ silent: true });
   });
 
@@ -14134,20 +13452,6 @@ ${decisionSummary}` : '',
 
   copySeedBtn?.addEventListener('click', async () => {
     await copyPartnerTextFrom('partnerSeedOutput', 'SQL copiado.');
-  });
-
-  analyzeUrlBtn?.addEventListener('click', () => {
-    analyzePartnerDiscoveryUrl();
-  });
-
-  applyUrlSuggestionBtn?.addEventListener('click', () => {
-    applyPartnerUrlSuggestionToLocalFields();
-  });
-
-  clearUrlSuggestionBtn?.addEventListener('click', () => {
-    discoveryUrlEl.value = '';
-    clearPartnerUrlSuggestionReadout();
-    setPartnerProbeMessage('Leitura por URL limpa. Nenhuma alteração foi salva.', 'info');
   });
 
   openBaseBtn?.addEventListener('click', () => {
@@ -14210,46 +13514,6 @@ ${decisionSummary}` : '',
     });
   });
 
-  incomingCatalogFileEl?.addEventListener('change', () => {
-    incomingCatalogFileAnalysis = null;
-    updateIncomingCatalogFileName();
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    if (incomingCatalogSummaryEl) {
-      incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, null);
-    }
-    renderIncomingCatalogIdentityPreview();
-    if (incomingCatalogHintEl) {
-      incomingCatalogHintEl.textContent = file
-        ? 'Arquivo selecionado. Agora podes ler a prévia local e completar a identificação da biblioteca.'
-        : 'Preenche o nome da biblioteca e escolhe um arquivo para preparar a recepção local sem tocar ainda na política documental.';
-    }
-  });
-
-  [incomingLibraryNameEl, incomingLibraryShortNameEl, incomingLibrarySlugEl, incomingLibraryAcronymEl, incomingLibraryTerritoryEl, incomingCatalogNoteEl].forEach((node) => {
-    node?.addEventListener('input', () => {
-      if (node === incomingLibraryNameEl || node === incomingLibraryShortNameEl) {
-        const slugNode = incomingLibrarySlugEl;
-        if (slugNode && !String(slugNode.value || '').trim()) {
-          slugNode.value = normalizePartnerSlug(incomingLibraryShortNameEl?.value || incomingLibraryNameEl?.value || '');
-        }
-      }
-      renderIncomingCatalogIdentityPreview();
-    });
-  });
-
-  readIncomingCatalogBtn?.addEventListener('click', async () => {
-    await analyzeIncomingCatalogFile();
-  });
-
-  applyIncomingIdentityBtn?.addEventListener('click', () => {
-    applyIncomingIdentityToGovernance();
-  });
-
-  clearIncomingCatalogBtn?.addEventListener('click', () => {
-    resetIncomingCatalogReception();
-    setPartnerProbeMessage('Recepção artesanal limpa. Nenhuma alteração documental foi feita.', 'info');
-  });
-
   [importTakeSummaryEl, importSkipSummaryEl, importProvenanceSummaryEl, importDecisionSummaryEl, importFormatSelectEl, importMethodSelectEl].forEach((node) => {
     node.addEventListener(node.tagName === 'SELECT' ? 'change' : 'input', () => {
       if (partnerDocumentActionState.importWorkspaceOpen) {
@@ -14288,12 +13552,48 @@ ${decisionSummary}` : '',
     });
   });
 
-  resetIncomingCatalogReception({ keepIdentity: true });
-  clearPartnerUrlSuggestionReadout();
+  if (partnerHelpersState?.usedFallback) {
+    setPartnerProbeMessage('O arquivo local de helpers de parceiras não carregou completamente. O bloco segue ativo em modo reduzido, sem derrubar a página.', 'warn');
+  }
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
   refreshBookPartnerGovernanceUi({ silent: true });
 }
+
+    function disablePartnerProbeAfterBootstrapFailure(error) {
+      console.error('Falha ao iniciar o bloco Catálogos parceiros na catalogação:', error);
+      const messageEl = document.getElementById('partnerProbeMessage');
+      if (messageEl) {
+        messageEl.textContent = 'O bloco “Catálogos parceiros” foi neutralizado localmente porque encontrou um erro de inicialização. O restante da página continua disponível.';
+        messageEl.style.color = '#fde5b6';
+      }
+      [
+        'partnerRefreshPolicyBtn',
+        'partnerGenerateBtn',
+        'partnerCopyReportBtn',
+        'partnerCopySeedBtn',
+        'partnerOpenBaseBtn',
+        'partnerCompareActionBtn',
+        'partnerImportActionBtn',
+        'partnerApplyComparisonBtn',
+        'partnerClearComparisonBtn',
+        'partnerApplyImportPrepBtn',
+        'partnerClearImportPrepBtn'
+      ].forEach((id) => {
+        const node = document.getElementById(id);
+        if (node) node.disabled = true;
+      });
+      document.getElementById('partnerCompareWorkspace')?.classList.add('is-hidden');
+      document.getElementById('partnerImportWorkspace')?.classList.add('is-hidden');
+    }
+
+    async function bootPartnerProbeUiSafely() {
+      try {
+        await initPartnerProbeUi();
+      } catch (error) {
+        disablePartnerProbeAfterBootstrapFailure(error);
+      }
+    }
 
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
       if (nextSession?.user?.id) return nextSession;
@@ -14303,7 +13603,7 @@ ${decisionSummary}` : '',
 
       if (!allowAnonymousReset) {
         await wait(320);
-        const delayedSession = await getConfirmedCurrentSession({ attempts: 8, delayMs: 220 });
+        const delayedSession = await getCurrentSession({ attempts: 8, delayMs: 220 });
         if (delayedSession?.user?.id) return delayedSession;
       }
 
@@ -14339,11 +13639,25 @@ ${decisionSummary}` : '',
         }
 
         if (!reloadData) {
-          await loadProfile();
+          const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 9000);
+          if (!profileStep.ok) {
+            refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+            refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+            refs.rolePill.className = 'pill warn';
+            showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
+            return false;
+          }
           return true;
         }
 
-        await refreshAll(false);
+        const refreshStep = await settleCatalogacaoStep('sincronização da catalogação', () => refreshAll(false), 16000);
+        if (!refreshStep.ok) {
+          refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Sessão reconhecida; atualização incompleta';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a atualização da catalogação não terminou. Usa Atualizar para tentar de novo.', 'error');
+          return false;
+        }
         if (syncId !== catalogacaoAuthSyncSerial) return true;
         return true;
       } catch (error) {
@@ -14360,7 +13674,7 @@ ${decisionSummary}` : '',
       }
     }
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+        supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
       const shouldReload = eventName === 'SIGNED_IN' || eventName === 'USER_UPDATED' || eventName === 'INITIAL_SESSION';
@@ -14368,22 +13682,47 @@ ${decisionSummary}` : '',
       await syncCatalogacaoAuthState(session, { reloadData: shouldReload, allowAnonymousReset });
     });
 
-    async function probeCatalogacaoSessionOnVisibility(reason = '') {
-      void reason;
-      return false;
+        async function probeCatalogacaoSessionOnVisibility(reason = '') {
+      const now = Date.now();
+      if (catalogacaoAuthSyncInFlight) return;
+      if (state.session?.user?.id) return;
+      if (now - catalogacaoLastPassiveSessionProbeAt < 1200) return;
+      catalogacaoLastPassiveSessionProbeAt = now;
+      const liveSession = await getCurrentSession({ attempts: 6, delayMs: 160 });
+      const hasCurrentSession = !!state.session?.user?.id;
+      const hasLiveSession = !!liveSession?.user?.id;
+      if (!hasCurrentSession && !hasLiveSession) return;
+      if (hasCurrentSession && hasLiveSession && state.session?.user?.id === liveSession?.user?.id) return;
+      await syncCatalogacaoAuthState(liveSession, {
+        reloadData: hasLiveSession,
+        allowAnonymousReset: !hasLiveSession,
+      });
     }
 
-    // Revalidação automática por storage desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('storage', (event) => {
+      if (!isCatalogacaoAuthStorageKey(event?.key)) return;
+      probeCatalogacaoSessionOnVisibility('storage').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação após mudança de armazenamento auth.', error);
+      });
+    });
 
-    // Revalidação automática no foco desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('focus', () => {
+      probeCatalogacaoSessionOnVisibility('focus').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação no foco.', error);
+      });
+    });
 
-    // Revalidação automática no retorno da página desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('pageshow', () => {
+      probeCatalogacaoSessionOnVisibility('pageshow').catch((error) => {
+        console.warn('Falha ao revalidar a sessão da catalogação no retorno da página.', error);
+      });
+    });
 
     updateRefreshButton(false);
     updateLoginButton();
-    initPartnerProbeUi();
+    bootPartnerProbeUiSafely();
 
-    const bootstrapCatalogacaoSession = await requireSession({ attempts: 40, delayMs: 150 });
+    const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
     catalogacaoAuthBootstrapping = false;
     await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
 
