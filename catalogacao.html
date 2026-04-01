@@ -3163,14 +3163,14 @@
       <div class="panel-header">
         <div>
           <h3>Catálogos de parceiros externos</h3>
-          <p>Consulte, compare e prepare leituras documentárias de parceiras externas sem misturar esta camada com o catálogo já publicado.</p>
+          <p>Camada separada para situação relacional, leitura documental, comparação local e preparação controlada. Aqui, teste técnico não vale como autorização política; importação não vale como mutualização.</p>
         </div>
       </div>
       <div class="panel-body">
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
-          <h4>Catálogos parceiros</h4>
+          <h4>Parceiras externas: situação relacional e governança documental</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Consulte aqui a situação relacional e os guardas documentários da parceira. Em catalogação, teste técnico não vale como autorização de comparação nem de importação.
+            Consulte aqui a situação relacional, a leitura documental e os limites de ação com cada parceira. Nesta aba, teste técnico não vale como autorização política; importação não vale como mutualização; mutualização não vale como modificação livre da notice parceira.
           </p>
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
@@ -3205,7 +3205,7 @@
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
-            <small id="partnerPoliticalNotice">Nenhuma importação é liberada aqui sem a situação relacional correspondente na base.</small>
+            <small id="partnerPoliticalNotice">Sem leitura política ainda: teste técnico, sozinho, não libera comparação documental, importação nem mutualização.</small>
           </div>
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -3214,7 +3214,7 @@
               <select id="partnerPresetSelect">
                 <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
               </select>
-              <small id="partnerPresetHint">A lista combina presets front e parceiras já formalizadas na base quando isso estiver disponível.</small>
+              <small id="partnerPresetHint">A lista combina ajuda local vinda do front com parceiras já formalizadas na base. A base deve prevalecer como fonte canônica quando houver correspondência.</small>
             </div>
         
             <div class="field">
@@ -3301,7 +3301,7 @@
               <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
-            <small id="partnerActionHint">Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.</small>
+            <small id="partnerActionHint">Sem leitura política ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
           </div>
         
           <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
@@ -3316,7 +3316,7 @@
                   <button id="partnerClearComparisonBtn" class="button ghost" type="button">Limpar comparação</button>
                 </div>
               </div>
-              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a política da parceira autoriza comparação documental nesta etapa.</div>
+              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
@@ -3366,7 +3366,7 @@
                 <textarea id="partnerComparisonPrudenceSignal" rows="3" readonly placeholder="O sinal de prudência da comparação aparecerá aqui."></textarea>
               </div>
               <div id="partnerComparisonBoundaryNote" class="hint">
-                Esta área continua local, manual e sem importação automática.
+                Esta área continua local, manual e sem importação automática. Ela não altera o estatuto político da parceira e não vale como mutualização.
               </div>
               <div class="hint">
                 Podes preencher este espaço aos poucos.
@@ -3388,7 +3388,7 @@
                   <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
                 </div>
               </div>
-              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a política da parceira autoriza importação nesta etapa.</div>
+              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
@@ -3449,7 +3449,7 @@
                 <label for="partnerImportOperationalState">Estado operacional da preparação</label>
                 <textarea id="partnerImportOperationalState" rows="4" readonly placeholder="O estado operacional desta preparação aparecerá aqui."></textarea>
               </div>
-              <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real.</div>
+              <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real. Mesmo quando a mutualização estiver autorizada, isso não vale como modificação livre da notice parceira.</div>
             </div>
           </div>
 
@@ -12483,7 +12483,7 @@ function initPartnerProbeUi() {
     partnerUrlSuggestionState = null;
     urlSuggestionOutputEl.value = '';
     urlSuggestionWritePreviewEl.value = '';
-    urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente.';
+    urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente nem decidir qualquer estatuto relacional.';
   }
 
   function inferPartnerCountryCodeFromHostname(hostname = '') {
@@ -13321,7 +13321,7 @@ ${carryPreview}` : carryPreview;
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
     importActionBtn.textContent = partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed
-      ? 'Importação / mutualização'
+      ? 'Preparação de importação / mutualização'
       : 'Importação controlada';
 
     if (!partnerDocumentActionState.compareAllowed) {
@@ -13332,38 +13332,40 @@ ${carryPreview}` : carryPreview;
     }
 
     if (mode === 'registered_but_blocked') {
-      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação ativa nem importação nesta etapa.';
+      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
       return;
     }
     if (mode === 'compare_only') {
-      actionHintEl.textContent = 'Comparação documental liberada como próxima camada controlada. Importação continua bloqueada.';
+      actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa.';
       return;
     }
     if (mode === 'import_allowed') {
       actionHintEl.textContent = partnerDocumentActionState.mutualizeAllowed
-        ? 'Comparação, preparação de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre.'
-        : 'Comparação e preparação de importação controlada estão autorizadas pela política. Nada daqui dispara importação automática.';
+        ? 'Comparação documental, preparação local de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre da notice parceira.'
+        : 'Comparação documental e preparação local de importação controlada estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
       return;
     }
     if (mode === 'not_registered') {
-      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas.';
+      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
       return;
     }
-    actionHintEl.textContent = 'Sem leitura de política parceira ainda. As ações documentárias ficam bloqueadas por padrão.';
+    actionHintEl.textContent = 'Sem leitura política parceira ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
   }
 
   function setPartnerPolicyReadout(row) {
     relationshipStatusEl.value = relationshipLabels[row?.relationship_status] || row?.relationship_status || 'Sem situação registrada';
-    compareAllowedEl.value = row?.compare_allowed ? 'Autorizada' : 'Ainda não autorizada';
-    importAllowedEl.value = row?.import_allowed ? 'Autorizada' : 'Ainda não autorizada';
-    mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada' : 'Ainda não autorizada';
+    compareAllowedEl.value = row?.compare_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
+    importAllowedEl.value = row?.import_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
+    mutualizeAllowedEl.value = row?.mutualize_allowed ? 'Autorizada pela situação relacional' : 'Ainda não autorizada pela situação relacional';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.technical_probe_last_at);
     policySummaryEl.value = row?.policy_summary || '';
     politicalNoticeEl.textContent = row?.mutualize_allowed
       ? 'Importação e mutualização autorizadas continuam dependendo de revisão bibliográfica local, preenchimento explícito da ficha e ausência de modificação livre da notice parceira.'
       : row?.import_allowed
         ? 'Importação controlada ainda depende de revisão bibliográfica local, preenchimento explícito da ficha e não vale como mutualização.'
-        : 'Sem autorização de importação: em catalogação, isto fica bloqueado como regra de governança.';
+        : row?.compare_allowed
+          ? 'Comparação documental autorizada pela situação relacional. Importação e mutualização continuam bloqueadas nesta etapa, e o último teste técnico não muda isso sozinho.'
+          : 'Sem autorização de comparação documental, importação ou mutualização nesta etapa. Em catalogação, o último teste técnico não basta para liberar essas ações.';
     setPartnerDocumentActionsState(
       row?.import_allowed ? 'import_allowed' : row?.compare_allowed ? 'compare_only' : 'registered_but_blocked',
       row,
@@ -13409,7 +13411,7 @@ ${carryPreview}` : carryPreview;
     if (mode === 'needs_partner_slug') {
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
-      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira no bloco “Catálogos parceiros” para liberar comparação documental aqui.';
+      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiros externos” para liberar comparação documental aqui.';
       return;
     }
 
@@ -13499,12 +13501,12 @@ ${carryPreview}` : carryPreview;
       if (!silent) {
         setPartnerProbeMessage(
           row.mutualize_allowed
-            ? 'Situação relacional lida da base. Importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
+            ? 'Situação relacional lida da base. Comparação documental, importação e mutualização aparecem autorizadas, mas continuam sob revisão local e sem modificação livre.'
             : row.import_allowed
-              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e sem mutualização.'
+              ? 'Situação relacional lida da base. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
               : row.compare_allowed
-                ? 'Situação relacional lida da base. A comparação técnica está autorizada, sem importação.'
-                : 'Situação relacional lida da base. Sem comparação ativa e sem importação neste estágio.',
+                ? 'Situação relacional lida da base. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último teste técnico e não libera importação.'
+                : 'Situação relacional lida da base. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
           row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
         );
       }
