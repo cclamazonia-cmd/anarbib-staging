@@ -3154,7 +3154,7 @@
       <div class="panel-header">
         <div>
           <h3>Catálogo publicado</h3>
-          <p>Busque fichas comuns, autores e exemplares locais já publicados e gere um rascunho de edição sem alterar imediatamente a versão publicada.</p>
+          <p>Busque aqui a ficha comum publicada, os autores publicados e a camada local já publicada dos exemplares, sempre podendo criar um rascunho de edição sem alterar imediatamente a versão publicada.</p>
         </div>
       </div>
       <div class="panel-body">
@@ -3162,7 +3162,7 @@
           <div class="field">
             <label for="catalogSearch">Buscar fichas comuns e autores</label>
             <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo as fichas comuns publicadas e os autores publicados.</small>
+            <small>Este campo único filtra ao mesmo tempo as fichas comuns publicadas e os autores publicados, sem misturar a busca específica dos exemplares locais.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
@@ -3179,13 +3179,14 @@
         
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
-            <h4>Fichas comuns publicadas — livros, brochuras e publicações seriadas</h4>
+            <h4>Fichas comuns publicadas — núcleo comum de livros, brochuras e publicações seriadas</h4>
+            <p class="hint" style="margin:0 0 12px;">Aqui a leitura prioriza a ficha comum publicada, deixando a camada local publicada visível sem confundi-la com o exemplar local.</p>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Fichas comuns publicadas — documentos não-livro e materiais especiais</h4>
-            <p class="hint" style="margin:0 0 12px;">Leitura visual separada das fichas comuns publicadas para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
+            <p class="hint" style="margin:0 0 12px;">Leitura separada da ficha comum publicada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais, com a camada local publicada visível em segunda leitura.</p>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
 
@@ -3223,7 +3224,8 @@
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Exemplares locais publicados</h4>
+            <h4>Exemplares locais publicados — camada local material</h4>
+            <p class="hint" style="margin:0 0 12px;">Aqui a leitura parte do exemplar local publicado, do seu vínculo por referência local / compatibilidade e do rótulo local já validado.</p>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -5200,6 +5202,72 @@
       if (!parts.length && book.ano) parts.push(`Ano: ${book.ano}`);
       if (!parts.length && (book.editora || book.publisher)) parts.push(`Responsável editorial: ${book.editora || book.publisher}`);
       return buildCatalogQuickLine(parts) || 'Sem leitura rápida disponível.';
+    }
+
+    function getCatalogOptionLabel(options = [], value = '', fallback = '') {
+      const wanted = compactSpaces(String(value || ''));
+      if (!wanted) return fallback;
+      const match = options.find(([optionValue]) => String(optionValue || '') === wanted);
+      return match ? match[1] : (fallback || wanted);
+    }
+
+    function getCatalogMutualizationStatusLabel(value = '') {
+      return getCatalogOptionLabel(BOOK_MUTUALIZATION_STATUS_OPTIONS, value, 'Sem situação de rede');
+    }
+
+    function getCatalogAcquisitionModeLabel(value = '') {
+      return getCatalogOptionLabel(BOOK_ACQUISITION_MODE_OPTIONS, value, '');
+    }
+
+    function getCatalogBookLocalContextLine(book = {}) {
+      const acquisitionBridge = getBookAcquisitionBridge(book);
+      const provenanceBridge = getBookProvenanceBridge(book);
+      const networkBridge = getBookNetworkBridge(book);
+      const ownerLibrary = getBookNativeOrBridgeValue(book, 'owner_library', acquisitionBridge.owner_library || '');
+      const holderLibrary = getBookNativeOrBridgeValue(book, 'holder_library', acquisitionBridge.holder_library || '');
+      const acquisitionMode = getBookNativeOrBridgeValue(book, 'acquisition_mode', acquisitionBridge.acquisition_mode || '');
+      const sourceLabel = getBookNativeOrBridgeValue(book, 'source_label', provenanceBridge.source_label || '');
+      const mutualizationStatus = getBookNativeOrBridgeValue(book, 'mutualization_status', networkBridge.mutualization_status || '');
+      const parts = [];
+      if (holderLibrary) parts.push(`Detentora: ${holderLibrary}`);
+      if (ownerLibrary && normalizeForSearch(ownerLibrary) !== normalizeForSearch(holderLibrary)) parts.push(`Proprietária: ${ownerLibrary}`);
+      if (mutualizationStatus) parts.push(`Rede: ${getCatalogMutualizationStatusLabel(mutualizationStatus)}`);
+      if (acquisitionMode) parts.push(`Entrada: ${getCatalogAcquisitionModeLabel(acquisitionMode)}`);
+      if (sourceLabel) parts.push(`Origem: ${sourceLabel}`);
+      return buildCatalogQuickLine(parts) || 'Camada local publicada ainda pouco descrita.';
+    }
+
+    function renderCatalogContextLineHtml(label = '', text = '') {
+      const safeLabel = sanitize(label || 'Leitura');
+      const safeText = sanitize(compactSpaces(String(text || '')) || '—');
+      return `<div class="catalog-context-line"><strong>${safeLabel}:</strong> ${safeText}</div>`;
+    }
+
+    function renderCatalogBookPublishedCell(book = {}) {
+      return `${renderBookDisplayTitleHtml(book)}${renderCatalogContextLineHtml('Ficha comum', `Tipo: ${getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || '')}`)}`;
+    }
+
+    function renderCatalogBookLocalLayerCell(book = {}) {
+      const total = Number(book.total_exemplares || 0);
+      const totalLabel = `${Number.isFinite(total) ? total : 0} exemplar(es) local(is)`;
+      return `<div>${sanitize(totalLabel)}</div>${renderCatalogContextLineHtml('Camada local', getCatalogBookLocalContextLine(book))}`;
+    }
+
+    function renderCatalogOtherDocumentPublishedCell(book = {}) {
+      return `${renderBookDisplayTitleHtml(book)}${renderCatalogContextLineHtml('Ficha comum', `Tipo: ${getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || '')}`)}`;
+    }
+
+    function renderCatalogOtherDocumentReadingsCell(book = {}) {
+      return `${renderCatalogContextLineHtml('Ficha comum', getCatalogOtherDocumentContextLine(book))}${renderCatalogContextLineHtml('Camada local', getCatalogBookLocalContextLine(book))}`;
+    }
+
+    function renderCatalogExemplarPublishedCell(exemplar = {}) {
+      const title = exemplar.tombo || '—';
+      return renderBookTitleStackHtml(title, 'Exemplar local publicado ligado à ficha comum por referência local / compatibilidade.');
+    }
+
+    function renderCatalogExemplarLocationCell(exemplar = {}) {
+      return `<div>${sanitize(exemplar.shelf_location || '—')}</div>${renderCatalogContextLineHtml('Ref./compat.', exemplar.bib_ref || '—')}`;
     }
 
     function getAuthorTrigram(name) {
@@ -11101,10 +11169,10 @@
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
               <th class="sortable">${renderSortableHeader('Referência local / compat.', 'books', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsabilidade principal', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
+              <th class="sortable">${renderSortableHeader('Ficha comum: responsabilidade', 'books', 'author')}</th>
+              <th class="sortable">${renderSortableHeader('Ficha comum: edição', 'books', 'publisher')}</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares locais', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Camada local publicada', 'books', 'total_exemplares')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11113,11 +11181,11 @@
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${renderCatalogBookPublishedCell(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
                 <td>${sanitize(book.editora || book.publisher || '—')}</td>
                 <td>${sanitize(book.ano || '—')}</td>
-                <td>${sanitize(book.total_exemplares || 0)}</td>
+                <td>${renderCatalogBookLocalLayerCell(book)}</td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -11164,8 +11232,8 @@
               <th class="sortable">${renderSortableHeader('Referência local / compat.', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
               <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida da ficha comum</th>
+              <th class="sortable">${renderSortableHeader('Ficha comum: responsável / autoria', 'otherDocs', 'author')}</th>
+              <th>Leitura da ficha comum e da camada local</th>
             </tr>
           </thead>
           <tbody>
@@ -11175,9 +11243,9 @@
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
+                <td>${renderCatalogOtherDocumentPublishedCell(book)}</td>
                 <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
+                <td>${renderCatalogOtherDocumentReadingsCell(book)}</td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -11197,12 +11265,12 @@
 
     async function loadOrCreateBookDraftFromCatalog(bookId) {
       const publishedBookId = Number(bookId);
-      if (!publishedBookId) throw new Error('Ficha comum inválida para edição.');
+      if (!publishedBookId) throw new Error('Ficha comum publicada inválida para edição.');
 
       const existingDraftId = await findExistingActiveDraftId('book_drafts', 'published_book_id', publishedBookId);
       if (existingDraftId) {
         await fetchDraftAndEdit('book', existingDraftId);
-        showMessage(refs.catalogMessage, `Rascunho de ficha comum já aberto (#${existingDraftId}).`, 'ok');
+        showMessage(refs.catalogMessage, `Rascunho da ficha comum publicada já aberto (#${existingDraftId}).`, 'ok');
         return existingDraftId;
       }
 
@@ -11213,10 +11281,10 @@
       });
       if (error) throw error;
       const createdDraftId = extractRpcNumericId(data, ['create_book_draft_from_book', 'p_draft_id']);
-      if (!createdDraftId) throw new Error('O rascunho de edição foi criado, mas o retorno do ID veio em um formato inesperado.');
+      if (!createdDraftId) throw new Error('O rascunho de edição da ficha comum publicada foi criado, mas o retorno do ID veio em um formato inesperado.');
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição da ficha comum criado (#${createdDraftId}).`, 'ok');
+      showMessage(refs.catalogMessage, `Rascunho de edição da ficha comum publicada criado (#${createdDraftId}).`, 'ok');
       await fetchDraftAndEdit('book', createdDraftId);
       return createdDraftId;
     }
@@ -11586,12 +11654,12 @@
 
     async function loadOrCreateExemplarDraftFromCatalog(exemplarId) {
       const publishedExemplarId = Number(exemplarId);
-      if (!publishedExemplarId) throw new Error('Exemplar inválido para edição.');
+      if (!publishedExemplarId) throw new Error('Exemplar local publicado inválido para edição.');
 
       const existingDraftId = await findExistingActiveDraftId('exemplar_drafts', 'published_exemplar_id', publishedExemplarId);
       if (existingDraftId) {
         await fetchDraftAndEdit('exemplar', existingDraftId);
-        showMessage(refs.catalogMessage, `Rascunho de exemplar local já aberto (#${existingDraftId}).`, 'ok');
+        showMessage(refs.catalogMessage, `Rascunho do exemplar local publicado já aberto (#${existingDraftId}).`, 'ok');
         return existingDraftId;
       }
 
@@ -11603,7 +11671,7 @@
       if (error) throw error;
       await Promise.all([loadQueue(), loadCatalog(), loadBatches()]);
       updateStats();
-      showMessage(refs.catalogMessage, `Rascunho de edição de exemplar local criado (#${data}).`, 'ok');
+      showMessage(refs.catalogMessage, `Rascunho de edição do exemplar local publicado criado (#${data}).`, 'ok');
       await fetchDraftAndEdit('exemplar', Number(data));
       return Number(data);
     }
@@ -11626,11 +11694,11 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
-              <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
               <th class="sortable">${renderSortableHeader('Referência local / compat.', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Localização local', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor do rótulo', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título do rótulo', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Localização / vínculo local', 'exemplars', 'shelf_location')}</th>
+              <th class="sortable">${renderSortableHeader('Rótulo local: autor', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Rótulo local: título', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11638,9 +11706,9 @@
               <tr>
                 <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
                 <td>${ex.exemplar_id}</td>
-                <td>${sanitize(ex.tombo || '—')}</td>
+                <td>${renderCatalogExemplarPublishedCell(ex)}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
-                <td>${sanitize(ex.shelf_location || '—')}</td>
+                <td>${renderCatalogExemplarLocationCell(ex)}</td>
                 <td>${sanitize(ex.autor_etiqueta || '—')}</td>
                 <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
               </tr>`).join('')}
