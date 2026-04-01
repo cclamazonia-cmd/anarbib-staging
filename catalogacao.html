@@ -2276,6 +2276,7 @@
             <div class="field mode-complete-only">
               <label for="bookPartnerSource">Fonte parceira</label>
               <select id="bookPartnerSource"></select>
+              <input id="bookPartnerGovernanceSlug" type="hidden" />
             </div>
 
             <div class="field mode-complete-only">
@@ -5358,6 +5359,7 @@
         holderLibrary: el('bookHolderLibrary').value.trim(),
         acquisitionSourceLabel: el('bookAcquisitionSourceLabel').value.trim(),
         partnerSource: el('bookPartnerSource').value || '',
+        partnerGovernanceSlug: el('bookPartnerGovernanceSlug').value.trim(),
         sourceRecordId: el('bookSourceRecordId').value.trim(),
         sourceRecordUrl: el('bookSourceRecordUrl').value.trim(),
         importFormat: el('bookImportFormat').value || '',
@@ -7594,6 +7596,7 @@
       const holderLibraryValue = el('bookHolderLibrary').value.trim() || '';
       const acquisitionSourceLabelValue = el('bookAcquisitionSourceLabel').value.trim() || '';
       const partnerSourceValue = el('bookPartnerSource').value || '';
+      const partnerGovernanceSlugValue = normalizePartnerSlug(el('bookPartnerGovernanceSlug').value || '');
       const sourceRecordIdValue = el('bookSourceRecordId').value.trim() || '';
       const sourceRecordUrlValue = el('bookSourceRecordUrl').value.trim() || '';
       const importFormatValue = el('bookImportFormat').value || '';
@@ -7601,6 +7604,9 @@
       const provenanceNoteValue = el('bookProvenanceNote').value.trim() || '';
       const mutualizationStatusValue = el('bookMutualizationStatus').value || '';
       const acquisitionBridge = {};
+      const provenanceBridge = {
+        governance_slug: partnerGovernanceSlugValue || null,
+      };
 
       const materialDetailBridge = getBookMaterialDetailPayload(materialType);
       const materialDetailNativePayload = getBookMaterialDetailNativePayload(materialDetailBridge);
@@ -7660,7 +7666,7 @@
                 acquisitionBridge
               ),
               'anarbib_provenance',
-              {}
+              provenanceBridge
             ),
             'anarbib_network',
             {}
@@ -7925,6 +7931,7 @@
       el('bookHolderLibrary').value = '';
       el('bookAcquisitionSourceLabel').value = '';
       el('bookPartnerSource').value = '';
+      el('bookPartnerGovernanceSlug').value = '';
       el('bookSourceRecordId').value = '';
       el('bookSourceRecordUrl').value = '';
       el('bookImportFormat').value = '';
@@ -9356,6 +9363,7 @@
       el('bookHolderLibrary').value = getBookNativeOrBridgeValue(enriched, 'holder_library', acquisitionBridge.holder_library) || '';
       el('bookAcquisitionSourceLabel').value = getBookNativeOrBridgeValue(enriched, 'source_label', acquisitionBridge.source_label) || '';
       el('bookPartnerSource').value = getBookNativeOrBridgeValue(enriched, 'partner_source', provenanceBridge.partner_source) || '';
+      el('bookPartnerGovernanceSlug').value = normalizePartnerSlug(provenanceBridge.governance_slug || '');
       el('bookSourceRecordId').value = getBookNativeOrBridgeValue(enriched, 'source_record_id', provenanceBridge.source_record_id) || '';
       el('bookSourceRecordUrl').value = getBookNativeOrBridgeValue(enriched, 'source_record_url', provenanceBridge.source_record_url) || '';
       el('bookImportFormat').value = getBookNativeOrBridgeValue(enriched, 'import_format', provenanceBridge.import_format) || '';
@@ -12463,6 +12471,7 @@ function initPartnerProbeUi() {
   };
 
   const bookPartnerSourceEl = document.getElementById('bookPartnerSource');
+  const bookPartnerGovernanceSlugEl = document.getElementById('bookPartnerGovernanceSlug');
   const bookSourceRecordIdEl = document.getElementById('bookSourceRecordId');
   const bookSourceRecordUrlEl = document.getElementById('bookSourceRecordUrl');
   const bookImportFormatEl = document.getElementById('bookImportFormat');
@@ -12878,6 +12887,8 @@ ${decisionSummary}` : '',
 
     if (!comparisonNote) {
       lines.push('Nota de proveniência: sem escrita prevista enquanto a comparação não estiver suficientemente descrita.');
+    } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), comparisonNote)) {
+      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
       lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
@@ -13004,8 +13015,10 @@ ${decisionSummary}` : '',
     if (bookPartnerSourceEl) {
       if (mappedSource && Array.from(bookPartnerSourceEl.options).some((option) => option.value === mappedSource)) {
         bookPartnerSourceEl.value = mappedSource;
+        setBookPartnerGovernanceSlugValue('');
       } else if (Array.from(bookPartnerSourceEl.options).some((option) => option.value === 'other_partner')) {
         bookPartnerSourceEl.value = 'other_partner';
+        setBookPartnerGovernanceSlugValue(currentSlug);
       }
     }
 
@@ -13020,9 +13033,7 @@ ${decisionSummary}` : '',
     const comparisonNote = getCurrentComparisonNote();
     if (comparisonNote && bookProvenanceNoteEl) {
       const currentNote = String(bookProvenanceNoteEl.value || '').trim();
-      bookProvenanceNoteEl.value = currentNote ? `${currentNote}
-
-${comparisonNote}` : comparisonNote;
+      bookProvenanceNoteEl.value = appendUniquePartnerProvenanceBlock(currentNote, comparisonNote);
     }
 
     if (typeof refreshBookPartnerGovernanceUi === 'function') {
@@ -13170,6 +13181,8 @@ ${decisionSummary}` : '',
 
     if (!carryPreview) {
       lines.push('Nota de proveniência: sem escrita prevista enquanto a preparação não estiver suficientemente descrita.');
+    } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), carryPreview)) {
+      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
       lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
@@ -13247,8 +13260,10 @@ ${decisionSummary}` : '',
     if (bookPartnerSourceEl) {
       if (mappedSource && Array.from(bookPartnerSourceEl.options).some((option) => option.value === mappedSource)) {
         bookPartnerSourceEl.value = mappedSource;
+        setBookPartnerGovernanceSlugValue('');
       } else if (Array.from(bookPartnerSourceEl.options).some((option) => option.value === 'other_partner')) {
         bookPartnerSourceEl.value = 'other_partner';
+        setBookPartnerGovernanceSlugValue(currentSlug);
       }
     }
 
@@ -13271,9 +13286,7 @@ ${decisionSummary}` : '',
     const carryPreview = getImportCarryPreviewText();
     if (carryPreview && bookProvenanceNoteEl) {
       const currentNote = String(bookProvenanceNoteEl.value || '').trim();
-      bookProvenanceNoteEl.value = currentNote ? `${currentNote}
-
-${carryPreview}` : carryPreview;
+      bookProvenanceNoteEl.value = appendUniquePartnerProvenanceBlock(currentNote, carryPreview);
     }
 
     if (typeof refreshBookPartnerGovernanceUi === 'function') {
@@ -13376,11 +13389,36 @@ ${carryPreview}` : carryPreview;
     return normalizePartnerSlug(slugEl.value || presetEl.value || displayEl.value || baseUrlEl.value || '');
   }
 
+  function setBookPartnerGovernanceSlugValue(nextValue = '') {
+    if (!bookPartnerGovernanceSlugEl) return '';
+    const normalized = normalizePartnerSlug(nextValue || '');
+    bookPartnerGovernanceSlugEl.value = normalized;
+    return normalized;
+  }
+
+  function getBookPartnerGovernanceSlugValue() {
+    return normalizePartnerSlug(bookPartnerGovernanceSlugEl?.value || '');
+  }
+
+  function appendUniquePartnerProvenanceBlock(currentValue = '', blockValue = '') {
+    const current = String(currentValue || '').trim();
+    const block = String(blockValue || '').trim();
+    if (!block) return current;
+    if (!current) return block;
+    return current.includes(block) ? current : `${current}\n\n${block}`;
+  }
+
+  function hasPartnerProvenanceBlock(currentValue = '', blockValue = '') {
+    const current = String(currentValue || '').trim();
+    const block = String(blockValue || '').trim();
+    return !!block && !!current && current.includes(block);
+  }
+
   function getGovernedBookPartnerSlug() {
     const sourceValue = String(bookPartnerSourceEl?.value || '').trim();
     if (!sourceValue) return '';
     if (BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue]) return BOOK_PARTNER_GOVERNANCE_SLUG_MAP[sourceValue];
-    if (sourceValue === 'other_partner') return getCurrentPartnerSlug();
+    if (sourceValue === 'other_partner') return getBookPartnerGovernanceSlugValue();
     return '';
   }
 
@@ -13497,6 +13535,9 @@ ${carryPreview}` : carryPreview;
       }
 
       setPartnerPolicyReadout(row);
+      if (String(bookPartnerSourceEl?.value || '').trim() === 'other_partner' && !getBookPartnerGovernanceSlugValue()) {
+        setBookPartnerGovernanceSlugValue(slug);
+      }
       await refreshBookPartnerGovernanceUi({ silent: true });
       if (!silent) {
         setPartnerProbeMessage(
@@ -13582,6 +13623,14 @@ ${carryPreview}` : carryPreview;
   });
 
   bookPartnerSourceEl?.addEventListener('change', () => {
+    const sourceValue = String(bookPartnerSourceEl.value || '').trim();
+    if (sourceValue === 'other_partner') {
+      if (!getBookPartnerGovernanceSlugValue()) {
+        setBookPartnerGovernanceSlugValue(getCurrentPartnerSlug());
+      }
+    } else {
+      setBookPartnerGovernanceSlugValue('');
+    }
     refreshBookPartnerGovernanceUi({ silent: true });
   });
 
