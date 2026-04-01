@@ -3171,6 +3171,29 @@
             </div>
           </div>
         
+          <div class="field" style="margin-bottom:12px;">
+            <label for="partnerDiscoveryUrlInput">Ajuda de pré-preenchimento por URL pública</label>
+            <input id="partnerDiscoveryUrlInput" type="text" placeholder="Cola aqui uma URL pública de catálogo, de busca ou de notice parceira">
+            <small>Esta ajuda só sugere nome público, slug, base URL, família provável, confiança, país e nota técnica curta. Ela não salva nada na base, não importa nada e não decide nenhum estatuto relacional.</small>
+            <div class="actions" style="margin-top:10px;">
+              <button id="partnerAnalyzeUrlBtn" class="button secondary" type="button">Analisar URL</button>
+              <button id="partnerApplyUrlSuggestionBtn" class="button secondary" type="button">Aplicar sugestão local</button>
+              <button id="partnerClearUrlSuggestionBtn" class="button ghost" type="button">Limpar sugestão</button>
+            </div>
+          </div>
+
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerUrlSuggestionOutput">Leitura da ajuda por URL</label>
+              <textarea id="partnerUrlSuggestionOutput" rows="7" readonly placeholder="A leitura técnica e prudente da URL aparecerá aqui."></textarea>
+            </div>
+            <div class="field">
+              <label for="partnerUrlSuggestionWritePreview">Prévia do que será preenchido localmente</label>
+              <textarea id="partnerUrlSuggestionWritePreview" rows="7" readonly placeholder="A prévia exata do que será copiado para os campos locais aparecerá aqui."></textarea>
+              <small id="partnerUrlSuggestionMatchHint">Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente.</small>
+            </div>
+          </div>
+
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
               <label for="partnerFamilySelect">Família</label>
@@ -12334,6 +12357,13 @@ function initPartnerProbeUi() {
   const confidenceEl = document.getElementById('partnerConfidenceSelect');
   const countryEl = document.getElementById('partnerCountryCodeInput');
   const notesEl = document.getElementById('partnerNotesInput');
+  const discoveryUrlEl = document.getElementById('partnerDiscoveryUrlInput');
+  const analyzeUrlBtn = document.getElementById('partnerAnalyzeUrlBtn');
+  const applyUrlSuggestionBtn = document.getElementById('partnerApplyUrlSuggestionBtn');
+  const clearUrlSuggestionBtn = document.getElementById('partnerClearUrlSuggestionBtn');
+  const urlSuggestionOutputEl = document.getElementById('partnerUrlSuggestionOutput');
+  const urlSuggestionWritePreviewEl = document.getElementById('partnerUrlSuggestionWritePreview');
+  const urlSuggestionMatchHintEl = document.getElementById('partnerUrlSuggestionMatchHint');
   const reportEl = document.getElementById('partnerProbeOutput');
   const seedEl = document.getElementById('partnerSeedOutput');
   const relationshipStatusEl = document.getElementById('partnerRelationshipStatusOutput');
@@ -12390,7 +12420,8 @@ function initPartnerProbeUi() {
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
-    !confidenceEl || !countryEl || !notesEl || !reportEl || !seedEl ||
+    !confidenceEl || !countryEl || !notesEl || !discoveryUrlEl || !analyzeUrlBtn || !applyUrlSuggestionBtn || !clearUrlSuggestionBtn || !urlSuggestionOutputEl ||
+    !urlSuggestionWritePreviewEl || !urlSuggestionMatchHintEl || !reportEl || !seedEl ||
     !relationshipStatusEl || !compareAllowedEl || !importAllowedEl ||
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !compareActionBtn || !importActionBtn || !actionHintEl ||
@@ -12433,6 +12464,200 @@ function initPartnerProbeUi() {
     importWorkspaceOpen: false,
   };
   const partnerOptionRegistry = new Map();
+  let partnerUrlSuggestionState = null;
+
+  function clearPartnerUrlSuggestionReadout() {
+    partnerUrlSuggestionState = null;
+    urlSuggestionOutputEl.value = '';
+    urlSuggestionWritePreviewEl.value = '';
+    urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente.';
+  }
+
+  function inferPartnerCountryCodeFromHostname(hostname = '') {
+    const host = String(hostname || '').trim().toLowerCase();
+    if (!host) return '';
+    const ccMap = {
+      br: 'BR',
+      pt: 'PT',
+      ch: 'CH',
+      fr: 'FR',
+      be: 'BE',
+      it: 'IT',
+      es: 'ES',
+      uk: 'GB',
+      co: 'CO',
+      ar: 'AR',
+      cl: 'CL',
+      mx: 'MX',
+      uy: 'UY',
+      py: 'PY',
+      pe: 'PE',
+      bo: 'BO',
+      ec: 'EC',
+      ve: 'VE',
+      de: 'DE',
+      at: 'AT',
+      nl: 'NL',
+      ca: 'CA',
+      us: 'US',
+    };
+    const parts = host.split('.').filter(Boolean);
+    const last = parts[parts.length - 1] || '';
+    return ccMap[last] || '';
+  }
+
+  function inferPartnerSoftwareFamilyFromUrl(url = '') {
+    const value = String(url || '').trim().toLowerCase();
+    if (!value) return { family: 'unknown', confidence: 'unknown', note: 'URL vazia: sem família provável.' };
+    if (/cgi-bin\/koha|opac-detail\.pl|opac-search\.pl|search\.pl/.test(value)) {
+      return { family: 'koha', confidence: 'strong_inference', note: 'A URL lembra uma superfície pública de Koha.' };
+    }
+    if (/opac_css|index\.php\?lvl=|lvl=notice_display|lvl=search_result|\/pmb\//.test(value)) {
+      return { family: 'pmb', confidence: 'strong_inference', note: 'A URL lembra uma superfície pública de PMB.' };
+    }
+    return { family: 'unknown', confidence: 'generic', note: 'A URL não deixa clara a família do catálogo.' };
+  }
+
+  function derivePartnerBaseUrlFromDiscoveryUrl(rawUrl = '') {
+    const normalized = normalizePartnerBaseUrl(rawUrl);
+    if (!normalized) return '';
+    try {
+      const url = new URL(normalized);
+      const pathname = String(url.pathname || '').replace(/\/+$/, '');
+      const kohaMatch = pathname.match(/^(.*\/cgi-bin\/koha)(?:\/.*)?$/i);
+      if (kohaMatch?.[1]) return `${url.origin}${kohaMatch[1]}`;
+      const pmbMatch = pathname.match(/^(.*\/opac_css)(?:\/.*)?$/i);
+      if (pmbMatch?.[1]) return `${url.origin}${pmbMatch[1]}`;
+      const pathParts = pathname.split('/').filter(Boolean);
+      if (!pathParts.length) return url.origin;
+      return `${url.origin}/${pathParts[0]}`;
+    } catch (_err) {
+      return normalized;
+    }
+  }
+
+  function buildPartnerDisplayNameFromHost(hostname = '') {
+    const host = String(hostname || '').trim().toLowerCase();
+    if (!host) return '';
+    const parts = host.split('.').filter(Boolean).filter((part) => !['www', 'com', 'org', 'net', 'edu', 'gov'].includes(part));
+    const core = parts[0] || host;
+    return core
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function findProbablePartnerMatch({ slug = '', baseUrl = '', hostname = '' } = {}) {
+    const wantedSlug = normalizePartnerSlug(slug || '');
+    const wantedBase = normalizePartnerBaseUrl(baseUrl || '');
+    const wantedHost = String(hostname || '').trim().toLowerCase();
+    const records = Array.from(partnerOptionRegistry.values());
+    return records.find((record) => {
+      const recordSlug = normalizePartnerSlug(record.slug || '');
+      const recordBase = normalizePartnerBaseUrl(record.baseUrl || '');
+      let recordHost = '';
+      try {
+        recordHost = recordBase ? new URL(recordBase).hostname.toLowerCase() : '';
+      } catch (_err) {}
+      return (wantedSlug && recordSlug === wantedSlug)
+        || (wantedBase && recordBase && recordBase === wantedBase)
+        || (wantedHost && recordHost && recordHost === wantedHost);
+    }) || null;
+  }
+
+  function renderPartnerUrlSuggestion(suggestion = null) {
+    partnerUrlSuggestionState = suggestion || null;
+    if (!suggestion) {
+      clearPartnerUrlSuggestionReadout();
+      return;
+    }
+    const matchLabel = suggestion.match
+      ? `Match provável com parceira já conhecida: ${suggestion.match.label} (${suggestion.match.sourceTag || 'registro conhecido'}).`
+      : 'Nenhum match provável com parceira já conhecida nesta leitura local.';
+    urlSuggestionOutputEl.value = [
+      `URL analisada: ${suggestion.rawUrl}`,
+      `Base URL provável: ${suggestion.baseUrl || '—'}`,
+      `Nome público provável: ${suggestion.displayName || '—'}`,
+      `Slug provável: ${suggestion.slug || '—'}`,
+      `Família provável: ${suggestion.softwareFamily || 'unknown'}`,
+      `Nível de confiança: ${suggestion.softwareConfidence || 'unknown'}`,
+      `País provável: ${suggestion.countryCode || '—'}`,
+      `Nota técnica curta: ${suggestion.note || '—'}`,
+      matchLabel,
+      'Lembrete: isto é só ajuda de pré-preenchimento. Não salva parceira, não importa notice e não decide situação relacional.'
+    ].join('\n');
+    urlSuggestionWritePreviewEl.value = [
+      `Nome público → ${suggestion.displayName || '—'}`,
+      `Slug → ${suggestion.slug || '—'}`,
+      `Base URL → ${suggestion.baseUrl || '—'}`,
+      `Família → ${suggestion.softwareFamily || 'unknown'}`,
+      `Confiança → ${suggestion.softwareConfidence || 'unknown'}`,
+      `País → ${suggestion.countryCode || '—'}`,
+      `Nota curta → ${suggestion.note || '—'}`
+    ].join('\n');
+    urlSuggestionMatchHintEl.textContent = matchLabel;
+  }
+
+  function analyzePartnerDiscoveryUrl() {
+    const rawUrl = normalizePartnerBaseUrl(discoveryUrlEl.value);
+    discoveryUrlEl.value = rawUrl;
+    if (!rawUrl) {
+      renderPartnerUrlSuggestion(null);
+      setPartnerProbeMessage('Cola uma URL pública antes de pedir a análise.', 'warn');
+      return null;
+    }
+    let parsedUrl = null;
+    try {
+      parsedUrl = new URL(rawUrl);
+    } catch (_err) {
+      renderPartnerUrlSuggestion(null);
+      setPartnerProbeMessage('A URL colada não parece válida para esta ajuda local.', 'warn');
+      return null;
+    }
+
+    const familyGuess = inferPartnerSoftwareFamilyFromUrl(rawUrl);
+    const baseUrl = derivePartnerBaseUrlFromDiscoveryUrl(rawUrl);
+    const hostname = String(parsedUrl.hostname || '').trim().toLowerCase();
+    const fallbackSlug = normalizePartnerSlug(hostname.split('.').filter(Boolean)[0] || hostname || rawUrl);
+    const probableMatch = findProbablePartnerMatch({ slug: fallbackSlug, baseUrl, hostname });
+
+    const suggestion = {
+      rawUrl,
+      baseUrl: probableMatch?.baseUrl || baseUrl,
+      displayName: probableMatch?.displayName || buildPartnerDisplayNameFromHost(hostname) || fallbackSlug,
+      slug: probableMatch?.slug || fallbackSlug,
+      softwareFamily: probableMatch?.softwareFamily || familyGuess.family,
+      softwareConfidence: probableMatch ? 'confirmed' : familyGuess.confidence,
+      countryCode: probableMatch?.countryCode || inferPartnerCountryCodeFromHostname(hostname),
+      note: probableMatch?.notes || familyGuess.note || 'Leitura local gerada a partir de uma URL pública.',
+      match: probableMatch,
+    };
+
+    renderPartnerUrlSuggestion(suggestion);
+    setPartnerProbeMessage('Leitura por URL gerada localmente. Nada foi salvo nem importado.', 'ok');
+    return suggestion;
+  }
+
+  function applyPartnerUrlSuggestionToLocalFields() {
+    const suggestion = partnerUrlSuggestionState || analyzePartnerDiscoveryUrl();
+    if (!suggestion) return;
+    displayEl.value = suggestion.displayName || '';
+    slugEl.value = suggestion.slug || '';
+    baseUrlEl.value = suggestion.baseUrl || '';
+    familyEl.value = suggestion.softwareFamily || 'unknown';
+    confidenceEl.value = suggestion.softwareConfidence || 'unknown';
+    countryEl.value = suggestion.countryCode || '';
+    if (!String(notesEl.value || '').trim() || !suggestion.match) {
+      notesEl.value = suggestion.note || '';
+    }
+    if (suggestion.match && presetEl.querySelector(`option[value="${suggestion.match.slug}"]`)) {
+      presetEl.value = suggestion.match.slug;
+    }
+    generatePartnerArtifacts();
+    refreshPartnerPolicy({ silent: true });
+    setPartnerProbeMessage('Sugestão por URL aplicada localmente. Confere os campos antes de qualquer uso político ou documental.', 'ok');
+  }
 
   function getSelectedOptionLabel(selectEl) {
     if (!selectEl) return '';
@@ -13365,6 +13590,20 @@ ${carryPreview}` : carryPreview;
     await copyPartnerTextFrom('partnerSeedOutput', 'SQL copiado.');
   });
 
+  analyzeUrlBtn?.addEventListener('click', () => {
+    analyzePartnerDiscoveryUrl();
+  });
+
+  applyUrlSuggestionBtn?.addEventListener('click', () => {
+    applyPartnerUrlSuggestionToLocalFields();
+  });
+
+  clearUrlSuggestionBtn?.addEventListener('click', () => {
+    discoveryUrlEl.value = '';
+    clearPartnerUrlSuggestionReadout();
+    setPartnerProbeMessage('Leitura por URL limpa. Nenhuma alteração foi salva.', 'info');
+  });
+
   openBaseBtn?.addEventListener('click', () => {
     const url = normalizePartnerBaseUrl(baseUrlEl.value);
     if (!url) {
@@ -13463,6 +13702,7 @@ ${carryPreview}` : carryPreview;
     });
   });
 
+  clearPartnerUrlSuggestionReadout();
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
   refreshBookPartnerGovernanceUi({ silent: true });
@@ -13531,48 +13771,24 @@ ${carryPreview}` : carryPreview;
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
       if (eventName === 'SIGNED_OUT') {
-        await syncCatalogacaoAuthState(null, { reloadData: false, allowAnonymousReset: true });
+        await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset: true });
         return;
       }
-      if (eventName !== 'SIGNED_IN') return;
-      await syncCatalogacaoAuthState(session, { reloadData: true, allowAnonymousReset: false });
+      if (eventName === 'SIGNED_IN') {
+        await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset: false });
+      }
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
-      if (state.session?.user?.id) return;
-      const now = Date.now();
-      if (catalogacaoAuthSyncInFlight) return;
-      if (now - catalogacaoLastPassiveSessionProbeAt < 1200) return;
-      catalogacaoLastPassiveSessionProbeAt = now;
-      const liveSession = await getCurrentSession({ attempts: 6, delayMs: 160 });
-      const hasCurrentSession = !!state.session?.user?.id;
-      const hasLiveSession = !!liveSession?.user?.id;
-      if (!hasCurrentSession && !hasLiveSession) return;
-      if (hasCurrentSession && hasLiveSession && state.session?.user?.id === liveSession?.user?.id) return;
-      await syncCatalogacaoAuthState(liveSession, {
-        reloadData: hasLiveSession,
-        allowAnonymousReset: !hasLiveSession,
-      });
+      void reason;
+      return false;
     }
 
-    window.addEventListener('storage', (event) => {
-      if (!isCatalogacaoAuthStorageKey(event?.key)) return;
-      probeCatalogacaoSessionOnVisibility('storage').catch((error) => {
-        console.warn('Falha ao revalidar a sessão da catalogação após mudança de armazenamento auth.', error);
-      });
-    });
+    // Revalidação automática por storage desativada para evitar refreshs intempestivos da catalogação.
 
-    window.addEventListener('focus', () => {
-      probeCatalogacaoSessionOnVisibility('focus').catch((error) => {
-        console.warn('Falha ao revalidar a sessão da catalogação no foco.', error);
-      });
-    });
+    // Revalidação automática no foco desativada para evitar refreshs intempestivos da catalogação.
 
-    window.addEventListener('pageshow', () => {
-      probeCatalogacaoSessionOnVisibility('pageshow').catch((error) => {
-        console.warn('Falha ao revalidar a sessão da catalogação no retorno da página.', error);
-      });
-    });
+    // Revalidação automática no retorno da página desativada para evitar refreshs intempestivos da catalogação.
 
     updateRefreshButton(false);
     updateLoginButton();
@@ -13580,15 +13796,10 @@ ${carryPreview}` : carryPreview;
 
     const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
     catalogacaoAuthBootstrapping = false;
-    await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: !bootstrapCatalogacaoSession?.user?.id });
+    await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: false, allowAnonymousReset: !bootstrapCatalogacaoSession?.user?.id });
 
-    if (!bootstrapCatalogacaoSession?.user?.id) {
-      setTimeout(async () => {
-        const lateSession = await getCurrentSession({ attempts: 10, delayMs: 200 });
-        if (lateSession?.user?.id) {
-          await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
-        }
-      }, 700);
+    if (bootstrapCatalogacaoSession?.user?.id) {
+      await refreshAll(false);
     }
 
   </script>
