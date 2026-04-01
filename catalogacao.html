@@ -2470,17 +2470,17 @@
                 <div class="book-derived-summary-top">
                   <div>
                     <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Prévia curta do que esta ficha já comunica para futuras superfícies de consulta, difusão e revisão editorial.</div>
+                    <div class="hint">Leitura interna curta separando ficha comum, contexto local / holding e acesso local já descrito nesta etapa.</div>
                   </div>
                   <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                 </div>
                 <div class="book-derived-summary-card">
                   <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
                   <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
-                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Responsabilidade, edição ou difusão: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Resumo material e contextual ainda não informado.</div>
-                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação e acesso: —</div>
-                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
+                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha comum: —</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Contexto local / holding ainda não informado.</div>
+                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Acesso local / circulação: —</div>
+                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos da ficha comum: —</div>
                 </div>
               </div>
             </div>
@@ -2490,29 +2490,29 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha comum publicada.</div>
+                    <div class="hint">Leitura mínima do que esta etapa já consegue projetar para a linha pública do catálogo e para a abertura da ficha, distinguindo núcleo comum, camada local e acesso local visível.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
                 <div class="book-public-preview-grid">
                   <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Linha no catálogo</div>
+                    <div class="book-public-preview-eyebrow">Linha pública mínima</div>
                     <div class="book-public-preview-inline">
                       <span id="bookPublicCatalogKindChip" class="book-public-preview-chip is-strong">Livro / brochura</span>
-                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Biblioteca: —</span>
+                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Holding local: —</span>
                     </div>
                     <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Meta de exibição: —</div>
-                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Resumo curto de catálogo ainda não informado.</div>
-                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Disponibilidade e acesso: —</div>
+                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum mínima: —</div>
+                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Camada local ainda não legível para a saída pública mínima.</div>
+                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Disponibilidade pública mínima: —</div>
                   </div>
                   <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Abertura da ficha</div>
+                    <div class="book-public-preview-eyebrow">Abertura mínima da ficha</div>
                     <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Tipo, responsabilidade e proveniência pública: —</div>
-                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha ainda não informado.</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Circulação, acesso e suporte: —</div>
-                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos públicos: —</div>
+                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Cabeçalho público mínimo: —</div>
+                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo público mínimo ainda não informado.</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Acesso local mostrado na ficha: —</div>
+                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos públicos mínimos: —</div>
                   </div>
                 </div>
               </div>
@@ -8279,57 +8279,62 @@
       const collection = compactSpaces(el('bookCollection')?.value || '');
       const edition = compactSpaces(el('bookEdition')?.value || '');
       const pages = compactSpaces(el('bookPages')?.value || '');
+      const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
+      const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
+      const acquisitionModeLabel = compactSpaces(getSelectedOptionLabel(el('bookAcquisitionMode')) || '');
+      const mutualizationStatusLabel = compactSpaces(getSelectedOptionLabel(el('bookMutualizationStatus')) || '');
+      const acquisitionSourceLabel = compactSpaces(el('bookAcquisitionSourceLabel')?.value || '');
       const subjects = formatBookSubjectsValue(el('bookSubjects')?.value || '');
       const loanable = String(el('bookLoanable')?.value || 'true') === 'true';
       const digitalBucket = compactSpaces(el('bookDigitalBucket')?.value || '');
       const digitalPath = compactSpaces(el('bookDigitalPath')?.value || '');
       const digitalPublic = !!el('bookDigitalIsPublic')?.checked;
       const digitalLinked = digitalBucket && digitalPath;
-      const contextParts = [];
+      const documentaryContextParts = [];
 
       if (SERIAL_MATERIAL_TYPES.has(materialType)) {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookPeriodicalTitle')?.value || ''),
           compactSpaces(el('bookVolume')?.value ? `vol. ${el('bookVolume').value}` : ''),
           compactSpaces(el('bookIssueNumber')?.value ? `n. ${el('bookIssueNumber').value}` : ''),
           compactSpaces(el('bookIssueDate')?.value || ''),
         ]));
       } else if (materialType === 'tract' || materialType === 'cartaz') {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookMaterialCampaign')?.value || ''),
           compactSpaces(el('bookMaterialEmitter')?.value || ''),
           compactSpaces(el('bookMaterialDiffusionPlace')?.value || ''),
           compactSpaces(el('bookMaterialApproxDate')?.value || ''),
         ]));
       } else if (materialType === 'audio') {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookAudioDuration')?.value || ''),
           compactSpaces(el('bookAudioSupport')?.value || ''),
           compactSpaces(el('bookAudioSpokenLanguage')?.value || ''),
           compactSpaces(el('bookAudioParticipants')?.value || ''),
         ]));
       } else if (materialType === 'audiovisual') {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookAudiovisualDuration')?.value || ''),
           compactSpaces(el('bookAudiovisualSupport')?.value || ''),
           compactSpaces(el('bookAudiovisualDirector')?.value || ''),
           compactSpaces(el('bookAudiovisualLanguage')?.value || ''),
         ]));
       } else if (materialType === 'recurso_digital') {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookDigitalNativeUsage')?.value || ''),
           compactSpaces(el('bookDigitalNativeAccess')?.value || ''),
           compactSpaces(el('bookDigitalNativeRestriction')?.value || ''),
           compactSpaces(el('bookDigitalNativeUrl')?.value || ''),
         ]));
       } else if (materialType === 'dossie') {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           compactSpaces(el('bookDossierScope')?.value || ''),
           compactSpaces(el('bookDossierPeriod')?.value || ''),
           compactSpaces(el('bookDossierOrganizations')?.value || ''),
         ]));
       } else {
-        contextParts.push(joinSummaryParts([
+        documentaryContextParts.push(joinSummaryParts([
           collection ? `Coleção: ${collection}` : '',
           edition ? `Edição: ${edition}` : '',
           pages ? `${pages} p.` : '',
@@ -8337,20 +8342,43 @@
       }
 
       const notes = compactSpaces(el('bookNotes')?.value || '');
-      if (notes) contextParts.push(truncatePreviewText(notes, 180));
+      if (notes) documentaryContextParts.push(truncatePreviewText(notes, 180));
+
+      const localHoldingParts = [];
+      if (holderLibrary) localHoldingParts.push(`Detida em: ${holderLibrary}`);
+      if (ownerLibrary && ownerLibrary !== holderLibrary) {
+        localHoldingParts.push(`Propriedade: ${ownerLibrary}`);
+      } else if (ownerLibrary && !holderLibrary) {
+        localHoldingParts.push(`Propriedade: ${ownerLibrary}`);
+      }
+      if (acquisitionModeLabel) localHoldingParts.push(`Entrada: ${acquisitionModeLabel}`);
+      if (acquisitionSourceLabel) localHoldingParts.push(`Origem imediata: ${acquisitionSourceLabel}`);
+      if (mutualizationStatusLabel) localHoldingParts.push(`Rede: ${mutualizationStatusLabel}`);
+
+      const localHoldingText = joinSummaryParts(localHoldingParts);
+      const documentaryContextText = documentaryContextParts.filter(Boolean).join(' — ');
+      const contextualReadings = [];
+      if (localHoldingText) contextualReadings.push(localHoldingText);
+      if (documentaryContextText) contextualReadings.push(documentaryContextText);
 
       const accessParts = [];
-      accessParts.push(loanable ? 'Circulação local com empréstimo possível' : 'Consulta local / circulação restrita');
+      accessParts.push(loanable ? 'Empréstimo local possível' : 'Consulta local / circulação restrita');
       if (digitalLinked) {
         accessParts.push(digitalPublic ? 'PDF público vinculado' : 'PDF restrito vinculado');
+      }
+      if (materialType === 'recurso_digital') {
+        const digitalNativeAccess = compactSpaces(el('bookDigitalNativeAccess')?.value || '');
+        const digitalNativeRestriction = compactSpaces(el('bookDigitalNativeRestriction')?.value || '');
+        if (digitalNativeAccess) accessParts.push(`Uso principal: ${digitalNativeAccess}`);
+        if (digitalNativeRestriction) accessParts.push(`Restrição: ${digitalNativeRestriction}`);
       }
 
       return {
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
-        meta: joinSummaryParts([author, publisher, place, year]) || 'Responsabilidade, edição ou difusão: —',
-        context: contextParts.filter(Boolean).join(' — ') || 'Resumo material e contextual ainda não informado.',
-        access: accessParts.join(' · ') || 'Circulação e acesso: —',
+        meta: joinSummaryParts([author, publisher, place, year]) || 'Responsabilidade, edição, publicação e data ainda não informadas.',
+        context: contextualReadings.join(' · ') || 'Holding local e leitura documental ainda não informados.',
+        access: accessParts.join(' · ') || 'Circulação, consulta e suporte local ainda não definidos.',
         subjects: subjects || '—',
       };
     }
@@ -8364,10 +8392,10 @@
       }
       refs.bookDerivedSummaryKind.textContent = summary.kindLabel;
       refs.bookDerivedSummaryTitle.textContent = summary.title;
-      refs.bookDerivedSummaryMeta.textContent = summary.meta;
-      refs.bookDerivedSummaryContext.textContent = summary.context;
-      refs.bookDerivedSummaryAccess.textContent = `Circulação e acesso: ${summary.access}`;
-      refs.bookDerivedSummarySubjects.textContent = `Assuntos: ${summary.subjects}`;
+      refs.bookDerivedSummaryMeta.textContent = `Ficha comum: ${summary.meta}`;
+      refs.bookDerivedSummaryContext.textContent = `Contexto local / holding: ${summary.context}`;
+      refs.bookDerivedSummaryAccess.textContent = `Acesso local / circulação: ${summary.access}`;
+      refs.bookDerivedSummarySubjects.textContent = `Assuntos da ficha comum: ${summary.subjects}`;
     }
 
     function buildBookPublicSurfacePreview() {
@@ -8375,7 +8403,8 @@
       const materialType = el('bookType')?.value || 'livro';
       const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
       const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
-      const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
+      const displayLibrary = holderLibrary || ownerLibrary || 'não definido';
+      const mutualizationStatusLabel = compactSpaces(getSelectedOptionLabel(el('bookMutualizationStatus')) || '');
       const author = compactSpaces(el('bookAuthor')?.value || '');
       const publisher = compactSpaces(el('bookPublisher')?.value || '');
       const place = compactSpaces(el('bookPlace')?.value || '');
@@ -8427,9 +8456,14 @@
         return '';
       })();
 
+      const publicHoldingText = joinSummaryParts([
+        displayLibrary !== 'não definido' ? displayLibrary : '',
+        mutualizationStatusLabel || '',
+      ]);
+
       const catalogMetaParts = [summary.meta];
       if (supportText) catalogMetaParts.push(`Suporte: ${supportText}`);
-      const snippetParts = [summary.context];
+      const snippetParts = [];
       if ((materialType === 'tract' || materialType === 'cartaz') && physicalState) snippetParts.push(`Estado: ${physicalState}`);
       if (materialType === 'recurso_digital' && digitalNativeUrl) snippetParts.push('URL principal informada.');
       if (materialType === 'dossie' && dossierOrganizations) snippetParts.push(`Organizações: ${dossierOrganizations}`);
@@ -8437,8 +8471,8 @@
       if (materialType === 'recurso_digital' && digitalNativeRestriction) catalogAccessParts.push(`Restrição: ${digitalNativeRestriction}`);
       if (materialType === 'recurso_digital' && digitalNativeAccess) catalogAccessParts.push(`Uso: ${digitalNativeAccess}`);
       const fichaMetaParts = [summary.kindLabel, summary.meta];
-      if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
-      const fichaBodyParts = [summary.context];
+      if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+      const fichaBodyParts = [];
       if (materialType === 'dossie' && dossierOrganizations) fichaBodyParts.push(`Vínculos organizativos: ${dossierOrganizations}`);
       if (materialType === 'recurso_digital' && digitalNativeUrl) fichaBodyParts.push('Recurso digital principal informado.');
 
@@ -8460,19 +8494,19 @@
         catalogMetaParts.push(serialIdentity || summary.meta);
         if (serialSupport) catalogMetaParts.push(serialSupport);
         snippetParts.length = 0;
-        snippetParts.push(summary.context);
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (notes) snippetParts.push(truncatePreviewText(notes, 120));
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, serialIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         fichaBodyParts.push(joinSummaryParts([
           publisher ? `Entidade responsável: ${publisher}` : '',
           place,
           year,
           frequency ? `Periodicidade: ${frequency}` : '',
         ]));
-        if (summary.context) fichaBodyParts.push(summary.context);
       } else if (materialType === 'tract' || materialType === 'cartaz') {
         const rectoVersoLabel = rectoVerso === 'recto' ? 'somente recto' : rectoVerso === 'recto_verso' ? 'recto e verso' : rectoVerso === 'desconhecido' ? 'recto/verso não verificado' : '';
         const militantIdentity = joinSummaryParts([
@@ -8486,14 +8520,14 @@
         if (materialFormat) catalogMetaParts.push(`Formato: ${materialFormat}`);
         if (rectoVersoLabel) catalogMetaParts.push(rectoVersoLabel);
         snippetParts.length = 0;
-        if (summary.context) snippetParts.push(summary.context);
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (printTechnique) snippetParts.push(`Impressão: ${printTechnique}`);
         if (physicalState) snippetParts.push(`Estado: ${physicalState}`);
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, militantIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
-        if (summary.context) fichaBodyParts.push(summary.context);
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         if (materialFormat || rectoVersoLabel) fichaBodyParts.push(joinSummaryParts([materialFormat ? `Formato: ${materialFormat}` : '', rectoVersoLabel]));
         if (printTechnique || physicalState) fichaBodyParts.push(joinSummaryParts([printTechnique ? `Técnica: ${printTechnique}` : '', physicalState ? `Estado: ${physicalState}` : '']));
       } else if (materialType === 'audio') {
@@ -8506,13 +8540,13 @@
         catalogMetaParts.push(audioIdentity || summary.meta);
         if (audioParticipants) catalogMetaParts.push(`Intervenientes: ${audioParticipants}`);
         snippetParts.length = 0;
-        if (summary.context) snippetParts.push(summary.context);
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (audioRecordingType) snippetParts.push(`Registro: ${audioRecordingType}`);
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, audioIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
-        if (summary.context) fichaBodyParts.push(summary.context);
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         if (audioParticipants) fichaBodyParts.push(`Intervenientes: ${audioParticipants}`);
         if (audioRecordingType || audioFormat) fichaBodyParts.push(joinSummaryParts([audioRecordingType ? `Tipo de gravação: ${audioRecordingType}` : '', audioFormat ? `Formato: ${audioFormat}` : '']));
       } else if (materialType === 'audiovisual') {
@@ -8525,14 +8559,14 @@
         catalogMetaParts.push(audiovisualIdentity || summary.meta);
         if (audiovisualDirector) catalogMetaParts.push(`Realização: ${audiovisualDirector}`);
         snippetParts.length = 0;
-        if (summary.context) snippetParts.push(summary.context);
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (audiovisualParticipants) snippetParts.push(`Intervenientes: ${audiovisualParticipants}`);
         if (audiovisualAccessNote) snippetParts.push(`Consulta: ${audiovisualAccessNote}`);
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, audiovisualIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
-        if (summary.context) fichaBodyParts.push(summary.context);
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         if (audiovisualDirector || audiovisualParticipants) fichaBodyParts.push(joinSummaryParts([audiovisualDirector ? `Realização: ${audiovisualDirector}` : '', audiovisualParticipants ? `Intervenientes: ${audiovisualParticipants}` : '']));
         if (audiovisualSubtitles || audiovisualAccessNote) fichaBodyParts.push(joinSummaryParts([audiovisualSubtitles ? `Legendagem: ${audiovisualSubtitles}` : '', audiovisualAccessNote ? `Consulta: ${audiovisualAccessNote}` : '']));
       } else if (materialType === 'recurso_digital') {
@@ -8545,16 +8579,16 @@
         catalogMetaParts.push(digitalIdentity || summary.meta);
         if (author) catalogMetaParts.push(author);
         snippetParts.length = 0;
-        if (summary.context) snippetParts.push(summary.context);
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (digitalNativeUrl) snippetParts.push(`URL principal: ${digitalNativeUrl}`);
         if (digitalNativeFileNote) snippetParts.push(`Arquivo: ${digitalNativeFileNote}`);
         catalogAccessParts.length = 0;
         catalogAccessParts.push(digitalIdentity || summary.access);
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, digitalIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
-        if (summary.context) fichaBodyParts.push(summary.context);
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         if (digitalNativeUrl) fichaBodyParts.push(`URL principal: ${digitalNativeUrl}`);
         if (digitalNativeFileNote) fichaBodyParts.push(`Observação do arquivo: ${digitalNativeFileNote}`);
       } else if (materialType === 'dossie') {
@@ -8566,29 +8600,36 @@
         catalogMetaParts.push(dossierIdentity || summary.meta);
         if (publisher) catalogMetaParts.push(`Entidade: ${publisher}`);
         snippetParts.length = 0;
+        if (publicHoldingText) snippetParts.push(publicHoldingText);
         if (dossierScope) snippetParts.push(dossierScope);
-        if (summary.context && summary.context !== dossierScope) snippetParts.push(summary.context);
         if (dossierContext) snippetParts.push(`Contexto: ${dossierContext}`);
         fichaMetaParts.length = 0;
         fichaMetaParts.push(summary.kindLabel, dossierIdentity || summary.meta);
-        if (displayLibrary) fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
+        if (displayLibrary !== 'não definido') fichaMetaParts.push(`Biblioteca: ${displayLibrary}`);
         fichaBodyParts.length = 0;
+        if (publicHoldingText) fichaBodyParts.push(`Camada local: ${publicHoldingText}`);
         if (dossierScope) fichaBodyParts.push(dossierScope);
         if (dossierOrganizations) fichaBodyParts.push(`Vínculos organizativos: ${dossierOrganizations}`);
         if (dossierContext) fichaBodyParts.push(`Contexto: ${dossierContext}`);
+      } else {
+        if (publicHoldingText) snippetParts.unshift(publicHoldingText);
+        if (publicHoldingText) fichaBodyParts.unshift(`Camada local: ${publicHoldingText}`);
       }
+
+      const catalogSnippetText = joinSummaryParts(snippetParts) || 'camada local e leitura documental ainda não legíveis para a saída pública mínima';
+      const fichaBodyText = joinSummaryParts(fichaBodyParts) || 'camada local e corpo documental ainda não legíveis para a abertura mínima da ficha';
 
       return {
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: joinSummaryParts(catalogMetaParts) || 'Meta de exibição: —',
-        catalogSnippet: joinSummaryParts(snippetParts) || 'Resumo curto de catálogo ainda não informado.',
-        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Disponibilidade e acesso ainda não definidos.',
+        catalogMeta: joinSummaryParts(catalogMetaParts) || 'responsabilidade, edição, publicação e data ainda incompletas',
+        catalogSnippet: catalogSnippetText,
+        catalogAccess: joinSummaryParts(catalogAccessParts) || 'disponibilidade local e acesso público ainda não definidos',
         fichaTitle: summary.title,
-        fichaMeta: joinSummaryParts(fichaMetaParts) || 'Tipo, responsabilidade e proveniência pública: —',
-        fichaBody: joinSummaryParts(fichaBodyParts) || 'Corpo mínimo da ficha ainda não informado.',
-        fichaAccess: joinSummaryParts([summary.access, supportText ? `Suporte: ${supportText}` : '']) || 'Circulação, acesso e suporte ainda não definidos.',
+        fichaMeta: joinSummaryParts(fichaMetaParts) || 'tipo, responsabilidade e proveniência pública ainda incompletos',
+        fichaBody: fichaBodyText,
+        fichaAccess: joinSummaryParts([summary.access, supportText ? `Suporte: ${supportText}` : '']) || 'acesso local e suporte ainda não definidos',
         fichaSubjects: summary.subjects || '—',
       };
     }
@@ -8601,16 +8642,16 @@
         refs.bookPublicPreviewModePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
       }
       if (refs.bookPublicCatalogKindChip) refs.bookPublicCatalogKindChip.textContent = preview.kindLabel;
-      if (refs.bookPublicCatalogLibraryChip) refs.bookPublicCatalogLibraryChip.textContent = `Biblioteca: ${preview.displayLibrary}`;
+      if (refs.bookPublicCatalogLibraryChip) refs.bookPublicCatalogLibraryChip.textContent = `Holding local: ${preview.displayLibrary}`;
       refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
-      refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
-      refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
-      refs.bookPublicCatalogAccess.textContent = `Disponibilidade e acesso: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogMeta.textContent = `Ficha comum mínima: ${preview.catalogMeta}`;
+      refs.bookPublicCatalogSnippet.textContent = `Camada local / holding visível: ${preview.catalogSnippet}`;
+      refs.bookPublicCatalogAccess.textContent = `Disponibilidade pública mínima: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
-      refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
-      refs.bookPublicFichaBody.textContent = preview.fichaBody;
-      refs.bookPublicFichaAccess.textContent = `Circulação, acesso e suporte: ${preview.fichaAccess}`;
-      refs.bookPublicFichaSubjects.textContent = `Assuntos públicos: ${preview.fichaSubjects}`;
+      refs.bookPublicFichaMeta.textContent = `Cabeçalho público mínimo: ${preview.fichaMeta}`;
+      refs.bookPublicFichaBody.textContent = `Corpo público mínimo: ${preview.fichaBody}`;
+      refs.bookPublicFichaAccess.textContent = `Acesso local mostrado na ficha: ${preview.fichaAccess}`;
+      refs.bookPublicFichaSubjects.textContent = `Assuntos públicos mínimos: ${preview.fichaSubjects}`;
     }
 
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
