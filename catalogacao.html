@@ -3492,6 +3492,17 @@
             <small id="partnerNextStepHint">A recomendação abaixo traduz a matriz em um gesto prudente, sem abrir nenhum fluxo novo por si só.</small>
           </div>
 
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
+            <div class="field">
+              <label for="partnerBoundaryOutput">Limite concreto nesta etapa</label>
+              <textarea id="partnerBoundaryOutput" rows="3" readonly placeholder="O limite concreto desta etapa aparecerá aqui."></textarea>
+            </div>
+            <div class="field">
+              <label for="partnerUnlockConditionOutput">Condição mínima para avançar</label>
+              <textarea id="partnerUnlockConditionOutput" rows="3" readonly placeholder="A condição mínima para avançar aparecerá aqui."></textarea>
+            </div>
+          </div>
+
           <div id="partnerRightsDecisionNote" class="hint" style="margin-top:8px;">
             A matriz acima manda nesta etapa: ela separa leitura política, comparação local, retomada local, enriquecimento da camada local, camada compartilhada e publicação na tua biblioteca.
           </div>
@@ -3600,7 +3611,7 @@
                 <div class="field">
                   <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
                   <select id="partnerImportMethodSelect"></select>
-                  <small>Escolhe aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
+                  <small>Escolha aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -3624,8 +3635,8 @@
                 </div>
               </div>
               <div class="field">
-                <label for="partnerImportDraftPreview">Pré-visualização local do rascunho preparado</label>
-                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
+                <label for="partnerImportDraftPreview">Prévia local do rascunho preparado</label>
+                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A prévia do rascunho local preparado aparecerá aqui."></textarea>
               </div>
               <div class="field">
                 <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
@@ -12738,6 +12749,8 @@ function initPartnerProbeUi() {
   const partnerRightsSummaryEl = document.getElementById('partnerRightsSummaryOutput');
   const partnerNextStepEl = document.getElementById('partnerNextStepOutput');
   const partnerNextStepHintEl = document.getElementById('partnerNextStepHint');
+  const partnerBoundaryEl = document.getElementById('partnerBoundaryOutput');
+  const partnerUnlockConditionEl = document.getElementById('partnerUnlockConditionOutput');
   const refreshPolicyBtn = document.getElementById('partnerRefreshPolicyBtn');
   const generateBtn = document.getElementById('partnerGenerateBtn');
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
@@ -12806,7 +12819,7 @@ function initPartnerProbeUi() {
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl ||
     !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl ||
-    !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
+    !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !partnerBoundaryEl || !partnerUnlockConditionEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
@@ -14217,6 +14230,51 @@ ${decisionSummary}` : '',
     partnerNextStepEl.value = 'Próximo gesto: ler a situação relacional desta parceira, conferir a matriz acima e só então decidir se cabe comparação, retomada local ou simples leitura política.';
   }
 
+  function setPartnerBoundaryReadout(mode = 'empty', row = null, gateState = null) {
+    if (!partnerBoundaryEl || !partnerUnlockConditionEl) return;
+    const nextGateState = gateState || getPartnerAgreementGateState('', null);
+    const compareAllowed = !!row?.compare_allowed && !nextGateState.catalogacaoGateBlocked;
+    const importAllowed = !!row?.import_allowed && !nextGateState.catalogacaoGateBlocked;
+    const mutualizeAllowed = !!row?.mutualize_allowed && !nextGateState.catalogacaoGateBlocked;
+
+    if (mode === 'agreement_blocked') {
+      partnerBoundaryEl.value = 'Limite atual: a leitura política pode ser vista, mas comparação documental, retomada local e mutualização ficam travadas enquanto o acordo explícito exigido não estiver ativo.';
+      partnerUnlockConditionEl.value = `${String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.')} Condição mínima: ativar esse acordo no painel e reaplicar os acordos desta parceira aqui.`;
+      return;
+    }
+
+    if (mode === 'registered_but_blocked') {
+      partnerBoundaryEl.value = 'Limite atual: a parceira está formalizada, mas esta etapa ainda não autoriza comparação documental nem preparação local de retomada.';
+      partnerUnlockConditionEl.value = 'Condição mínima: a situação relacional da parceira na base precisa avançar até liberar comparação documental ou importação controlada.';
+      return;
+    }
+
+    if (mode === 'compare_only') {
+      partnerBoundaryEl.value = 'Limite atual: só a comparação manual está aberta. Ainda não cabe preparar retomada local, nem enriquecer fortemente a camada local, nem mutualizar.';
+      partnerUnlockConditionEl.value = 'Condição mínima: a política relacional precisa liberar importação controlada para abrir a preparação local de retomada.';
+      return;
+    }
+
+    if (mode === 'import_allowed') {
+      partnerBoundaryEl.value = mutualizeAllowed
+        ? 'Limite atual: a preparação local e a mutualização aparecem autorizadas politicamente, mas esta interface não libera modificação livre da camada compartilhada nem importação automática.'
+        : 'Limite atual: a preparação local está aberta com revisão humana, mas a mutualização ainda não está autorizada nesta etapa.';
+      partnerUnlockConditionEl.value = mutualizeAllowed
+        ? 'Condição mínima: manter proveniência explícita, revisão humana e separar claramente a camada local da camada compartilhada antes de qualquer passo posterior.'
+        : 'Condição mínima: a política relacional precisa chegar à mutualização autorizada para abrir um passo posterior de cooperação mais forte.';
+      return;
+    }
+
+    if (mode === 'not_registered') {
+      partnerBoundaryEl.value = 'Limite atual: sem parceira formalizada, esta etapa fica reduzida à leitura local e à preparação prudente da identificação.';
+      partnerUnlockConditionEl.value = 'Condição mínima: selecionar ou formalizar a parceira e aplicar os acordos correspondentes antes de tentar comparar ou preparar retomada local.';
+      return;
+    }
+
+    partnerBoundaryEl.value = 'Limite atual: sem leitura relacional aplicada, esta área continua apenas como leitura política prudente.';
+    partnerUnlockConditionEl.value = 'Condição mínima: aplicar os acordos desta parceira, conferir a matriz e só então decidir o próximo gesto local.';
+  }
+
   function clearPartnerPolicyReadout() {
     relationshipStatusEl.value = '';
     compareAllowedEl.value = '';
@@ -14233,6 +14291,7 @@ ${decisionSummary}` : '',
     setPartnerDocumentActionsState('empty');
     setPartnerRightsMatrixReadout();
     setPartnerNextStepReadout('empty');
+    setPartnerBoundaryReadout('empty');
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
@@ -14272,16 +14331,19 @@ ${decisionSummary}` : '',
     if (mode === 'agreement_blocked') {
       actionHintEl.textContent = `${nextGateState.noAgreementMessage} Define primeiro os acordos no painel e volta aqui para aplicá-los.`;
       setPartnerNextStepReadout('agreement_blocked', row, nextGateState);
+      setPartnerBoundaryReadout('agreement_blocked', row, nextGateState);
       return;
     }
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
       setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
+      setPartnerBoundaryReadout('registered_but_blocked', row, nextGateState);
       return;
     }
     if (mode === 'compare_only') {
       actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
       setPartnerNextStepReadout('compare_only', row, nextGateState);
+      setPartnerBoundaryReadout('compare_only', row, nextGateState);
       return;
     }
     if (mode === 'import_allowed') {
@@ -14289,15 +14351,18 @@ ${decisionSummary}` : '',
         ? 'Comparação documental, preparação local de importação e mutualização estão autorizadas politicamente. Nada daqui dispara importação automática nem modificação livre do registro da parceira.'
         : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
       setPartnerNextStepReadout('import_allowed', row, nextGateState);
+      setPartnerBoundaryReadout('import_allowed', row, nextGateState);
       return;
     }
     if (mode === 'not_registered') {
       actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
       setPartnerNextStepReadout('not_registered', row, nextGateState);
+      setPartnerBoundaryReadout('not_registered', row, nextGateState);
       return;
     }
     actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
     setPartnerNextStepReadout('empty', row, nextGateState);
+    setPartnerBoundaryReadout('empty', row, nextGateState);
   }
 
   function setPartnerPolicyReadout(row, gateState = null) {
@@ -14496,7 +14561,7 @@ ${decisionSummary}` : '',
 
     if (!slug) {
       clearPartnerPolicyReadout();
-      if (!silent) setPartnerProbeMessage('Preenche pelo menos o slug da parceira para aplicar os acordos desta parceira.', 'warn');
+      if (!silent) setPartnerProbeMessage('Preencha pelo menos o slug da parceira para aplicar os acordos desta parceira.', 'warn');
       return;
     }
 
@@ -14586,7 +14651,7 @@ ${decisionSummary}` : '',
     if (!displayName || !baseUrl || !slug) {
       reportEl.value = '';
       seedEl.value = '';
-      setPartnerProbeMessage('Preenche pelo menos nome público, slug e base URL.', 'warn');
+      setPartnerProbeMessage('Preencha pelo menos nome público, slug e base URL.', 'warn');
       return;
     }
 
@@ -14677,7 +14742,7 @@ ${decisionSummary}` : '',
   openBaseBtn?.addEventListener('click', () => {
     const url = normalizePartnerBaseUrl(baseUrlEl.value);
     if (!url) {
-      setPartnerProbeMessage('Preenche uma base URL antes de abrir.', 'warn');
+      setPartnerProbeMessage('Preencha uma base URL antes de abrir.', 'warn');
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
