@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AnarBib - catalogação</title>
-  <meta name="description" content="Catalogação interna AnarBib — rascunhos, lotes, autores, exemplares, capas e etiquetas para a equipe bibliotecária." />
+  <meta name="description" content="Catalogação interna AnarBIB — rascunhos, lotes, autores, exemplares, capas e etiquetas para a equipe bibliotecária." />
   <meta name="theme-color" content="#7a0b14" />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="AnarBib" />
-  <meta property="og:title" content="Catalogação interna - AnarBib" />
+  <meta property="og:title" content="Catalogação interna - ANARBIB" />
   <meta property="og:description" content="Área bibliotecária do AnarBib para rascunhos, lotes, capas, autores e etiquetas." />
   <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <meta property="og:image:alt" content="Logotipo da Biblioteca Libertária Maxwell Ferreira" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Catalogação interna - AnarBib" />
+  <meta name="twitter:title" content="Catalogação interna - ANARBIB" />
   <meta name="twitter:description" content="Área bibliotecária para gestão editorial do catálogo." />
   <meta name="twitter:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
   <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
@@ -1794,7 +1794,7 @@
     <section class="hero">
       <div class="topbar">
         <div class="hero-copy">
-          <h1>Catalogação - AnarBib</h1>
+          <h1>Catalogação - ANARBIB</h1>
           <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
         </div>
         <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
@@ -3183,23 +3183,23 @@
       <div class="panel-header">
         <div>
           <h3>Catálogo publicado</h3>
-          <p>Busque fichas já publicadas e gere um rascunho de edição sem alterar imediatamente a versão do catálogo.</p>
+          <p>Busque notices já publicadas, leia a compatibilidade local, os holdings locais e os exemplares locais publicados, e gere um rascunho de edição sem alterar imediatamente a versão publicada.</p>
         </div>
       </div>
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar documentos e autores</label>
-            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
+            <label for="catalogSearch">Buscar notices publicadas e autores</label>
+            <input id="catalogSearch" type="text" placeholder="Título, autor, editora, compatibilidade local, país…" />
+            <small>Este campo único filtra ao mesmo tempo as notices publicadas e os autores publicados.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
             <select id="catalogBatchId"></select>
           </div>
           <div class="field">
-            <label for="catalogExemplarSearch">Buscar exemplares</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou referência" />
+            <label for="catalogExemplarSearch">Buscar exemplares locais publicados</label>
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo ou compatibilidade local" />
           </div>
         </div>
 
@@ -3208,12 +3208,12 @@
         
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
-            <h4>Livros, brochuras e publicações seriadas</h4>
+            <h4>Notices publicadas: livros, brochuras e publicações seriadas</h4>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Documentos não-livro e materiais especiais</h4>
+            <h4>Notices publicadas: documentos não-livro e materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
@@ -3252,7 +3252,7 @@
           </div>
 
           <div class="card catalog-published-card">
-            <h4>Exemplares publicados</h4>
+            <h4>Exemplares locais publicados</h4>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -5232,6 +5232,50 @@
 
     function buildCatalogQuickLine(parts = []) {
       return parts.map(part => compactSpaces(String(part || ''))).filter(Boolean).join(' · ');
+    }
+
+    function formatCatalogNetworkStatus(value = '') {
+      const labels = {
+        local_only: 'Local somente',
+        network_visible: 'Visível na rede',
+        mutualizable: 'Mutualizável',
+        consultation_only: 'Consulta no local',
+      };
+      const key = compactSpaces(String(value || '')).toLowerCase();
+      return labels[key] || compactSpaces(String(value || '')).replaceAll('_', ' ');
+    }
+
+    function getCatalogPublishedNoticeMetaLine(book = {}) {
+      const parts = [];
+      const responsibility = compactSpaces(book.autor || book.author || '');
+      const editorial = buildCatalogQuickLine([book.editora || book.publisher || '', book.ano || '']);
+      if (responsibility) parts.push(`Responsabilidade: ${responsibility}`);
+      if (editorial) parts.push(`Saída mínima: ${editorial}`);
+      return buildCatalogQuickLine(parts) || 'Sem leitura mínima da notice publicada.';
+    }
+
+    function getCatalogLocalHoldingLine(book = {}) {
+      const parts = [];
+      if (book.bib_ref) parts.push(`Compat. local: ${book.bib_ref}`);
+      if (book.owner_library) parts.push(`Proprietária: ${book.owner_library}`);
+      if (book.holder_library) parts.push(`Detentora: ${book.holder_library}`);
+      if (book.mutualization_status) parts.push(`Rede: ${formatCatalogNetworkStatus(book.mutualization_status)}`);
+      if (book.total_exemplares || Number(book.total_exemplares) === 0) parts.push(`Exemplares locais: ${book.total_exemplares}`);
+      return buildCatalogQuickLine(parts) || 'Sem camada local / holding legível.';
+    }
+
+    function getCatalogExemplarLocalLayerLine(ex = {}) {
+      const parts = [];
+      if (ex.bib_ref) parts.push(`Compat. local: ${ex.bib_ref}`);
+      if (ex.shelf_location) parts.push(`Localização: ${ex.shelf_location}`);
+      return buildCatalogQuickLine(parts) || 'Sem camada local de exemplar legível.';
+    }
+
+    function getCatalogExemplarLabelLine(ex = {}) {
+      const parts = [];
+      if (ex.autor_etiqueta) parts.push(`Autor: ${ex.autor_etiqueta}`);
+      if (ex.titulo_etiqueta) parts.push(`Título: ${ex.titulo_etiqueta}`);
+      return buildCatalogQuickLine(parts) || 'Sem leitura local do rótulo.';
     }
 
     function getCatalogOtherDocumentContextLine(book = {}) {
@@ -11303,7 +11347,7 @@
       }
       items = sortCatalogItems('books', items);
       if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
+        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhuma notice publicada encontrada.</div>';
         return;
       }
       refs.catalogBooksWrap.innerHTML = `
@@ -11312,12 +11356,12 @@
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
+              <th class="sortable">${renderSortableHeader('Compat. local', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
+              <th>Leitura da notice</th>
+              <th>Camada local / holding</th>
               <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplares locais', 'books', 'total_exemplares')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11327,8 +11371,8 @@
                 <td>${book.id}</td>
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td>${sanitize(book.editora || book.publisher || '—')}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogPublishedNoticeMetaLine(book))}</div></td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogLocalHoldingLine(book))}</div></td>
                 <td>${sanitize(book.ano || '—')}</td>
                 <td>${sanitize(book.total_exemplares || 0)}</td>
               </tr>`).join('')}
@@ -11356,7 +11400,7 @@
       }
       items = sortCatalogItems('otherDocs', items);
       if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
+        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhuma notice publicada de documento não-livro ou material especial encontrada.</div>';
         return;
       }
       refs.catalogOtherDocsWrap.innerHTML = `
@@ -11364,21 +11408,21 @@
           <colgroup>
             <col style="width:150px;">
             <col style="width:72px;">
-            <col style="width:112px;">
+            <col style="width:120px;">
             <col style="width:190px;">
             <col style="width:24%;">
-            <col style="width:16%;">
-            <col style="width:36%;">
+            <col style="width:20%;">
+            <col style="width:30%;">
           </colgroup>
           <thead>
             <tr>
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Compat. local', 'otherDocs', 'bib_ref')}</th>
               <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida</th>
+              <th class="sortable">${renderSortableHeader('Notice publicada', 'otherDocs', 'title')}</th>
+              <th>Leitura da notice</th>
+              <th>Camada local / leitura</th>
             </tr>
           </thead>
           <tbody>
@@ -11389,8 +11433,8 @@
                 <td>${sanitize(book.bib_ref || '—')}</td>
                 <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
                 <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogPublishedNoticeMetaLine(book))}</div></td>
+                <td><div class="catalog-context-line">${sanitize(buildCatalogQuickLine([getCatalogLocalHoldingLine(book), getCatalogOtherDocumentContextLine(book)]))}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -11830,7 +11874,7 @@
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
+        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar local publicado encontrado.</div>';
         return;
       }
       refs.catalogExemplarsWrap.innerHTML = `
@@ -11840,10 +11884,10 @@
               <th>Operações</th>
               <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
               <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Compat. local', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Camada local / exemplar', 'exemplars', 'shelf_location')}</th>
+              <th class="sortable">${renderSortableHeader('Rótulo local', 'exemplars', 'autor_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Leitura do rótulo', 'exemplars', 'titulo_etiqueta')}</th>
             </tr>
           </thead>
           <tbody>
@@ -11853,9 +11897,9 @@
                 <td>${ex.exemplar_id}</td>
                 <td>${sanitize(ex.tombo || '—')}</td>
                 <td>${sanitize(ex.bib_ref || '—')}</td>
-                <td>${sanitize(ex.shelf_location || '—')}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogExemplarLocalLayerLine(ex))}</div></td>
                 <td>${sanitize(ex.autor_etiqueta || '—')}</td>
-                <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
+                <td><div class="catalog-context-line">${sanitize(getCatalogExemplarLabelLine(ex))}</div></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
