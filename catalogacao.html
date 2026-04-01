@@ -2238,7 +2238,7 @@
                   </div>
                   <div class="field mode-complete-only" style="padding:0; background:none; border:none; grid-column: span 2;">
                     <label for="bookAudiovisualAccessNote">Condições de consulta</label>
-                    <input id="bookAudiovisualAccessNote" type="text" placeholder="Visionnage local, sessão mediada, acesso restrito…" />
+                    <input id="bookAudiovisualAccessNote" type="text" placeholder="Consulta local, sessão mediada, acesso restrito…" />
                   </div>
                 </div>
               </div>
@@ -2382,7 +2382,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Recurso digital principal em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os vínculos digitais lidos nesta ficha comum. Por enquanto, o formulário continua editando somente o recurso digital principal.</div>
+                    <div class="hint">A lista abaixo já mostra todos os vínculos digitais lidos nesta ficha comum. Por enquanto, o formulário continua editando apenas o recurso digital principal.</div>
                   </div>
                   <div class="row-actions">
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
@@ -3242,7 +3242,7 @@
         <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
           <h4>Recepção artesanal de catálogos externos</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa registros automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
+            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa notices automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
           </p>
 
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -3387,7 +3387,7 @@
         
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerDiscoveryUrlInput">Ajuda de pré-preenchimento por URL pública</label>
-            <input id="partnerDiscoveryUrlInput" type="text" placeholder="Cole aqui uma URL pública de catálogo, de busca ou de registro da parceira">
+            <input id="partnerDiscoveryUrlInput" type="text" placeholder="Cola aqui uma URL pública de catálogo, de busca ou de notice de parceira">
             <small>Esta ajuda só sugere nome público, slug, base URL, família provável, confiança, país e nota técnica curta. Ela não salva nada na base, não importa nada e não decide nenhum estatuto relacional.</small>
             <div class="actions" style="margin-top:10px;">
               <button id="partnerAnalyzeUrlBtn" class="button secondary" type="button">Analisar URL</button>
@@ -3475,7 +3475,7 @@
                   <textarea id="partnerLocalDraftSummary" rows="7" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
                 </div>
                 <div class="field">
-                  <label for="partnerPartnerNoticeSummary">Notice parceira / resumo manual</label>
+                  <label for="partnerPartnerNoticeSummary">Registro da parceira / resumo manual</label>
                   <textarea id="partnerPartnerNoticeSummary" rows="7" placeholder="Cole ou resuma aqui o registro da parceira que você quer comparar."></textarea>
                 </div>
               </div>
@@ -3560,7 +3560,7 @@
                 <div class="field">
                   <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
                   <select id="partnerImportMethodSelect"></select>
-                  <small>Escolha aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
+                  <small>Escolhe aqui a lógica de retomada prevista para a ficha, sempre com revisão humana local.</small>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -3585,7 +3585,7 @@
               </div>
               <div class="field">
                 <label for="partnerImportDraftPreview">Pré-visualização local do rascunho preparado</label>
-                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A pré-visualização do rascunho local preparado aparecerá aqui."></textarea>
+                <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A prévia do rascunho local preparado aparecerá aqui."></textarea>
               </div>
               <div class="field">
                 <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
@@ -3883,7 +3883,7 @@
         guideTitle: 'Outro tipo documental',
         summary: 'Use o núcleo comum sem tentar encaixar à força um objeto singular num molde livro. A interface completa fica como apoio para observações mais finas.',
         simpleFocus: 'Título, responsabilidades principais, data, idioma, assuntos e uma descrição breve do objeto.',
-        completeFocus: 'Observações materiais, notas técnicas, vínculos documentais e adaptações locais provisórias.',
+        completeFocus: 'Observações materiais, notas técnicas, vínculos documentaires et adaptações locais provisórias.',
         labels: {
           title: 'Título', subtitle: 'Subtítulo / identificação complementar', publisher: 'Entidade responsável', place: 'Lugar principal', year: 'Ano / data', loanable: 'Circulação local', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
         },
@@ -5885,7 +5885,7 @@
       const wrapNode = refs.bookDigitalListWrap;
       if (!summaryNode || !wrapNode) return;
       if (!records.length) {
-        summaryNode.textContent = 'Nenhum vínculo digital lido nesta ficha comum ainda.';
+        summaryNode.textContent = 'Nenhum vínculo digital foi lido nesta ficha comum ainda.';
         wrapNode.innerHTML = '';
         return;
       }
@@ -5913,7 +5913,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} vínculo(s) digital(is) lido(s) nesta ficha comum · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o recurso digital principal em edição.`;
+      summaryNode.textContent = `${records.length} vínculos digitais lidos nesta ficha comum · famílias visíveis: ${familySummary} · ${publicCount} públicos · ${restrictedCount} restritos · ${primaryCount || 0} marcados como principais. O formulário abaixo continua operando apenas sobre o recurso digital principal em edição.`;
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
         const familyCount = group.items.length;
@@ -6002,7 +6002,7 @@
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
-        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital principal lido neste formulário ainda.';
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital principal foi lido neste formulário ainda.';
         updateBookDigitalActionButtons();
         return;
       }
@@ -11651,7 +11651,7 @@
         .filter(Boolean);
       renderCatalogAuthorsFilterSummary(rows.length, totalCount);
       if (!rows.length) {
-        refs.catalogAuthorsWrap.innerHTML = `<div class="empty">${search || authorityFilter || signalFilter ? 'Nenhum autor publicado corresponde ao recorte atual. Revê a busca ou os filtros de autoridade e de sinal editorial.' : 'Nenhum autor publicado disponível ainda nesta superfície.'}</div>`;
+        refs.catalogAuthorsWrap.innerHTML = `<div class="empty">${search || authorityFilter || signalFilter ? 'Nenhum autor publicado corresponde ao recorte atual. Revise a busca ou os filtros de autoridade e de sinal editorial.' : 'Nenhum autor publicado disponível ainda nesta superfície.'}</div>`;
         return;
       }
       refs.catalogAuthorsWrap.innerHTML = `
@@ -11737,7 +11737,7 @@
       }
       items = sortCatalogItems('exemplars', items);
       if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = `<div class="empty">${search ? 'Nenhum exemplar local publicado corresponde à busca atual. Revê o tombo, a referência local / compatibilidade ou limpa o recorte.' : 'Nenhum exemplar local publicado disponível ainda nesta superfície.'}</div>`;
+        refs.catalogExemplarsWrap.innerHTML = `<div class="empty">${search ? 'Nenhum exemplar local publicado corresponde à busca atual. Revise o tombo, a referência local / compatibilidade ou limpe o recorte.' : 'Nenhum exemplar local publicado disponível ainda nesta superfície.'}</div>`;
         return;
       }
       refs.catalogExemplarsWrap.innerHTML = `
@@ -13155,7 +13155,7 @@ function initPartnerProbeUi() {
     }
     renderIncomingCatalogIdentityPreview();
     if (incomingCatalogHintEl) {
-      incomingCatalogHintEl.textContent = 'Defina a biblioteca e escolha um arquivo para abrir a recepção local, sem mudar ainda a governança documental.';
+      incomingCatalogHintEl.textContent = 'Define a biblioteca e escolhe um arquivo para abrir a recepção local, sem mudar ainda a governança documental.';
     }
   }
 
@@ -13244,8 +13244,8 @@ function initPartnerProbeUi() {
     const file = incomingCatalogFileEl?.files?.[0] || null;
     if (!file) {
       if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = 'Nenhum arquivo artesanal selecionado ainda.';
-      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolha primeiro um arquivo artesanal recebido antes de pedir a leitura local desta etapa.';
-      setPartnerProbeMessage('Escolha primeiro um arquivo artesanal recebido para abrir esta leitura local.', 'warn');
+      if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolhe primeiro um arquivo artesanal recebido antes de pedir a leitura local desta etapa.';
+      setPartnerProbeMessage('Escolhe primeiro um arquivo artesanal recebido para abrir esta leitura local.', 'warn');
       return;
     }
     const kind = getIncomingCatalogFileKind(file.name);
@@ -13308,7 +13308,7 @@ function initPartnerProbeUi() {
     if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
     syncPresetSelectionFromCurrentPartnerFields();
     refreshPartnerKnownPartnerHint();
-    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar registros.', 'ok');
+    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar notices.', 'ok');
   }
 
   function clearPartnerUrlSuggestionReadout() {
@@ -13430,7 +13430,7 @@ function initPartnerProbeUi() {
       `País provável: ${suggestion.countryCode || '—'}`,
       `Nota técnica curta: ${suggestion.note || '—'}`,
       matchLabel,
-      'Lembrete: isto é só ajuda de pré-preenchimento. Não salva parceira, não importa registro e não decide situação relacional.'
+      'Lembrete: isto é só ajuda de pré-preenchimento. Não salva parceira, não importa notice e não decide situação relacional.'
     ].join('\n');
     urlSuggestionWritePreviewEl.value = [
       `Nome público → ${suggestion.displayName || '—'}`,
@@ -13749,7 +13749,7 @@ ${decisionSummary}` : '',
       localTitle ? '• título local aberto e legível' : '• falta título local em foco',
       localAuthor ? '• responsabilidade principal local já registrada' : '• falta responsabilidade principal local',
       localYear ? '• data local já registrada' : '• falta data local na ficha',
-      partnerSummary ? `• resumo manual do registro da parceira preenchido para ${label}` : `• falta resumir o registro da parceira de ${label}`,
+      partnerSummary ? `• resumo manual do registro da parceira preenchido para ${label}` : `• ainda falta resumir o registro da parceira de ${label}`,
       hasDifference ? '• diferenças e pontos de atenção já anotados' : '• faltam diferenças e pontos de atenção',
       hasDecision ? '• decisão local já formulada' : '• falta decisão local / próximos passos',
       partnerDocumentActionState.compareAllowed ? '• comparação autorizada pela política atual' : '• comparação ainda não autorizada pela política atual',
@@ -13765,7 +13765,7 @@ ${decisionSummary}` : '',
     const decisionSummary = String(comparisonDecisionEl.value || '').trim();
     return [
       `Parceira em comparação: ${label}`,
-      partnerSummary ? `Notice parceira resumida: ${partnerSummary}` : 'Notice parceira resumida: ainda não preenchida.',
+      partnerSummary ? `Registro da parceira resumido: ${partnerSummary}` : 'Registro da parceira resumido: ainda não preenchido.',
       differenceSummary ? `Diferenças: ${differenceSummary}` : 'Diferenças: ainda não registradas.',
       decisionSummary ? `Decisão local: ${decisionSummary}` : 'Decisão local: ainda não registrada.',
     ].join('\n\n');
@@ -13777,7 +13777,7 @@ ${decisionSummary}` : '',
     lines.push(partnerDocumentActionState.compareAllowed ? 'Política atual: comparação autorizada.' : 'Política atual: comparação não autorizada.');
     lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada, mas ainda não ativada aqui.' : 'Política atual: importação não autorizada aqui.');
     lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.' : 'Política atual: mutualização não autorizada nesta etapa.');
-    lines.push(String(partnerNoticeSummaryEl.value || '').trim() ? 'Resumo manual do registro da parceira já preenchido.' : 'Resumo manual do registro da parceira ainda vazio.');
+    lines.push(String(partnerNoticeSummaryEl.value || '').trim() ? 'Resumo manual do registro da parceira já preenchido.' : 'Resumo manual do registro da parceira ainda está vazio.');
     lines.push(String(differenceSummaryEl.value || '').trim() ? 'Diferenças locais já registradas.' : 'Diferenças locais ainda não registradas.');
     lines.push(String(comparisonDecisionEl.value || '').trim() ? 'Decisão local já registrada.' : 'Decisão local ainda não registrada.');
     return lines.join('\n');
@@ -13809,7 +13809,7 @@ ${decisionSummary}` : '',
     comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
       ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
       : comparisonNote
-        ? 'O bloco de proveniência está pronto. Revê o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
+        ? 'O bloco de proveniência está pronto. Revise o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
         : 'Ainda faltam elementos para formar o bloco de proveniência. A ficha só receberá escrita quando a comparação estiver suficientemente descrita.';
   }
 
@@ -13843,7 +13843,7 @@ ${decisionSummary}` : '',
     partnerDocumentActionState.workspaceOpen = true;
     compareWorkspaceEl.classList.remove('is-hidden');
     refreshLocalDraftComparisonSummary();
-    setCompareWorkspaceStatus('Comparação local aberta. Resuma o registro da parceira, registre as diferenças e decida o que entra — ou não — na ficha local.');
+    setCompareWorkspaceStatus('Comparação local aberta. Resuma o registro da parceira, registre diferenças e decida o que entra — ou não — na ficha local.');
   }
 
   function applyComparisonToBookForm() {
@@ -14074,7 +14074,7 @@ ${decisionSummary}` : '',
     importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
       ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
       : carryPreview
-        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revê tudo antes de levar a preparação para a ficha.'
+        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revise tudo antes de levar a preparação para a ficha.'
         : 'Ainda faltam decisões e parâmetros locais para formar a preparação que será levada para a ficha.';
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
       ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
@@ -14360,7 +14360,7 @@ ${decisionSummary}` : '',
     if (mode === 'needs_partner_slug') {
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
-      bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiras externas” para liberar comparação ou preparação documental aqui.';
+      bookPartnerPolicyHintEl.textContent = 'Selecione e leia primeiro a parceira na aba “Catálogos de parceiras externas” para liberar comparação ou preparação documental aqui.';
       return;
     }
 
@@ -14689,7 +14689,7 @@ ${decisionSummary}` : '',
     if (incomingCatalogHintEl) {
       incomingCatalogHintEl.textContent = file
         ? 'Arquivo selecionado. Agora você pode ler a prévia local e completar a identificação da biblioteca.'
-        : 'Defina a biblioteca e escolha um arquivo para abrir a recepção local, sem mudar ainda a governança documental.';
+        : 'Define a biblioteca e escolhe um arquivo para abrir a recepção local, sem mudar ainda a governança documental.';
     }
   });
 
