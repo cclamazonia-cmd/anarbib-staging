@@ -5260,18 +5260,45 @@
       return `${projectUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
     }
 
+    function getPreviewPlaceholderDataUri(kind = 'image') {
+      const label = kind === 'author' ? 'Sem foto' : 'Sem capa';
+      return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="360" height="500" viewBox="0 0 360 500">
+          <defs>
+            <linearGradient id="previewBg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#26060a"/>
+              <stop offset="100%" stop-color="#111111"/>
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" rx="28" fill="url(#previewBg)"/>
+          <rect x="18" y="18" width="324" height="464" rx="22" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+          <rect x="78" y="106" width="204" height="204" rx="24" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+          <path d="M126 250l38-42 35 30 28-34 55 46v34H126z" fill="#d1d5db" opacity=".78"/>
+          <circle cx="160" cy="172" r="18" fill="#d1d5db" opacity=".9"/>
+          <text x="180" y="372" text-anchor="middle" fill="#f4f4f4" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">${label}</text>
+          <text x="180" y="406" text-anchor="middle" fill="#d1d5db" font-family="Arial, Helvetica, sans-serif" font-size="18">Pré-visualização indisponível</text>
+        </svg>
+      `);
+    }
+
+    function applyPreviewPlaceholder(imgEl, kind = 'image') {
+      imgEl.onerror = null;
+      imgEl.dataset.assetFallbackApplied = '1';
+      imgEl.src = getPreviewPlaceholderDataUri(kind);
+      imgEl.alt = kind === 'author' ? 'Sem foto' : 'Sem capa';
+    }
+
     function setPreviewImage(imgEl, path, bucket) {
       const rawPath = String(path || '').trim();
+      const kind = bucket === 'authors' ? 'author' : 'book';
       if (!rawPath) {
-        imgEl.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#d1d5db" font-family="Arial" font-size="18">Sem imagem</text></svg>`);
-        imgEl.alt = 'Sem imagem';
-        imgEl.onerror = null;
+        applyPreviewPlaceholder(imgEl, kind);
         return;
       }
       if (/^(https?:|data:)/i.test(rawPath)) {
+        imgEl.onerror = () => applyPreviewPlaceholder(imgEl, kind);
         imgEl.src = rawPath;
         imgEl.alt = rawPath;
-        imgEl.onerror = null;
         return;
       }
       const primaryUrl = buildStoragePublicUrl(SUPABASE_URL, bucket, rawPath);
@@ -5284,7 +5311,7 @@
           imgEl.src = fallbackUrl;
           return;
         }
-        imgEl.onerror = null;
+        applyPreviewPlaceholder(imgEl, kind);
       };
       imgEl.dataset.assetFallbackApplied = '0';
       imgEl.src = primaryUrl;
