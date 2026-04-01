@@ -9721,6 +9721,92 @@
       return map[type] || (type || '—');
     }
 
+    function getQueueEntityNoun(type = '', plural = false) {
+      const map = {
+        book: plural ? 'fichas comuns' : 'ficha comum',
+        author: plural ? 'autores' : 'autor',
+        exemplar: plural ? 'exemplares locais' : 'exemplar local',
+      };
+      return map[type] || (plural ? 'itens' : 'item');
+    }
+
+    function getQueueEntityReference(type = '') {
+      const map = {
+        book: 'esta ficha comum',
+        author: 'este autor',
+        exemplar: 'este exemplar local',
+      };
+      return map[type] || 'este item';
+    }
+
+    function capitalizeQueueEntityLabel(label = '') {
+      const clean = String(label || '').trim();
+      if (!clean) return '';
+      return clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+
+    function joinHumanList(parts = []) {
+      const items = (parts || []).filter(Boolean);
+      if (!items.length) return '';
+      if (items.length === 1) return items[0];
+      if (items.length === 2) return `${items[0]} e ${items[1]}`;
+      return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+    }
+
+    function describeDraftEntries(entries = []) {
+      const counts = { book: 0, author: 0, exemplar: 0 };
+      (entries || []).forEach(entry => {
+        const type = String(entry?.type || '');
+        if (Object.prototype.hasOwnProperty.call(counts, type)) counts[type] += 1;
+      });
+      const parts = [];
+      if (counts.book) parts.push(`${counts.book} ${getQueueEntityNoun('book', counts.book !== 1)}`);
+      if (counts.author) parts.push(`${counts.author} ${getQueueEntityNoun('author', counts.author !== 1)}`);
+      if (counts.exemplar) parts.push(`${counts.exemplar} ${getQueueEntityNoun('exemplar', counts.exemplar !== 1)}`);
+      const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+      return {
+        total,
+        label: joinHumanList(parts) || `${total} ${total === 1 ? 'item' : 'itens'}`,
+        isPlural: total !== 1,
+      };
+    }
+
+    function getQueueOperationLabel(action = '', type = '') {
+      const map = {
+        edit: {
+          book: 'Abrir ficha',
+          author: 'Abrir autor',
+          exemplar: 'Abrir exemplar',
+        },
+        publish: {
+          book: 'Publicar ficha',
+          author: 'Publicar autor',
+          exemplar: 'Publicar exemplar',
+        },
+        assign: {
+          book: 'Atribuir lote à ficha',
+          author: 'Atribuir lote ao autor',
+          exemplar: 'Atribuir lote ao exemplar',
+        },
+        discard: {
+          book: 'Descartar ficha',
+          author: 'Descartar autor',
+          exemplar: 'Descartar exemplar',
+        },
+        restore: {
+          book: 'Restaurar ficha',
+          author: 'Restaurar autor',
+          exemplar: 'Restaurar exemplar',
+        },
+        restoreOpen: {
+          book: 'Restaurar ficha e abrir',
+          author: 'Restaurar autor e abrir',
+          exemplar: 'Restaurar exemplar e abrir',
+        },
+      };
+      return map[action]?.[type] || 'Abrir';
+    }
+
     function getQueueActionLabel(action = '') {
       const map = {
         create: 'Novo rascunho',
@@ -9814,7 +9900,8 @@
 
       if (!selectedEntries.length) return 0;
 
-      const confirmed = window.confirm('Os rascunhos selecionados serão restaurados da lixeira. Deseja continuar?');
+      const selectionSummary = describeDraftEntries(selectedEntries);
+      const confirmed = window.confirm(`${selectionSummary.label} ${selectionSummary.isPlural ? 'serão restaurados' : 'será restaurado'} da lixeira. Deseja continuar?`);
       if (!confirmed) return 0;
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
@@ -9856,7 +9943,7 @@
 
       if (!items.length) {
         clearTrashSelection();
-        refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira está vazia no momento.</div>';
+        refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira não contém fichas comuns, autores ou exemplares locais descartados no momento.</div>';
         return;
       }
 
@@ -9900,8 +9987,8 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar</button>
-                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar e abrir</button>
+                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('restore', item.item_type))}</button>
+                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('restoreOpen', item.item_type))}</button>
                   </div>
                 </td>
               </tr>`;
@@ -9939,10 +10026,15 @@
       const restoreSelectedBtn = refs.trashTableWrap.querySelector('#trashRestoreSelectedBtn');
       if (restoreSelectedBtn) {
         restoreSelectedBtn.addEventListener('click', async () => {
+          const selectedEntries = [...state.trashSelection].map(key => {
+            const [type, rawId] = String(key || '').split(':');
+            return { type, id: Number(rawId) };
+          }).filter(entry => ['book', 'author', 'exemplar'].includes(entry.type) && Number.isFinite(entry.id));
+          const selectionSummary = describeDraftEntries(selectedEntries);
           try {
             const restoredCount = await restoreSelectedTrashDrafts();
             if (restoredCount) {
-              showMessage(refs.trashMessage, `${restoredCount} rascunhos foram restaurados da lixeira.`, 'ok');
+              showMessage(refs.trashMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram restaurados' : 'foi restaurado'} da lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -9954,7 +10046,7 @@
         btn.addEventListener('click', async () => {
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado com sucesso.', 'ok');
+            showMessage(refs.trashMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} restaurado com sucesso.`, 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -9966,7 +10058,7 @@
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             await fetchDraftAndEdit(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado e aberto para edição.', 'ok');
+            showMessage(refs.trashMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} restaurado e aberto para edição.`, 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -10786,7 +10878,7 @@
       }
 
       if (!items.length) {
-        refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo encontrado com os filtros atuais.</div>';
+        refs.queueTableWrap.innerHTML = '<div class="empty">Nenhuma ficha comum, autor ou exemplar local ativo foi encontrado com os filtros atuais.</div>';
         return;
       }
 
@@ -10834,10 +10926,10 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Editar</button>
-                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Publicar</button>
-                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">Atribuir lote</button>
-                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Descartar</button>` : ''}
+                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('edit', item.item_type))}</button>
+                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('publish', item.item_type))}</button>
+                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">${sanitize(getQueueOperationLabel('assign', item.item_type))}</button>
+                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueOperationLabel('discard', item.item_type))}</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -10875,10 +10967,15 @@
       const discardSelectedBtn = refs.queueTableWrap.querySelector('#queueDiscardSelectedBtn');
       if (discardSelectedBtn) {
         discardSelectedBtn.addEventListener('click', async () => {
+          const selectedEntries = [...state.queueSelection].map(key => {
+            const [type, rawId] = String(key || '').split(':');
+            return { type, id: Number(rawId) };
+          }).filter(entry => ['book', 'author', 'exemplar'].includes(entry.type) && Number.isFinite(entry.id));
+          const selectionSummary = describeDraftEntries(selectedEntries);
           try {
             const discardedCount = await discardSelectedQueueDrafts();
             if (discardedCount) {
-              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira.`, 'ok');
+              showMessage(refs.queueMessage, `${selectionSummary.label} ${selectionSummary.isPlural ? 'foram enviados' : 'foi enviado'} para a lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -10897,7 +10994,7 @@
         btn.addEventListener('click', async () => {
           try {
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho publicado com sucesso.', 'ok');
+            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} publicado com sucesso.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -10913,7 +11010,7 @@
           }
           try {
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, 'Lote atribuído ao rascunho.', 'ok');
+            showMessage(refs.queueMessage, `Lote atribuído com sucesso para ${getQueueEntityReference(btn.dataset.type)}.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -10926,7 +11023,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
+            showMessage(refs.queueMessage, `${capitalizeQueueEntityLabel(getQueueEntityNoun(btn.dataset.type))} descartado a partir da fila editorial.`, 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
