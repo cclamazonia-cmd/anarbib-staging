@@ -10543,17 +10543,17 @@
       renderExemplarBatchQueue();
 
       if (!state.batchExemplarItems.length) {
-        showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas comuns ativas para importar em exemplares locais.' : 'Este lote não tem fichas comuns ativas para importar em exemplares locais.', 'info');
+        showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas comuns ativas para preparar como exemplares locais neste momento.' : 'Este lote não tem fichas comuns ativas para preparar como exemplares locais.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para validar.`, 'ok');
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para revisar e validar nesta etapa material.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas comuns ativas — para gerar as linhas de exemplar local ficha por ficha.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas comuns ativas — para abrir a fila de preparação material dos exemplares locais.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila de exemplares locais carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -10562,22 +10562,22 @@
       const snapshot = getVisibleImportedExemplarRows();
       if (refs.exemplarBatchFilterSummary) {
         if (!snapshot.totalPending) {
-          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha de exemplar local pendente restante. ${snapshot.totalConcluded} exemplar(es) já passaram desta etapa.`;
+          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha de exemplar local pendente restante. ${snapshot.totalConcluded} exemplar(es) local(is) já passaram desta etapa material.`;
         } else if (!snapshot.totalVisible) {
-          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar local pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
+          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar local pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) de exemplar local visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) de exemplar local visível(is) para revisar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos locais na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas como etapa material. O próximo passo é revisar os rótulos locais na aba Rótulos.</div>';
         return;
       }
 
       if (!snapshot.totalVisible) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Nenhuma linha pendente corresponde aos filtros atuais. Ajuste os filtros para continuar.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Nenhuma linha de exemplar local pendente corresponde aos filtros atuais. Ajuste o recorte para continuar.</div>';
         return;
       }
 
@@ -10619,7 +10619,7 @@
 
                 <div class="row-actions">
                   <button type="button" class="button success small" data-action="validate-imported-exemplar" data-book-index="${bookIndex}" data-copy-index="${copyIndex}">Validar exemplar local</button>
-                  <button type="button" class="button ghost small" data-action="open-imported-exemplar" data-book-index="${bookIndex}" data-copy-index="${copyIndex}">Abrir no formulário</button>
+                  <button type="button" class="button ghost small" data-action="open-imported-exemplar" data-book-index="${bookIndex}" data-copy-index="${copyIndex}">Abrir exemplar local no formulário</button>
                 </div>
               </div>
             `).join('')}
@@ -10675,6 +10675,7 @@
             status: copy.status || 'draft',
           }, { switchTab: true, syncLabel: true });
           clearMessage(refs.exemplarMessage);
+          showMessage(refs.exemplarBatchMessage, 'Exemplar local carregado no formulário para revisão e complemento material.', 'info');
         });
       });
     }
@@ -10721,9 +10722,9 @@
       renderLabelDraftQueue();
 
       if (!state.batchLabelItems.length) {
-        showMessage(refs.labelBatchMessage, sourceId === '__all__' ? 'Não há rótulos pendentes para revisar neste momento.' : 'Este lote não tem rótulos pendentes para revisar.', 'info');
+        showMessage(refs.labelBatchMessage, sourceId === '__all__' ? 'Não há rótulos locais pendentes para revisar neste momento. Quando novos exemplares locais chegarem a esta etapa, eles aparecerão aqui.' : 'Este lote não tem rótulos locais pendentes para revisar agora.', 'info');
       } else {
-        showMessage(refs.labelBatchMessage, `${state.batchLabelItems.length} rótulo(s) pendente(s) carregado(s) para revisão.`, 'ok');
+        showMessage(refs.labelBatchMessage, `${state.batchLabelItems.length} rótulo(s) local(is) pendente(s) carregado(s) para revisão. Abra cada exemplar local, confira autor, título, CDD e nota curta, e valide quando estiver tudo certo.`, 'ok');
       }
     }
 
@@ -10849,7 +10850,15 @@
         refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos locais carregada ainda.';
         return;
       }
-      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) local(is) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
+      if (!totalPending) {
+        refs.labelBatchFilterSummary.textContent = 'Nenhum rótulo local pendente nesta fila no momento.';
+        return;
+      }
+      if (!visible) {
+        refs.labelBatchFilterSummary.textContent = `Há ${totalPending} rótulo(s) local(is) pendente(s) nesta fila, mas nenhum corresponde aos filtros atuais.`;
+        return;
+      }
+      refs.labelBatchFilterSummary.textContent = `${visible} rótulo(s) local(is) visível(is) para revisar agora, dentro de ${totalPending} pendente(s) nesta fila.`;
     }
 
     async function validateLabelDraftIds(ids = []) {
@@ -10899,7 +10908,7 @@
     function renderLabelDraftQueue() {
       if (!refs.labelDraftQueueWrap) return;
       if (!state.batchLabelItems.length) {
-        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Escolha um lote de exemplares locais — ou todos os rascunhos ativos — para abrir e validar os rótulos locais.</div>';
+        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Escolha um lote de exemplares locais — ou todos os rascunhos ativos — para abrir a fila de revisão dos rótulos locais pendentes.</div>';
         renderLabelBatchFilterSummary([]);
         return;
       }
@@ -10908,7 +10917,7 @@
       renderLabelBatchFilterSummary(visibleItems);
 
       if (!visibleItems.length) {
-        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo pendente corresponde aos filtros atuais.</div>';
+        refs.labelDraftQueueWrap.innerHTML = '<div class="empty">Nenhum rótulo local pendente corresponde aos filtros atuais. Ajuste o recorte para continuar a revisão.</div>';
         return;
       }
 
@@ -10938,7 +10947,7 @@
                 <td>${sanitize(item.label_note || '—')}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="load-label-draft" data-id="${item.id}">Carregar exemplar + rótulo</button>
+                    <button class="btn-inline small secondary" data-action="load-label-draft" data-id="${item.id}">Abrir exemplar local + rótulo</button>
                     <button class="btn-inline small success" data-action="validate-label-draft" data-id="${item.id}">Validar rótulo local</button>
                   </div>
                 </td>
@@ -10955,6 +10964,7 @@
             fillExemplarForm(data, { switchTab: false, syncLabel: false });
             fillLabelForm(data, { switchTab: true });
             clearMessage(refs.labelMessage);
+            showMessage(refs.labelBatchMessage, 'Exemplar local e rótulo local carregados no formulário para revisão.', 'info');
           } catch (error) {
             showMessage(refs.labelBatchMessage, error.message, 'error');
           }
@@ -10965,7 +10975,7 @@
         btn.addEventListener('click', async () => {
           try {
             await validateLabelDraftIds([Number(btn.dataset.id)]);
-            showMessage(refs.labelBatchMessage, 'Rótulo local validado com sucesso.', 'ok');
+            showMessage(refs.labelBatchMessage, 'Rótulo local validado com sucesso e retirado desta fila pendente.', 'ok');
           } catch (error) {
             showMessage(refs.labelBatchMessage, error.message, 'error');
           }
@@ -12643,6 +12653,7 @@
         if (refs.exemplarBatchSearchInput) refs.exemplarBatchSearchInput.value = '';
         if (refs.exemplarPendingScope) refs.exemplarPendingScope.value = 'all_pending';
         renderExemplarBatchQueue();
+        if (state.batchExemplarItems.length) showMessage(refs.exemplarBatchMessage, 'Filtros da fila de exemplares locais limpos. A revisão material voltou ao recorte completo.', 'info');
       });
     }
     if (refs.validateVisibleExemplarRowsBtn) {
@@ -12679,6 +12690,7 @@
         if (refs.labelBatchSearchInput) refs.labelBatchSearchInput.value = '';
         if (refs.labelPendingScope) refs.labelPendingScope.value = 'all_pending';
         renderLabelDraftQueue();
+        if (state.batchLabelItems.length) showMessage(refs.labelBatchMessage, 'Filtros da fila de rótulos locais limpos. A revisão voltou ao recorte completo.', 'info');
       });
     }
     el('loadExemplarBatchBtn').addEventListener('click', async () => {
@@ -12691,7 +12703,7 @@
     el('clearExemplarBatchBtn').addEventListener('click', () => {
       state.batchExemplarItems = [];
       renderExemplarBatchQueue();
-      clearMessage(refs.exemplarBatchMessage);
+      showMessage(refs.exemplarBatchMessage, 'Fila de exemplares locais limpa. Nenhuma linha permanece carregada nesta etapa.', 'info');
     });
     el('loadLabelBatchBtn').addEventListener('click', async () => {
       try {
@@ -12705,7 +12717,7 @@
       if (refs.labelBatchSearchInput) refs.labelBatchSearchInput.value = '';
       if (refs.labelPendingScope) refs.labelPendingScope.value = 'all_pending';
       renderLabelDraftQueue();
-      clearMessage(refs.labelBatchMessage);
+      showMessage(refs.labelBatchMessage, 'Fila de rótulos locais limpa. Nenhuma revisão permanece carregada nesta etapa.', 'info');
     });
     el('exemplarBatchId').addEventListener('change', async () => {
       if (refs.labelBatchPreviewId) refs.labelBatchPreviewId.value = el('exemplarBatchId').value || '';
