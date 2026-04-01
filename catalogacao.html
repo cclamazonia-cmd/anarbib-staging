@@ -3342,13 +3342,11 @@
               <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
             </div>
           </div>
-
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="Nenhuma leitura política e documental ainda."></textarea>
             <small id="partnerPoliticalNotice">Sem leitura política ainda: teste técnico, sozinho, não libera comparação documental, importação nem mutualização.</small>
           </div>
-
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
               <label for="partnerAgreementStatusOutput">Acordo explícito neste painel</label>
@@ -3359,7 +3357,11 @@
               <input id="partnerCatalogacaoGateOutput" type="text" readonly placeholder="Ainda não aplicada em catalogação">
             </div>
           </div>
-        
+          <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field"><label for="partnerRightReadOutput">Ver / ler politicamente</label><input id="partnerRightReadOutput" type="text" readonly placeholder="—"></div><div class="field"><label for="partnerRightCompareOutput">Comparar localmente</label><input id="partnerRightCompareOutput" type="text" readonly placeholder="—"></div><div class="field"><label for="partnerRightDraftOutput">Criar rascunho local</label><input id="partnerRightDraftOutput" type="text" readonly placeholder="—"></div>
+            <div class="field"><label for="partnerRightEnrichOutput">Enriquecer a camada local</label><input id="partnerRightEnrichOutput" type="text" readonly placeholder="—"></div><div class="field"><label for="partnerRightSharedOutput">Modificar a camada compartilhada</label><input id="partnerRightSharedOutput" type="text" readonly placeholder="—"></div><div class="field"><label for="partnerRightPublishOutput">Publicar na tua biblioteca</label><input id="partnerRightPublishOutput" type="text" readonly placeholder="—"></div>
+            <div class="field" style="grid-column: span 3;"><label for="partnerRightsSummaryOutput">Leitura operacional desta etapa</label><textarea id="partnerRightsSummaryOutput" rows="3" readonly placeholder="Nenhuma leitura operacional ainda."></textarea></div>
+          </div>
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
               <label for="partnerPresetSelect">Parceira conhecida</label>
@@ -12790,6 +12792,8 @@ function initPartnerProbeUi() {
   const politicalNoticeEl = document.getElementById('partnerPoliticalNotice');
   const agreementStatusEl = document.getElementById('partnerAgreementStatusOutput');
   const catalogacaoGateEl = document.getElementById('partnerCatalogacaoGateOutput');
+  const partnerRightReadEl = document.getElementById('partnerRightReadOutput'); const partnerRightCompareEl = document.getElementById('partnerRightCompareOutput'); const partnerRightDraftEl = document.getElementById('partnerRightDraftOutput'); const partnerRightEnrichEl = document.getElementById('partnerRightEnrichOutput');
+  const partnerRightSharedEl = document.getElementById('partnerRightSharedOutput'); const partnerRightPublishEl = document.getElementById('partnerRightPublishOutput'); const partnerRightsSummaryEl = document.getElementById('partnerRightsSummaryOutput');
   const refreshPolicyBtn = document.getElementById('partnerRefreshPolicyBtn');
   const generateBtn = document.getElementById('partnerGenerateBtn');
   const copyReportBtn = document.getElementById('partnerCopyReportBtn');
@@ -14171,6 +14175,12 @@ ${decisionSummary}` : '',
     return parsed.toLocaleString('pt-BR');
   }
 
+  function setPartnerRightsMatrixReadout(row = null, gateState = null) {
+    if (!partnerRightReadEl) return; const blocked = !!gateState?.catalogacaoGateBlocked, compare = !!row?.compare_allowed && !blocked, imp = !!row?.import_allowed && !blocked, mutual = !!row?.mutualize_allowed && !blocked, registered = !!row;
+    partnerRightReadEl.value = registered ? 'Visível nesta etapa' : 'Bloqueada'; partnerRightCompareEl.value = compare ? 'Autorizada' : (registered && blocked ? 'Bloqueada por acordo' : 'Bloqueada'); partnerRightDraftEl.value = imp ? 'Autorizado com revisão' : (compare ? 'Preparação manual somente' : 'Bloqueado'); partnerRightEnrichEl.value = (compare || imp) ? 'Autorizado com proveniência' : (registered ? 'Somente leitura' : 'Bloqueado'); partnerRightSharedEl.value = mutual ? 'Segue sem modificação livre' : 'Não autorizado aqui'; partnerRightPublishEl.value = registered ? 'Só na tua biblioteca' : 'Bloqueado';
+    partnerRightsSummaryEl.value = !registered ? 'Parceira ainda não formalizada: a leitura técnica pode existir, mas comparação, retomada local e uso documental seguem bloqueados.' : (blocked ? `${String(gateState?.noAgreementMessage || 'Sem acordo explícito ativo.')} A leitura política segue visível, mas o uso documental permanece bloqueado.` : (mutual ? 'Comparação, preparação local e mutualização aparecem autorizadas politicamente, sem liberar modificação livre do registro da parceira.' : (imp ? 'Comparação e preparação local aparecem autorizadas nesta etapa, sempre com revisão humana e proveniência explícita.' : (compare ? 'Só a comparação manual aparece autorizada nesta etapa; retomada local e mutualização seguem bloqueadas.' : 'A parceira está lida, mas as ações documentárias continuam bloqueadas nesta etapa.'))));
+  }
+
   function clearPartnerPolicyReadout() {
     relationshipStatusEl.value = '';
     compareAllowedEl.value = '';
@@ -14184,7 +14194,7 @@ ${decisionSummary}` : '',
     closeCompareWorkspace({ reset: false });
     closeImportWorkspace({ reset: false });
     setPartnerWorkspaceInputsDisabled(false);
-    setPartnerDocumentActionsState('empty');
+    setPartnerDocumentActionsState('empty'); setPartnerRightsMatrixReadout();
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
@@ -14260,7 +14270,7 @@ ${decisionSummary}` : '',
       ? (gateBlocked ? 'Autorizada na política, mas bloqueada sem acordo explícito' : 'Mutualização autorizada, sem modificação livre')
       : 'Mutualização não autorizada nesta etapa';
     technicalProbeLastAtEl.value = formatPartnerTimestamp(row?.last_probe_at || row?.technical_probe_last_at || row?.probe_last_at || row?.updated_at || '');
-    setPartnerAgreementGateReadout(nextGateState, row, getCurrentPartnerSlug());
+    setPartnerAgreementGateReadout(nextGateState, row, getCurrentPartnerSlug()); setPartnerRightsMatrixReadout(row, nextGateState);
     policySummaryEl.value = [
       `Situação relacional: ${relationshipLabels[row?.relationship_status] || row?.relationship_status || 'sem situação registrada'}.`,
       row?.compare_allowed ? 'Comparação documental aparece autorizada pela política relacional.' : 'Comparação documental não aparece autorizada pela política relacional.',
@@ -14455,7 +14465,7 @@ ${decisionSummary}` : '',
       if (!row) {
         clearPartnerPolicyReadout();
         relationshipStatusEl.value = 'Parceira não cadastrada';
-        setPartnerAgreementGateReadout(gateState, null, slug);
+        setPartnerAgreementGateReadout(gateState, null, slug); setPartnerRightsMatrixReadout(null, gateState);
         policySummaryEl.value = 'Esta parceira ainda não aparece na base de governança relacional. Em catalogação, isso impede comparação ativa e importação.';
         politicalNoticeEl.textContent = 'Primeiro formaliza a parceira no painel. Só depois a camada documental pode avançar.';
         setPartnerDocumentActionsState('not_registered', null, gateState);
