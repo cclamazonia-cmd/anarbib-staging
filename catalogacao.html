@@ -2937,7 +2937,7 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de exemplares para rótulos</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares locais ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto, sem perder de vista a ficha comum e o holding local ao qual ele está ligado.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
               <label for="labelLotImportId">Exemplares a carregar</label>
@@ -2951,7 +2951,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo, CDD ou nota" />
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, compatibilidade local, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -2975,11 +2975,11 @@
         </div>
 
         <div class="card">
-          <h4>Rótulo do exemplar selecionado</h4>
-          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
+          <h4>Rótulo do exemplar local selecionado</h4>
+          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente, sem perder de vista a ficha comum e a leitura do holding local.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Referência: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -3033,10 +3033,55 @@
         </div>
 
         <div class="card" style="margin-top:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura ficha comum → exemplar local → rótulo</h4>
+                <div class="hint">Esta prévia relê, numa única superfície, o vínculo entre a ficha comum em foco, o exemplar local aberto e o estado atual do rótulo que vai para a plancha.</div>
+              </div>
+              <span id="labelFlowStatusPill" class="pill info">Rótulo local</span>
+            </div>
+            <div class="book-derived-summary-card">
+              <div id="labelFlowKind" class="book-derived-summary-kind">Ficha comum ainda não relida</div>
+              <div id="labelFlowTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
+              <div id="labelFlowHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
+              <div id="labelFlowCopy" class="book-derived-summary-line">Exemplar local: —</div>
+              <div id="labelFlowLabel" class="book-derived-summary-line is-muted">Rótulo local: —</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="book-public-preview">
+            <div class="book-public-preview-top">
+              <div>
+                <h4 class="autofill-panel-title">Saída local do rótulo</h4>
+                <div class="hint">Prévia do que o rótulo já produz materialmente agora e do que ele habilita depois na plancha A4 e na validação local.</div>
+              </div>
+              <span id="labelOutputStatusPill" class="pill info">Prévia local</span>
+            </div>
+            <div class="book-public-preview-grid">
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Leitura impressa agora</div>
+                <div id="labelOutputPrintTitle" class="book-public-preview-title">Título do rótulo</div>
+                <div id="labelOutputPrintMeta" class="book-public-preview-line is-muted">Autor, CDD e código ainda não consolidados.</div>
+                <div id="labelOutputPrintBody" class="book-public-preview-line">Nota curta e leitura de estante ainda não consolidadas.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Plancha e validação</div>
+                <div id="labelOutputSheetTitle" class="book-public-preview-title">Folha A4 / validação local</div>
+                <div id="labelOutputSheetMeta" class="book-public-preview-line is-muted">Situação de validação ainda não definida.</div>
+                <div id="labelOutputSheetBody" class="book-public-preview-line">A leitura da plancha e do próximo gesto local aparecerá aqui.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Referência: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -4089,6 +4134,19 @@
       labelCurrentBibRef: el('labelCurrentBibRef'),
       labelCurrentTombo: el('labelCurrentTombo'),
       labelCurrentShelf: el('labelCurrentShelf'),
+      labelFlowStatusPill: el('labelFlowStatusPill'),
+      labelFlowKind: el('labelFlowKind'),
+      labelFlowTitle: el('labelFlowTitle'),
+      labelFlowHolding: el('labelFlowHolding'),
+      labelFlowCopy: el('labelFlowCopy'),
+      labelFlowLabel: el('labelFlowLabel'),
+      labelOutputStatusPill: el('labelOutputStatusPill'),
+      labelOutputPrintTitle: el('labelOutputPrintTitle'),
+      labelOutputPrintMeta: el('labelOutputPrintMeta'),
+      labelOutputPrintBody: el('labelOutputPrintBody'),
+      labelOutputSheetTitle: el('labelOutputSheetTitle'),
+      labelOutputSheetMeta: el('labelOutputSheetMeta'),
+      labelOutputSheetBody: el('labelOutputSheetBody'),
       exemplarLocationLibrary: el('exemplarLocationLibrary'),
       exemplarLocationSector: el('exemplarLocationSector'),
       exemplarLocationShelfUnit: el('exemplarLocationShelfUnit'),
@@ -8289,6 +8347,133 @@
       if (refs.labelCurrentBibRef) refs.labelCurrentBibRef.textContent = el('exemplarBibRef').value || '—';
       if (refs.labelCurrentTombo) refs.labelCurrentTombo.textContent = el('exemplarTombo').value || '—';
       if (refs.labelCurrentShelf) refs.labelCurrentShelf.textContent = shelfDisplay || '—';
+    }
+
+    function getLabelLifecycleStateLabel() {
+      const stableState = String(labelDraftStableState || '').trim();
+      if (stableState === 'published') return 'Rótulo publicado';
+      if (stableState === 'ready') return 'Rótulo validado';
+      if (stableState === 'saved') return 'Rótulo salvo';
+      if (stableState === 'dirty') return 'Rótulo com alterações locais';
+      const labelStatus = String(el('exemplarLabelStatus')?.value || '').trim();
+      if (labelStatus === 'ready') return 'Rótulo validado';
+      return 'Rótulo local';
+    }
+
+    function getLabelLinkedNoticeContext() {
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      if (!bibRef) {
+        return {
+          kind: 'Ficha comum ainda não relida',
+          title: 'Preencha a compatibilidade local para reler a ficha comum',
+          notice: null,
+        };
+      }
+      const matchValue = normalizeForSearch(bibRef);
+      const publishedNotice = [...(state.books || [])].find(item => normalizeForSearch(item?.bib_ref || item?.target_bib_ref || '') === matchValue);
+      if (publishedNotice) {
+        return {
+          kind: 'Ficha comum publicada localizada',
+          title: getBookDisplayTitle(publishedNotice) || `Compatibilidade local ${bibRef}`,
+          notice: publishedNotice,
+        };
+      }
+      const queueDraft = [...(state.queueItems || [])].find(item => String(item?.item_type || '') === 'book' && normalizeForSearch(item?.target_bib_ref || item?.bib_ref || '') === matchValue);
+      if (queueDraft) {
+        return {
+          kind: 'Ficha comum ativa localizada na fila editorial',
+          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || `Compatibilidade local ${bibRef}`,
+          notice: queueDraft,
+        };
+      }
+      return {
+        kind: 'Ficha comum ainda não localizada nesta superfície',
+        title: `Compatibilidade local ${bibRef}`,
+        notice: null,
+      };
+    }
+
+    function updateLabelFlowPreview() {
+      if (!refs.labelFlowTitle) return;
+      const linked = getLabelLinkedNoticeContext();
+      const notice = linked.notice || {};
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const batchLabel = getBatchLabel(el('exemplarBatchId').value || '');
+      const shelfDisplay = syncExemplarStructuredLocation();
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const labelAuthor = compactSpaces(el('labelAuthorInput')?.value || '');
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+      const labelCDD = compactSpaces(el('labelCDDInput')?.value || '');
+      const labelNote = compactSpaces(el('labelNoteInput')?.value || '');
+      const exemplarStatus = String(el('exemplarCurrentStatus')?.value || 'draft').trim();
+      const labelStatus = String(el('exemplarLabelStatus')?.value || 'pending').trim();
+      const exemplarStatusLabel = exemplarStatus === 'published'
+        ? 'Exemplar publicado'
+        : (exemplarStatus === 'ready' ? 'Exemplar pronto para publicação' : 'Exemplar em rascunho');
+      const labelStatusLabel = labelStatus === 'ready' ? 'rótulo validado' : 'rótulo ainda pendente';
+      const circulationRaw = notice?.loanable;
+      const circulationLabel = circulationRaw === false || String(circulationRaw) === 'false'
+        ? 'consulta local'
+        : (circulationRaw === true || String(circulationRaw) === 'true' ? 'empréstimo possível' : 'circulação local ainda não relida');
+      const localLibrary = compactSpaces(refs.exemplarLocationLibrary?.value || '') || compactSpaces(notice?.holder_library || notice?.owner_library || '');
+      const noticeAuthor = compactSpaces(notice?.autor || notice?.author || labelAuthor || '');
+      const noticeYear = compactSpaces(notice?.ano || notice?.year || '');
+      const printCode = getAuthorTrigram(labelAuthor || noticeAuthor || '---');
+      const noteLabel = labelNote ? `Nota curta: ${labelNote}` : 'Sem nota curta no rótulo.';
+      const sheetReadout = labelStatus === 'ready'
+        ? 'Este rótulo já pode entrar na plancha A4 do lote ou no recorte “Sem lote”, conforme a filtragem escolhida.'
+        : 'Este rótulo ainda não entra na plancha validada: falta validar o rótulo nesta aba.';
+
+      if (refs.labelFlowStatusPill) {
+        refs.labelFlowStatusPill.textContent = getLabelLifecycleStateLabel();
+        refs.labelFlowStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : (labelDraftStableState === 'dirty' ? 'warn' : 'info')}`;
+      }
+      refs.labelFlowKind.textContent = linked.kind;
+      refs.labelFlowTitle.textContent = linked.title || 'Compatibilidade local ainda não informada';
+      refs.labelFlowHolding.textContent = `Holding local: ${joinSummaryParts([
+        bibRef ? `Compat. local ${bibRef}` : '',
+        localLibrary ? `Biblioteca: ${localLibrary}` : '',
+        batchLabel ? `Lote: ${batchLabel}` : ''
+      ]) || '—'}`;
+      refs.labelFlowCopy.textContent = `Exemplar local: ${joinSummaryParts([
+        tombo ? `Tombo: ${tombo}` : '',
+        shelfDisplay ? `Localização: ${shelfDisplay}` : '',
+        exemplarStatusLabel
+      ]) || '—'}`;
+      refs.labelFlowLabel.textContent = `Rótulo local: ${joinSummaryParts([
+        labelTitle ? `Título do rótulo: ${truncatePreviewText(labelTitle, 88)}` : '',
+        labelAuthor ? `Autor: ${labelAuthor}` : (noticeAuthor ? `Autor relido: ${noticeAuthor}` : ''),
+        labelCDD ? `CDD: ${labelCDD}` : '',
+        labelStatusLabel
+      ]) || '—'}`;
+
+      if (refs.labelOutputStatusPill) {
+        refs.labelOutputStatusPill.textContent = labelStatus === 'ready' ? 'Plancha habilitada' : 'Prévia local';
+        refs.labelOutputStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : 'info'}`;
+      }
+      refs.labelOutputPrintTitle.textContent = labelTitle || linked.title || 'Título do rótulo';
+      refs.labelOutputPrintMeta.textContent = joinSummaryParts([
+        printCode ? `Código: ${printCode}` : '',
+        labelAuthor ? `Autor: ${labelAuthor}` : (noticeAuthor ? `Autor relido: ${noticeAuthor}` : ''),
+        labelCDD ? `CDD: ${labelCDD}` : '',
+        noticeYear ? `Ano relido: ${noticeYear}` : ''
+      ]) || 'Autor, CDD e código ainda não consolidados.';
+      refs.labelOutputPrintBody.textContent = joinSummaryParts([
+        noteLabel,
+        shelfDisplay ? `Leitura de estante: ${shelfDisplay}` : '',
+        circulationLabel ? `Circulação local relida: ${circulationLabel}` : ''
+      ]) || 'Nota curta e leitura de estante ainda não consolidadas.';
+      refs.labelOutputSheetTitle.textContent = labelStatus === 'ready' ? 'Plancha A4 já habilitada' : 'Validação local ainda pendente';
+      refs.labelOutputSheetMeta.textContent = joinSummaryParts([
+        batchLabel ? `Lote: ${batchLabel}` : '',
+        exemplarStatusLabel,
+        labelStatus === 'ready' ? 'Rótulo validado' : 'Rótulo ainda não validado'
+      ]) || 'Situação de validação ainda não definida.';
+      refs.labelOutputSheetBody.textContent = joinSummaryParts([
+        sheetReadout,
+        labelStatus === 'ready' ? 'Próximo gesto possível: revisar a plancha ou publicar o rótulo.' : 'Próximo gesto possível: salvar e validar o rótulo local.',
+        tombo ? `Tombo que seguirá para a etiqueta: ${tombo}` : ''
+      ]) || 'A leitura da plancha e do próximo gesto local aparecerá aqui.';
     }
 
     function truncatePreviewText(value = '', maxLength = 80) {
