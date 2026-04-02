@@ -1823,6 +1823,22 @@
       overflow-wrap: anywhere;
     }
 
+    .catalog-surface-summary {
+      margin: 0 0 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(179,0,24,.06));
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    .catalog-surface-summary strong {
+      color: #fff;
+      font-size: .94rem;
+    }
+
     .catalog-layer-stack {
       display: flex;
       flex-direction: column;
@@ -3288,13 +3304,32 @@
       <div class="panel-header">
         <div>
           <h3>Lotes de publicação</h3>
-          <p>Crie um lote, agrupe fichas e publique tudo de uma vez para o catálogo.</p>
+          <p>Releia aqui cada lote como composição de fichas comuns, autoridades e exemplares locais, e publique o conjunto só quando esta composição estiver madura.</p>
         </div>
       </div>
       <div class="panel-body">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
+                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+              </div>
+              <span id="batchFlowStatusPill" class="pill info">Passe 19 · batchesPanel</span>
+            </div>
+            <div class="book-derived-summary-card">
+              <div id="batchFlowKind" class="book-derived-summary-kind">Lotes ainda não relidos</div>
+              <div id="batchFlowTitle" class="book-derived-summary-title">Sem composição ativa deste recorte</div>
+              <div id="batchFlowScope" class="book-derived-summary-line is-muted">Composição do lote: —</div>
+              <div id="batchFlowWork" class="book-derived-summary-line">Gestos locais ainda não sintetizados.</div>
+              <div id="batchFlowNext" class="book-derived-summary-line is-muted">Próximo gesto local: —</div>
+            </div>
+          </div>
+        </div>
+
         <div class="split">
           <div class="card">
-            <h4>Novo lote</h4>
+            <h4>Novo lote de trabalho</h4>
             <div id="batchMessage" class="message"></div>
             <form id="batchForm" class="grid">
               <div class="field">
@@ -3303,7 +3338,7 @@
               </div>
               <div class="field">
                 <label for="batchNotes">Observações</label>
-                <textarea id="batchNotes" placeholder="Revisão de livros anarquistas, autores novos, tombo já etiquetado…"></textarea>
+                <textarea id="batchNotes" placeholder="Composição prevista do lote, recorte editorial, revisão local em curso, etiquetas já verificadas…"></textarea>
               </div>
               <div class="actions">
                 <button class="button primary" type="submit">Criar lote</button>
@@ -3312,7 +3347,7 @@
           </div>
 
           <div class="card">
-            <h4>Publicar lote</h4>
+            <h4>Publicação por lote</h4>
             <div class="field">
               <label for="publishBatchId">Escolher lote</label>
               <select id="publishBatchId"></select>
@@ -3321,10 +3356,12 @@
               <button id="publishBatchBtn" class="button success">Publicar lote selecionado</button>
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
-            <p class="hint">A publicação em lote chama a função <code>publish_catalog_batch</code> e envia para o catálogo todas as fichas em rascunho ou prontas dentro desse lote.</p>
+            <div id="publishBatchSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.</div>
+            <p class="hint">A publicação por lote chama <code>publish_catalog_batch</code> e empurra de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
           </div>
         </div>
 
+        <div id="batchListSummary" class="catalog-surface-summary" style="margin-top:16px;"><strong>Leitura da lista:</strong> ainda não atualizada.</div>
         <div style="margin-top:16px;" id="batchListWrap" class="table-wrap"></div>
       </div>
     </section>
@@ -3360,28 +3397,28 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do catálogo publicado neste recorte</h4>
-                <div class="hint">Esta síntese separa o que já está publicado como notice, o que ainda aparece como compatibilidade local, o que já existe como exemplar local e o que já virou rascunho de edição local.</div>
+                <div class="hint">Nesta passe 18, a leitura do catálogo distingue melhor o que já está publicado, o que continua apenas como compatibilidade local, o que já existe como exemplar local e o que já entrou em retomada editorial local.</div>
               </div>
-              <span class="pill info">Passe 17 · catalogPanel</span>
+              <span class="pill info">Passe 18 · catalogPanel</span>
             </div>
             <div class="catalog-layer-summary">
               <div class="catalog-layer-card">
-                <div class="catalog-layer-card-title">Notice publicada</div>
+                <div class="catalog-layer-card-title">Documentos publicados visíveis</div>
                 <div id="catalogSummaryNoticeValue" class="catalog-layer-card-value">0</div>
                 <div id="catalogSummaryNoticeNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
               </div>
               <div class="catalog-layer-card">
-                <div class="catalog-layer-card-title">Compatibilidade / referência local</div>
+                <div class="catalog-layer-card-title">Compatibilidades locais visíveis</div>
                 <div id="catalogSummaryCompatValue" class="catalog-layer-card-value">0</div>
                 <div id="catalogSummaryCompatNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
               </div>
               <div class="catalog-layer-card">
-                <div class="catalog-layer-card-title">Exemplar local publicado</div>
+                <div class="catalog-layer-card-title">Exemplares locais visíveis</div>
                 <div id="catalogSummaryExemplarValue" class="catalog-layer-card-value">0</div>
                 <div id="catalogSummaryExemplarNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
               </div>
               <div class="catalog-layer-card">
-                <div class="catalog-layer-card-title">Rascunho de edição local</div>
+                <div class="catalog-layer-card-title">Retomadas editoriais ativas</div>
                 <div id="catalogSummaryDraftValue" class="catalog-layer-card-value">0</div>
                 <div id="catalogSummaryDraftNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
               </div>
@@ -3392,12 +3429,14 @@
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
             <h4>Livros, brochuras e publicações seriadas</h4>
+            <div id="catalogBooksSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Documentos não-livro e materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
+            <div id="catalogOtherDocsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
 
@@ -3431,11 +3470,13 @@
                 <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
               </div>
             </div>
+            <div id="catalogAuthorsSurfaceSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Exemplares publicados</h4>
+            <div id="catalogExemplarsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -4208,6 +4249,14 @@
       queueMessage: el('queueMessage'),
       batchMessage: el('batchMessage'),
       catalogMessage: el('catalogMessage'),
+      batchFlowStatusPill: el('batchFlowStatusPill'),
+      batchFlowKind: el('batchFlowKind'),
+      batchFlowTitle: el('batchFlowTitle'),
+      batchFlowScope: el('batchFlowScope'),
+      batchFlowWork: el('batchFlowWork'),
+      batchFlowNext: el('batchFlowNext'),
+      batchListSummary: el('batchListSummary'),
+      publishBatchSummary: el('publishBatchSummary'),
       queueFlowStatusPill: el('queueFlowStatusPill'),
       queueFlowKind: el('queueFlowKind'),
       queueFlowTitle: el('queueFlowTitle'),
@@ -4244,6 +4293,10 @@
       catalogSummaryExemplarNote: el('catalogSummaryExemplarNote'),
       catalogSummaryDraftValue: el('catalogSummaryDraftValue'),
       catalogSummaryDraftNote: el('catalogSummaryDraftNote'),
+      catalogBooksSummary: el('catalogBooksSummary'),
+      catalogOtherDocsSummary: el('catalogOtherDocsSummary'),
+      catalogAuthorsSurfaceSummary: el('catalogAuthorsSurfaceSummary'),
+      catalogExemplarsSummary: el('catalogExemplarsSummary'),
       periodicalFields: el('periodicalFields'),
       bookISBNField: el('bookISBNField'),
       bookISSNField: el('bookISSNField'),
@@ -7160,6 +7213,8 @@
         }
       }
       applyStoredCatalogacaoFilters();
+      renderPublishBatchSummary();
+      renderBatchesPanelSummary();
     }
 
     function parseJsonSafe(value, fallback = {}) {
@@ -9812,6 +9867,8 @@
       state.batches = data || [];
       refreshBatchSelects();
       renderBatchList();
+      renderBatchesPanelSummary();
+      renderPublishBatchSummary();
       if (refs.labelBatchPreviewId?.value) {
         try {
           await loadLabelSheetPreview();
@@ -11754,10 +11811,135 @@
 
       updateQueueFlowSummary(items);
       renderTrash();
+      renderBatchesPanelSummary();
+      renderPublishBatchSummary();
+    }
+
+    function getBatchCompositionMap() {
+      const openBatchIds = new Set(state.batches.filter(batch => batch.status === 'open').map(batch => Number(batch.id)).filter(Number.isFinite));
+      const map = new Map();
+      for (const item of state.queueItems) {
+        if (!isActiveQueueItem(item)) continue;
+        const batchId = Number(item?.batch_id);
+        if (!Number.isFinite(batchId) || !openBatchIds.has(batchId)) continue;
+        const entry = map.get(batchId) || { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+        entry.total += 1;
+        if (item.item_type === 'book') entry.book += 1;
+        else if (item.item_type === 'author') entry.author += 1;
+        else if (item.item_type === 'exemplar') entry.exemplar += 1;
+        if (item.status === 'ready') entry.ready += 1;
+        else entry.draft += 1;
+        if (item.action === 'update') entry.update += 1;
+        else entry.create += 1;
+        map.set(batchId, entry);
+      }
+      return map;
+    }
+
+    function getBatchComposition(batchId, compositionMap = null) {
+      const map = compositionMap || getBatchCompositionMap();
+      return map.get(Number(batchId)) || { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+    }
+
+    function formatBatchCompositionSummary(composition = {}) {
+      return `${composition.book || 0} fichas comuns · ${composition.author || 0} autoridades · ${composition.exemplar || 0} exemplares locais`;
+    }
+
+    function formatBatchWorkSummary(composition = {}) {
+      return `Em rascunho: ${composition.draft || 0} · Prontos: ${composition.ready || 0} · Novos: ${composition.create || 0} · Retomadas: ${composition.update || 0}`;
+    }
+
+    function renderBatchCompositionCell(batch, composition) {
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Composição do lote</div>
+          <div class="catalog-layer-title">${sanitize(formatBatchCompositionSummary(composition))}</div>
+          <div class="catalog-layer-line is-muted">Lote #${sanitize(batch.id)} · ${composition.total || 0} item(ns) ativo(s) neste recorte.</div>
+        </div>`;
+    }
+
+    function renderBatchWorkCell(composition) {
+      const nextAction = composition.ready > 0
+        ? 'Há material pronto neste lote: revisar a composição e publicar só o que já estiver maduro.'
+        : composition.total > 0
+          ? 'Ainda é um lote de trabalho: falta amadurecer fichas, autoridades ou exemplares locais antes da publicação.'
+          : 'Este lote ainda não recebeu fichas ativas neste recorte.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Estado de trabalho</div>
+          <div class="catalog-layer-line">${sanitize(formatBatchWorkSummary(composition))}</div>
+          <div class="catalog-layer-line is-muted">${sanitize(nextAction)}</div>
+        </div>`;
+    }
+
+    function renderBatchPublishCell(composition) {
+      const publishable = composition.total > 0
+        ? `Se publicado agora: ${composition.book || 0} ficha(s) comum(ns), ${composition.author || 0} autoridade(s) e ${composition.exemplar || 0} exemplar(es) local(is) saem deste lote de uma vez.`
+        : 'Sem composição ativa para publicar neste recorte.';
+      const caution = composition.ready > 0
+        ? 'Há itens prontos visíveis; confirme antes se a composição do lote está coerente.'
+        : 'Sem itens prontos visíveis agora; publicar este lote tende a ser prematuro.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Publicação por lote</div>
+          <div class="catalog-layer-line">${sanitize(publishable)}</div>
+          <div class="catalog-layer-line is-muted">${sanitize(caution)}</div>
+        </div>`;
+    }
+
+    function renderBatchesPanelSummary() {
+      if (!refs.batchFlowKind || !refs.batchListSummary) return;
+      const openBatches = state.batches.filter(batch => batch.status === 'open');
+      const compositionMap = getBatchCompositionMap();
+      let totals = { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+      for (const batch of openBatches) {
+        const composition = getBatchComposition(batch.id, compositionMap);
+        totals.total += composition.total;
+        totals.book += composition.book;
+        totals.author += composition.author;
+        totals.exemplar += composition.exemplar;
+        totals.draft += composition.draft;
+        totals.ready += composition.ready;
+        totals.create += composition.create;
+        totals.update += composition.update;
+      }
+      if (!openBatches.length) {
+        refs.batchFlowKind.textContent = 'Sem lotes abertos';
+        refs.batchFlowTitle.textContent = 'Nenhum lote aberto neste recorte';
+        refs.batchFlowScope.textContent = 'Composição do lote: —';
+        refs.batchFlowWork.textContent = 'Não há composição ativa de fichas comuns, autoridades ou exemplares locais em lotes abertos.';
+        refs.batchFlowNext.textContent = 'Próximo gesto local: criar um lote apenas quando houver um recorte real de trabalho a agrupar.';
+        refs.batchListSummary.innerHTML = '<strong>Leitura da lista:</strong> não há lotes abertos neste recorte.';
+        return;
+      }
+      refs.batchFlowKind.textContent = 'Lotes de trabalho abertos';
+      refs.batchFlowTitle.textContent = `${openBatches.length} lote(s) aberto(s) neste recorte`;
+      refs.batchFlowScope.textContent = `Composição do lote: ${formatBatchCompositionSummary(totals)}.`;
+      refs.batchFlowWork.textContent = `${formatBatchWorkSummary(totals)}.`;
+      refs.batchFlowNext.textContent = totals.ready > 0
+        ? 'Próximo gesto local: reler a composição dos lotes com itens prontos e publicar só o que já estiver editorialmente maduro.'
+        : 'Próximo gesto local: continuar a compor o lote com fichas comuns, autoridades e exemplares locais antes de publicar.';
+      refs.batchListSummary.innerHTML = `<strong>Leitura da lista:</strong> ${sanitize(formatBatchCompositionSummary(totals))}. ${sanitize(formatBatchWorkSummary(totals))}.`;
+    }
+
+    function renderPublishBatchSummary() {
+      if (!refs.publishBatchSummary) return;
+      const selectedBatchId = Number(el('publishBatchId')?.value || 0);
+      const selectedBatch = state.batches.find(batch => Number(batch.id) === selectedBatchId && batch.status === 'open');
+      if (!selectedBatch) {
+        refs.publishBatchSummary.innerHTML = '<strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.';
+        return;
+      }
+      const composition = getBatchComposition(selectedBatch.id);
+      const statusLine = composition.ready > 0
+        ? `Há ${composition.ready} item(ns) pronto(s) neste lote.`
+        : 'Ainda não há itens prontos visíveis neste lote.';
+      refs.publishBatchSummary.innerHTML = `<strong>Publicação por lote:</strong> ${sanitize(selectedBatch.name)} (#${selectedBatch.id}). ${sanitize(formatBatchCompositionSummary(composition))}. ${sanitize(statusLine)}`;
     }
 
     function renderBatchList() {
       const openBatches = state.batches.filter(batch => batch.status === 'open');
+      const compositionMap = getBatchCompositionMap();
       if (!openBatches.length) {
         refs.batchListWrap.innerHTML = '<div class="empty">Nenhum lote aberto no momento.</div>';
         return;
@@ -11767,27 +11949,55 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Nome</th>
-              <th>Situação</th>
+              <th>Lote</th>
+              <th>Composição do lote</th>
+              <th>Estado de trabalho</th>
+              <th>Publicação por lote</th>
               <th>Observações</th>
               <th>Criado em</th>
-              <th>Publicado em</th>
-              <th>Ação</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            ${openBatches.map(batch => `
+            ${openBatches.map(batch => {
+              const composition = getBatchComposition(batch.id, compositionMap);
+              return `
               <tr>
                 <td>#${batch.id}</td>
-                <td>${sanitize(batch.name)}</td>
-                <td>${sanitize(batch.status)}</td>
+                <td>
+                  <div class="catalog-layer-stack">
+                    <div class="catalog-layer-eyebrow">Lote de trabalho</div>
+                    <div class="catalog-layer-title">${sanitize(batch.name)}</div>
+                    <div class="catalog-layer-line is-muted">${composition.total > 0 ? sanitize(`${composition.total} item(ns) ativo(s) neste lote.`) : 'Ainda sem itens ativos visíveis neste recorte.'}</div>
+                  </div>
+                </td>
+                <td>${renderBatchCompositionCell(batch, composition)}</td>
+                <td>${renderBatchWorkCell(composition)}</td>
+                <td>${renderBatchPublishCell(composition)}</td>
                 <td>${sanitize(batch.notes || '—')}</td>
                 <td>${sanitize(formatDate(batch.created_at))}</td>
-                <td>${sanitize(formatDate(batch.published_at))}</td>
-                <td><button class="btn-inline small warning" data-action="discard-batch" data-batch-id="${batch.id}">Descartar lote</button></td>
-              </tr>`).join('')}
+                <td>
+                  <div class="row-actions">
+                    <button class="btn-inline small secondary" data-action="select-publish-batch" data-batch-id="${batch.id}">Selecionar para publicar</button>
+                    <button class="btn-inline small warning" data-action="discard-batch" data-batch-id="${batch.id}">Descartar lote</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
+
+      refs.batchListWrap.querySelectorAll('[data-action="select-publish-batch"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const batchId = String(btn.dataset.batchId || '');
+          const publishSelect = el('publishBatchId');
+          if (publishSelect && Array.from(publishSelect.options).some(option => option.value === batchId)) {
+            publishSelect.value = batchId;
+            renderPublishBatchSummary();
+            showMessage(refs.batchMessage, 'Lote carregado na zona de publicação por lote.', 'info');
+          }
+        });
+      });
 
       refs.batchListWrap.querySelectorAll('[data-action="discard-batch"]').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -11805,126 +12015,118 @@
       });
     }
 
-    function renderCatalogBooks() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      const draftLinkMap = getCatalogBookDraftLinkMap();
-      let items = [...state.books].filter(isCatalogBookLikeItem);
-      if (search) {
-        items = items.filter(book => getBookSearchIndex(book).includes(search));
+
+function renderCatalogBooks() {
+  const items = getVisibleCatalogBookLikeItems();
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  renderCatalogPanelLayerSummary();
+  renderCatalogBooksSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro, brochura ou publicação seriada encontrada.</div>';
+    return;
+  }
+  refs.catalogBooksWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'books', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local', 'books', 'total_exemplares')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(book => {
+          const draftLink = draftLinkMap.get(String(book.id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogBookNoticeCell(book)}</td>
+            <td>${renderCatalogBookCompatCell(book)}</td>
+            <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'livro')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogBooksWrap, renderCatalogBooks);
+
+  refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('book', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de livro já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      items = sortCatalogItems('books', items);
-      renderCatalogPanelLayerSummary();
-      if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro, brochura ou publicação seriada encontrada.</div>';
-        return;
+    });
+  });
+}
+
+function renderCatalogOtherDocuments() {
+function renderCatalogOtherDocuments() {
+  const items = getVisibleCatalogOtherDocumentItems();
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  renderCatalogOtherDocsSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
+    return;
+  }
+  refs.catalogOtherDocsWrap.innerHTML = `
+    <table class="catalog-other-docs-table">
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Notice publicada', 'otherDocs', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'otherDocs', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local', 'otherDocs', 'total_exemplares')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(book => {
+          const draftLink = draftLinkMap.get(String(book.id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogOtherDocumentNoticeCell(book)}</td>
+            <td>${renderCatalogBookCompatCell(book)}</td>
+            <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'documento')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogOtherDocsWrap, renderCatalogOtherDocuments);
+
+  refs.catalogOtherDocsWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('book', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de documento já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      refs.catalogBooksWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplar local', 'books', 'total_exemplares')}</th>
-              <th>Rascunho de edição local</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(book => {
-              const draftLink = draftLinkMap.get(String(book.id)) || null;
-              const draftMeta = getCatalogDraftStateMeta(draftLink);
-              return `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
-                <td>${renderCatalogBookNoticeCell(book)}</td>
-                <td>${renderCatalogBookCompatCell(book)}</td>
-                <td>${renderCatalogBookExemplarCell(book)}</td>
-                <td>${renderCatalogDraftCell(draftLink, 'livro')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`;
+    });
+  });
+}
 
-      bindCatalogSortButtons(refs.catalogBooksWrap, renderCatalogBooks);
-
-      refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            const activeDraftId = Number(btn.dataset.draftId || 0);
-            if (activeDraftId) {
-              await fetchDraftAndEdit('book', activeDraftId);
-              showMessage(refs.catalogMessage, `Rascunho de livro já aberto (#${activeDraftId}).`, 'ok');
-              return;
-            }
-            await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    function renderCatalogOtherDocuments() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      let items = [...state.books].filter(isCatalogOtherDocumentItem);
-      if (search) {
-        items = items.filter(book => getBookSearchIndex(book).includes(search));
-      }
-      items = sortCatalogItems('otherDocs', items);
-      if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
-        return;
-      }
-      refs.catalogOtherDocsWrap.innerHTML = `
-        <table class="catalog-other-docs-table">
-          <colgroup>
-            <col style="width:150px;">
-            <col style="width:72px;">
-            <col style="width:112px;">
-            <col style="width:190px;">
-            <col style="width:24%;">
-            <col style="width:16%;">
-            <col style="width:36%;">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(book => `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
-                <td>${book.id}</td>
-                <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
-
-      bindCatalogSortButtons(refs.catalogOtherDocsWrap, renderCatalogOtherDocuments);
-
-      refs.catalogOtherDocsWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    async function loadOrCreateBookDraftFromCatalog(bookId) {
+async function loadOrCreateBookDraftFromCatalog(bookId) {
       const publishedBookId = Number(bookId);
       if (!publishedBookId) throw new Error('Livro inválido para edição.');
 
@@ -12304,6 +12506,203 @@
         : 'Nenhum rascunho de edição local visível neste recorte.';
     }
 
+
+function getVisibleCatalogBookLikeItems() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  let items = [...(state.books || [])].filter(isCatalogBookLikeItem);
+  if (search) {
+    items = items.filter((book) => getBookSearchIndex(book).includes(search));
+  }
+  return sortCatalogItems('books', items);
+}
+
+function getVisibleCatalogOtherDocumentItems() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  let items = [...(state.books || [])].filter(isCatalogOtherDocumentItem);
+  if (search) {
+    items = items.filter((book) => getBookSearchIndex(book).includes(search));
+  }
+  return sortCatalogItems('otherDocs', items);
+}
+
+function getVisibleCatalogExemplarItems() {
+  const search = normalizeForSearch(el('catalogExemplarSearch')?.value || '');
+  let items = [...(state.exemplars || [])];
+  if (search) {
+    items = items.filter((ex) => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
+  }
+  return sortCatalogItems('exemplars', items);
+}
+
+function getVisibleCatalogAuthorRows() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
+  const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
+  const draftLinkMap = getCatalogAuthorDraftLinkMap();
+  const currentSignals = getCurrentCatalogAuthorFormSignals();
+  let rows = [...(state.authors || [])].map((author) => {
+    const draftLink = draftLinkMap.get(String(author.id)) || null;
+    const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
+    const meta = getAuthorStructuredMetaForRecord(author);
+    return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
+  });
+  const totalCount = rows.length;
+  if (search) {
+    rows = rows.filter(({ author }) => getCatalogAuthorCatalogSearchIndexSafe(author).includes(search));
+  }
+  if (authorityFilter) {
+    rows = rows.filter(({ meta }) => normalizeAuthorAuthorityType(meta.authority_type || 'person') === authorityFilter);
+  }
+  if (signalFilter) {
+    rows = rows.filter((row) => row.signalType === signalFilter);
+  }
+  const sortedAuthors = sortCatalogItems('authors', rows.map((row) => row.author));
+  rows = sortedAuthors.map((author) => rows.find((row) => row.author === author)).filter(Boolean);
+  return { rows, totalCount };
+}
+
+function getCatalogAuthorCatalogSearchIndexSafe(author = {}) {
+  return getCatalogAuthorSearchIndex(author);
+}
+
+function setCatalogSurfaceSummary(node, html) {
+  if (!node) return;
+  node.innerHTML = html;
+}
+
+function renderCatalogBooksSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
+  const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogBooksSummary, '<strong>Leitura da superfície:</strong> nenhuma notice livro/brochura/periódico visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogBooksSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} notices publicadas visíveis; ${compatCount} com compatibilidade local ainda legível; ${exemplarCount} com exemplar local publicado; ${draftCount} com retomada editorial ativa.`
+  );
+}
+
+function renderCatalogOtherDocsSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
+  const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogOtherDocsSummary, '<strong>Leitura da superfície:</strong> nenhum documento não-livro visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogOtherDocsSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} documentos não-livro visíveis; ${compatCount} ainda mostram compatibilidade local; ${exemplarCount} já exibem exemplar local publicado; ${draftCount} já têm retomada editorial ativa.`
+  );
+}
+
+function renderCatalogAuthorsSurfaceSummary(rows = [], totalCount = 0) {
+  const draftCount = rows.filter((row) => row?.draftLink?.id).length;
+  const currentCount = rows.filter((row) => row?.proximityMeta?.isCurrent).length;
+  const nearCount = rows.filter((row) => ['very_close', 'close'].includes(row?.proximityMeta?.level || '')).length;
+  if (!rows.length) {
+    setCatalogSurfaceSummary(refs.catalogAuthorsSurfaceSummary, '<strong>Leitura da superfície:</strong> nenhuma autoridade publicada visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogAuthorsSurfaceSummary,
+    `<strong>Leitura da superfície:</strong> ${rows.length} autoridades publicadas visíveis de ${totalCount}; ${draftCount} com retomada editorial ativa; ${currentCount} correspondem à ficha aberta; ${nearCount} mostram proximidade editorial com a ficha aberta.`
+  );
+}
+
+function renderCatalogExemplarsSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogExemplarDraftLinkMap();
+  const compatCount = items.filter((ex) => compactSpaces(ex.bib_ref || '')).length;
+  const locatedCount = items.filter((ex) => compactSpaces(ex.shelf_location || '')).length;
+  const draftCount = items.filter((ex) => draftLinkMap.has(String(ex.exemplar_id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogExemplarsSummary, '<strong>Leitura da superfície:</strong> nenhum exemplar local publicado visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogExemplarsSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} exemplares locais visíveis; ${compatCount} com compatibilidade local legível; ${locatedCount} com localização consolidada visível; ${draftCount} com retomada editorial ativa.`
+  );
+}
+
+function renderCatalogOtherDocumentNoticeCell(book = {}) {
+  const materialLabel = getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || '');
+  const title = getBookDisplayTitle(book);
+  const subtitle = getBookDisplaySubtitle(book);
+  const quickContext = getCatalogOtherDocumentContextLine(book);
+  return buildCatalogLayerStack(
+    title,
+    [
+      { text: subtitle ? `Subtítulo / chamada: ${subtitle}` : 'Sem subtítulo ou chamada relida.', muted: false },
+      { text: quickContext || 'Sem leitura documental rápida adicional.', muted: false },
+      { text: buildCatalogQuickLine([book.autor || book.author ? `Responsável: ${book.autor || book.author}` : '', book.ano ? `Data: ${book.ano}` : '']) || 'Sem responsabilidade ou data relidas.', muted: true },
+    ],
+    [materialLabel],
+    'Notice publicada'
+  );
+}
+
+function getCatalogAuthorSignalLabel(proximityMeta = {}) {
+  if (proximityMeta?.isCurrent) return 'Esta é a ficha atualmente aberta no formulário.';
+  if (proximityMeta?.level === 'very_close') return 'Esta autoridade é muito próxima da ficha atualmente aberta.';
+  if (proximityMeta?.level === 'close') return 'Esta autoridade compartilha sinais de proximidade com a ficha atualmente aberta.';
+  return 'Sem sinal editorial específico nesta leitura.';
+}
+
+function renderCatalogAuthorPublishedCell(author = {}) {
+  return `
+    <div class="catalog-layer-stack">
+      <div class="catalog-layer-eyebrow">Autoridade publicada</div>
+      ${renderCatalogAuthorIdentityHtml(author)}
+      <div class="catalog-layer-line">ID publicado: #${sanitize(author.id || '—')}</div>
+    </div>`;
+}
+
+function renderCatalogAuthorPublicReadCell(author = {}, proximityMeta = {}) {
+  const biography = compactSpaces(author.biography || '');
+  return buildCatalogLayerStack(
+    biography ? 'Leitura pública disponível' : 'Leitura pública mínima',
+    [
+      { text: buildCatalogQuickLine([author.country ? `País: ${author.country}` : '', author.source_label || author.source_kind ? `Fonte: ${author.source_label || author.source_kind}` : '']) || 'Sem país ou fonte relidos nesta superfície.', muted: false },
+      { text: biography ? `${biography.slice(0, 220)}${biography.length > 220 ? '…' : ''}` : 'Sem biografia curta relida nesta superfície.', muted: false },
+      { text: getCatalogAuthorSignalLabel(proximityMeta), muted: true },
+    ],
+    [],
+    'Leitura pública / sinal editorial'
+  );
+}
+
+function renderCatalogAuthorDraftCell(draftLink = null) {
+  const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
+  if (!draftLink?.id) {
+    return buildCatalogLayerStack(
+      'Sem rascunho ativo',
+      [
+        { text: 'Nenhuma retomada editorial local aberta para esta autoridade.', muted: false },
+        { text: 'A autoridade publicada continua intacta até a abertura de um rascunho de edição.', muted: true },
+      ],
+      [],
+      'Retomada editorial local'
+    );
+  }
+  const chips = [`#${draftLink.id}`];
+  if (draftMeta.actionLabel) chips.push(draftMeta.actionLabel);
+  if (draftMeta.statusLabel) chips.push(draftMeta.statusLabel);
+  return buildCatalogLayerStack(
+    `Rascunho ativo #${draftLink.id}`,
+    [
+      { text: 'Já existe uma retomada editorial local para esta autoridade.', muted: false },
+      { text: `Última atualização conhecida: ${formatDate(draftLink.updated_at) || 'não lida'}.`, muted: true },
+    ],
+    chips,
+    'Retomada editorial local'
+  );
+}
+
     function buildCatalogAuthorTokenSet(values = []) {
       const tokens = new Set();
       String(values || '')
@@ -12463,88 +12862,63 @@
       summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount} — ${parts.join(' · ')}.`;
     }
 
-    function renderCatalogAuthors() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
-      const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
-      const draftLinkMap = getCatalogAuthorDraftLinkMap();
-      const currentSignals = getCurrentCatalogAuthorFormSignals();
-      let rows = [...state.authors].map((author) => {
-        const draftLink = draftLinkMap.get(String(author.id)) || null;
-        const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
-        const meta = getAuthorStructuredMetaForRecord(author);
-        return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
-      });
-      const totalCount = rows.length;
-      if (search) {
-        rows = rows.filter(({ author }) => getAuthorCatalogSearchIndex(author).includes(search));
-      }
-      if (authorityFilter) {
-        rows = rows.filter(({ meta }) => normalizeAuthorAuthorityType(meta.authority_type || 'person') === authorityFilter);
-      }
-      if (signalFilter) {
-        rows = rows.filter((row) => row.signalType === signalFilter);
-      }
-      const sortedAuthors = sortCatalogItems('authors', rows.map((row) => row.author));
-      rows = sortedAuthors
-        .map((author) => rows.find((row) => row.author === author))
-        .filter(Boolean);
-      renderCatalogAuthorsFilterSummary(rows.length, totalCount);
-      if (!rows.length) {
-        refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado para este recorte.</div>';
-        return;
-      }
-      refs.catalogAuthorsWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'authors', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Nome para ordenação', 'authors', 'sort_name')}</th>
-              <th class="sortable">${renderSortableHeader('País', 'authors', 'country')}</th>
-              <th class="sortable">${renderSortableHeader('Fonte', 'authors', 'source')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(({ author, draftLink, proximityMeta }) => {
-              const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
-              const buttonLabel = draftMeta.buttonLabel;
-              return `
-              <tr>
-                <td>
-                  <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
-                  </div>
-                </td>
-                <td>${author.id}</td>
-                <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
-                <td>${sanitize(author.country || '—')}</td>
-                <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`;
 
-      bindCatalogSortButtons(refs.catalogAuthorsWrap, renderCatalogAuthors);
+function renderCatalogAuthors() {
+  const { rows, totalCount } = getVisibleCatalogAuthorRows();
+  renderCatalogAuthorsFilterSummary(rows.length, totalCount);
+  renderCatalogAuthorsSurfaceSummary(rows, totalCount);
+  if (!rows.length) {
+    refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado para este recorte.</div>';
+    return;
+  }
+  refs.catalogAuthorsWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Autoridade publicada', 'authors', 'sort_name')}</th>
+          <th class="sortable">${renderSortableHeader('Leitura pública / sinal editorial', 'authors', 'country')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(({ author, draftLink, proximityMeta }) => {
+          const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td>
+              <div class="row-actions">
+                <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button>
+              </div>
+            </td>
+            <td>${renderCatalogAuthorPublishedCell(author)}</td>
+            <td>${renderCatalogAuthorPublicReadCell(author, proximityMeta)}</td>
+            <td>${renderCatalogAuthorDraftCell(draftLink)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 
-      refs.catalogAuthorsWrap.querySelectorAll('[data-action="author-edit-draft"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            const activeDraftId = Number(btn.dataset.draftId || 0);
-            if (activeDraftId) {
-              await fetchDraftAndEdit('author', activeDraftId);
-              showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${activeDraftId}).`, 'ok');
-              return;
-            }
-            await loadOrCreateAuthorDraftFromCatalog(btn.dataset.authorId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
+  bindCatalogSortButtons(refs.catalogAuthorsWrap, renderCatalogAuthors);
 
-    async function loadOrCreateExemplarDraftFromCatalog(exemplarId) {
+  refs.catalogAuthorsWrap.querySelectorAll('[data-action="author-edit-draft"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('author', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateAuthorDraftFromCatalog(btn.dataset.authorId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
+      }
+    });
+  });
+}
+
+async function loadOrCreateExemplarDraftFromCatalog(exemplarId) {
       const publishedExemplarId = Number(exemplarId);
       if (!publishedExemplarId) throw new Error('Exemplar inválido para edição.');
 
@@ -12568,67 +12942,63 @@
       return Number(data);
     }
 
-    function renderCatalogExemplars() {
 
-      const search = normalizeForSearch(el('catalogExemplarSearch').value);
-      const draftLinkMap = getCatalogExemplarDraftLinkMap();
-      let items = [...state.exemplars];
-      if (search) {
-        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
+function renderCatalogExemplars() {
+  const items = getVisibleCatalogExemplarItems();
+  const draftLinkMap = getCatalogExemplarDraftLinkMap();
+  renderCatalogPanelLayerSummary();
+  renderCatalogExemplarsSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
+    return;
+  }
+  refs.catalogExemplarsWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Notice publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(ex => {
+          const draftLink = draftLinkMap.get(String(ex.exemplar_id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogExemplarPublishedCell(ex)}</td>
+            <td>${renderCatalogExemplarCompatCell(ex)}</td>
+            <td>${renderCatalogExemplarNoticeCell(ex)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'exemplar')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogExemplarsWrap, renderCatalogExemplars);
+
+  refs.catalogExemplarsWrap.querySelectorAll('[data-action="draft-exemplar"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('exemplar', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de exemplar já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateExemplarDraftFromCatalog(btn.dataset.exemplarId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      items = sortCatalogItems('exemplars', items);
-      renderCatalogPanelLayerSummary();
-      if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
-        return;
-      }
-      refs.catalogExemplarsWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Notice publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
-              <th>Rascunho de edição local</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(ex => {
-              const draftLink = draftLinkMap.get(String(ex.exemplar_id)) || null;
-              const draftMeta = getCatalogDraftStateMeta(draftLink);
-              return `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
-                <td>${renderCatalogExemplarPublishedCell(ex)}</td>
-                <td>${renderCatalogExemplarCompatCell(ex)}</td>
-                <td>${renderCatalogExemplarNoticeCell(ex)}</td>
-                <td>${renderCatalogDraftCell(draftLink, 'exemplar')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`;
+    });
+  });
+}
 
-      bindCatalogSortButtons(refs.catalogExemplarsWrap, renderCatalogExemplars);
-
-      refs.catalogExemplarsWrap.querySelectorAll('[data-action="draft-exemplar"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            const activeDraftId = Number(btn.dataset.draftId || 0);
-            if (activeDraftId) {
-              await fetchDraftAndEdit('exemplar', activeDraftId);
-              showMessage(refs.catalogMessage, `Rascunho de exemplar já aberto (#${activeDraftId}).`, 'ok');
-              return;
-            }
-            await loadOrCreateExemplarDraftFromCatalog(btn.dataset.exemplarId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
+function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       const bookDraftMap = new Map();
       bookDrafts.filter(item => item && item.status !== 'cancelled').forEach(item => {
         const key = String(item.bib_ref || '').trim();
@@ -13244,6 +13614,10 @@
       } catch (error) {
         showMessage(refs.batchMessage, error.message, 'error');
       }
+    });
+
+    el('publishBatchId').addEventListener('change', () => {
+      renderPublishBatchSummary();
     });
 
     applyAuthorAuthorityUiProfile();
