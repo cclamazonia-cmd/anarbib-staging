@@ -3352,9 +3352,9 @@
               <textarea id="partnerIncomingCatalogSummary" rows="7" readonly placeholder="O resumo local do arquivo recebido aparecerá aqui."></textarea>
             </div>
             <div class="field">
-              <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
+              <label for="partnerIncomingIdentityPreview">Prévia exata do que seguirá para a governança local</label>
               <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
-              <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
+              <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar uma escrita local de nome, slug e nota curta, sem criar parceira nem mexer ainda na política documental.</small>
             </div>
           </div>
         </div>
@@ -3444,11 +3444,11 @@
         
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
-              <label for="partnerPresetSelect">Parceira conhecida</label>
+              <label for="partnerPresetSelect">Parceira conhecida (base / apoio local)</label>
               <select id="partnerPresetSelect">
                 <option value="">Seleciona uma parceira conhecida (preset ou base)</option>
               </select>
-              <small id="partnerPresetHint">A lista combina ajuda local vinda do front com parceiras já formalizadas na base. A base deve prevalecer como fonte canônica quando houver correspondência.</small>
+              <small id="partnerPresetHint">A lista combina presets locais e parceiras já formalizadas na base. Quando houver correspondência, a base deve ser lida como fonte canônica e o front fica só como apoio.</small>
             </div>
         
             <div class="field">
@@ -3484,7 +3484,7 @@
               <textarea id="partnerUrlSuggestionOutput" rows="7" readonly placeholder="A leitura técnica e prudente da URL aparecerá aqui."></textarea>
             </div>
             <div class="field">
-              <label for="partnerUrlSuggestionWritePreview">Prévia do que será preenchido localmente</label>
+              <label for="partnerUrlSuggestionWritePreview">Prévia exata do que será copiado para os campos locais</label>
               <textarea id="partnerUrlSuggestionWritePreview" rows="7" readonly placeholder="A prévia exata do que será copiado para os campos locais aparecerá aqui."></textarea>
               <small id="partnerUrlSuggestionMatchHint">Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente.</small>
             </div>
@@ -3603,12 +3603,12 @@
                 </div>
               </div>
               <div class="field">
-                <label for="partnerComparisonCarryPreview">Prévia do que será levado para a ficha</label>
+                <label for="partnerComparisonCarryPreview">Prévia local da nota de proveniência que será levada para a ficha</label>
                 <textarea id="partnerComparisonCarryPreview" rows="5" readonly placeholder="A nota de proveniência preparada para a ficha aparecerá aqui."></textarea>
-                <small id="partnerComparisonLiveHint">Nada será levado para a ficha enquanto você não clicar em “Levar comparação para a ficha”. Esta ação só escreve campos locais e nota de proveniência.</small>
+                <small id="partnerComparisonLiveHint">Nada será escrito na ficha enquanto você não clicar em “Levar comparação para a ficha”. Quando acionada, esta etapa escreve somente campos locais, governança e nota de proveniência.</small>
               </div>
               <div class="field">
-                <label for="partnerComparisonFieldWritePreview">Escrita exata prevista na ficha</label>
+                <label for="partnerComparisonFieldWritePreview">Escrita local exata prevista na ficha</label>
                 <textarea id="partnerComparisonFieldWritePreview" rows="7" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
                 <small id="partnerComparisonFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando você clicar em “Levar comparação para a ficha”.</small>
               </div>
@@ -3687,16 +3687,16 @@
                 </div>
               </div>
               <div class="field">
-                <label for="partnerImportDraftPreview">Prévia local do rascunho preparado</label>
+                <label for="partnerImportDraftPreview">Prévia local do rascunho preparado antes da escrita na ficha</label>
                 <textarea id="partnerImportDraftPreview" rows="6" readonly placeholder="A prévia do rascunho local preparado aparecerá aqui."></textarea>
               </div>
               <div class="field">
-                <label for="partnerImportCarryPreview">Prévia do que será levado para a ficha</label>
+                <label for="partnerImportCarryPreview">Prévia local da nota de preparação que será levada para a ficha</label>
                 <textarea id="partnerImportCarryPreview" rows="6" readonly placeholder="A nota local de preparação aparecerá aqui."></textarea>
-                <small id="partnerImportLiveHint">Nada será levado para a ficha enquanto você não clicar em “Levar preparação para a ficha”. Esta ação só escreve parâmetros locais e nota de proveniência.</small>
+                <small id="partnerImportLiveHint">Nada será escrito na ficha enquanto você não clicar em “Levar preparação para a ficha”. Quando acionada, esta etapa escreve somente parâmetros locais, governança e nota de proveniência.</small>
               </div>
               <div class="field">
-                <label for="partnerImportFieldWritePreview">Escrita exata prevista na ficha</label>
+                <label for="partnerImportFieldWritePreview">Escrita local exata prevista na ficha</label>
                 <textarea id="partnerImportFieldWritePreview" rows="8" readonly placeholder="O resumo exato do que será escrito na ficha aparecerá aqui."></textarea>
                 <small id="partnerImportFieldWriteHint">Este quadro mostra exatamente o que será preenchido, mantido, limpo ou acrescentado na ficha quando você clicar em “Levar preparação para a ficha”.</small>
               </div>
@@ -13457,23 +13457,32 @@ function initPartnerProbeUi() {
     const identity = buildIncomingCatalogIdentity();
     const file = incomingCatalogFileEl?.files?.[0] || null;
     const fileKind = file ? getIncomingCatalogFileKind(file.name) : '—';
-    const noteParts = [];
-    if (identity.note) noteParts.push(identity.note);
-    if (file && fileKind && fileKind !== 'desconhecido') noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
+    const nextDisplayName = identity.shortName || identity.libraryName || identity.acronym;
+    const nextSlug = identity.slug || '';
+    const nextNoteParts = [];
+    if (identity.note) nextNoteParts.push(identity.note);
+    if (identity.territory) nextNoteParts.push(`Território informado: ${identity.territory}.`);
+    if (file && fileKind && fileKind !== 'desconhecido') nextNoteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
+    const nextNote = nextNoteParts.join(' ');
     incomingIdentityPreviewEl.value = [
-      `Nome da biblioteca → ${identity.libraryName || '—'}`,
-      `Nome curto → ${identity.shortName || '—'}`,
-      `Slug local → ${identity.slug || '—'}`,
-      `Sigla / acrônimo → ${identity.acronym || '—'}`,
-      `Cidade / território → ${identity.territory || '—'}`,
-      `Nota curta → ${noteParts.join(' ') || '—'}`,
-      `Leitura desta etapa → recepção artesanal local; sem importação automática; sem decisão política automática.`
-    ].join('\n');
+      'Escrita local prevista na governança abaixo:',
+      '',
+      `Nome público → ${nextDisplayName || '—'}`,
+      `Slug → ${nextSlug || '—'}`,
+      'Base URL → sem preenchimento automático nesta etapa',
+      'Família → mantém o valor atual ou cai em "Desconhecida" se o campo ainda estiver vazio ao transferir',
+      'Confiança → mantém o valor atual ou cai em "Genérico" se o campo ainda estiver vazio ao transferir',
+      `Nota curta → ${nextNote || '—'}`,
+      '',
+      `Campos de leitura nesta recepção → nome da biblioteca: ${identity.libraryName || '—'} · nome curto: ${identity.shortName || '—'} · sigla: ${identity.acronym || '—'} · território: ${identity.territory || '—'}`,
+      'Limite desta etapa → recepção artesanal local; sem importação automática; sem criação de parceira; sem decisão política automática.'
+    ].join('
+');
 
-    if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
-      incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se você quiser, para os campos de governança documental abaixo.';
+    if (nextDisplayName || nextSlug) {
+      incomingCatalogHintEl.textContent = 'A escrita local já está pronta para seguir para a governança abaixo: nome público, slug e nota curta; família e confiança só recebem valor padrão se ainda estiverem vazias.';
     } else {
-      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
+      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma escrita local útil antes de qualquer transferência.';
     }
   }
 
@@ -13648,7 +13657,7 @@ function initPartnerProbeUi() {
     if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
     syncPresetSelectionFromCurrentPartnerFields();
     refreshPartnerKnownPartnerHint();
-    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar registros.', 'ok');
+    setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo: nome público, slug e nota curta foram preparados localmente, sem alterar a política documental nem importar registros.', 'ok');
   }
 
   function clearPartnerUrlSuggestionReadout() {
@@ -13838,7 +13847,10 @@ function initPartnerProbeUi() {
     }
     if (suggestion.match && presetEl.querySelector(`option[value="${suggestion.match.slug}"]`)) {
       presetEl.value = suggestion.match.slug;
+    } else {
+      syncPresetSelectionFromCurrentPartnerFields();
     }
+    refreshPartnerKnownPartnerHint();
     generatePartnerArtifacts();
     refreshPartnerPolicy({ silent: true });
     setPartnerProbeMessage('Sugestão por URL aplicada localmente. Confere os campos antes de qualquer uso político ou documental.', 'ok');
@@ -13925,6 +13937,55 @@ function initPartnerProbeUi() {
     return Array.from(merged.values()).sort((left, right) => left.label.localeCompare(right.label, 'pt-BR', { sensitivity: 'base' }));
   }
 
+  function getPartnerOptionSourceLabel(sourceTag = '') {
+    if (sourceTag === 'base') return 'base canônica';
+    if (sourceTag === 'preset+base') return 'base + apoio local';
+    if (sourceTag === 'preset') return 'apoio local';
+    return 'origem não marcada';
+  }
+
+  function formatPartnerPresetOptionLabel(record = {}) {
+    const mainLabel = String(record.label || record.displayName || record.slug || '').trim() || 'Parceira sem nome';
+    return `${mainLabel} — ${getPartnerOptionSourceLabel(record.sourceTag || '')}`;
+  }
+
+  function findMatchingPartnerRecordFromCurrentFields() {
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const currentBaseUrl = normalizePartnerBaseUrl(baseUrlEl?.value || '');
+    const currentDisplayName = normalizeInlineWhitespace(displayEl?.value || '').toLowerCase();
+    const records = Array.from(partnerOptionRegistry.values());
+    return records.find((record) => {
+      const recordSlug = normalizePartnerSlug(record.slug || '');
+      const recordBaseUrl = normalizePartnerBaseUrl(record.baseUrl || '');
+      const recordDisplayName = normalizeInlineWhitespace(record.displayName || record.label || '').toLowerCase();
+      return (currentSlug && recordSlug === currentSlug)
+        || (currentBaseUrl && recordBaseUrl && recordBaseUrl === currentBaseUrl)
+        || (currentDisplayName && recordDisplayName && recordDisplayName === currentDisplayName);
+    }) || null;
+  }
+
+  function syncPresetSelectionFromCurrentPartnerFields() {
+    if (!presetEl) return;
+    const match = findMatchingPartnerRecordFromCurrentFields();
+    presetEl.value = match?.slug || '';
+  }
+
+  function refreshPartnerKnownPartnerHint() {
+    if (!presetHintEl) return;
+    const selectedSlug = normalizePartnerSlug(presetEl?.value || '');
+    const selectedRecord = selectedSlug ? partnerOptionRegistry.get(selectedSlug) : null;
+    const matchedRecord = findMatchingPartnerRecordFromCurrentFields();
+    if (selectedRecord) {
+      presetHintEl.textContent = `Parceira em foco: ${selectedRecord.label} — ${getPartnerOptionSourceLabel(selectedRecord.sourceTag || '')}. A base canônica prevalece quando houver correspondência; o front fica como apoio.`;
+      return;
+    }
+    if (matchedRecord) {
+      presetHintEl.textContent = `Os campos atuais coincidem com ${matchedRecord.label} — ${getPartnerOptionSourceLabel(matchedRecord.sourceTag || '')}. Se quiser, seleciona a parceira conhecida acima para fixar essa leitura.`;
+      return;
+    }
+    presetHintEl.textContent = 'A lista combina presets locais e parceiras já formalizadas na base. Quando houver correspondência, a base deve ser lida como fonte canônica e o front fica só como apoio.';
+  }
+
   function renderPartnerPresetOptions(records = [], preferredValue = '') {
     const currentValue = String(preferredValue || presetEl.value || '').trim();
     partnerOptionRegistry.clear();
@@ -13933,7 +13994,7 @@ function initPartnerProbeUi() {
       partnerOptionRegistry.set(record.slug, record);
       const opt = document.createElement('option');
       opt.value = record.slug;
-      opt.textContent = record.label;
+      opt.textContent = formatPartnerPresetOptionLabel(record);
       opt.dataset.sourceTag = record.sourceTag || '';
       presetEl.appendChild(opt);
     });
@@ -13953,14 +14014,16 @@ function initPartnerProbeUi() {
       if (error) throw error;
       const mergedRecords = mergePartnerOptionRecords(data || []);
       renderPartnerPresetOptions(mergedRecords, preferredValue);
+      refreshPartnerKnownPartnerHint();
       const baseCount = Array.isArray(data) ? data.length : 0;
       setPartnerPresetHint(baseCount
-        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base, combinadas com os presets front.`
-        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets front.');
+        ? `Lista atualizada com ${baseCount} parceira(s) formalizada(s) na base. Os presets front seguem apenas como apoio quando não houver correspondência canônica.`
+        : 'Nenhuma parceira formalizada foi lida da base agora. A lista segue com os presets locais desta versão.');
     } catch (error) {
       console.error('Falha ao carregar parceiras conhecidas desde a base:', error);
       renderPartnerPresetOptions(mergePartnerOptionRecords([]), preferredValue);
-      setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets front desta versão.');
+      refreshPartnerKnownPartnerHint();
+      setPartnerPresetHint('Não consegui atualizar a lista desde a base agora. A lista segue com os presets locais desta versão, sem confirmação canônica da base.');
       if (!silent) {
         setPartnerProbeMessage('Não consegui atualizar a lista de parceiras desde a base. Segui com os presets front desta versão.', 'warn');
       }
@@ -14024,57 +14087,58 @@ ${decisionSummary}` : '',
     const nextRecordId = String(bookSourceRecordIdEl?.value || '').trim() || currentSlug || String(displayEl.value || '').trim();
     const nextRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim() || normalizePartnerBaseUrl(baseUrlEl.value || '');
     const comparisonNote = getCurrentComparisonNote();
-    const lines = [];
+    const lines = ['Escrita local preparada para a ficha:', ''];
 
     if (!nextSourceValue) {
-      lines.push('Fonte de parceira: sem alteração automática prevista.');
+      lines.push('• Fonte de parceira: sem alteração automática prevista.');
     } else if (currentSourceValue === nextSourceValue) {
-      lines.push(`Fonte de parceira: manter ${currentSourceLabel}.`);
+      lines.push(`• Fonte de parceira: manter ${currentSourceLabel}.`);
     } else {
-      lines.push(`Fonte de parceira: gravar ${nextSourceLabel}.`);
+      lines.push(`• Fonte de parceira: gravar ${nextSourceLabel}.`);
     }
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`• Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
+        lines.push(`• Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
+        lines.push('• Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('• Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
-      lines.push('Governança parceira: sem escrita adicional prevista.');
+      lines.push('• Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
-      lines.push(`ID do registro de origem: manter valor atual (${String(bookSourceRecordIdEl.value || '').trim()}).`);
+      lines.push(`• ID do registro de origem: manter valor atual (${String(bookSourceRecordIdEl.value || '').trim()}).`);
     } else if (nextRecordId) {
-      lines.push(`ID do registro de origem: preencher com ${nextRecordId}.`);
+      lines.push(`• ID do registro de origem: preencher com ${nextRecordId}.`);
     } else {
-      lines.push('ID do registro de origem: sem escrita prevista.');
+      lines.push('• ID do registro de origem: sem escrita prevista.');
     }
 
     if (String(bookSourceRecordUrlEl?.value || '').trim()) {
-      lines.push(`URL do registro de origem: manter valor atual (${String(bookSourceRecordUrlEl.value || '').trim()}).`);
+      lines.push(`• URL do registro de origem: manter valor atual (${String(bookSourceRecordUrlEl.value || '').trim()}).`);
     } else if (nextRecordUrl) {
-      lines.push(`URL do registro de origem: preencher com ${nextRecordUrl}.`);
+      lines.push(`• URL do registro de origem: preencher com ${nextRecordUrl}.`);
     } else {
-      lines.push('URL do registro de origem: sem escrita prevista.');
+      lines.push('• URL do registro de origem: sem escrita prevista.');
     }
 
     if (!comparisonNote) {
-      lines.push('Nota de proveniência: sem escrita prevista enquanto a comparação não estiver suficientemente descrita.');
+      lines.push('• Nota de proveniência: sem escrita prevista enquanto a comparação não estiver suficientemente descrita.');
     } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), comparisonNote)) {
-      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
+      lines.push('• Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
-      lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
+      lines.push('• Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
-      lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
+      lines.push('• Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('\n');
+    return lines.join('
+');
   }
 
   function getComparisonChecklistText() {
@@ -14139,18 +14203,18 @@ ${decisionSummary}` : '',
     comparisonCarryPreviewEl.value = comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado na ficha no momento do clique.'
+      ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado nos campos locais da ficha: fonte, governança, ID, URL e nota de proveniência.'
       : 'Sem comparação autorizada, este quadro permanece apenas como leitura preventiva do que ficaria bloqueado.';
     comparisonOperationalStateEl.value = getComparisonOperationalStateText();
     comparisonPrudenceSignalEl.value = getComparisonPrudenceSignalText();
     comparisonBoundaryNoteEl.textContent = partnerDocumentActionState.compareAllowed
-      ? 'Esta área continua local, manual e sem importação automática. Mesmo autorizada, ela só escreve campos locais e nota de proveniência.'
+      ? 'Esta área continua local, manual e sem importação automática. Mesmo autorizada, ela só escreve nota de proveniência e campos locais sob revisão humana.'
       : 'Sem comparação autorizada, esta área permanece apenas como lembrete de fronteira política e documental.';
     comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
-      ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
+      ? 'Sem comparação autorizada, a ficha não receberá escrita a partir deste bloco.'
       : comparisonNote
-        ? 'O bloco de proveniência está pronto. Revê o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
-        : 'Ainda faltam elementos para formar o bloco de proveniência. A ficha só receberá escrita quando a comparação estiver suficientemente descrita.';
+        ? 'A nota local de proveniência e a escrita local preparada estão prontas. Revê tudo antes de levar a comparação para a ficha.'
+        : 'Ainda faltam elementos da comparação para formar a nota local de proveniência e a escrita que serão levadas para a ficha.';
   }
 
   function refreshLocalDraftComparisonSummary() {
@@ -14264,17 +14328,20 @@ ${decisionSummary}` : '',
     const methodLabel = getSelectedOptionLabel(importMethodSelectEl);
     return [
       `Preparação local de importação controlada com ${label}.`,
-      formatLabel ? `Formato preparado: ${formatLabel}.` : '',
-      methodLabel ? `Modo preparado: ${methodLabel}.` : '',
+      formatLabel ? `Formato preparado: ${formatLabel}.` : 'Formato preparado: ainda não definido.',
+      methodLabel ? `Modo preparado: ${methodLabel}.` : 'Modo preparado: ainda não definido.',
       takeSummary ? `Elementos a retomar:
 ${takeSummary}` : '',
       skipSummary ? `Elementos a não retomar:
 ${skipSummary}` : '',
       provenanceSummary ? `Proveniência a conservar:
 ${provenanceSummary}` : '',
-      decisionSummary ? `Decisão local / preparação do rascunho:
+      decisionSummary ? `Decisão local:
 ${decisionSummary}` : '',
-    ].filter(Boolean).join('\n\n');
+      'Este bloco será levado apenas como nota local e parâmetros locais da ficha.',
+    ].filter(Boolean).join('
+
+');
   }
 
   function getImportDraftPreviewText() {
@@ -14321,73 +14388,74 @@ ${decisionSummary}` : '',
     const currentFormatLabel = getSelectedOptionLabel(bookImportFormatEl);
     const currentMethodLabel = getSelectedOptionLabel(bookImportMethodEl);
     const carryPreview = getImportCarryPreviewText();
-    const lines = [];
+    const lines = ['Escrita local preparada para a ficha:', ''];
 
     if (!nextSourceValue) {
-      lines.push('Fonte de parceira: sem alteração automática prevista.');
+      lines.push('• Fonte de parceira: sem alteração automática prevista.');
     } else if (currentSourceValue === nextSourceValue) {
-      lines.push(`Fonte de parceira: manter ${currentSourceLabel}.`);
+      lines.push(`• Fonte de parceira: manter ${currentSourceLabel}.`);
     } else {
-      lines.push(`Fonte de parceira: gravar ${nextSourceLabel}.`);
+      lines.push(`• Fonte de parceira: gravar ${nextSourceLabel}.`);
     }
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`• Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
+        lines.push(`• Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
+        lines.push('• Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('• Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
-      lines.push('Governança parceira: sem escrita adicional prevista.');
+      lines.push('• Governança parceira: sem escrita adicional prevista.');
     }
 
     if (String(bookSourceRecordIdEl?.value || '').trim()) {
-      lines.push(`ID do registro de origem: manter valor atual (${String(bookSourceRecordIdEl.value || '').trim()}).`);
+      lines.push(`• ID do registro de origem: manter valor atual (${String(bookSourceRecordIdEl.value || '').trim()}).`);
     } else if (nextRecordId) {
-      lines.push(`ID do registro de origem: preencher com ${nextRecordId}.`);
+      lines.push(`• ID do registro de origem: preencher com ${nextRecordId}.`);
     } else {
-      lines.push('ID do registro de origem: sem escrita prevista.');
+      lines.push('• ID do registro de origem: sem escrita prevista.');
     }
 
     if (String(bookSourceRecordUrlEl?.value || '').trim()) {
-      lines.push(`URL do registro de origem: manter valor atual (${String(bookSourceRecordUrlEl.value || '').trim()}).`);
+      lines.push(`• URL do registro de origem: manter valor atual (${String(bookSourceRecordUrlEl.value || '').trim()}).`);
     } else if (nextRecordUrl) {
-      lines.push(`URL do registro de origem: preencher com ${nextRecordUrl}.`);
+      lines.push(`• URL do registro de origem: preencher com ${nextRecordUrl}.`);
     } else {
-      lines.push('URL do registro de origem: sem escrita prevista.');
+      lines.push('• URL do registro de origem: sem escrita prevista.');
     }
 
     if (!nextFormatValue) {
-      lines.push(currentFormatValue ? `Formato de importação: manter ${currentFormatLabel}.` : 'Formato de importação: sem escrita prevista.');
+      lines.push(currentFormatValue ? `• Formato de importação: manter ${currentFormatLabel}.` : '• Formato de importação: sem escrita prevista.');
     } else if (currentFormatValue === nextFormatValue) {
-      lines.push(`Formato de importação: manter ${currentFormatLabel}.`);
+      lines.push(`• Formato de importação: manter ${currentFormatLabel}.`);
     } else {
-      lines.push(`Formato de importação: gravar ${nextFormatLabel}.`);
+      lines.push(`• Formato de importação: gravar ${nextFormatLabel}.`);
     }
 
     if (!nextMethodValue) {
-      lines.push(currentMethodValue ? `Modo de importação: manter ${currentMethodLabel}.` : 'Modo de importação: sem escrita prevista.');
+      lines.push(currentMethodValue ? `• Modo de importação: manter ${currentMethodLabel}.` : '• Modo de importação: sem escrita prevista.');
     } else if (currentMethodValue === nextMethodValue) {
-      lines.push(`Modo de importação: manter ${currentMethodLabel}.`);
+      lines.push(`• Modo de importação: manter ${currentMethodLabel}.`);
     } else {
-      lines.push(`Modo de importação: gravar ${nextMethodLabel}.`);
+      lines.push(`• Modo de importação: gravar ${nextMethodLabel}.`);
     }
 
     if (!carryPreview) {
-      lines.push('Nota de proveniência: sem escrita prevista enquanto a preparação não estiver suficientemente descrita.');
+      lines.push('• Nota de proveniência: sem escrita prevista enquanto a preparação não estiver suficientemente descrita.');
     } else if (hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), carryPreview)) {
-      lines.push('Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
+      lines.push('• Nota de proveniência: manter a nota atual; o bloco local preparado abaixo já está presente.');
     } else if (String(bookProvenanceNoteEl?.value || '').trim()) {
-      lines.push('Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
+      lines.push('• Nota de proveniência: acrescentar ao fim da nota atual o bloco local preparado abaixo.');
     } else {
-      lines.push('Nota de proveniência: preencher com o bloco local preparado abaixo.');
+      lines.push('• Nota de proveniência: preencher com o bloco local preparado abaixo.');
     }
 
-    return lines.join('\n');
+    return lines.join('
+');
   }
 
   function getImportOperationalStateText() {
@@ -14410,12 +14478,12 @@ ${decisionSummary}` : '',
     importCarryPreviewEl.value = carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
-    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado em Fonte de parceira, governança, ID, URL, formato, modo e nota de proveniência.';
+    importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado nos campos locais da ficha: fonte, governança, ID, URL, formato, modo e nota de proveniência.';
     importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
       ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
       : carryPreview
-        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revê tudo antes de levar a preparação para a ficha.'
-        : 'Ainda faltam decisões e parâmetros locais para formar a preparação que será levada para a ficha.';
+        ? 'A nota local de preparação e a escrita local preparada estão prontas. Revê tudo antes de levar a preparação para a ficha.'
+        : 'Ainda faltam decisões e parâmetros locais para formar a nota de preparação e a escrita que serão levadas para a ficha.';
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
       ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
@@ -14993,6 +15061,7 @@ ${decisionSummary}` : '',
 
 
   renderPartnerPresetOptions(mergePartnerOptionRecords([]));
+  refreshPartnerKnownPartnerHint();
   setPartnerPresetHint();
 
   function applyPreset(presetSlug) {
@@ -15007,7 +15076,8 @@ ${decisionSummary}` : '',
     countryEl.value = preset.countryCode || '';
     notesEl.value = preset.notes || '';
 
-    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
+    refreshPartnerKnownPartnerHint();
+    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label} (${getPartnerOptionSourceLabel(preset.sourceTag || '')}).`, 'ok');
     refreshPartnerPolicy({ silent: true });
   }
 
@@ -15074,6 +15144,8 @@ ${decisionSummary}` : '',
 
   slugEl.addEventListener('change', () => {
     slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
     refreshPartnerPolicy({ silent: true });
   });
 
@@ -15081,6 +15153,8 @@ ${decisionSummary}` : '',
     if (!String(slugEl.value || '').trim()) {
       slugEl.value = normalizePartnerSlug(displayEl.value || baseUrlEl.value || '');
     }
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
     refreshPartnerPolicy({ silent: true });
   });
 
@@ -15089,6 +15163,8 @@ ${decisionSummary}` : '',
     if (!String(slugEl.value || '').trim()) {
       slugEl.value = normalizePartnerSlug(slugEl.value || displayEl.value || baseUrlEl.value || '');
     }
+    syncPresetSelectionFromCurrentPartnerFields();
+    refreshPartnerKnownPartnerHint();
     refreshPartnerPolicy({ silent: true });
   });
 
@@ -15186,7 +15262,7 @@ ${decisionSummary}` : '',
     renderIncomingCatalogIdentityPreview();
     if (incomingCatalogHintEl) {
       incomingCatalogHintEl.textContent = file
-        ? 'Arquivo selecionado. Agora você pode ler a prévia local e completar a identificação da biblioteca.'
+        ? 'Arquivo selecionado. Agora você pode ler a prévia local e preparar a escrita exata de nome público, slug e nota curta.'
         : 'Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.';
     }
   });
