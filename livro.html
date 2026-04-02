@@ -15,7 +15,7 @@
       --red:#7a0b14; --red2:#bb1e2c;
       --line:rgba(255,255,255,.12);
       --shadow: 0 16px 38px rgba(0,0,0,.42);
-      --ok:#4ade80; --warn:#fbbf24; --bad:#fb7185;
+      --ok:#4ade80; --warn:#fbbf24; --bad:#fb7185; --info:#60a5fa;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;color:var(--text);font-family:Inter, Segoe UI, Arial, sans-serif;}
@@ -105,7 +105,7 @@
     .digital-chip.yes{background:rgba(34,197,94,.18);color:#d8ffe2;border-color:rgba(34,197,94,.35)}
     .digital-chip.no{background:rgba(251,191,36,.18);color:#fff2cc;border-color:rgba(251,191,36,.35)}
     .status{margin-top:10px;font-size:.92rem;min-height:1.2em}
-    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)}
+    .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.bad{color:var(--bad)} .status.info{color:var(--info)}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     .hr{height:1px;background:rgba(255,255,255,.10);margin:14px 0}
     .detail{
@@ -563,6 +563,15 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return !!(key && currentActiveReservationBibRefs.has(key));
     }
 
+    function hasActiveConsultaForBibRef(bibRef) {
+      const key = normalizeBibRefValue(bibRef);
+      return !!(key && currentActiveConsultaBibRefs.has(key));
+    }
+
+    function isConsultaActionState(state = currentBookAccessState) {
+      return String(state?.actionType || "").trim() === "consulta";
+    }
+
     function isDuplicateReservaErrorMessage(message) {
       const raw = String(message || "").toLowerCase();
       return raw.includes("duplicate") || raw.includes("already") || raw.includes("unique") || raw.includes("ja existe");
@@ -592,6 +601,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
     let publicServiceState = null;
     let currentActiveReservationBibRefs = new Set();
+    let currentActiveConsultaBibRefs = new Set();
     let currentBookAccessState = {
       key: "",
       label: "",
@@ -618,7 +628,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         cls: String(buttonState?.cls || "").trim(),
         canReserve: buttonState?.canReserve !== false,
         allowLoginReserve: buttonState?.allowLoginReserve !== false,
-        reserveTitle: String(buttonState?.reserveTitle || "Reservar este livro").trim() || "Reservar este livro"
+        reserveTitle: String(buttonState?.reserveTitle || "Reservar este livro").trim() || "Reservar este livro",
+        actionType: String(buttonState?.actionType || "reserva").trim() || "reserva"
       };
       applyPublicServiceState();
     }
@@ -820,25 +831,102 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const availabilityInfo = deriveAvailabilityInfo(bookRow, libraryContext);
       const availableNowLabel = "Disponível agora";
       const availableLaterLabel = availabilityInfo?.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : "Indisponível no momento";
+      const consultaAvailableLabel = "Disponível para consulta";
+      const serviceMode = String(publicServiceState?.service_mode || "").trim();
+      const consultaPaused = serviceMode === "pausada";
 
-      if (!currentUserContext?.isLoggedIn) {
-        if (!loanable) {
+      const sessionHolding = getSessionHoldingForBook(bookRow);
+      const hasSessionHolding = !!sessionHolding;
+
+      if (!loanable) {
+        if (!currentUserContext?.isLoggedIn) {
           return {
-            key: "local_only",
-            label: "Consultável no lugar",
+            key: consultaPaused ? "consulta_paused_public" : "consulta_local_public",
+            label: consultaPaused ? "Consulta indisponível no momento" : consultaAvailableLabel,
+            cls: consultaPaused ? "warn" : "info",
+            canReserve: !consultaPaused,
+            allowLoginReserve: true,
+            reserveTitle: "Marcar consulta",
+            actionType: "consulta"
+          };
+        }
+
+        if (!hasSessionHolding) {
+          return {
+            key: "not_for_you",
+            label: "Indisponível para sua biblioteca",
             cls: "warn",
             canReserve: false,
             allowLoginReserve: false,
-            reserveTitle: "Consulta local"
+            reserveTitle: "Indisponível para sua biblioteca",
+            actionType: "consulta"
           };
         }
+
+        const explicitContextActive = !!(libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName);
+        const sessionScope = {
+          libraryId: currentUserContext?.libraryId,
+          librarySlug: currentUserContext?.librarySlug,
+          libraryName: currentUserContext?.libraryName
+        };
+        const contextMatchesSession = !explicitContextActive || librariesMatch(libraryContext, sessionScope);
+
+        if (!contextMatchesSession) {
+          return {
+            key: "other_library_consulta",
+            label: "Mude para sua biblioteca para consultar",
+            cls: "warn",
+            canReserve: false,
+            allowLoginReserve: false,
+            reserveTitle: "Mude para sua biblioteca para consultar",
+            actionType: "consulta"
+          };
+        }
+
+        if (hasActiveConsultaForBibRef(compatBibRef)) {
+          return {
+            key: "consulta_requested",
+            label: "Consulta já solicitada",
+            cls: "ok",
+            canReserve: false,
+            allowLoginReserve: false,
+            reserveTitle: "Consulta já solicitada",
+            actionType: "consulta"
+          };
+        }
+
+        if (consultaPaused) {
+          return {
+            key: "consulta_paused",
+            label: "Consulta indisponível no momento",
+            cls: "warn",
+            canReserve: false,
+            allowLoginReserve: false,
+            reserveTitle: "Marcar consulta",
+            actionType: "consulta"
+          };
+        }
+
+        return {
+          key: "consulta_local",
+          label: consultaAvailableLabel,
+          cls: "info",
+          canReserve: true,
+          allowLoginReserve: true,
+          reserveTitle: "Marcar consulta",
+          actionType: "consulta"
+        };
+      }
+
+      if (!currentUserContext?.isLoggedIn) {
         return {
           key: availabilityInfo?.isAvailableNow ? "available_public" : (availabilityInfo?.nextDateLabel ? "available_later_public" : "check"),
           label: availabilityInfo?.isAvailableNow ? availableNowLabel : (availabilityInfo?.nextDateLabel ? availableLaterLabel : "Disponibilidade a verificar"),
           cls: availabilityInfo?.isAvailableNow ? "ok" : "warn",
           canReserve: true,
           allowLoginReserve: true,
-          reserveTitle: "Entre para reservar"
+          reserveTitle: "Entre para reservar",
+          actionType: "reserva"
         };
       }
 
@@ -849,12 +937,11 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           cls: "ok",
           canReserve: false,
           allowLoginReserve: false,
-          reserveTitle: "Já reservado na sua conta"
+          reserveTitle: "Já reservado na sua conta",
+          actionType: "reserva"
         };
       }
 
-      const sessionHolding = getSessionHoldingForBook(bookRow);
-      const hasSessionHolding = !!sessionHolding;
       if (!hasSessionHolding) {
         return {
           key: "not_for_you",
@@ -862,7 +949,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           cls: availabilityInfo?.isAvailableNow ? "ok" : "warn",
           canReserve: false,
           allowLoginReserve: false,
-          reserveTitle: "Indisponível para sua biblioteca"
+          reserveTitle: "Indisponível para sua biblioteca",
+          actionType: "reserva"
         };
       }
 
@@ -881,18 +969,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           cls: availabilityInfo?.isAvailableNow ? "ok" : "warn",
           canReserve: false,
           allowLoginReserve: false,
-          reserveTitle: "Mude para sua biblioteca para reservar"
-        };
-      }
-
-      if (sessionHolding?.loanable === false || !loanable) {
-        return {
-          key: "local_only",
-          label: "Consultável no lugar",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Consulta local"
+          reserveTitle: "Mude para sua biblioteca para reservar",
+          actionType: "reserva"
         };
       }
 
@@ -907,7 +985,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           cls: "ok",
           canReserve: true,
           allowLoginReserve: true,
-          reserveTitle: "Reservar este livro"
+          reserveTitle: "Reservar este livro",
+          actionType: "reserva"
         };
       }
 
@@ -917,7 +996,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         cls: "warn",
         canReserve: false,
         allowLoginReserve: false,
-        reserveTitle: availabilityInfo?.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : "Indisponível no momento"
+        reserveTitle: availabilityInfo?.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : "Indisponível no momento",
+        actionType: "reserva"
       };
     }
 
@@ -1958,8 +2038,20 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       if (!btnReservar) return;
 
       const baseTitle = currentBookAccessState?.reserveTitle || "Reservar este livro";
+      const consultaAction = isConsultaActionState();
+      const serviceMode = String(state?.service_mode || "").trim();
 
-      if (state?.allow_reservations === false) {
+      if (consultaAction && serviceMode === "pausada") {
+        btnReservar.textContent = baseTitle;
+        btnReservar.classList.add("disabled");
+        btnReservar.setAttribute("aria-disabled", "true");
+        btnReservar.disabled = true;
+        btnReservar.style.display = "inline-flex";
+        btnReservar.title = "A biblioteca está pausada no momento.";
+        return;
+      }
+
+      if (!consultaAction && state?.allow_reservations === false) {
         btnReservar.textContent = "Reservas temporariamente fechadas";
         btnReservar.classList.add("disabled");
         btnReservar.setAttribute("aria-disabled", "true");
@@ -2261,6 +2353,36 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       applyPublicServiceState();
     }
 
+    async function loadCurrentActiveConsultaBibRefs() {
+      currentActiveConsultaBibRefs = new Set();
+      if (!currentUserContext?.isLoggedIn) {
+        applyPublicServiceState();
+        return;
+      }
+
+      const attempts = [
+        () => apiFrom("api", "my_consultas_active_v2").select("bib_ref"),
+        () => apiFrom("api", "my_consultas_active").select("bib_ref")
+      ];
+
+      for (const run of attempts) {
+        try {
+          const { data, error } = await run();
+          if (error) continue;
+          if (Array.isArray(data)) {
+            currentActiveConsultaBibRefs = new Set(
+              data
+                .map((row) => normalizeBibRefValue(row?.bib_ref))
+                .filter(Boolean)
+            );
+            break;
+          }
+        } catch (_) {}
+      }
+
+      applyPublicServiceState();
+    }
+
     async function setupContaButton() {
       const btnConta = $("btnConta");
       const btnEntrar = $("btnEntrar");
@@ -2380,14 +2502,20 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
     async function reserve(bib_ref, bookRow = {}, libraryContext = {}) {
       setStatus("", "");
       const compatBibRef = firstNonEmptyString(bib_ref, bookRow?.bib_ref);
+      const consultaAction = isConsultaActionState();
 
-      if (publicServiceState?.allow_reservations === false) {
+      if (consultaAction && String(publicServiceState?.service_mode || "").trim() === "pausada") {
+        setStatus("A biblioteca está pausada no momento.", "warn");
+        return;
+      }
+
+      if (!consultaAction && publicServiceState?.allow_reservations === false) {
         setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
         return;
       }
 
       if (currentBookAccessState?.canReserve === false && currentUserContext?.isLoggedIn) {
-        setStatus(currentBookAccessState?.label || "Esta reserva não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
+        setStatus(currentBookAccessState?.label || "Esta ação não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
         return;
       }
 
@@ -2395,11 +2523,66 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       if (!session) {
         if (currentBookAccessState?.allowLoginReserve === false) {
-          setStatus(currentBookAccessState?.label || "Esta reserva não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
+          setStatus(currentBookAccessState?.label || "Esta ação não está disponível neste contexto.", currentBookAccessState?.cls || "warn");
           return;
         }
-        setStatus("Para reservar, você precisa entrar.", "warn");
+        setStatus(consultaAction ? "Para marcar consulta, você precisa entrar." : "Para reservar, você precisa entrar.", "warn");
         location.assign(buildCadastroUrl(location.href));
+        return;
+      }
+
+      if (consultaAction) {
+        let consultaError = null;
+        try {
+          const holdingAttempt = await tryResolveLocalReservaHolding(bookRow, compatBibRef, libraryContext);
+          if (!holdingAttempt?.resolved) {
+            setStatus("Não foi possível localizar o exemplar desta biblioteca para consulta local.", "warn");
+            return;
+          }
+
+          const byHoldings = await supabase.rpc("fn_v2_create_consulta_local_by_holdings", {
+            p_user_id: session.user.id,
+            p_holding_ids: [holdingAttempt.holdingId],
+            p_expires_at: null,
+            p_notes: "Consulta local criada pela página pública do livro."
+          });
+
+          if (!byHoldings.error) {
+            if (compatBibRef) currentActiveConsultaBibRefs.add(normalizeBibRefValue(compatBibRef));
+            setReserveButtonState({
+              key: "consulta_requested",
+              label: "Consulta já solicitada",
+              cls: "ok",
+              canReserve: false,
+              allowLoginReserve: false,
+              reserveTitle: "Consulta já solicitada",
+              actionType: "consulta"
+            });
+            setStatus("Consulta local registrada.", "ok");
+            return;
+          }
+
+          consultaError = byHoldings.error;
+        } catch (err) {
+          consultaError = err;
+        }
+
+        if (consultaError && isDuplicateReservaErrorMessage(consultaError.message)) {
+          if (compatBibRef) currentActiveConsultaBibRefs.add(normalizeBibRefValue(compatBibRef));
+          setReserveButtonState({
+            key: "consulta_requested",
+            label: "Consulta já solicitada",
+            cls: "ok",
+            canReserve: false,
+            allowLoginReserve: false,
+            reserveTitle: "Consulta já solicitada",
+            actionType: "consulta"
+          });
+          setStatus("Esta consulta já está solicitada na sua conta.", "ok");
+          return;
+        }
+
+        setStatus("Não foi possível marcar consulta: " + String(consultaError?.message || consultaError || "erro desconhecido"), "warn");
         return;
       }
 
@@ -2422,7 +2605,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
               cls: "ok",
               canReserve: false,
               allowLoginReserve: false,
-              reserveTitle: "Já reservado na sua conta"
+              reserveTitle: "Já reservado na sua conta",
+              actionType: "reserva"
             });
             setStatus("Reserva registrada.", "ok");
             return;
@@ -2457,7 +2641,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
             cls: "ok",
             canReserve: false,
             allowLoginReserve: false,
-            reserveTitle: "Já reservado na sua conta"
+            reserveTitle: "Já reservado na sua conta",
+            actionType: "reserva"
           });
           setStatus("Reserva registrada.", "ok");
           return;
@@ -2474,7 +2659,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           cls: "ok",
           canReserve: false,
           allowLoginReserve: false,
-          reserveTitle: "Já reservado na sua conta"
+          reserveTitle: "Já reservado na sua conta",
+          actionType: "reserva"
         });
         setStatus("Este livro já está reservado na sua conta.", "ok");
         return;
@@ -2937,6 +3123,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
     await setupContaButton();
     await loadCurrentActiveReservationBibRefs();
+    await loadCurrentActiveConsultaBibRefs();
     applyPublicServiceState();
     await loadBook();
   </script>
