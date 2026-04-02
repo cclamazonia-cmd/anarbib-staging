@@ -3556,6 +3556,7 @@
               <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
               <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
               <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
+              <div id="partnerIncomingSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da recepção:</strong> ainda não atualizada.</div>
             </div>
           </div>
         </div>
@@ -3567,6 +3568,8 @@
           </p>
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
+
+          <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> ainda não atualizada.</div>
 
           <div class="catalog-layer-summary" id="partnerGovernanceSummary" style="margin-bottom:12px;">
             <div class="catalog-layer-card">
@@ -14101,6 +14104,8 @@ function initPartnerProbeUi() {
   const partnerGovernanceBoundaryNoteEl = document.getElementById('partnerGovernanceBoundaryNote');
   const partnerCompareSurfaceSummaryEl = document.getElementById('partnerCompareSurfaceSummary');
   const partnerImportSurfaceSummaryEl = document.getElementById('partnerImportSurfaceSummary');
+  const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
+  const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
 
   const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
   const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
@@ -14136,7 +14141,8 @@ function initPartnerProbeUi() {
     !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
     !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
     !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
-    !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl
+    !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl ||
+    !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl
   ) {
     return;
   }
@@ -14405,6 +14411,7 @@ function initPartnerProbeUi() {
     } else {
       incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
+    refreshPartnerPilotSummary();
   }
 
   function updateIncomingCatalogFileName() {
@@ -14578,6 +14585,7 @@ function initPartnerProbeUi() {
     if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
     syncPresetSelectionFromCurrentPartnerFields();
     refreshPartnerKnownPartnerHint();
+    refreshPartnerPilotSummary();
     setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar registros.', 'ok');
   }
 
@@ -14586,6 +14594,7 @@ function initPartnerProbeUi() {
     urlSuggestionOutputEl.value = '';
     urlSuggestionWritePreviewEl.value = '';
     urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente nem decidir qualquer estatuto relacional.';
+    refreshPartnerPilotSummary();
   }
 
   function inferPartnerCountryCodeFromHostname(hostname = '') {
@@ -14712,6 +14721,7 @@ function initPartnerProbeUi() {
       `Nota curta → ${suggestion.note || '—'}`
     ].join('\n');
     urlSuggestionMatchHintEl.textContent = matchLabel;
+    refreshPartnerPilotSummary();
   }
 
   function analyzePartnerDiscoveryUrl() {
@@ -15479,11 +15489,94 @@ ${decisionSummary}` : '',
     return 'A política atual ainda não abriu comparação documental nem preparação local para esta parceira.';
   }
 
+  function getPartnerFocusSourceLabel() {
+    const hasPreset = !!String(presetEl?.value || '').trim();
+    const hasCurrentFields = !!normalizeInlineWhitespace(`${displayEl?.value || ''} ${slugEl?.value || ''} ${baseUrlEl?.value || ''}`);
+    const incomingIdentity = buildIncomingCatalogIdentity();
+    const hasIncomingIdentity = !!normalizeInlineWhitespace(`${incomingIdentity.libraryName || ''} ${incomingIdentity.shortName || ''} ${incomingIdentity.slug || ''} ${incomingIdentity.acronym || ''}`);
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const currentBase = normalizePartnerBaseUrl(baseUrlEl?.value || '');
+    const urlSuggestionMatchesCurrent = !!(
+      partnerUrlSuggestionState
+      && ((currentSlug && normalizePartnerSlug(partnerUrlSuggestionState.slug || '') === currentSlug)
+        || (currentBase && normalizePartnerBaseUrl(partnerUrlSuggestionState.baseUrl || '') === currentBase))
+    );
+
+    if (hasPreset) return 'Parceira conhecida';
+    if (urlSuggestionMatchesCurrent) return 'Ajuda por URL';
+    if (hasIncomingIdentity) return 'Recepção artesanal';
+    if (hasCurrentFields) return 'Preenchimento local';
+    return 'Sem foco';
+  }
+
+  function renderPartnerIncomingSurfaceSummary() {
+    if (!partnerIncomingSurfaceSummaryEl) return;
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const identity = buildIncomingCatalogIdentity();
+    const identityReady = !!normalizeInlineWhitespace(`${identity.libraryName || ''} ${identity.shortName || ''} ${identity.slug || ''} ${identity.acronym || ''}`);
+
+    if (!file && !identityReady) {
+      partnerIncomingSurfaceSummaryEl.innerHTML = '<strong>Leitura da recepção:</strong> nenhuma recepção artesanal ativa ainda. Este bloco continua só como porta de entrada prudente para arquivo e identificação local.';
+      return;
+    }
+
+    if (file && !incomingCatalogFileAnalysis) {
+      partnerIncomingSurfaceSummaryEl.innerHTML = `<strong>Leitura da recepção:</strong> arquivo ${sanitize(file.name)} já selecionado, mas a leitura local ainda não foi executada. ${identityReady ? 'A identificação da biblioteca já está parcialmente pronta para seguir abaixo.' : 'A identificação da biblioteca ainda precisa ser consolidada.'}`;
+      return;
+    }
+
+    if (file && incomingCatalogFileAnalysis) {
+      const fileKind = getIncomingCatalogFileKind(file.name).toUpperCase();
+      partnerIncomingSurfaceSummaryEl.innerHTML = `<strong>Leitura da recepção:</strong> recepção artesanal lida localmente a partir de um arquivo ${sanitize(fileKind)}. ${identityReady ? 'A identificação local já pode ser levada para a governança abaixo sem importar registros.' : 'A leitura do arquivo já existe, mas ainda falta consolidar a identificação local da biblioteca.'}`;
+      return;
+    }
+
+    partnerIncomingSurfaceSummaryEl.innerHTML = '<strong>Leitura da recepção:</strong> a identificação local da biblioteca já foi preparada manualmente, mas ainda sem arquivo artesanal ativo nesta etapa.';
+  }
+
+  function renderPartnerFocusSurfaceSummary() {
+    if (!partnerFocusSurfaceSummaryEl) return;
+    const currentLabel = normalizeInlineWhitespace(getCurrentPartnerLabel());
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const sourceLabel = getPartnerFocusSourceLabel();
+    const relationship = normalizeInlineWhitespace(relationshipStatusEl?.value || '');
+    const agreement = normalizeInlineWhitespace(agreementStatusEl?.value || '');
+
+    if (!currentLabel && !currentSlug) {
+      partnerFocusSurfaceSummaryEl.innerHTML = '<strong>Leitura da parceira em foco:</strong> nenhuma parceira está em foco ainda. A recepção artesanal, a ajuda por URL e o preenchimento manual continuam separados até você consolidar uma identidade local abaixo.';
+      return;
+    }
+
+    if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(agreement || 'Sem acordo explícito ativo.')} A leitura política pode continuar, mas a escrita documental segue bloqueada.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} A política já abriu uso documental, mas ainda falta escolher e abrir um microfluxo.`;
+      return;
+    }
+
+    partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Sem situação relacional aplicável ainda.')} Esta aba continua em leitura política e técnica, sem microfluxo documental aberto.`;
+  }
+
   function refreshPartnerPilotSummary() {
     workflowScopeEl.value = getPartnerWorkflowScopeText();
     writeNowEl.value = getPartnerWriteNowText();
     protectedNowEl.value = getPartnerProtectedNowText();
     blockersNowEl.value = getPartnerBlockersNowText();
+    renderPartnerIncomingSurfaceSummary();
+    renderPartnerFocusSurfaceSummary();
     renderPartnerGovernanceSummary();
     renderPartnerCompareSurfaceSummary();
     renderPartnerImportSurfaceSummary();
