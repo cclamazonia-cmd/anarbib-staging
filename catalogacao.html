@@ -1781,8 +1781,103 @@
       min-width: 260px;
     }
 
+    .catalog-layer-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .catalog-layer-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(179,0,24,.08));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+      min-width: 0;
+    }
+
+    .catalog-layer-card-title {
+      color: #ffe3e7;
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .catalog-layer-card-value {
+      color: #fff;
+      font-size: 1.28rem;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .catalog-layer-card-note {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-layer-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .catalog-layer-eyebrow {
+      color: #ffe3e7;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .catalog-layer-title {
+      color: #fff;
+      font-size: .98rem;
+      font-weight: 800;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-layer-line {
+      color: #f0f0f0;
+      font-size: .9rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-layer-line.is-muted {
+      color: var(--muted);
+    }
+
+    .catalog-layer-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
     @media (max-width: 1400px) {
       .catalog-published-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .catalog-layer-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .catalog-layer-summary {
         grid-template-columns: 1fr;
       }
     }
@@ -3260,7 +3355,40 @@
 
         <div id="catalogMessage" class="message"></div>
 
-        
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura do catálogo publicado neste recorte</h4>
+                <div class="hint">Esta síntese separa o que já está publicado como notice, o que ainda aparece como compatibilidade local, o que já existe como exemplar local e o que já virou rascunho de edição local.</div>
+              </div>
+              <span class="pill info">Passe 17 · catalogPanel</span>
+            </div>
+            <div class="catalog-layer-summary">
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Notice publicada</div>
+                <div id="catalogSummaryNoticeValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryNoticeNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Compatibilidade / referência local</div>
+                <div id="catalogSummaryCompatValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryCompatNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Exemplar local publicado</div>
+                <div id="catalogSummaryExemplarValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryExemplarNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Rascunho de edição local</div>
+                <div id="catalogSummaryDraftValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryDraftNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
             <h4>Livros, brochuras e publicações seriadas</h4>
@@ -3852,6 +3980,8 @@
       trashSelection: new Set(),
       catalogacaoMode: 'simple',
       authorDraftLinks: [],
+      bookDraftLinks: [],
+      exemplarDraftLinks: [],
       bookDigitalDraftResources: [],
     };
 
@@ -4106,6 +4236,14 @@
       catalogAuthorsWrap: el('catalogAuthorsWrap'),
       catalogExemplarsWrap: el('catalogExemplarsWrap'),
       catalogOtherDocsWrap: el('catalogOtherDocsWrap'),
+      catalogSummaryNoticeValue: el('catalogSummaryNoticeValue'),
+      catalogSummaryNoticeNote: el('catalogSummaryNoticeNote'),
+      catalogSummaryCompatValue: el('catalogSummaryCompatValue'),
+      catalogSummaryCompatNote: el('catalogSummaryCompatNote'),
+      catalogSummaryExemplarValue: el('catalogSummaryExemplarValue'),
+      catalogSummaryExemplarNote: el('catalogSummaryExemplarNote'),
+      catalogSummaryDraftValue: el('catalogSummaryDraftValue'),
+      catalogSummaryDraftNote: el('catalogSummaryDraftNote'),
       periodicalFields: el('periodicalFields'),
       bookISBNField: el('bookISBNField'),
       bookISSNField: el('bookISSNField'),
@@ -9780,6 +9918,8 @@
         { count: booksTotal, error: booksTotalError },
         { count: authorsTotal, error: authorsTotalError },
         { data: authorDraftLinks, error: authorDraftLinksError },
+        { data: bookDraftLinks, error: bookDraftLinksError },
+        { data: exemplarDraftLinks, error: exemplarDraftLinksError },
       ] = await Promise.all([
         fetchAllCatalogBooks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
@@ -9787,6 +9927,8 @@
         supabase.from('v_catalog_books_editable').select('*', { count: 'exact', head: true }),
         supabase.from('authors').select('*', { count: 'exact', head: true }),
         fetchActiveAuthorDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
+        fetchActiveBookDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
+        fetchActiveExemplarDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
       ]);
 
       const errors = [];
@@ -9836,6 +9978,23 @@
         state.authorDraftLinks = authorDraftLinks || [];
       }
 
+      if (bookDraftLinksError) {
+        console.warn('loadCatalog book draft links failed:', bookDraftLinksError);
+        state.bookDraftLinks = [];
+        errors.push({ source: 'bookDraftLinks', error: bookDraftLinksError });
+      } else {
+        state.bookDraftLinks = bookDraftLinks || [];
+      }
+
+      if (exemplarDraftLinksError) {
+        console.warn('loadCatalog exemplar draft links failed:', exemplarDraftLinksError);
+        state.exemplarDraftLinks = [];
+        errors.push({ source: 'exemplarDraftLinks', error: exemplarDraftLinksError });
+      } else {
+        state.exemplarDraftLinks = exemplarDraftLinks || [];
+      }
+
+      renderCatalogPanelLayerSummary();
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogExemplars();
@@ -11648,13 +11807,15 @@
 
     function renderCatalogBooks() {
       const search = normalizeForSearch(el('catalogSearch').value);
+      const draftLinkMap = getCatalogBookDraftLinkMap();
       let items = [...state.books].filter(isCatalogBookLikeItem);
       if (search) {
         items = items.filter(book => getBookSearchIndex(book).includes(search));
       }
       items = sortCatalogItems('books', items);
+      renderCatalogPanelLayerSummary();
       if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
+        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro, brochura ou publicação seriada encontrada.</div>';
         return;
       }
       refs.catalogBooksWrap.innerHTML = `
@@ -11662,27 +11823,25 @@
           <thead>
             <tr>
               <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
-              <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
+              <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
+              <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'books', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplar local', 'books', 'total_exemplares')}</th>
+              <th>Rascunho de edição local</th>
             </tr>
           </thead>
           <tbody>
-            ${items.map(book => `
+            ${items.map(book => {
+              const draftLink = draftLinkMap.get(String(book.id)) || null;
+              const draftMeta = getCatalogDraftStateMeta(draftLink);
+              return `
               <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
-                <td>${book.id}</td>
-                <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td>${sanitize(book.editora || book.publisher || '—')}</td>
-                <td>${sanitize(book.ano || '—')}</td>
-                <td>${sanitize(book.total_exemplares || 0)}</td>
-              </tr>`).join('')}
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+                <td>${renderCatalogBookNoticeCell(book)}</td>
+                <td>${renderCatalogBookCompatCell(book)}</td>
+                <td>${renderCatalogBookExemplarCell(book)}</td>
+                <td>${renderCatalogDraftCell(draftLink, 'livro')}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
 
@@ -11691,6 +11850,12 @@
       refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const activeDraftId = Number(btn.dataset.draftId || 0);
+            if (activeDraftId) {
+              await fetchDraftAndEdit('book', activeDraftId);
+              showMessage(refs.catalogMessage, `Rascunho de livro já aberto (#${activeDraftId}).`, 'ok');
+              return;
+            }
             await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
           } catch (error) {
             showMessage(refs.catalogMessage, error.message, 'error');
@@ -11906,6 +12071,237 @@
         map.set(key, row);
       });
       return map;
+    }
+
+    async function fetchActiveBookDraftLinks() {
+      const { data, error } = await supabase
+        .from('book_drafts')
+        .select('id, published_book_id, status, action, updated_at')
+        .in('status', ['draft', 'ready'])
+        .not('published_book_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchActiveExemplarDraftLinks() {
+      const { data, error } = await supabase
+        .from('exemplar_drafts')
+        .select('id, published_exemplar_id, status, action, updated_at')
+        .in('status', ['draft', 'ready'])
+        .not('published_exemplar_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    function getCatalogBookDraftLinkMap() {
+      const map = new Map();
+      (state.bookDraftLinks || []).forEach((row) => {
+        const key = String(row?.published_book_id || '').trim();
+        if (!key || map.has(key)) return;
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function getCatalogExemplarDraftLinkMap() {
+      const map = new Map();
+      (state.exemplarDraftLinks || []).forEach((row) => {
+        const key = String(row?.published_exemplar_id || '').trim();
+        if (!key || map.has(key)) return;
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function getCatalogDraftStateMeta(draftLink = null) {
+      if (!draftLink?.id) {
+        return {
+          actionLabel: '',
+          statusLabel: '',
+          buttonLabel: 'Criar rascunho de edição',
+        };
+      }
+      const normalizedAction = String(draftLink.action || '').trim().toLowerCase();
+      const normalizedStatus = String(draftLink.status || '').trim().toLowerCase();
+      const actionLabel = normalizedAction === 'edit' ? 'Rascunho de edição' : 'Novo rascunho';
+      const statusLabel = normalizedStatus === 'ready' ? 'Pronto para publicação' : 'Em rascunho';
+      const buttonLabel = normalizedStatus === 'ready'
+        ? 'Abrir rascunho pronto'
+        : (normalizedAction === 'edit' ? 'Abrir rascunho de edição' : 'Abrir novo rascunho');
+      return { actionLabel, statusLabel, buttonLabel };
+    }
+
+    function buildCatalogLayerStack(title = '—', lines = [], chips = [], eyebrow = '') {
+      const safeTitle = sanitize(title || '—');
+      const safeLines = (lines || [])
+        .map((line) => {
+          const value = typeof line === 'string' ? { text: line, muted: false } : line;
+          if (!value?.text) return '';
+          return `<div class="catalog-layer-line${value.muted ? ' is-muted' : ''}">${sanitize(value.text)}</div>`;
+        })
+        .filter(Boolean)
+        .join('');
+      const safeChips = (chips || [])
+        .filter(Boolean)
+        .map((chip) => `<span class="book-public-preview-chip">${sanitize(chip)}</span>`)
+        .join('');
+      return `
+        <div class="catalog-layer-stack">
+          ${eyebrow ? `<div class="catalog-layer-eyebrow">${sanitize(eyebrow)}</div>` : ''}
+          <div class="catalog-layer-title">${safeTitle}</div>
+          ${safeChips ? `<div class="catalog-layer-inline">${safeChips}</div>` : ''}
+          ${safeLines}
+        </div>`;
+    }
+
+    function renderCatalogDraftCell(draftLink = null, kindLabel = 'item') {
+      const draftMeta = getCatalogDraftStateMeta(draftLink);
+      if (!draftLink?.id) {
+        return buildCatalogLayerStack(
+          'Sem rascunho ativo',
+          [
+            { text: `Nenhuma retomada local aberta para este ${kindLabel}.`, muted: false },
+            { text: 'A notice publicada continua intacta até a criação do rascunho de edição.', muted: true },
+          ],
+          [],
+          'Rascunho local'
+        );
+      }
+      const chips = [`#${draftLink.id}`];
+      if (draftMeta.actionLabel) chips.push(draftMeta.actionLabel);
+      if (draftMeta.statusLabel) chips.push(draftMeta.statusLabel);
+      return buildCatalogLayerStack(
+        `Rascunho ativo #${draftLink.id}`,
+        [
+          { text: `Retomada local já aberta para este ${kindLabel}.`, muted: false },
+          { text: 'A edição segue em camada local até nova publicação.', muted: true },
+        ],
+        chips,
+        'Rascunho local'
+      );
+    }
+
+    function renderCatalogBookNoticeCell(book = {}) {
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Notice publicada</div>
+          ${renderBookDisplayTitleHtml(book)}
+          <div class="catalog-layer-line">ID publicado: #${sanitize(book.id || '—')}</div>
+          <div class="catalog-layer-line">${sanitize(buildCatalogQuickLine([
+            book.autor || book.author ? `Responsabilidade: ${book.autor || book.author}` : '',
+            book.editora || book.publisher ? `Editora: ${book.editora || book.publisher}` : '',
+            book.ano ? `Ano: ${book.ano}` : '',
+          ]) || 'Sem leitura editorial resumida.')}</div>
+        </div>`;
+    }
+
+    function renderCatalogBookCompatCell(book = {}) {
+      const bibRef = compactSpaces(book.bib_ref || '');
+      return buildCatalogLayerStack(
+        bibRef || 'Sem referência local visível',
+        [
+          { text: bibRef ? `Compatibilidade pública atual: ${bibRef}` : 'Esta notice não mostra referência local / compatibilidade.', muted: false },
+          { text: 'Camada local de apoio, não pivô principal da ficha comum.', muted: true },
+        ],
+        bibRef ? ['Compat local'] : [],
+        'Compatibilidade local'
+      );
+    }
+
+    function renderCatalogBookExemplarCell(book = {}) {
+      const totalExemplares = Number(book.total_exemplares || 0);
+      const exemplarLabel = totalExemplares === 1 ? '1 exemplar publicado' : `${totalExemplares} exemplares publicados`;
+      return buildCatalogLayerStack(
+        exemplarLabel,
+        [
+          { text: totalExemplares ? 'Há holding local publicado ligado a esta notice.' : 'Nenhum exemplar publicado visível para esta notice neste recorte.', muted: false },
+          { text: 'A circulação local concreta depende desta camada de exemplares.', muted: true },
+        ],
+        totalExemplares ? ['Holding local visível'] : ['Sem exemplar visível'],
+        'Exemplar local'
+      );
+    }
+
+    function renderCatalogExemplarPublishedCell(ex = {}) {
+      const title = compactSpaces(ex.tombo || '') || 'Sem tombo informado';
+      return buildCatalogLayerStack(
+        title,
+        [
+          { text: `ID publicado: #${compactSpaces(ex.exemplar_id || '') || '—'}`, muted: false },
+          { text: compactSpaces(ex.shelf_location || '') ? `Localização: ${compactSpaces(ex.shelf_location || '')}` : 'Sem localização consolidada visível.', muted: false },
+        ],
+        ['Exemplar local'],
+        'Exemplar publicado'
+      );
+    }
+
+    function renderCatalogExemplarCompatCell(ex = {}) {
+      const bibRef = compactSpaces(ex.bib_ref || '');
+      return buildCatalogLayerStack(
+        bibRef || 'Sem compatibilidade visível',
+        [
+          { text: bibRef ? `Compatibilidade local atual: ${bibRef}` : 'Este exemplar não mostra referência local / compatibilidade.', muted: false },
+          { text: 'Serve de ancoragem local entre exemplar publicado e ficha comum.', muted: true },
+        ],
+        bibRef ? ['Compat local'] : [],
+        'Compatibilidade local'
+      );
+    }
+
+    function renderCatalogExemplarNoticeCell(ex = {}) {
+      const title = compactSpaces(ex.titulo_etiqueta || '') || 'Notice relida ainda não disponível';
+      const author = compactSpaces(ex.autor_etiqueta || '');
+      return buildCatalogLayerStack(
+        title,
+        [
+          { text: author ? `Autor / responsabilidade: ${author}` : 'Sem responsabilidade relida neste exemplar.', muted: false },
+          { text: 'Leitura publicada relida a partir do exemplar local já validado.', muted: true },
+        ],
+        [],
+        'Notice publicada relida'
+      );
+    }
+
+    function renderCatalogPanelLayerSummary() {
+      const documentSearch = normalizeForSearch(el('catalogSearch')?.value || '');
+      const exemplarSearch = normalizeForSearch(el('catalogExemplarSearch')?.value || '');
+
+      const visibleDocuments = [...(state.books || [])].filter((book) => !documentSearch || getBookSearchIndex(book).includes(documentSearch));
+      const visibleBookish = visibleDocuments.filter(isCatalogBookLikeItem);
+      const visibleOther = visibleDocuments.filter(isCatalogOtherDocumentItem);
+      const visibleCompat = visibleDocuments.filter((book) => compactSpaces(book.bib_ref || ''));
+      const visibleExemplars = [...(state.exemplars || [])].filter((ex) => {
+        if (!exemplarSearch) return true;
+        return normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(exemplarSearch);
+      });
+
+      const bookDraftMap = getCatalogBookDraftLinkMap();
+      const exemplarDraftMap = getCatalogExemplarDraftLinkMap();
+      const visibleBookDrafts = visibleDocuments.filter((book) => bookDraftMap.has(String(book.id))).length;
+      const visibleExemplarDrafts = visibleExemplars.filter((ex) => exemplarDraftMap.has(String(ex.exemplar_id))).length;
+      const totalVisibleDrafts = visibleBookDrafts + visibleExemplarDrafts;
+
+      if (refs.catalogSummaryNoticeValue) refs.catalogSummaryNoticeValue.textContent = String(visibleDocuments.length);
+      if (refs.catalogSummaryNoticeNote) refs.catalogSummaryNoticeNote.textContent = visibleDocuments.length
+        ? `${visibleBookish.length} livros/brochuras/periódicos e ${visibleOther.length} outros documentos publicados neste recorte.`
+        : 'Nenhuma notice publicada visível para este recorte.';
+
+      if (refs.catalogSummaryCompatValue) refs.catalogSummaryCompatValue.textContent = String(visibleCompat.length);
+      if (refs.catalogSummaryCompatNote) refs.catalogSummaryCompatNote.textContent = visibleCompat.length
+        ? `${visibleCompat.length} notices ainda mostram referência local / compatibilidade na leitura publicada.`
+        : 'Nenhuma notice visível mostra referência local / compatibilidade neste recorte.';
+
+      if (refs.catalogSummaryExemplarValue) refs.catalogSummaryExemplarValue.textContent = String(visibleExemplars.length);
+      if (refs.catalogSummaryExemplarNote) refs.catalogSummaryExemplarNote.textContent = visibleExemplars.length
+        ? `${visibleExemplars.length} exemplares locais publicados aparecem no recorte atual da busca de exemplares.`
+        : 'Nenhum exemplar local publicado visível para o recorte atual.';
+
+      if (refs.catalogSummaryDraftValue) refs.catalogSummaryDraftValue.textContent = String(totalVisibleDrafts);
+      if (refs.catalogSummaryDraftNote) refs.catalogSummaryDraftNote.textContent = totalVisibleDrafts
+        ? `${visibleBookDrafts} rascunhos de notices e ${visibleExemplarDrafts} rascunhos de exemplares já estão abertos localmente.`
+        : 'Nenhum rascunho de edição local visível neste recorte.';
     }
 
     function buildCatalogAuthorTokenSet(values = []) {
@@ -12175,11 +12571,13 @@
     function renderCatalogExemplars() {
 
       const search = normalizeForSearch(el('catalogExemplarSearch').value);
+      const draftLinkMap = getCatalogExemplarDraftLinkMap();
       let items = [...state.exemplars];
       if (search) {
         items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
       }
       items = sortCatalogItems('exemplars', items);
+      renderCatalogPanelLayerSummary();
       if (!items.length) {
         refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
         return;
@@ -12189,25 +12587,25 @@
           <thead>
             <tr>
               <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
-              <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
+              <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
+              <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
+              <th class="sortable">${renderSortableHeader('Notice publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
+              <th>Rascunho de edição local</th>
             </tr>
           </thead>
           <tbody>
-            ${items.map(ex => `
+            ${items.map(ex => {
+              const draftLink = draftLinkMap.get(String(ex.exemplar_id)) || null;
+              const draftMeta = getCatalogDraftStateMeta(draftLink);
+              return `
               <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
-                <td>${ex.exemplar_id}</td>
-                <td>${sanitize(ex.tombo || '—')}</td>
-                <td>${sanitize(ex.bib_ref || '—')}</td>
-                <td>${sanitize(ex.shelf_location || '—')}</td>
-                <td>${sanitize(ex.autor_etiqueta || '—')}</td>
-                <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
-              </tr>`).join('')}
+                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+                <td>${renderCatalogExemplarPublishedCell(ex)}</td>
+                <td>${renderCatalogExemplarCompatCell(ex)}</td>
+                <td>${renderCatalogExemplarNoticeCell(ex)}</td>
+                <td>${renderCatalogDraftCell(draftLink, 'exemplar')}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
 
@@ -12216,6 +12614,12 @@
       refs.catalogExemplarsWrap.querySelectorAll('[data-action="draft-exemplar"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const activeDraftId = Number(btn.dataset.draftId || 0);
+            if (activeDraftId) {
+              await fetchDraftAndEdit('exemplar', activeDraftId);
+              showMessage(refs.catalogMessage, `Rascunho de exemplar já aberto (#${activeDraftId}).`, 'ok');
+              return;
+            }
             await loadOrCreateExemplarDraftFromCatalog(btn.dataset.exemplarId);
           } catch (error) {
             showMessage(refs.catalogMessage, error.message, 'error');
@@ -13016,13 +13420,17 @@
       }
     });
     el('catalogSearch').addEventListener('input', () => {
+      renderCatalogPanelLayerSummary();
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogOtherDocuments();
     });
     el('catalogAuthorAuthorityFilter').addEventListener('change', renderCatalogAuthors);
     el('catalogAuthorSignalFilter').addEventListener('change', renderCatalogAuthors);
-    el('catalogExemplarSearch').addEventListener('input', renderCatalogExemplars);
+    el('catalogExemplarSearch').addEventListener('input', () => {
+      renderCatalogPanelLayerSummary();
+      renderCatalogExemplars();
+    });
     if (refs.refreshLabelSheetBtn) {
       refs.refreshLabelSheetBtn.addEventListener('click', async () => {
         try {
