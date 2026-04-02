@@ -285,6 +285,128 @@
       };
     }
 
+    const sessionScopedHoldingCache = new Map();
+
+    async function resolveSessionScopedHoldingForBibRef(bibRef = "") {
+      const compatBibRef = normalizeBibRefValue(bibRef);
+      if (!compatBibRef || !currentUserContext?.isLoggedIn) return null;
+      if (sessionScopedHoldingCache.has(compatBibRef)) {
+        return sessionScopedHoldingCache.get(compatBibRef);
+      }
+
+      let resolved = null;
+
+      try {
+        const rpc = await supabase.rpc("fn_v2_resolve_catalog_refs_for_current_user", {
+          p_refs: [compatBibRef]
+        });
+
+        if (!rpc.error && Array.isArray(rpc.data) && rpc.data.length) {
+          const row = rpc.data.find((entry) => {
+            return normalizeBibRefValue(entry?.input_ref || entry?.ref_trimmed || entry?.bib_ref || entry?.session_local_bib_ref) === compatBibRef;
+          }) || rpc.data[0];
+
+          const holdingId = Number(row?.session_holding_id || 0);
+          if (row?.matched === true && holdingId > 0) {
+            resolved = {
+              holdingId,
+              libraryId: firstNonEmptyString(row?.library_id, currentUserContext?.libraryId),
+              librarySlug: firstNonEmptyString(currentUserContext?.librarySlug),
+              libraryName: firstNonEmptyString(currentUserContext?.libraryName),
+              localBibRef: firstNonEmptyString(row?.session_local_bib_ref, row?.bib_ref, compatBibRef),
+              availableCount: null,
+              exemplaresTotal: null,
+              loanable: typeof row?.session_loanable === "boolean" ? row.session_loanable : null,
+              statusHint: firstNonEmptyString(row?.session_status_hint),
+              bookId: Number(row?.book_id || 0) || null
+            };
+          }
+        }
+      } catch (_) {}
+
+      if (resolved?.libraryId && (!resolved.librarySlug || !resolved.libraryName)) {
+        try {
+          const { data, error } = await supabase
+            .from("libraries")
+            .select("id,slug,name")
+            .eq("id", resolved.libraryId)
+            .maybeSingle();
+
+          if (!error && data) {
+            resolved.librarySlug = firstNonEmptyString(resolved.librarySlug, data?.slug);
+            resolved.libraryName = firstNonEmptyString(resolved.libraryName, data?.name);
+          }
+        } catch (_) {}
+      }
+
+      if (resolved?.holdingId) {
+        try {
+          const { data, error } = await supabase
+            .from("book_holdings")
+            .select("id,book_id,library_id,local_bib_ref,available_count,loanable")
+            .eq("id", resolved.holdingId)
+            .maybeSingle();
+
+          if (!error && data) {
+            resolved.bookId = Number(data?.book_id || resolved.bookId || 0) || null;
+            resolved.libraryId = firstNonEmptyString(data?.library_id, resolved.libraryId);
+            resolved.localBibRef = firstNonEmptyString(data?.local_bib_ref, resolved.localBibRef, compatBibRef);
+            resolved.availableCount = data?.available_count;
+            if (typeof data?.loanable === "boolean") resolved.loanable = data.loanable;
+          }
+        } catch (_) {}
+      }
+
+      if (!resolved && currentUserContext?.libraryId) {
+        try {
+          const { data, error } = await supabase
+            .from("book_holdings")
+            .select("id,book_id,library_id,local_bib_ref,available_count,loanable")
+            .eq("library_id", currentUserContext.libraryId)
+            .eq("local_bib_ref", compatBibRef)
+            .limit(2);
+
+          const row = !error && Array.isArray(data) && data.length ? data[0] : null;
+          const holdingId = Number(row?.id || 0);
+          if (holdingId > 0) {
+            resolved = {
+              holdingId,
+              libraryId: firstNonEmptyString(row?.library_id, currentUserContext?.libraryId),
+              librarySlug: firstNonEmptyString(currentUserContext?.librarySlug),
+              libraryName: firstNonEmptyString(currentUserContext?.libraryName),
+              localBibRef: firstNonEmptyString(row?.local_bib_ref, compatBibRef),
+              availableCount: row?.available_count,
+              exemplaresTotal: row?.available_count,
+              loanable: typeof row?.loanable === "boolean" ? row.loanable : null,
+              statusHint: "",
+              bookId: Number(row?.book_id || 0) || null
+            };
+          }
+        } catch (_) {}
+      }
+
+      sessionScopedHoldingCache.set(compatBibRef, resolved);
+      return resolved;
+    }
+
+    function applySessionScopedHoldingToBookRow(bookRow = {}, sessionHolding = null) {
+      if (!sessionHolding || typeof sessionHolding !== "object") return bookRow;
+      const nextRow = { ...bookRow };
+
+      if (Number(sessionHolding?.holdingId || 0) > 0) {
+        nextRow.session_holding_id = Number(sessionHolding.holdingId);
+      }
+      if (sessionHolding?.libraryId) nextRow.session_library_id = sessionHolding.libraryId;
+      if (sessionHolding?.librarySlug) nextRow.session_library_slug = sessionHolding.librarySlug;
+      if (sessionHolding?.libraryName) nextRow.session_library_name = sessionHolding.libraryName;
+      if (sessionHolding?.localBibRef) nextRow.session_local_bib_ref = sessionHolding.localBibRef;
+      if (sessionHolding?.availableCount != null) nextRow.session_available_count = sessionHolding.availableCount;
+      if (sessionHolding?.exemplaresTotal != null) nextRow.session_exemplares_total = sessionHolding.exemplaresTotal;
+      if (typeof sessionHolding?.loanable === "boolean") nextRow.session_loanable = sessionHolding.loanable;
+
+      return nextRow;
+    }
+
     async function enrichLibraryScope(scope = {}) {
       const base = {
         libraryId: firstNonEmptyString(scope?.libraryId),
@@ -531,21 +653,23 @@
       const scopedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
       const holdings = parseJsonArray(bookRow?.holding_libraries_json);
 
-      if (scopedHolding) candidateSources.push(scopedHolding);
-      if (sessionHolding && sessionHolding !== scopedHolding) candidateSources.push(sessionHolding);
-      if (!explicitScope && !sessionHolding && !scopedHolding && holdings.length) {
+      if (sessionHolding) candidateSources.push(sessionHolding);
+      if (scopedHolding && scopedHolding !== sessionHolding) candidateSources.push(scopedHolding);
+      if (!explicitScope && !scopedHolding && holdings.length) {
         candidateSources.push(...holdings);
       }
       candidateSources.push(bookRow);
 
       const countKeys = [
-        "available_count",
         "session_available_count",
+        "session_exemplares_total",
+        "available_count",
         "available_now_count",
         "disponiveis",
         "disponiveis_agora",
         "copies_available",
-        "available_items"
+        "available_items",
+        "exemplares_total"
       ];
 
       const hasAvailableNow = candidateSources.some((source) => {
@@ -578,6 +702,27 @@
         libraryName: currentUserContext?.libraryName
       };
 
+      const resolvedSessionScope = {
+        libraryId: firstNonEmptyString(bookRow?.session_library_id),
+        librarySlug: firstNonEmptyString(bookRow?.session_library_slug),
+        libraryName: firstNonEmptyString(bookRow?.session_library_name)
+      };
+      const resolvedSessionHoldingId = Number(bookRow?.session_holding_id || 0);
+
+      if (resolvedSessionHoldingId > 0 || resolvedSessionScope.libraryId || resolvedSessionScope.librarySlug || resolvedSessionScope.libraryName) {
+        return {
+          holding_id: resolvedSessionHoldingId > 0 ? resolvedSessionHoldingId : null,
+          id: resolvedSessionHoldingId > 0 ? resolvedSessionHoldingId : null,
+          library_id: firstNonEmptyString(resolvedSessionScope.libraryId, sessionScope.libraryId),
+          library_slug: firstNonEmptyString(resolvedSessionScope.librarySlug, sessionScope.librarySlug),
+          library_name: firstNonEmptyString(resolvedSessionScope.libraryName, sessionScope.libraryName),
+          local_bib_ref: firstNonEmptyString(bookRow?.session_local_bib_ref, bookRow?.bib_ref),
+          session_exemplares_total: bookRow?.session_exemplares_total,
+          available_count: bookRow?.session_available_count ?? bookRow?.available_count,
+          loanable: typeof bookRow?.session_loanable === "boolean" ? bookRow.session_loanable : bookRow?.loanable
+        };
+      }
+
       if (!(sessionScope.libraryId || sessionScope.librarySlug || sessionScope.libraryName)) {
         return null;
       }
@@ -600,8 +745,8 @@
           library_name: directScope.libraryName,
           exemplares_total: bookRow?.exemplares_total,
           session_exemplares_total: bookRow?.session_exemplares_total ?? bookRow?.exemplares_total,
-          available_count: bookRow?.available_count,
-          loanable: bookRow?.loanable
+          available_count: bookRow?.session_available_count ?? bookRow?.available_count,
+          loanable: typeof bookRow?.session_loanable === "boolean" ? bookRow.session_loanable : bookRow?.loanable
         };
       }
 
@@ -2652,6 +2797,15 @@
         hasRestrictedAccess: restrictedDigitalAccess.hasRestrictedAccess,
         canReadRestrictedNow: restrictedDigitalAccess.canReadRestrictedNow
       });
+
+      const sessionScopedHolding = await resolveSessionScopedHoldingForBibRef(bib_ref);
+      if (sessionScopedHolding) {
+        data = applySessionScopedHoldingToBookRow(data, sessionScopedHolding);
+        if (!libraryContext.libraryId && sessionScopedHolding.libraryId) libraryContext.libraryId = sessionScopedHolding.libraryId;
+        if (!libraryContext.librarySlug && sessionScopedHolding.librarySlug) libraryContext.librarySlug = sessionScopedHolding.librarySlug;
+        if (!libraryContext.libraryName && sessionScopedHolding.libraryName) libraryContext.libraryName = sessionScopedHolding.libraryName;
+      }
+
       await loadReaderScopedServiceChip(data, libraryContext);
 
       const accessState = computeBookAccessState(data, libraryContext);
