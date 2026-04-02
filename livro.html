@@ -269,6 +269,50 @@
       return "";
     }
 
+    function extractLibraryScopeCandidate(source = {}) {
+      return {
+        libraryId: firstNonEmptyString(source?.library_id, source?.biblioteca_id, source?.default_library_id, source?.home_library_id),
+        librarySlug: firstNonEmptyString(source?.library_slug, source?.biblioteca_slug, source?.default_library_slug, source?.home_library_slug, source?.slug),
+        libraryName: firstNonEmptyString(source?.library_name, source?.biblioteca, source?.biblioteca_nome, source?.default_library_name, source?.home_library_name, source?.name)
+      };
+    }
+
+    function mergeLibraryScopes(...scopes) {
+      return {
+        libraryId: firstNonEmptyString(...scopes.map((scope) => scope?.libraryId)),
+        librarySlug: firstNonEmptyString(...scopes.map((scope) => scope?.librarySlug)),
+        libraryName: firstNonEmptyString(...scopes.map((scope) => scope?.libraryName))
+      };
+    }
+
+    async function enrichLibraryScope(scope = {}) {
+      const base = {
+        libraryId: firstNonEmptyString(scope?.libraryId),
+        librarySlug: firstNonEmptyString(scope?.librarySlug),
+        libraryName: firstNonEmptyString(scope?.libraryName)
+      };
+
+      if (base.libraryId && base.librarySlug && base.libraryName) return base;
+
+      try {
+        let query = supabase.from("libraries").select("id,slug,name").limit(1);
+        if (base.libraryId) query = query.eq("id", base.libraryId);
+        else if (base.librarySlug) query = query.eq("slug", base.librarySlug);
+        else return base;
+
+        const { data, error } = await query.maybeSingle();
+        if (error || !data) return base;
+
+        return mergeLibraryScopes(base, {
+          libraryId: firstNonEmptyString(data?.id),
+          librarySlug: firstNonEmptyString(data?.slug),
+          libraryName: firstNonEmptyString(data?.name)
+        });
+      } catch (_) {
+        return base;
+      }
+    }
+
     function normalizeCoverObjectPath(pathOrUrl) {
       const raw = String(pathOrUrl || "").trim();
       if (!raw) return "";
@@ -555,6 +599,8 @@
           library_slug: directScope.librarySlug,
           library_name: directScope.libraryName,
           exemplares_total: bookRow?.exemplares_total,
+          session_exemplares_total: bookRow?.session_exemplares_total ?? bookRow?.exemplares_total,
+          available_count: bookRow?.available_count,
           loanable: bookRow?.loanable
         };
       }
@@ -885,12 +931,14 @@
     }
 
     function resolveBookPageLibraryScope(bookRow = {}, libraryContext = {}) {
-      const direct = {
-        libraryId: firstNonEmptyString(libraryContext?.libraryId, bookRow?.library_id),
-        librarySlug: firstNonEmptyString(libraryContext?.librarySlug, bookRow?.library_slug),
-        libraryName: firstNonEmptyString(libraryContext?.libraryName, bookRow?.library_name, bookRow?.biblioteca)
+      const requestedScope = {
+        libraryId: firstNonEmptyString(libraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName)
       };
-      if (direct.libraryId || direct.librarySlug || direct.libraryName) return direct;
+      if (requestedScope.libraryId || requestedScope.librarySlug || requestedScope.libraryName) {
+        return requestedScope;
+      }
 
       const holdings = parseJsonArray(bookRow?.holding_libraries_json);
       if (holdings.length === 1) {
@@ -900,6 +948,13 @@
           libraryName: firstNonEmptyString(holdings[0]?.library_name)
         };
       }
+
+      const direct = {
+        libraryId: firstNonEmptyString(bookRow?.library_id),
+        librarySlug: firstNonEmptyString(bookRow?.library_slug),
+        libraryName: firstNonEmptyString(bookRow?.library_name, bookRow?.biblioteca)
+      };
+      if (!holdings.length && (direct.libraryId || direct.librarySlug || direct.libraryName)) return direct;
 
       return { libraryId: "", librarySlug: "", libraryName: "" };
     }
@@ -987,9 +1042,13 @@
     }
 
     function buildEffectiveReservationLibraryScope(bookRow = {}, libraryContext = {}) {
-      const directScope = resolveBookPageLibraryScope(bookRow, libraryContext);
-      if (directScope.libraryId || directScope.librarySlug || directScope.libraryName) {
-        return directScope;
+      const requestedScope = {
+        libraryId: firstNonEmptyString(libraryContext?.libraryId),
+        librarySlug: firstNonEmptyString(libraryContext?.librarySlug),
+        libraryName: firstNonEmptyString(libraryContext?.libraryName)
+      };
+      if (requestedScope.libraryId || requestedScope.librarySlug || requestedScope.libraryName) {
+        return requestedScope;
       }
 
       const sessionScope = {
@@ -1003,7 +1062,11 @@
         return buildLibraryScopeFromHolding(matchedSessionHolding);
       }
 
-      return sessionScope;
+      if (sessionScope.libraryId || sessionScope.librarySlug || sessionScope.libraryName) {
+        return sessionScope;
+      }
+
+      return resolveBookPageLibraryScope(bookRow, libraryContext);
     }
 
     function isMissingFunctionError(error) {
@@ -2022,6 +2085,23 @@
 
         const profileScope = extractProfileLibraryScope(profile);
 
+        let contextScope = { libraryId: "", librarySlug: "", libraryName: "" };
+        const contextAttempts = [
+          () => supabase.from("my_session_context").select("*").limit(1).maybeSingle(),
+          () => supabase.from("my_access").select("*").limit(1).maybeSingle()
+        ];
+        for (const run of contextAttempts) {
+          try {
+            const { data, error } = await run();
+            if (error || !data) continue;
+            const candidateScope = extractLibraryScopeCandidate(data);
+            if (candidateScope.libraryId || candidateScope.librarySlug || candidateScope.libraryName) {
+              contextScope = candidateScope;
+              break;
+            }
+          } catch (_) {}
+        }
+
         let membershipScope = { libraryId: "", librarySlug: "", libraryName: "" };
         try {
           const { data: memberships } = await supabase
@@ -2042,11 +2122,9 @@
           };
         } catch (_) {}
 
-        const effectiveScope = {
-          libraryId: firstNonEmptyString(profileScope.libraryId, membershipScope.libraryId),
-          librarySlug: firstNonEmptyString(profileScope.librarySlug, membershipScope.librarySlug),
-          libraryName: firstNonEmptyString(profileScope.libraryName, membershipScope.libraryName)
-        };
+        const effectiveScope = await enrichLibraryScope(
+          mergeLibraryScopes(contextScope, profileScope, membershipScope)
+        );
 
         currentUserContext = {
           isLoggedIn: true,
@@ -2386,9 +2464,9 @@
       const resumo = colRes ? (data[colRes] || "") : "";
       const pdf = colPdf ? (data[colPdf] || "") : "";
       const localLibraryName = colLibraryName ? firstNonEmptyString(data[colLibraryName]) : "";
-      if (localLibraryName) libraryContext.libraryName = localLibraryName;
-      if (!libraryContext.libraryId && colLibraryId && data[colLibraryId] != null) libraryContext.libraryId = String(data[colLibraryId]).trim();
-      if (!libraryContext.librarySlug && colLibrarySlug && data[colLibrarySlug] != null) libraryContext.librarySlug = String(data[colLibrarySlug]).trim();
+      if (localContextRequested && localLibraryName) libraryContext.libraryName = localLibraryName;
+      if (localContextRequested && !libraryContext.libraryId && colLibraryId && data[colLibraryId] != null) libraryContext.libraryId = String(data[colLibraryId]).trim();
+      if (localContextRequested && !libraryContext.librarySlug && colLibrarySlug && data[colLibrarySlug] != null) libraryContext.librarySlug = String(data[colLibrarySlug]).trim();
       let cover = colCover ? (data[colCover] || "") : "";
 
       if (!cover) {
