@@ -2782,7 +2782,7 @@
       <div class="panel-header">
         <div>
           <h3>Exemplares</h3>
-          <p>Crie ou edite rascunhos de exemplar com tombo, localização e observações físicas. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
+          <p>Crie ou edite exemplares locais ligados a uma ficha comum, com tombo, localização, leitura do holding local e observações materiais. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
         </div>
         <div class="inline">
           <span id="exemplarDraftModePill" class="pill info">Novo rascunho</span>
@@ -2794,10 +2794,10 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de livros para exemplares</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas de livros ativas. Cada exemplar previsto gera uma linha própria. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Cada holding local previsto gera aqui uma linha própria de exemplar local. Nesta etapa, você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="exemplarLotImportId">Livros a carregar</label>
+              <label for="exemplarLotImportId">Fichas comuns a carregar</label>
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -2843,8 +2843,9 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência do livro</label>
+            <label for="exemplarBibRef">Compatibilidade local / ficha comum</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
+            <small>Use aqui a referência local que ancora este exemplar à ficha comum já existente ou em preparação.</small>
           </div>
 
           <div class="field">
@@ -2888,6 +2889,25 @@
             <label for="exemplarNotes">Observações</label>
             <textarea id="exemplarNotes" placeholder="Ex.: lombada danificada; dedicatória manuscrita; carimbo antigo; falta encarte."></textarea>
             <small>Os campos do rótulo são preenchidos e validados na aba Rótulos.</small>
+          </div>
+
+          <div class="field" style="grid-column: span 3;">
+            <div class="book-derived-summary">
+              <div class="book-derived-summary-top">
+                <div>
+                  <h4 class="autofill-panel-title">Leitura do vínculo local</h4>
+                  <div class="hint">Prévia curta do que este formulário já consegue reler como ficha comum em foco, holding local e exemplar local em preparação.</div>
+                </div>
+                <span id="exemplarContextStatusPill" class="pill info">Exemplar local</span>
+              </div>
+              <div class="book-derived-summary-card">
+                <div id="exemplarContextKind" class="book-derived-summary-kind">Ficha comum ainda não localizada</div>
+                <div id="exemplarContextTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
+                <div id="exemplarContextHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
+                <div id="exemplarContextCopy" class="book-derived-summary-line">Exemplar local: —</div>
+                <div id="exemplarContextLabel" class="book-derived-summary-line is-muted">Rótulo e revisão local: —</div>
+              </div>
+            </div>
           </div>
 
           <div class="actions with-danger-far" style="grid-column: span 3;">
@@ -4075,6 +4095,12 @@
       exemplarLocationLevel: el('exemplarLocationLevel'),
       exemplarLocationNote: el('exemplarLocationNote'),
       exemplarShelfLegacyRaw: el('exemplarShelfLegacyRaw'),
+      exemplarContextStatusPill: el('exemplarContextStatusPill'),
+      exemplarContextKind: el('exemplarContextKind'),
+      exemplarContextTitle: el('exemplarContextTitle'),
+      exemplarContextHolding: el('exemplarContextHolding'),
+      exemplarContextCopy: el('exemplarContextCopy'),
+      exemplarContextLabel: el('exemplarContextLabel'),
       bookPublishedPopupBtn: el('bookPublishedPopupBtn'),
       authorPublishedPopupBtn: el('authorPublishedPopupBtn'),
       exemplarPublishedPopupBtn: el('exemplarPublishedPopupBtn'),
@@ -8674,6 +8700,120 @@
       resetLabelForm();
     }
 
+    function getExemplarStatusLabel(status = '') {
+      const map = {
+        draft: 'Em rascunho',
+        ready: 'Pronto para publicação',
+        published: 'Publicado',
+        cancelled: 'Descartado',
+      };
+      return map[String(status || '').toLowerCase()] || 'Em preparação';
+    }
+
+    function getExemplarLabelStatusLabel(status = '') {
+      const map = {
+        pending: 'Pendente de revisão em Rótulos',
+        ready: 'Rótulo validado',
+        published: 'Rótulo publicado',
+      };
+      return map[String(status || '').toLowerCase()] || 'Rótulo ainda não lido';
+    }
+
+    function getExemplarLinkedNoticeContext(bibRef = '') {
+      const key = compactSpaces(String(bibRef || ''));
+      if (!key) return null;
+
+      const published = getPublishedBookForBibRef(key);
+      if (published) {
+        return {
+          source: 'published',
+          kindLabel: 'Ficha comum publicada localizada',
+          title: getBookDisplayTitle(published),
+          subtitle: getBookDisplaySubtitle(published),
+          author: published.autor || published.author || '',
+          materialType: published.tipo_documento || published.type || '',
+          circulation: published.emprestavel,
+          library: published.library_name || published.biblioteca || '',
+        };
+      }
+
+      const queued = (state.batchExemplarItems || []).find(item => String(item?.bibRef || '').trim() === key);
+      if (queued) {
+        return {
+          source: 'draft',
+          kindLabel: 'Ficha comum em preparação localizada',
+          title: queued.title || '—',
+          subtitle: queued.subtitle || '',
+          author: queued.author || '',
+          materialType: '',
+          circulation: null,
+          library: '',
+        };
+      }
+
+      const queueBook = (state.queueItems || []).find(item => String(item?.item_type || '') === 'book' && String(item?.reference_code || '').trim() === key);
+      if (queueBook) {
+        return {
+          source: 'draft',
+          kindLabel: 'Ficha comum em rascunho localizada',
+          title: queueBook.display_title || '—',
+          subtitle: '',
+          author: queueBook.display_subtitle || '',
+          materialType: '',
+          circulation: null,
+          library: '',
+        };
+      }
+
+      return null;
+    }
+
+    function updateExemplarContextPreview() {
+      if (!refs.exemplarContextTitle) return;
+
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const location = compactSpaces(syncExemplarStructuredLocation());
+      const notes = compactSpaces(el('exemplarNotes')?.value || '');
+      const library = compactSpaces(refs.exemplarLocationLibrary?.value || '');
+      const statusLabel = getExemplarStatusLabel(getCurrentExemplarStatus());
+      const labelStatusLabel = getExemplarLabelStatusLabel(getCurrentLabelStatus());
+      const linked = getExemplarLinkedNoticeContext(bibRef);
+      const batchLabel = el('exemplarBatchId')?.value ? `Lote #${el('exemplarBatchId').value}` : 'Sem lote';
+
+      refs.exemplarContextStatusPill.textContent = linked?.source === 'published'
+        ? 'Ficha comum publicada'
+        : linked?.source === 'draft'
+          ? 'Ficha comum em preparação'
+          : 'Exemplar local';
+      refs.exemplarContextStatusPill.className = `pill ${linked?.source === 'published' ? 'ok' : linked?.source === 'draft' ? 'warn' : 'info'}`;
+
+      refs.exemplarContextKind.textContent = linked?.kindLabel || 'Ficha comum ainda não localizada';
+      refs.exemplarContextTitle.textContent = linked
+        ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
+        : (bibRef ? `Compatibilidade local ${bibRef} ainda sem ficha comum relida` : 'Compatibilidade local ainda não informada');
+
+      const holdingParts = [];
+      holdingParts.push(`Compatibilidade local: ${bibRef || '—'}`);
+      holdingParts.push(`Biblioteca: ${library || linked?.library || '—'}`);
+      holdingParts.push(batchLabel);
+      refs.exemplarContextHolding.textContent = `Holding local: ${holdingParts.join(' · ')}`;
+
+      const copyParts = [];
+      copyParts.push(`Tombo: ${tombo || '—'}`);
+      copyParts.push(`Situação do exemplar: ${statusLabel}`);
+      copyParts.push(`Localização: ${location || 'ainda não informada'}`);
+      if (notes) copyParts.push(`Observação material: ${notes}`);
+      refs.exemplarContextCopy.textContent = `Exemplar local: ${copyParts.join(' · ')}`;
+
+      const labelParts = [];
+      labelParts.push(`Rótulo: ${labelStatusLabel}`);
+      labelParts.push(linked?.circulation === false ? 'Circulação prevista: consulta local' : linked?.circulation === true ? 'Circulação prevista: emprestável' : 'Circulação prevista: ainda não relida da ficha comum');
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+      if (labelTitle) labelParts.push(`Título de rótulo em foco: ${labelTitle}`);
+      refs.exemplarContextLabel.textContent = `Rótulo e revisão local: ${labelParts.join(' · ')}`;
+    }
+
     function updateLabelPreview() {
       syncLabelSummaryFromExemplar();
       refs.labelPrevTombo.textContent = el('exemplarTombo').value || '—';
@@ -8683,6 +8823,7 @@
       refs.labelPrevTitle.textContent = el('labelTitleInput')?.value || 'Título';
       refs.labelPrevNote.textContent = el('labelNoteInput')?.value || 'Sem nota de rótulo.';
       renderLabelSuggestion();
+      updateExemplarContextPreview();
     }
 
     ['exemplarTombo','exemplarBibRef','exemplarShelf','exemplarBatchId'].forEach(id => {
@@ -13807,15 +13948,13 @@ ${decisionSummary}` : '',
       return [
         prefix,
         '- nada pendente',
-      ].join('
-');
+      ].join('\n');
     }
 
     return [
       prefix,
       ...clean.map((item) => `- ${item}`),
-    ].join('
-');
+    ].join('\n');
   }
 
   /*
@@ -14012,8 +14151,7 @@ ${decisionSummary}` : '',
       );
     }
 
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   /*
@@ -14041,8 +14179,7 @@ ${decisionSummary}` : '',
           readiness.missing,
           'Ainda falta:'
         ),
-      ].join('
-');
+      ].join('\n');
     }
 
     if (partnerDocumentActionState.mutualizeAllowed) {
@@ -14089,8 +14226,7 @@ ${decisionSummary}` : '',
       `Comparação: ${partnerDocumentActionState.compareAllowed ? 'autorizada' : 'bloqueada'}`,
       `Preparação local: ${partnerDocumentActionState.importAllowed ? 'autorizada' : 'bloqueada'}`,
       `Mutualização: ${partnerDocumentActionState.mutualizeAllowed ? 'autorizada politicamente, sem modificação livre' : 'fora desta etapa'}`,
-    ].join('
-');
+    ].join('\n');
   }
 
   function getPartnerWriteNowText() {
@@ -14106,16 +14242,14 @@ ${decisionSummary}` : '',
             importReadiness.missing,
             'Ainda falta:'
           ),
-        ].join('
-');
+        ].join('\n');
       }
 
       return [
         'A preparação local já pode escrever na ficha, mas só em camada local.',
         '',
         getImportFieldWritePreviewText(),
-      ].join('
-');
+      ].join('\n');
     }
 
     if (partnerDocumentActionState.workspaceOpen) {
@@ -14127,16 +14261,14 @@ ${decisionSummary}` : '',
             comparisonReadiness.missing,
             'Ainda falta:'
           ),
-        ].join('
-');
+        ].join('\n');
       }
 
       return [
         'A comparação já pode escrever na ficha, mas só em camada local.',
         '',
         getComparisonFieldWritePreviewText(),
-      ].join('
-');
+      ].join('\n');
     }
 
     if (partnerDocumentActionState.importAllowed) {
@@ -14171,8 +14303,7 @@ ${decisionSummary}` : '',
       );
     }
 
-    return lines.join('
-');
+    return lines.join('\n');
   }
 
   function getPartnerBlockersNowText() {
@@ -14187,8 +14318,7 @@ ${decisionSummary}` : '',
         partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo.',
         '',
         'Enquanto isso, a leitura política continua visível, mas a escrita documental segue bloqueada.',
-      ].join('
-');
+      ].join('\n');
     }
 
     if (partnerDocumentActionState.importWorkspaceOpen) {
