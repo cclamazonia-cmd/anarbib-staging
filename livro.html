@@ -668,10 +668,26 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       });
     }
 
+    const STANDARD_LOAN_DAYS = 21;
+
+    function startOfUtcDay(date) {
+      const parsed = parseAvailabilityDate(date);
+      if (!parsed) return null;
+      return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+    }
+
+    function addUtcDays(date, days) {
+      const base = startOfUtcDay(date);
+      if (!base || !Number.isFinite(Number(days))) return null;
+      const shifted = new Date(base.getTime());
+      shifted.setUTCDate(shifted.getUTCDate() + Number(days));
+      return shifted;
+    }
+
     function collectAvailabilityDateCandidates(source, collector = []) {
       if (!source || typeof source !== "object") return collector;
 
-      const candidateKeys = [
+      const directKeys = [
         "session_next_available_on",
         "next_available_at",
         "next_available_on",
@@ -692,15 +708,33 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         "devolucao_prevista_em",
         "expected_return_at",
         "loan_due_at",
+        "loan_due_default_at",
+        "default_due_at"
+      ];
+      const reservationKeys = [
         "pickup_scheduled_for",
         "scheduled_for",
-        "retirada_agendada_para"
+        "retirada_agendada_para",
+        "reservation_scheduled_for",
+        "reserved_for",
+        "reserva_agendada_para"
       ];
+      const today = startOfUtcDay(new Date());
 
-      for (const key of candidateKeys) {
+      for (const key of directKeys) {
         const parsed = parseAvailabilityDate(source?.[key]);
         if (!parsed) continue;
-        collector.push({ key, date: parsed, iso: parsed.toISOString() });
+        collector.push({ key, date: parsed, iso: parsed.toISOString(), source: "direct" });
+      }
+
+      for (const key of reservationKeys) {
+        const reservationDate = startOfUtcDay(source?.[key]);
+        if (!reservationDate || !today) continue;
+        const diffDays = Math.floor((reservationDate.getTime() - today.getTime()) / 86400000);
+        if (diffDays < 0 || diffDays >= STANDARD_LOAN_DAYS) continue;
+        const blockedUntil = addUtcDays(reservationDate, STANDARD_LOAN_DAYS);
+        if (!blockedUntil) continue;
+        collector.push({ key, date: blockedUntil, iso: blockedUntil.toISOString(), source: "reservation-block" });
       }
 
       return collector;
@@ -710,6 +744,12 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return (Array.isArray(candidates) ? candidates : [])
         .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
         .sort((a, b) => a.date.getTime() - b.date.getTime())[0] || null;
+    }
+
+    function pickLatestAvailabilityDate(candidates = []) {
+      return (Array.isArray(candidates) ? candidates : [])
+        .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
+        .sort((a, b) => b.date.getTime() - a.date.getTime())[0] || null;
     }
 
     function deriveAvailabilityInfo(bookRow = {}, libraryContext = {}) {
@@ -728,19 +768,34 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       const countKeys = [
         "session_available_count",
-        "session_exemplares_total",
         "available_count",
         "available_now_count",
         "disponiveis",
         "disponiveis_agora",
         "copies_available",
-        "available_items",
-        "exemplares_total"
+        "available_items"
       ];
 
       const hasAvailableNow = candidateSources.some((source) => {
         return countKeys.some((key) => normalizeCount(source?.[key]) > 0);
       });
+
+      const dateCandidates = [];
+      candidateSources.forEach((source) => collectAvailabilityDateCandidates(source, dateCandidates));
+      const earliestReservationBlock = pickEarliestAvailabilityDate(dateCandidates.filter((entry) => entry?.source === 'reservation-block'));
+      const earliestDirect = pickEarliestAvailabilityDate(dateCandidates.filter((entry) => entry?.source !== 'reservation-block'));
+      const latestUnavailableDate = pickLatestAvailabilityDate([
+        ...(earliestDirect ? [earliestDirect] : []),
+        ...(earliestReservationBlock ? [earliestReservationBlock] : [])
+      ]);
+
+      if (hasAvailableNow && earliestReservationBlock) {
+        return {
+          isAvailableNow: false,
+          nextDate: earliestReservationBlock.date || null,
+          nextDateLabel: earliestReservationBlock ? formatAvailabilityDate(earliestReservationBlock.date) : ""
+        };
+      }
 
       if (hasAvailableNow) {
         return {
@@ -750,14 +805,10 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         };
       }
 
-      const dateCandidates = [];
-      candidateSources.forEach((source) => collectAvailabilityDateCandidates(source, dateCandidates));
-      const earliest = pickEarliestAvailabilityDate(dateCandidates);
-
       return {
         isAvailableNow: false,
-        nextDate: earliest?.date || null,
-        nextDateLabel: earliest ? formatAvailabilityDate(earliest.date) : ""
+        nextDate: latestUnavailableDate?.date || null,
+        nextDateLabel: latestUnavailableDate ? formatAvailabilityDate(latestUnavailableDate.date) : ""
       };
     }
 
@@ -785,8 +836,11 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           library_name: firstNonEmptyString(resolvedSessionScope.libraryName, sessionScope.libraryName),
           local_bib_ref: firstNonEmptyString(bookRow?.session_local_bib_ref, bookRow?.bib_ref),
           session_exemplares_total: bookRow?.session_exemplares_total,
+          session_available_count: bookRow?.session_available_count,
           available_count: bookRow?.session_available_count ?? bookRow?.available_count,
           next_available_on: firstNonEmptyString(bookRow?.session_next_available_on),
+          due_at: firstNonEmptyString(bookRow?.due_at, bookRow?.return_due_at, bookRow?.loan_due_at, bookRow?.devolucao_prevista),
+          pickup_scheduled_for: firstNonEmptyString(bookRow?.pickup_scheduled_for, bookRow?.scheduled_for, bookRow?.retirada_agendada_para),
           loanable: typeof bookRow?.session_loanable === "boolean" ? bookRow.session_loanable : bookRow?.loanable
         };
       }
@@ -817,7 +871,10 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           library_name: directScope.libraryName,
           exemplares_total: bookRow?.exemplares_total,
           session_exemplares_total: bookRow?.session_exemplares_total ?? bookRow?.exemplares_total,
+          session_available_count: bookRow?.session_available_count,
           available_count: bookRow?.session_available_count ?? bookRow?.available_count,
+          due_at: firstNonEmptyString(bookRow?.due_at, bookRow?.return_due_at, bookRow?.loan_due_at, bookRow?.devolucao_prevista),
+          pickup_scheduled_for: firstNonEmptyString(bookRow?.pickup_scheduled_for, bookRow?.scheduled_for, bookRow?.retirada_agendada_para),
           loanable: typeof bookRow?.session_loanable === "boolean" ? bookRow.session_loanable : bookRow?.loanable
         };
       }
@@ -974,11 +1031,11 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         };
       }
 
-      const sessionExemplaresTotal = normalizeCount(
-        sessionHolding?.session_exemplares_total ?? sessionHolding?.exemplares_total ?? sessionHolding?.available_count ?? bookRow?.session_exemplares_total ?? bookRow?.available_count ?? bookRow?.exemplares_total ?? 0
+      const sessionAvailableNow = normalizeCount(
+        sessionHolding?.session_available_count ?? sessionHolding?.available_count ?? bookRow?.session_available_count ?? bookRow?.available_count ?? 0
       );
 
-      if (sessionExemplaresTotal > 0 || availabilityInfo?.isAvailableNow) {
+      if (sessionAvailableNow > 0 || availabilityInfo?.isAvailableNow) {
         return {
           key: "available",
           label: availableNowLabel,

@@ -1142,6 +1142,7 @@ const AVAILABILITY_FILTER_OPTIONS = [
   { key: 'unavailable_now', label: 'Indisponível no momento' },
   { key: 'check', label: 'Disponibilidade a verificar' }
 ];
+const STANDARD_LOAN_DAYS = 21;
 const FILTER_SESSION_STORAGE_KEY = 'anarbib:index:filter-state';
 const FILTER_AUTH_MARKER_STORAGE_KEY = 'anarbib:index:filter-auth-marker';
 
@@ -1511,11 +1512,12 @@ function getStatusInfo(r) {
   const userLibrary = getUserLibraryContext();
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
   const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
+  const availabilityInfo = deriveAvailabilityInfoForRow(r);
 
   if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
-      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable', nextDateLabel: '' };
     }
 
     const localRows = canUsePersonalizedAvailability
@@ -1525,7 +1527,7 @@ function getStatusInfo(r) {
     const localHintedStatus = localRows
       .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
       .find(Boolean);
-    if (localHintedStatus) return localHintedStatus;
+    if (localHintedStatus) return { ...localHintedStatus, nextDateLabel: '' };
 
     const rowSessionLibraryLike = {
       library_id: r?.session_library_id ?? r?.library_id ?? null,
@@ -1536,28 +1538,34 @@ function getStatusInfo(r) {
     const rowHintedStatus = canUsePersonalizedAvailability && rowMatchesUserLibrary(rowSessionLibraryLike, userLibrary)
       ? mapSessionStatusHintToStatus(r?.session_status_hint)
       : null;
-    if (rowHintedStatus) return rowHintedStatus;
+    if (rowHintedStatus) return { ...rowHintedStatus, nextDateLabel: '' };
 
     if (!localRows.length) {
-      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable', nextDateLabel: '' };
     }
 
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
 
-    const localAvailable = localRows.some((item) => Number(item?.session_available_count ?? item?.available_count ?? 0) > 0)
-      || (rowMatchesUserLibrary(r, userLibrary) && Number(r?.session_available_count ?? r?.available_count ?? 0) > 0);
-    if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
-
-    if (canUsePersonalizedAvailability) {
-      return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
+    if (availabilityInfo?.isAvailableNow) {
+      return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available', nextDateLabel: '' };
     }
 
-    return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+    return {
+      key: 'unavailable',
+      filterKey: 'unavailable_now',
+      label: availabilityInfo?.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : 'Indisponível no momento',
+      cls: 'status-unavailable',
+      nextDateLabel: availabilityInfo?.nextDateLabel || ''
+    };
   }
 
-  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
+  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
+  if (availabilityInfo?.isAvailableNow) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available', nextDateLabel: '' };
+  if (availabilityInfo?.nextDateLabel) {
+    return { key: 'unavailable', filterKey: 'unavailable_now', label: `Disponível dia ${availabilityInfo.nextDateLabel}`, cls: 'status-unavailable', nextDateLabel: availabilityInfo.nextDateLabel };
+  }
+  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable', nextDateLabel: '' };
 }
 function parseQuery(raw) {
   const out = { tokens: [], phrases: [] };
@@ -1644,6 +1652,180 @@ function getSelectedLibraryLabels() {
 
 function normalizeBibRefValue(value) {
   return String(value || '').trim();
+}
+function parseAvailabilityDate(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  let parsed = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    parsed = new Date(`${raw}T00:00:00Z`);
+  } else {
+    parsed = new Date(raw);
+  }
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+function startOfUtcDay(date) {
+  const parsed = parseAvailabilityDate(date);
+  if (!parsed) return null;
+  return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+}
+function addUtcDays(date, days) {
+  const base = startOfUtcDay(date);
+  if (!base || !Number.isFinite(Number(days))) return null;
+  const shifted = new Date(base.getTime());
+  shifted.setUTCDate(shifted.getUTCDate() + Number(days));
+  return shifted;
+}
+function formatAvailabilityDate(value) {
+  const parsed = parseAvailabilityDate(value);
+  if (!parsed) return '';
+  return parsed.toLocaleDateString('pt-BR', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+}
+function collectExplicitAvailabilityDateCandidates(source, collector = []) {
+  if (!source || typeof source !== 'object') return collector;
+  const directKeys = [
+    'session_next_available_on',
+    'next_available_at',
+    'next_available_on',
+    'available_from',
+    'available_on',
+    'expected_available_at',
+    'expected_available_on',
+    'estimated_available_at',
+    'estimated_available_on',
+    'proxima_disponibilidade',
+    'proxima_disponibilidade_em',
+    'data_disponivel',
+    'data_disponibilidade',
+    'data_prevista_disponibilidade',
+    'return_due_at',
+    'due_at',
+    'devolucao_prevista',
+    'devolucao_prevista_em',
+    'expected_return_at',
+    'loan_due_at',
+    'loan_due_default_at',
+    'default_due_at'
+  ];
+  for (const key of directKeys) {
+    const parsed = parseAvailabilityDate(source?.[key]);
+    if (!parsed) continue;
+    collector.push({ key, date: parsed, iso: parsed.toISOString(), source: 'direct' });
+  }
+  return collector;
+}
+function collectReservationBlockingCandidates(source, collector = []) {
+  if (!source || typeof source !== 'object') return collector;
+  const reservationKeys = [
+    'pickup_scheduled_for',
+    'scheduled_for',
+    'retirada_agendada_para',
+    'reservation_scheduled_for',
+    'reserved_for',
+    'reserva_agendada_para'
+  ];
+  const today = startOfUtcDay(new Date());
+  if (!today) return collector;
+  for (const key of reservationKeys) {
+    const parsed = startOfUtcDay(source?.[key]);
+    if (!parsed) continue;
+    const diffDays = Math.floor((parsed.getTime() - today.getTime()) / 86400000);
+    if (diffDays < 0 || diffDays >= STANDARD_LOAN_DAYS) continue;
+    const blockedUntil = addUtcDays(parsed, STANDARD_LOAN_DAYS);
+    if (!blockedUntil) continue;
+    collector.push({ key, date: blockedUntil, iso: blockedUntil.toISOString(), source: 'reservation-block' });
+  }
+  return collector;
+}
+function pickEarliestAvailabilityDate(candidates = []) {
+  return (Array.isArray(candidates) ? candidates : [])
+    .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0] || null;
+}
+function pickLatestAvailabilityDate(candidates = []) {
+  return (Array.isArray(candidates) ? candidates : [])
+    .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
+    .sort((a, b) => b.date.getTime() - a.date.getTime())[0] || null;
+}
+function deriveAvailabilityInfoForRow(r) {
+  const userLibrary = getUserLibraryContext();
+  const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
+  const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
+  const localRows = hasScopedLibrary
+    ? (canUsePersonalizedAvailability
+        ? getSessionScopedLocalRows(r, userLibrary)
+        : getRowLibraryCandidates(r).filter((item) => rowMatchesUserLibrary(item, userLibrary)))
+    : getRowLibraryCandidates(r);
+
+  const candidateSources = [];
+  if (localRows.length) candidateSources.push(...localRows);
+  if (hasScopedLibrary && rowMatchesUserLibrary({
+    library_id: r?.session_library_id ?? r?.library_id ?? null,
+    library_slug: firstNonEmptyString(r?.session_library_slug, r?.library_slug),
+    library_name: firstNonEmptyString(r?.session_library_name, r?.library_name, r?.biblioteca),
+    bib_ref: r?.bib_ref
+  }, userLibrary)) {
+    candidateSources.push(r);
+  } else if (!hasScopedLibrary) {
+    candidateSources.push(r);
+  }
+
+  const hasAvailableNow = hasScopedLibrary
+    ? localRows.some((item) => Number(item?.session_available_count ?? item?.available_count ?? 0) > 0)
+      || (canUsePersonalizedAvailability && rowMatchesUserLibrary({
+          library_id: r?.session_library_id ?? r?.library_id ?? null,
+          library_slug: firstNonEmptyString(r?.session_library_slug, r?.library_slug),
+          library_name: firstNonEmptyString(r?.session_library_name, r?.library_name, r?.biblioteca),
+          bib_ref: r?.bib_ref
+        }, userLibrary) && Number(r?.session_available_count ?? 0) > 0)
+    : candidateSources.some((item) => Number(item?.available_count ?? 0) > 0);
+
+  const explicitCandidates = [];
+  const reservationBlockingCandidates = [];
+  candidateSources.forEach((source) => {
+    collectExplicitAvailabilityDateCandidates(source, explicitCandidates);
+    collectReservationBlockingCandidates(source, reservationBlockingCandidates);
+  });
+
+  const earliestReservationBlock = pickEarliestAvailabilityDate(reservationBlockingCandidates);
+  const earliestExplicit = pickEarliestAvailabilityDate(explicitCandidates);
+  const latestUnavailableDate = pickLatestAvailabilityDate([
+    ...(earliestExplicit ? [earliestExplicit] : []),
+    ...(earliestReservationBlock ? [earliestReservationBlock] : [])
+  ]);
+
+  if (hasAvailableNow && earliestReservationBlock) {
+    return {
+      isAvailableNow: false,
+      nextDate: earliestReservationBlock.date,
+      nextDateLabel: formatAvailabilityDate(earliestReservationBlock.date),
+      blockedByReservation: true
+    };
+  }
+
+  if (hasAvailableNow) {
+    return {
+      isAvailableNow: true,
+      nextDate: null,
+      nextDateLabel: '',
+      blockedByReservation: false
+    };
+  }
+
+  return {
+    isAvailableNow: false,
+    nextDate: latestUnavailableDate?.date || null,
+    nextDateLabel: latestUnavailableDate ? formatAvailabilityDate(latestUnavailableDate.date) : '',
+    blockedByReservation: !!earliestReservationBlock
+  };
 }
 function hasActiveReservationBibRef(bibRef) {
   const key = normalizeBibRefValue(bibRef);
@@ -2667,8 +2849,12 @@ function normalizeHoldingLibraries(value, row = null) {
       session_library_slug: firstNonEmptyString(row?.session_library_slug),
       session_library_name: firstNonEmptyString(row?.session_library_name),
       exemplares_total,
+      available_count: Number(item?.available_count ?? 0) || 0,
       tombos_json,
       loanable: row?.loanable === false ? false : true,
+      next_available_on: firstNonEmptyString(item?.next_available_on, item?.next_available_at, item?.available_on, item?.available_from),
+      due_at: firstNonEmptyString(item?.due_at, item?.return_due_at, item?.loan_due_at, item?.devolucao_prevista),
+      pickup_scheduled_for: firstNonEmptyString(item?.pickup_scheduled_for, item?.scheduled_for, item?.retirada_agendada_para),
       session_has_holding: !!matchesSession,
       session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : 0,
       session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : 0,
@@ -2950,6 +3136,12 @@ function buildReservationMarkup(r) {
   }
   if (status.key === 'local') {
     return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
+  }
+  if (status.filterKey === 'unavailable_now' && status.nextDateLabel) {
+    return `<div class="reserve-slot"><span class="reserve-note">Disponível dia ${escapeHTML(status.nextDateLabel)}</span></div>`;
+  }
+  if (status.filterKey === 'unavailable_other_library') {
+    return '<div class="reserve-slot"><span class="reserve-note">Disponível em outra biblioteca</span></div>';
   }
   if (status.key === 'unavailable') {
     return '<div class="reserve-slot"><span class="reserve-note">Indisponível</span></div>';
