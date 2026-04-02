@@ -3147,8 +3147,8 @@
           <div class="book-derived-summary">
             <div class="book-derived-summary-top">
               <div>
-                <h4 class="autofill-panel-title">Leitura ficha comum → exemplar local → rótulo</h4>
-                <div class="hint">Esta prévia relê, numa única superfície, o vínculo entre a ficha comum em foco, o exemplar local aberto e o estado atual do rótulo que vai para a plancha.</div>
+                <h4 class="autofill-panel-title">Leitura ficha comum → holding local → exemplar local → rótulo local</h4>
+                <div class="hint">Esta prévia relê, numa única superfície, o vínculo entre a ficha comum em foco, o holding local, o exemplar local aberto e o estado atual do rótulo local que vai para a plancha.</div>
               </div>
               <span id="labelFlowStatusPill" class="pill info">Rótulo local</span>
             </div>
@@ -3403,7 +3403,7 @@
             </div>
             <div class="catalog-layer-summary">
               <div class="catalog-layer-card">
-                <div class="catalog-layer-card-title">Documentos publicados visíveis</div>
+                <div class="catalog-layer-card-title">Fichas comuns publicadas visíveis</div>
                 <div id="catalogSummaryNoticeValue" class="catalog-layer-card-value">0</div>
                 <div id="catalogSummaryNoticeNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
               </div>
@@ -10559,8 +10559,8 @@
     function getQueueWorkHintText(item = {}) {
       if (item.item_type === 'book') {
         return item.status === 'ready'
-          ? 'Fiche commune pronta: revisar a saída pública mínima, confirmar lote e publicar quando a camada local estiver madura.'
-          : 'Fiche commune ainda em rascunho: revisar núcleo comum, holding local e saída pública mínima antes de marcar como pronta.';
+          ? 'Ficha comum pronta: revisar a saída pública mínima, confirmar lote e publicar quando a camada local estiver madura.'
+          : 'Ficha comum ainda em rascunho: revisar núcleo comum, holding local e saída pública mínima antes de marcar como pronta.';
       }
       if (item.item_type === 'author') {
         return item.status === 'ready'
@@ -12030,7 +12030,7 @@ function renderCatalogBooks() {
       <thead>
         <tr>
           <th>Operações</th>
-          <th class="sortable">${renderSortableHeader('Notice publicada', 'books', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'books', 'title')}</th>
           <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'books', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Exemplar local', 'books', 'total_exemplares')}</th>
           <th>Rascunho de edição local</th>
@@ -12085,7 +12085,7 @@ function renderCatalogOtherDocuments() {
       <thead>
         <tr>
           <th>Operações</th>
-          <th class="sortable">${renderSortableHeader('Notice publicada', 'otherDocs', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'otherDocs', 'title')}</th>
           <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'otherDocs', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Exemplar local', 'otherDocs', 'total_exemplares')}</th>
           <th>Rascunho de edição local</th>
@@ -12365,7 +12365,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
           'Sem rascunho ativo',
           [
             { text: `Nenhuma retomada local aberta para este ${kindLabel}.`, muted: false },
-            { text: 'A notice publicada continua intacta até a criação do rascunho de edição.', muted: true },
+            { text: 'A ficha comum publicada continua intacta até a criação do rascunho de edição.', muted: true },
           ],
           [],
           'Rascunho local'
@@ -12388,7 +12388,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
     function renderCatalogBookNoticeCell(book = {}) {
       return `
         <div class="catalog-layer-stack">
-          <div class="catalog-layer-eyebrow">Notice publicada</div>
+          <div class="catalog-layer-eyebrow">Ficha comum publicada</div>
           ${renderBookDisplayTitleHtml(book)}
           <div class="catalog-layer-line">ID publicado: #${sanitize(book.id || '—')}</div>
           <div class="catalog-layer-line">${sanitize(buildCatalogQuickLine([
@@ -12404,7 +12404,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       return buildCatalogLayerStack(
         bibRef || 'Sem referência local visível',
         [
-          { text: bibRef ? `Compatibilidade pública atual: ${bibRef}` : 'Esta notice não mostra referência local / compatibilidade.', muted: false },
+          { text: bibRef ? `Compatibilidade local publicada: ${bibRef}` : 'Esta ficha comum publicada não mostra referência local / compatibilidade.', muted: false },
           { text: 'Camada local de apoio, não pivô principal da ficha comum.', muted: true },
         ],
         bibRef ? ['Compat local'] : [],
@@ -12418,7 +12418,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       return buildCatalogLayerStack(
         exemplarLabel,
         [
-          { text: totalExemplares ? 'Há holding local publicado ligado a esta notice.' : 'Nenhum exemplar publicado visível para esta notice neste recorte.', muted: false },
+          { text: totalExemplares ? 'Há holding local publicado ligado a esta ficha comum.' : 'Nenhum exemplar publicado visível para esta ficha comum neste recorte.', muted: false },
           { text: 'A circulação local concreta depende desta camada de exemplares.', muted: true },
         ],
         totalExemplares ? ['Holding local visível'] : ['Sem exemplar visível'],
@@ -12453,7 +12453,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
     }
 
     function renderCatalogExemplarNoticeCell(ex = {}) {
-      const title = compactSpaces(ex.titulo_etiqueta || '') || 'Notice relida ainda não disponível';
+      const title = compactSpaces(ex.titulo_etiqueta || '') || 'Ficha comum relida ainda não disponível';
       const author = compactSpaces(ex.autor_etiqueta || '');
       return buildCatalogLayerStack(
         title,
@@ -12462,7 +12462,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
           { text: 'Leitura publicada relida a partir do exemplar local já validado.', muted: true },
         ],
         [],
-        'Notice publicada relida'
+        'Ficha comum publicada relida'
       );
     }
 
@@ -12488,12 +12488,12 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       if (refs.catalogSummaryNoticeValue) refs.catalogSummaryNoticeValue.textContent = String(visibleDocuments.length);
       if (refs.catalogSummaryNoticeNote) refs.catalogSummaryNoticeNote.textContent = visibleDocuments.length
         ? `${visibleBookish.length} livros/brochuras/periódicos e ${visibleOther.length} outros documentos publicados neste recorte.`
-        : 'Nenhuma notice publicada visível para este recorte.';
+        : 'Nenhuma ficha comum publicada visível para este recorte.';
 
       if (refs.catalogSummaryCompatValue) refs.catalogSummaryCompatValue.textContent = String(visibleCompat.length);
       if (refs.catalogSummaryCompatNote) refs.catalogSummaryCompatNote.textContent = visibleCompat.length
-        ? `${visibleCompat.length} notices ainda mostram referência local / compatibilidade na leitura publicada.`
-        : 'Nenhuma notice visível mostra referência local / compatibilidade neste recorte.';
+        ? `${visibleCompat.length} fichas comuns ainda mostram referência local / compatibilidade na leitura publicada.`
+        : 'Nenhuma ficha comum visível mostra referência local / compatibilidade neste recorte.';
 
       if (refs.catalogSummaryExemplarValue) refs.catalogSummaryExemplarValue.textContent = String(visibleExemplars.length);
       if (refs.catalogSummaryExemplarNote) refs.catalogSummaryExemplarNote.textContent = visibleExemplars.length
@@ -12502,7 +12502,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
 
       if (refs.catalogSummaryDraftValue) refs.catalogSummaryDraftValue.textContent = String(totalVisibleDrafts);
       if (refs.catalogSummaryDraftNote) refs.catalogSummaryDraftNote.textContent = totalVisibleDrafts
-        ? `${visibleBookDrafts} rascunhos de notices e ${visibleExemplarDrafts} rascunhos de exemplares já estão abertos localmente.`
+        ? `${visibleBookDrafts} rascunhos de fichas comuns e ${visibleExemplarDrafts} rascunhos de exemplares já estão abertos localmente.`
         : 'Nenhum rascunho de edição local visível neste recorte.';
     }
 
@@ -12576,12 +12576,12 @@ function renderCatalogBooksSurfaceSummary(items = []) {
   const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
   const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
   if (!items.length) {
-    setCatalogSurfaceSummary(refs.catalogBooksSummary, '<strong>Leitura da superfície:</strong> nenhuma notice livro/brochura/periódico visível neste recorte.');
+    setCatalogSurfaceSummary(refs.catalogBooksSummary, '<strong>Leitura da superfície:</strong> nenhuma ficha comum livro/brochura/periódico visível neste recorte.');
     return;
   }
   setCatalogSurfaceSummary(
     refs.catalogBooksSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} notices publicadas visíveis; ${compatCount} com compatibilidade local ainda legível; ${exemplarCount} com exemplar local publicado; ${draftCount} com retomada editorial ativa.`
+    `<strong>Leitura da superfície:</strong> ${items.length} fichas comuns publicadas visíveis; ${compatCount} com compatibilidade local ainda legível; ${exemplarCount} com exemplar local publicado; ${draftCount} com retomada editorial ativa.`
   );
 }
 
@@ -12642,7 +12642,7 @@ function renderCatalogOtherDocumentNoticeCell(book = {}) {
       { text: buildCatalogQuickLine([book.autor || book.author ? `Responsável: ${book.autor || book.author}` : '', book.ano ? `Data: ${book.ano}` : '']) || 'Sem responsabilidade ou data relidas.', muted: true },
     ],
     [materialLabel],
-    'Notice publicada'
+    'Ficha comum publicada'
   );
 }
 
@@ -12959,7 +12959,7 @@ function renderCatalogExemplars() {
           <th>Operações</th>
           <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
           <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
-          <th class="sortable">${renderSortableHeader('Notice publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
           <th>Rascunho de edição local</th>
         </tr>
       </thead>
