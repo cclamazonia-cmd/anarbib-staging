@@ -2794,14 +2794,10 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de livros para exemplares</h4>
-          <p class="hint" style="margin:0 0 12px;">
-            Escolha um lote ou carregue todas as fichas comuns ativas.
-            Cada holding local previsto gera aqui uma linha própria de exemplar local.
-            Nesta etapa, você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.
-          </p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas de livros ativas. Cada exemplar previsto gera uma linha própria. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="exemplarLotImportId">Fichas comuns a carregar</label>
+              <label for="exemplarLotImportId">Livros a carregar</label>
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -2812,11 +2808,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input
-                id="exemplarBatchSearchInput"
-                type="text"
-                placeholder="Título, autor, compatibilidade local, tombo ou localização"
-              />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -2851,7 +2843,7 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência local / compatibilidade da ficha comum</label>
+            <label for="exemplarBibRef">Referência do livro</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
           </div>
 
@@ -2925,10 +2917,7 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de exemplares para rótulos</h4>
-          <p class="hint" style="margin:0 0 12px;">
-            Escolha um lote ou carregue todos os rascunhos de exemplares locais ativos.
-            Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto.
-          </p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
               <label for="labelLotImportId">Exemplares a carregar</label>
@@ -2942,11 +2931,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input
-                id="labelBatchSearchInput"
-                type="text"
-                placeholder="Título, autor, compatibilidade local, tombo, CDD ou nota"
-              />
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -2970,13 +2955,11 @@
         </div>
 
         <div class="card">
-          <h4>Rótulo do exemplar local selecionado</h4>
-          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
+          <h4>Rótulo do exemplar selecionado</h4>
+          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">
-              Compat. local: <span id="labelCurrentBibRef">—</span>
-            </div>
+            <div class="pill info">Referência: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -3033,9 +3016,7 @@
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">
-              Compat. local: <span id="labelPrevBibRef">—</span>
-            </div>
+            <div class="pill info">Referência: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -3068,10 +3049,7 @@
       <div class="panel-header">
         <div>
           <h3>Fila editorial</h3>
-          <p>
-            Consulte somente os rascunhos ativos de fichas comuns, fichas de autor e exemplares locais.
-            Cada linha mantém seu contexto de trabalho e suas operações próprias; itens publicados saem desta fila e ficam no catálogo já publicado, enquanto itens descartados seguem para a lixeira.
-          </p>
+          <p>Consulte somente os rascunhos ativos de documentos, autores e exemplares. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
         </div>
         <div class="inline">
           <button id="refreshQueueBtn" class="button secondary">Atualizar fila</button>
@@ -3083,7 +3061,7 @@
             <label for="queueTypeFilter">Tipo</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Fichas comuns</option>
+              <option value="book">Documentos</option>
               <option value="author">Autores</option>
               <option value="exemplar">Exemplares</option>
             </select>
@@ -3098,11 +3076,7 @@
           </div>
           <div class="field">
             <label for="queueSearch">Buscar</label>
-            <input
-              id="queueSearch"
-              type="text"
-              placeholder="Título, autor, tombo, compatibilidade local ou localização…"
-            />
+            <input id="queueSearch" type="text" placeholder="Título, autor, tombo, referência ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -3117,10 +3091,7 @@
           <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
             <div>
               <h4 style="margin:0 0 6px;">Lixeira de rascunhos</h4>
-              <p class="small">
-                Aqui aparecem somente os rascunhos descartados de fichas comuns, fichas de autor e exemplares locais.
-                Você pode restaurar, restaurar e abrir, ou restaurar por seleção quando quiser retomar o trabalho.
-              </p>
+              <p class="small">Aqui aparecem somente os rascunhos descartados de documentos, autores e exemplares. Você pode restaurar ou restaurar e abrir para continuar a edição.</p>
               <p class="small" style="margin-top:8px; color:#ffe0e0;">Atenção: ao esvaziar a lixeira, os rascunhos descartados serão apagados de forma irreversível.</p>
             </div>
             <div class="row-actions">
@@ -3532,6 +3503,29 @@
             </div>
           </div>
 
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
+            <div class="field">
+              <label for="partnerWorkflowScopeOutput">Quadro do gesto ativo</label>
+              <textarea id="partnerWorkflowScopeOutput" rows="5" readonly placeholder="O quadro do gesto ativo aparecerá aqui."></textarea>
+              <small>Este quadro resume a parceira em foco, o nível de autorização ativo e qual microfluxo está realmente aberto agora.</small>
+            </div>
+            <div class="field">
+              <label for="partnerWriteNowOutput">Escrita local que pode sair agora</label>
+              <textarea id="partnerWriteNowOutput" rows="6" readonly placeholder="O que pode sair agora para a ficha aparecerá aqui."></textarea>
+              <small>Quando houver comparação ou preparação suficientemente descritas, este quadro antecipa o gesto local realmente possível antes do clique.</small>
+            </div>
+            <div class="field">
+              <label for="partnerProtectedNowOutput">O que esta etapa não tocará</label>
+              <textarea id="partnerProtectedNowOutput" rows="6" readonly placeholder="Os limites materiais desta etapa aparecerão aqui."></textarea>
+              <small>Serve para reler, de forma seca, o que continua protegido: notice publicada, registro da parceira, camada compartilhada e publicação pública.</small>
+            </div>
+            <div class="field">
+              <label for="partnerBlockersNowOutput">Bloqueios e faltas atuais</label>
+              <textarea id="partnerBlockersNowOutput" rows="6" readonly placeholder="Os bloqueios e faltas atuais aparecerão aqui."></textarea>
+              <small>Este quadro junta o que ainda bloqueia o gesto local: acordo ausente, política travada ou elementos ainda não preenchidos no microfluxo aberto.</small>
+            </div>
+          </div>
+
           <div id="partnerRightsDecisionNote" class="hint" style="margin-top:8px;">
             A matriz acima manda nesta etapa: ela separa leitura política, comparação local, retomada local, enriquecimento da camada local, camada compartilhada e publicação na tua biblioteca.
           </div>
@@ -3573,12 +3567,10 @@
                 <div class="field">
                   <label for="partnerComparisonChecklist">Checklist de leitura local</label>
                   <textarea id="partnerComparisonChecklist" rows="6" readonly placeholder="A checklist local da comparação aparecerá aqui."></textarea>
-                  <small>Use esta checklist como trava mínima antes de levar a comparação para a ficha local.</small>
                 </div>
                 <div class="field">
                   <label for="partnerComparisonPreview">Resumo pronto para revisão</label>
                   <textarea id="partnerComparisonPreview" rows="6" readonly placeholder="O resumo consolidado da comparação aparecerá aqui."></textarea>
-                  <small>Este resumo serve como última releitura humana antes da escrita local assistida.</small>
                 </div>
               </div>
               <div class="field">
@@ -3597,13 +3589,7 @@
               </div>
               <div class="field">
                 <label for="partnerComparisonPrudenceSignal">Sinal de prudência</label>
-                <textarea
-                  id="partnerComparisonPrudenceSignal"
-                  rows="3"
-                  readonly
-                  placeholder="O sinal de prudência da comparação aparecerá aqui."
-                ></textarea>
-                <small>Este sinal lembra que a comparação só pode alimentar campos locais e nota de proveniência, sem importar automaticamente o registro da parceira.</small>
+                <textarea id="partnerComparisonPrudenceSignal" rows="3" readonly placeholder="O sinal de prudência da comparação aparecerá aqui."></textarea>
               </div>
               <div id="partnerComparisonBoundaryNote" class="hint">
                 Esta área continua local, manual e sem importação automática. Ela não altera o estatuto político da parceira e não vale como mutualização.
@@ -3691,22 +3677,12 @@
               </div>
               <div class="field">
                 <label for="partnerImportChecklist">Checklist mínima antes de levar à ficha</label>
-                <textarea
-                  id="partnerImportChecklist"
-                  rows="5"
-                  readonly
-                  placeholder="A checklist mínima desta preparação aparecerá aqui."
-                ></textarea>
+                <textarea id="partnerImportChecklist" rows="5" readonly placeholder="A checklist mínima desta preparação aparecerá aqui."></textarea>
                 <small>Este quadro ajuda a verificar se formato, modo, decisão local e proveniência já estão suficientemente estabilizados para escrita assistida.</small>
               </div>
               <div class="field">
                 <label for="partnerImportPrudenceSignal">Sinal de prudência da preparação</label>
-                <textarea
-                  id="partnerImportPrudenceSignal"
-                  rows="4"
-                  readonly
-                  placeholder="O sinal de prudência desta preparação aparecerá aqui."
-                ></textarea>
+                <textarea id="partnerImportPrudenceSignal" rows="4" readonly placeholder="O sinal de prudência desta preparação aparecerá aqui."></textarea>
                 <small>Mesmo quando tudo estiver pronto, este sinal continua lembrando que a operação permanece local, assistida e sem importação automática real.</small>
               </div>
               <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real. Mesmo quando a mutualização estiver autorizada, isso não vale como modificação livre do registro da parceira.</div>
@@ -6910,14 +6886,8 @@
       });
 
       const importConfigs = [
-        {
-          id: 'exemplarLotImportId',
-          allLabel: 'Todas as fichas comuns ativas'
-        },
-        {
-          id: 'labelLotImportId',
-          allLabel: 'Todos os rascunhos de exemplares locais ativos'
-        },
+        { id: 'exemplarLotImportId', allLabel: 'Todas as fichas de livros ativas' },
+        { id: 'labelLotImportId', allLabel: 'Todos os rascunhos de exemplares ativos' },
       ];
       importConfigs.forEach(({ id, allLabel }) => {
         const node = el(id);
@@ -9910,10 +9880,10 @@
         return { type, id: Number(rawId) };
       }).filter(entry => tableMap[entry.type] && Number.isFinite(entry.id));
 
-      if (!selectedEntries.length) return { count: 0, summary: '' };
+      if (!selectedEntries.length) return 0;
 
       const confirmed = confirmDiscardAction('Os rascunhos selecionados serão enviados para a lixeira. Eles não serão apagados definitivamente e poderão ser restaurados depois. Deseja continuar?');
-      if (!confirmed) return { count: 0, summary: '' };
+      if (!confirmed) return 0;
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
         if (!acc[entry.type]) acc[entry.type] = [];
@@ -9930,13 +9900,12 @@
       }
 
       selectedEntries.forEach(entry => markQueueDraftCancelledLocally(entry.id));
-      const summary = formatQueueTypeCountSummary(selectedEntries);
       clearQueueSelection();
       renderQueue();
       renderTrash();
       await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      return { count: selectedEntries.length, summary };
+      return selectedEntries.length;
     }
 
     function confirmDiscardAction(message) {
@@ -9956,76 +9925,11 @@
 
     function getItemTypeLabel(type = '') {
       const map = {
-        book: 'Ficha comum',
-        author: 'Ficha de autor',
-        exemplar: 'Exemplar local',
+        book: 'Documento',
+        author: 'Autor',
+        exemplar: 'Exemplar',
       };
       return map[type] || (type || '—');
-    }
-
-    function getQueueItemContext(type = '') {
-      const map = {
-        book: {
-          singular: 'ficha comum',
-          plural: 'fichas comuns',
-          editLabel: 'Abrir ficha',
-          publishLabel: 'Publicar ficha',
-          assignLabel: 'Atribuir lote',
-          discardLabel: 'Descartar ficha',
-          restoreLabel: 'Restaurar ficha',
-          restoreOpenLabel: 'Restaurar e abrir ficha',
-        },
-        author: {
-          singular: 'ficha de autor',
-          plural: 'fichas de autor',
-          editLabel: 'Abrir autor',
-          publishLabel: 'Publicar autor',
-          assignLabel: 'Atribuir lote',
-          discardLabel: 'Descartar autor',
-          restoreLabel: 'Restaurar autor',
-          restoreOpenLabel: 'Restaurar e abrir autor',
-        },
-        exemplar: {
-          singular: 'exemplar local',
-          plural: 'exemplares locais',
-          editLabel: 'Abrir exemplar',
-          publishLabel: 'Publicar exemplar',
-          assignLabel: 'Atribuir lote',
-          discardLabel: 'Descartar exemplar',
-          restoreLabel: 'Restaurar exemplar',
-          restoreOpenLabel: 'Restaurar e abrir exemplar',
-        },
-      };
-      return map[type] || {
-        singular: type || 'item',
-        plural: type || 'itens',
-        editLabel: 'Abrir',
-        publishLabel: 'Publicar',
-        assignLabel: 'Atribuir lote',
-        discardLabel: 'Descartar',
-        restoreLabel: 'Restaurar',
-        restoreOpenLabel: 'Restaurar e abrir',
-      };
-    }
-
-    function formatQueueTypeCountSummary(entries = []) {
-      const counts = entries.reduce((acc, entry) => {
-        const type = String(entry?.type || '').trim();
-        if (!type) return acc;
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {});
-      const ordered = ['book', 'author', 'exemplar']
-        .filter(type => counts[type])
-        .map(type => {
-          const count = counts[type];
-          const context = getQueueItemContext(type);
-          return `${count} ${count === 1 ? context.singular : context.plural}`;
-        });
-      if (!ordered.length) return '';
-      if (ordered.length === 1) return ordered[0];
-      if (ordered.length === 2) return `${ordered[0]} e ${ordered[1]}`;
-      return `${ordered.slice(0, -1).join(', ')} e ${ordered[ordered.length - 1]}`;
     }
 
     function getQueueActionLabel(action = '') {
@@ -10083,9 +9987,7 @@
       if (item.item_type !== 'exemplar' || !location || location === '—') return secondary || '—';
       const parts = [];
       if (secondary && secondary !== '—') parts.push(`<div>${secondary}</div>`);
-      parts.push(
-        `<div><strong>Localização local:</strong> ${location}</div>`
-      );
+      parts.push(`<div><strong>Localização:</strong> ${location}</div>`);
       return parts.join('');
     }
 
@@ -10121,10 +10023,10 @@
         return { type, id: Number(rawId) };
       }).filter(entry => tableMap[entry.type] && Number.isFinite(entry.id));
 
-      if (!selectedEntries.length) return { count: 0, summary: '' };
+      if (!selectedEntries.length) return 0;
 
       const confirmed = window.confirm('Os rascunhos selecionados serão restaurados da lixeira. Deseja continuar?');
-      if (!confirmed) return { count: 0, summary: '' };
+      if (!confirmed) return 0;
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
         if (!acc[entry.type]) acc[entry.type] = [];
@@ -10140,11 +10042,10 @@
         if (error) throw error;
       }
 
-      const summary = formatQueueTypeCountSummary(selectedEntries);
       clearTrashSelection();
       await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      return { count: selectedEntries.length, summary };
+      return selectedEntries.length;
     }
 
     async function emptyTrash() {
@@ -10188,7 +10089,7 @@
             <tr>
               <th style="width:52px; text-align:center;"><input id="trashSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis da lixeira" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
               <th>Tipo</th>
-              <th>Compat. local</th>
+              <th>Referência</th>
               <th>Título / nome</th>
               <th>Complemento</th>
               <th>Lote</th>
@@ -10210,8 +10111,8 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).restoreLabel)}</button>
-                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).restoreOpenLabel)}</button>
+                    <button class="btn-inline small secondary" data-action="restore-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar</button>
+                    <button class="btn-inline small success" data-action="restore-open-trash" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Restaurar e abrir</button>
                   </div>
                 </td>
               </tr>`;
@@ -10250,9 +10151,9 @@
       if (restoreSelectedBtn) {
         restoreSelectedBtn.addEventListener('click', async () => {
           try {
-            const restoreResult = await restoreSelectedTrashDrafts();
-            if (restoreResult.count) {
-              showMessage(refs.trashMessage, `Restauração concluída: ${restoreResult.summary}.`, 'ok');
+            const restoredCount = await restoreSelectedTrashDrafts();
+            if (restoredCount) {
+              showMessage(refs.trashMessage, `${restoredCount} rascunhos foram restaurados da lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -10264,7 +10165,7 @@
         btn.addEventListener('click', async () => {
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, `Restauração concluída: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
+            showMessage(refs.trashMessage, 'Rascunho restaurado com sucesso.', 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -10276,7 +10177,7 @@
           try {
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             await fetchDraftAndEdit(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, `Restauração e abertura concluídas: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
+            showMessage(refs.trashMessage, 'Rascunho restaurado e aberto para edição.', 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -10650,28 +10551,17 @@
       renderExemplarBatchQueue();
 
       if (!state.batchExemplarItems.length) {
-        showMessage(
-          refs.exemplarBatchMessage,
-          sourceId === '__all__'
-            ? 'Não há fichas comuns ativas para abrir em exemplares locais.'
-            : 'Este lote não tem fichas comuns ativas para abrir em exemplares locais.',
-          'info'
-        );
+        showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas de livros ativas para importar em exemplares.' : 'Este lote não tem fichas de livros ativas para importar em exemplares.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(
-          refs.exemplarBatchMessage,
-          `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar local para validar.`,
-          'ok'
-        );
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) de livro carregada(s), gerando ${totalCopies} linha(s) de exemplar para validar.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML =
-          '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas ativas — para gerar as linhas de exemplar local holding por holding.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de livros — ou todas as fichas ativas — para gerar as linhas de exemplar livro por livro.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -10690,8 +10580,7 @@
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML =
-          '<div class="empty">Todas as linhas de exemplar local desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -10705,14 +10594,10 @@
           <div class="batch-exemplar-book-head">
             <div>
               ${renderBookTitleStackHtml(group.title || '—', group.subtitle || '')}
-              <div class="batch-exemplar-book-copy-note">
-                ${group.pendingCount} linha(s) pendente(s) para esta ficha comum${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.
-              </div>
+              <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
-              <span class="pill info">
-                Compat. ${sanitize(group.bibRef || '—')}
-              </span>
+              <span class="pill info">Ref. ${sanitize(group.bibRef || '—')}</span>
               ${getQueueStatusBadge(group.bookStatus || 'draft')}
               <span class="pill warn">Exemplares já cadastrados: ${sanitize(group.publishedCount)}</span>
             </div>
@@ -10722,11 +10607,9 @@
             ${group.visibleRows.map(({ copy, copyIndex, bookIndex }) => `
               <div class="batch-exemplar-copy-row ${copy.isExtraCopy ? 'copy-extra' : ''}" data-batch-book-index="${bookIndex}" data-batch-copy-index="${copyIndex}">
                 <div class="batch-exemplar-copy-head">
-                  <span class="batch-exemplar-copy-index">Exemplar local ${copy.slotIndex}${copy.isExtraCopy ? ' · linha adicional' : ''}</span>
+                  <span class="batch-exemplar-copy-index">Exemplar ${copy.slotIndex}${copy.isExtraCopy ? ' · linha adicional' : ''}</span>
                   <div class="batch-exemplar-meta">
-                    ${copy.draftId
-                      ? '<span class="pill info">Rascunho local já iniciado</span>'
-                      : '<span class="pill info">Linha local nova</span>'}
+                    ${copy.draftId ? '<span class="pill info">Rascunho já iniciado</span>' : '<span class="pill info">Linha nova</span>'}
                     ${copy.draftId ? `<span class="pill info">Rascunho #${sanitize(copy.draftId)}</span>` : ''}
                   </div>
                 </div>
@@ -10737,19 +10620,13 @@
                     <input type="text" data-field="tombo" value="${sanitize(copy.tombo || '')}" />
                   </div>
                   <div class="field">
-                    <label>Localização local</label>
+                    <label>Localização</label>
                     <input type="text" data-field="shelf" value="${sanitize(copy.shelf || '')}" placeholder="Estante A / Prateleira 3" />
                   </div>
                 </div>
 
                 <div class="row-actions">
-                  <button
-                    type="button"
-                    class="button success small"
-                    data-action="validate-imported-exemplar"
-                    data-book-index="${bookIndex}"
-                    data-copy-index="${copyIndex}"
-                  >Validar exemplar local</button>
+                  <button type="button" class="button success small" data-action="validate-imported-exemplar" data-book-index="${bookIndex}" data-copy-index="${copyIndex}">Validar exemplar</button>
                   <button type="button" class="button ghost small" data-action="open-imported-exemplar" data-book-index="${bookIndex}" data-copy-index="${copyIndex}">Abrir no formulário</button>
                 </div>
               </div>
@@ -10814,11 +10691,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(
-        refs.exemplarBatchMessage,
-        'Exemplar local validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.',
-        'ok'
-      );
+      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -11053,7 +10926,7 @@
             <tr>
               <th>ID</th>
               <th>Tombo</th>
-              <th>Compat. local</th>
+              <th>Referência</th>
               <th>Autor</th>
               <th>Título</th>
               <th>CDD</th>
@@ -11148,7 +11021,7 @@
               <th>Tipo</th>
               <th>Situação</th>
               <th>Ação</th>
-              <th>Compat. local</th>
+              <th>Referência</th>
               <th>Título / nome</th>
               <th>Complemento</th>
               <th>Lote</th>
@@ -11172,10 +11045,10 @@
                 <td>${sanitize(formatDate(item.updated_at))}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).editLabel)}</button>
-                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).publishLabel)}</button>
-                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">${sanitize(getQueueItemContext(item.item_type).assignLabel)}</button>
-                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">${sanitize(getQueueItemContext(item.item_type).discardLabel)}</button>` : ''}
+                    <button class="btn-inline small secondary" data-action="edit-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Editar</button>
+                    <button class="btn-inline small success" data-action="publish-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Publicar</button>
+                    <button class="btn-inline small ghost" data-action="assign-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" data-batch="${sanitize(targetBatchId || '')}">Atribuir lote</button>
+                    ${item.status !== 'cancelled' ? `<button class="btn-inline small warning" data-action="discard-queue" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}">Descartar</button>` : ''}
                   </div>
                 </td>
               </tr>`;
@@ -11214,9 +11087,9 @@
       if (discardSelectedBtn) {
         discardSelectedBtn.addEventListener('click', async () => {
           try {
-            const discardResult = await discardSelectedQueueDrafts();
-            if (discardResult.count) {
-              showMessage(refs.queueMessage, `Envio para a lixeira concluído: ${discardResult.summary}.`, 'ok');
+            const discardedCount = await discardSelectedQueueDrafts();
+            if (discardedCount) {
+              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -11235,7 +11108,7 @@
         btn.addEventListener('click', async () => {
           try {
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, `Publicação concluída: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
+            showMessage(refs.queueMessage, 'Rascunho publicado com sucesso.', 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11251,7 +11124,7 @@
           }
           try {
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, `Lote atribuído: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
+            showMessage(refs.queueMessage, 'Lote atribuído ao rascunho.', 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -11264,7 +11137,7 @@
           if (!confirmed) return;
           try {
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, `Envio para a lixeira concluído: ${getQueueItemContext(btn.dataset.type).singular}.`, 'ok');
+            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -12957,6 +12830,10 @@ function initPartnerProbeUi() {
   const importLiveHintEl = document.getElementById('partnerImportLiveHint');
   const applyImportPrepBtn = document.getElementById('partnerApplyImportPrepBtn');
   const clearImportPrepBtn = document.getElementById('partnerClearImportPrepBtn');
+  const workflowScopeEl = document.getElementById('partnerWorkflowScopeOutput');
+  const writeNowEl = document.getElementById('partnerWriteNowOutput');
+  const protectedNowEl = document.getElementById('partnerProtectedNowOutput');
+  const blockersNowEl = document.getElementById('partnerBlockersNowOutput');
 
   const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
   const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
@@ -12990,8 +12867,9 @@ function initPartnerProbeUi() {
     !importWorkspaceEl || !importWorkspaceStatusEl || !importSourceSummaryEl || !importLocalSummaryEl ||
     !importFormatSelectEl || !importMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl ||
     !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
-    !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl || !importPrudenceSignalEl || !importBoundaryNoteEl ||
-    !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn
+    !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
+    !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
+    !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl
   ) {
     return;
   }
@@ -13896,160 +13774,503 @@ ${decisionSummary}` : '',
     ].join('\n\n');
   }
 
-  function formatPartnerMissingItems(items = []) {
-    const cleaned = Array.from(new Set((items || []).map((item) => normalizeInlineWhitespace(item)).filter(Boolean)));
-    if (!cleaned.length) return 'nenhuma pendência crítica.';
-    return cleaned.join('; ');
+
+  /*
+   * Patch 13 — quadro de pilotagem local da parceira
+   * ------------------------------------------------
+   * Este bloco não abre nenhum fluxo novo de backend.
+   * Ele serve para tornar legível, na própria tela,
+   * o estado operacional da comparação e da preparação.
+   *
+   * Objetivos desta camada:
+   * 1. dizer o que ainda falta antes do clique;
+   * 2. dizer o que pode ser escrito agora na ficha;
+   * 3. lembrar o que permanece protegido nesta etapa;
+   * 4. evitar que os botões “Levar...” virem saltos cegos.
+   *
+   * Regras mantidas:
+   * - nada de importação automática;
+   * - nada de modificação livre do registro da parceira;
+   * - nada de publicação pública a partir desta aba;
+   * - escrita apenas em camada local e nota de proveniência.
+   */
+  function formatPartnerMissingItems(items = [], prefix = 'Pendências atuais:') {
+    const clean = Array.from(
+      new Set(
+        (items || [])
+          .map((item) => String(item || '').trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!clean.length) {
+      return [
+        prefix,
+        '- nada pendente',
+      ].join('
+');
+    }
+
+    return [
+      prefix,
+      ...clean.map((item) => `- ${item}`),
+    ].join('
+');
   }
 
+  /*
+   * Comparação documental local
+   * ---------------------------
+   * A comparação só pode seguir para escrita assistida quando
+   * a política atual permitir a comparação e quando a pessoa
+   * bibliotecária já tiver preenchido os elementos mínimos
+   * que dão sentido a esse gesto.
+   */
   function getComparisonReadinessState() {
     const missing = [];
-    const partnerSummary = String(partnerNoticeSummaryEl.value || '').trim();
-    const differenceSummary = String(differenceSummaryEl.value || '').trim();
-    const decisionSummary = String(comparisonDecisionEl.value || '').trim();
+
+    const partnerSummary = String(
+      partnerNoticeSummaryEl.value || ''
+    ).trim();
+
+    const differenceSummary = String(
+      differenceSummaryEl.value || ''
+    ).trim();
+
+    const decisionSummary = String(
+      comparisonDecisionEl.value || ''
+    ).trim();
+
     const comparisonNote = getCurrentComparisonNote();
-    const alreadyPresent = comparisonNote
-      ? hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), comparisonNote)
-      : false;
 
     if (!partnerDocumentActionState.compareAllowed) {
-      missing.push('autorização política de comparação');
+      missing.push(
+        'comparação não autorizada nesta etapa'
+      );
     }
+
     if (!partnerSummary) {
-      missing.push('resumo manual do registro da parceira');
+      missing.push(
+        'resumir manualmente o registro da parceira'
+      );
     }
+
     if (!differenceSummary) {
-      missing.push('diferenças e pontos de atenção');
+      missing.push(
+        'registrar diferenças e pontos de atenção'
+      );
     }
+
     if (!decisionSummary) {
-      missing.push('decisão local / próximos passos');
-    }
-    if (!comparisonNote) {
-      missing.push('bloco local de proveniência');
+      missing.push(
+        'formular a decisão local / próximos passos'
+      );
     }
 
     return {
-      ready: partnerDocumentActionState.compareAllowed && !missing.length,
       missing,
       comparisonNote,
-      alreadyPresent,
-      partnerSummary,
-      differenceSummary,
-      decisionSummary,
+      canWrite:
+        partnerDocumentActionState.compareAllowed &&
+        !missing.length &&
+        !!comparisonNote,
     };
   }
 
-  function getComparisonReadinessSummaryText() {
-    const readiness = getComparisonReadinessState();
-    const lines = [];
+  /*
+   * Preparação local de importação
+   * ------------------------------
+   * Mesmo quando a importação controlada aparece autorizada,
+   * esta área continua sendo apenas uma preparação local.
+   * Por isso exigimos um mínimo de estabilização antes do clique:
+   * formato, modo, decisão, proveniência e ao menos uma linha
+   * sobre retomada ou exclusão.
+   */
+  function getImportReadinessState() {
+    const missing = [];
 
-    if (readiness.ready) {
-      lines.push('Pronto para levar à ficha: sim.');
-    } else {
-      lines.push(`Pronto para levar à ficha: não. Faltam ${formatPartnerMissingItems(readiness.missing)}.`);
+    const formatValue = String(
+      importFormatSelectEl?.value || ''
+    ).trim();
+
+    const methodValue = String(
+      importMethodSelectEl?.value || ''
+    ).trim();
+
+    const takeSummary = String(
+      importTakeSummaryEl.value || ''
+    ).trim();
+
+    const skipSummary = String(
+      importSkipSummaryEl.value || ''
+    ).trim();
+
+    const provenanceSummary = String(
+      importProvenanceSummaryEl.value || ''
+    ).trim();
+
+    const decisionSummary = String(
+      importDecisionSummaryEl.value || ''
+    ).trim();
+
+    const carryPreview = getImportCarryPreviewText();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      missing.push(
+        'importação controlada não autorizada nesta etapa'
+      );
     }
 
-    lines.push(
-      readiness.comparisonNote
-        ? 'Bloco local de proveniência: montado.'
-        : 'Bloco local de proveniência: ainda não montado.'
-    );
+    if (!formatValue) {
+      missing.push(
+        'definir o formato de importação'
+      );
+    }
 
-    lines.push(
-      readiness.alreadyPresent
-        ? 'Nota de proveniência na ficha: o bloco local preparado já está presente.'
-        : 'Nota de proveniência na ficha: o bloco local preparado ainda será acrescentado.'
-    );
+    if (!methodValue) {
+      missing.push(
+        'definir o modo de importação'
+      );
+    }
+
+    if (!takeSummary && !skipSummary) {
+      missing.push(
+        'registrar ao menos o que retomar ou o que deixar de fora'
+      );
+    }
+
+    if (!provenanceSummary) {
+      missing.push(
+        'registrar a proveniência a conservar'
+      );
+    }
+
+    if (!decisionSummary) {
+      missing.push(
+        'formular a decisão local / preparação do rascunho'
+      );
+    }
+
+    return {
+      missing,
+      carryPreview,
+      canWrite:
+        partnerDocumentActionState.importAllowed &&
+        !missing.length &&
+        !!carryPreview,
+    };
+  }
+
+  /*
+   * Checklist mínima da preparação
+   * ------------------------------
+   * Este quadro não decide nada sozinho.
+   * Ele apenas traduz o estado do formulário
+   * em itens rapidamente relíveis pela pessoa usuária.
+   */
+  function getImportChecklistText() {
+    const readiness = getImportReadinessState();
+
+    const lines = [
+      String(importFormatSelectEl?.value || '').trim()
+        ? `• formato preparado: ${getSelectedOptionLabel(importFormatSelectEl)}`
+        : '• falta definir o formato de importação',
+
+      String(importMethodSelectEl?.value || '').trim()
+        ? `• modo preparado: ${getSelectedOptionLabel(importMethodSelectEl)}`
+        : '• falta definir o modo de importação',
+
+      String(importTakeSummaryEl.value || '').trim() ||
+      String(importSkipSummaryEl.value || '').trim()
+        ? '• retomadas e/ou exclusões já anotadas'
+        : '• falta anotar retomadas ou exclusões locais',
+
+      String(importProvenanceSummaryEl.value || '').trim()
+        ? '• proveniência a conservar já registrada'
+        : '• falta registrar a proveniência a conservar',
+
+      String(importDecisionSummaryEl.value || '').trim()
+        ? '• decisão local da preparação já registrada'
+        : '• falta decisão local da preparação',
+
+      partnerDocumentActionState.importAllowed
+        ? '• política atual autoriza preparação local de importação'
+        : '• política atual ainda não autoriza preparação local de importação',
+
+      partnerDocumentActionState.mutualizeAllowed
+        ? '• mutualização aparece autorizada politicamente, mas continua sem modificação livre'
+        : '• mutualização continua fora desta etapa',
+    ];
+
+    if (readiness.missing.length) {
+      lines.push('');
+      lines.push(
+        formatPartnerMissingItems(
+          readiness.missing,
+          'Faltas antes de levar à ficha:'
+        )
+      );
+    }
 
     return lines.join('
 ');
+  }
+
+  /*
+   * Sinal de prudência da preparação
+   * --------------------------------
+   * Mesmo quando tudo estiver pronto,
+   * este quadro continua lembrando que a operação
+   * é local, assistida e sem importação automática real.
+   */
+  function getImportPrudenceSignalText() {
+    const readiness = getImportReadinessState();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      return [
+        'Preparação bloqueada: sem autorização de importação controlada,',
+        'esta área continua apenas como leitura prudente.',
+      ].join(' ');
+    }
+
+    if (readiness.missing.length) {
+      return [
+        'Preparação aberta, mas ainda insuficiente para escrita assistida.',
+        '',
+        formatPartnerMissingItems(
+          readiness.missing,
+          'Ainda falta:'
+        ),
+      ].join('
+');
+    }
+
+    if (partnerDocumentActionState.mutualizeAllowed) {
+      return [
+        'Preparação suficientemente descrita para escrita local assistida.',
+        'Mesmo assim, nada aqui modifica livremente a camada compartilhada',
+        'nem dispara importação automática.',
+      ].join(' ');
+    }
+
+    return [
+      'Preparação suficientemente descrita para escrita local assistida,',
+      'ainda sem mutualização autorizada e sem importação automática real.',
+    ].join(' ');
+  }
+
+  /*
+   * Quadro do gesto ativo
+   * ---------------------
+   * Este conjunto de funções alimenta a nova grade visível
+   * no topo do painel parceiro. A ideia é concentrar, em um bloco,
+   * quatro perguntas práticas:
+   * - quem está em foco;
+   * - o que pode sair agora;
+   * - o que não será tocado;
+   * - o que ainda bloqueia.
+   */
+  function getPartnerWorkflowScopeText() {
+    const label = getCurrentPartnerLabel() || 'Parceira sem nome público';
+    const slug = getCurrentPartnerSlug() || 'sem slug';
+
+    const activeFlow = partnerDocumentActionState.importWorkspaceOpen
+      ? 'Preparação local de importação'
+      : partnerDocumentActionState.workspaceOpen
+        ? 'Comparação documental local'
+        : 'Nenhum microfluxo aberto';
+
+    return [
+      `Parceira em foco: ${label}`,
+      `Slug em foco: ${slug}`,
+      `Situação relacional lida: ${relationshipStatusEl.value || '—'}`,
+      `Acordo explícito: ${agreementStatusEl?.value || '—'}`,
+      `Microfluxo ativo agora: ${activeFlow}`,
+      `Comparação: ${partnerDocumentActionState.compareAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Preparação local: ${partnerDocumentActionState.importAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Mutualização: ${partnerDocumentActionState.mutualizeAllowed ? 'autorizada politicamente, sem modificação livre' : 'fora desta etapa'}`,
+    ].join('
+');
+  }
+
+  function getPartnerWriteNowText() {
+    const comparisonReadiness = getComparisonReadinessState();
+    const importReadiness = getImportReadinessState();
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      if (!importReadiness.canWrite) {
+        return [
+          'A preparação local ainda não pode ser levada para a ficha.',
+          '',
+          formatPartnerMissingItems(
+            importReadiness.missing,
+            'Ainda falta:'
+          ),
+        ].join('
+');
+      }
+
+      return [
+        'A preparação local já pode escrever na ficha, mas só em camada local.',
+        '',
+        getImportFieldWritePreviewText(),
+      ].join('
+');
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      if (!comparisonReadiness.canWrite) {
+        return [
+          'A comparação ainda não pode ser levada para a ficha.',
+          '',
+          formatPartnerMissingItems(
+            comparisonReadiness.missing,
+            'Ainda falta:'
+          ),
+        ].join('
+');
+      }
+
+      return [
+        'A comparação já pode escrever na ficha, mas só em camada local.',
+        '',
+        getComparisonFieldWritePreviewText(),
+      ].join('
+');
+    }
+
+    if (partnerDocumentActionState.importAllowed) {
+      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta.';
+    }
+
+    if (partnerDocumentActionState.compareAllowed) {
+      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta.';
+    }
+
+    return 'Nenhuma escrita local pode sair agora a partir desta aba.';
+  }
+
+  function getPartnerProtectedNowText() {
+    const lines = [
+      'Notice publicada: não é reescrita automaticamente aqui.',
+      'Registro da parceira: não é alterado por esta aba.',
+      'Camada compartilhada: não sofre modificação livre nesta etapa.',
+      'Importação automática: não é disparada por nenhum destes cliques.',
+      'Publicação no catálogo: não acontece a partir deste painel.',
+    ];
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      lines.push(
+        'No microfluxo de comparação, formato e modo de importação não são gravados automaticamente.'
+      );
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      lines.push(
+        'No microfluxo de preparação, a escrita continua restrita a fonte, governança, ID, URL, formato, modo e nota de proveniência.'
+      );
+    }
+
+    return lines.join('
+');
+  }
+
+  function getPartnerBlockersNowText() {
+    const slug = getCurrentPartnerSlug();
+
+    if (!slug) {
+      return 'Falta selecionar, reconhecer ou formalizar a parceira em foco antes de abrir um microfluxo documental.';
+    }
+
+    if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      return [
+        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo.',
+        '',
+        'Enquanto isso, a leitura política continua visível, mas a escrita documental segue bloqueada.',
+      ].join('
+');
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      const readiness = getImportReadinessState();
+
+      return readiness.missing.length
+        ? formatPartnerMissingItems(
+            readiness.missing,
+            'Bloqueios atuais da preparação:'
+          )
+        : 'Nenhum bloqueio interno restante na preparação. O gesto agora é só reler a escrita prevista e decidir se leva ou não para a ficha.';
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      const readiness = getComparisonReadinessState();
+
+      return readiness.missing.length
+        ? formatPartnerMissingItems(
+            readiness.missing,
+            'Bloqueios atuais da comparação:'
+          )
+        : 'Nenhum bloqueio interno restante na comparação. O gesto agora é só reler a escrita prevista e decidir se leva ou não para a ficha.';
+    }
+
+    if (
+      partnerDocumentActionState.importAllowed ||
+      partnerDocumentActionState.compareAllowed
+    ) {
+      return 'Não há microfluxo aberto. O próximo bloqueio real é operacional: escolher entre comparação documental local ou preparação local de importação.';
+    }
+
+    return 'A política atual ainda não abriu comparação documental nem preparação local para esta parceira.';
+  }
+
+  function refreshPartnerPilotSummary() {
+    workflowScopeEl.value = getPartnerWorkflowScopeText();
+    writeNowEl.value = getPartnerWriteNowText();
+    protectedNowEl.value = getPartnerProtectedNowText();
+    blockersNowEl.value = getPartnerBlockersNowText();
   }
 
   function getComparisonOperationalStateText() {
     const readiness = getComparisonReadinessState();
     const lines = [];
-
-    lines.push(
-      partnerDocumentActionState.workspaceOpen
-        ? 'Espaço de comparação: aberto nesta tela.'
-        : 'Espaço de comparação: fechado nesta tela.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.compareAllowed
-        ? 'Política atual: comparação autorizada.'
-        : 'Política atual: comparação não autorizada.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.importAllowed
-        ? 'Importação aparece autorizada politicamente, mas continua fora deste microfluxo.'
-        : 'Importação não aparece autorizada neste microfluxo.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.mutualizeAllowed
-        ? 'Mutualização aparece autorizada politicamente, sem modificação livre do registro da parceira.'
-        : 'Mutualização não aparece autorizada nesta etapa.'
-    );
-
-    lines.push(getComparisonReadinessSummaryText());
-
-    return lines.join('
-');
+    lines.push(partnerDocumentActionState.workspaceOpen ? 'Espaço de comparação aberto nesta tela.' : 'Espaço de comparação fechado nesta tela.');
+    lines.push(partnerDocumentActionState.compareAllowed ? 'Política atual: comparação autorizada.' : 'Política atual: comparação não autorizada.');
+    lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada, mas continua fora deste microfluxo.' : 'Política atual: importação não autorizada aqui.');
+    lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.' : 'Política atual: mutualização não autorizada nesta etapa.');
+    lines.push(readiness.canWrite ? 'Comparação suficientemente descrita para escrita local assistida.' : 'Comparação ainda insuficiente para escrita local assistida.');
+    if (readiness.missing.length) lines.push(formatPartnerMissingItems(readiness.missing, 'Faltas atuais desta comparação:'));
+    return lines.join('\n');
   }
 
   function getComparisonPrudenceSignalText() {
     const readiness = getComparisonReadinessState();
     if (!partnerDocumentActionState.compareAllowed) return 'Comparação não autorizada: manter só leitura política e técnica, sem uso documental ativo.';
-    if (!String(partnerNoticeSummaryEl.value || '').trim()) return 'Comparação autorizada, mas ainda falta resumir o registro da parceira antes de qualquer escrita local.';
-    if (!String(differenceSummaryEl.value || '').trim()) return 'Comparação autorizada, porém ainda faltam diferenças e pontos de atenção registrados.';
-    if (!String(comparisonDecisionEl.value || '').trim()) return 'Comparação autorizada, porém ainda falta formular a decisão local antes de levar algo para a ficha.';
-    if (!readiness.comparisonNote) return 'Comparação descrita, mas o bloco local de proveniência ainda não ficou estável o suficiente para escrita.';
-    if (readiness.alreadyPresent) return 'Comparação suficientemente descrita, mas o bloco local já está presente na ficha; só reaplica se houver mudança real na decisão local.';
-    if (partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed) return 'Importação e mutualização aparecem autorizadas no plano político, mas este microfluxo continua limitado à comparação local, à proveniência e à decisão humana.';
-    if (partnerDocumentActionState.importAllowed) return 'Importação autorizada no plano político, mas este microfluxo continua limitado à comparação local e à proveniência.';
-    return 'Comparação pronta para alimentar somente campos locais e nota de proveniência, sem importação automática.';
+    if (readiness.missing.length) return `Comparação autorizada, mas ainda insuficiente para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+    if (partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed) return 'Comparação pronta para escrita local assistida. Mesmo assim, este microfluxo continua limitado à proveniência, à decisão humana e à camada local.';
+    if (partnerDocumentActionState.importAllowed) return 'Comparação pronta para escrita local assistida. A preparação local aparece autorizada, mas continua separada deste microfluxo.';
+    return 'Comparação pronta para escrita local assistida, sempre sem importação automática nem modificação livre do registro da parceira.';
   }
 
   function refreshComparisonWorkspaceDerivedTexts() {
     const readiness = getComparisonReadinessState();
-    const comparisonNote = readiness.comparisonNote;
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonCarryPreviewEl.value = comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
+    comparisonCarryPreviewEl.value = readiness.comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
       ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado na ficha no momento do clique.'
       : 'Sem comparação autorizada, este quadro permanece apenas como leitura preventiva do que ficaria bloqueado.';
     comparisonOperationalStateEl.value = getComparisonOperationalStateText();
     comparisonPrudenceSignalEl.value = getComparisonPrudenceSignalText();
-    applyComparisonBtn.disabled = !readiness.ready;
-    applyComparisonBtn.textContent = readiness.ready
-      ? (readiness.alreadyPresent ? 'Reaplicar comparação à ficha' : 'Levar comparação para a ficha')
-      : 'Completar comparação antes de levar';
-    applyComparisonBtn.title = readiness.ready
-      ? (readiness.alreadyPresent
-          ? 'O bloco local já está na ficha; use este botão só se a comparação mudou.'
-          : 'Leva somente campos locais e nota de proveniência para a ficha atual.')
-      : `Ainda faltam ${formatPartnerMissingItems(readiness.missing)}.`;
     comparisonBoundaryNoteEl.textContent = partnerDocumentActionState.compareAllowed
       ? 'Esta área continua local, manual e sem importação automática. Mesmo autorizada, ela só escreve campos locais e nota de proveniência.'
       : 'Sem comparação autorizada, esta área permanece apenas como lembrete de fronteira política e documental.';
     comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
       ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
-      : readiness.ready
-        ? (readiness.alreadyPresent
-            ? 'A comparação está pronta e o bloco local já aparece na ficha. Revê se houve mudança real antes de reaplicar.'
-            : 'A comparação está pronta. Revê resumo, diferenças e decisão local antes de levar a escrita para a ficha.')
-        : `Ainda faltam ${formatPartnerMissingItems(readiness.missing)} antes de levar a comparação para a ficha.`;
-    if (partnerDocumentActionState.workspaceOpen) {
-      compareWorkspaceStatusEl.textContent = partnerDocumentActionState.compareAllowed
-        ? (readiness.ready
-            ? 'Comparação local aberta e pronta para escrita local assistida na ficha.'
-            : `Comparação local aberta, mas ainda incompleta: faltam ${formatPartnerMissingItems(readiness.missing)}.`)
-        : 'A comparação local continua bloqueada pela política atual desta parceira.';
-    }
+      : readiness.canWrite
+        ? 'A comparação está pronta para escrita local assistida. Revê a checklist, a prudência e a escrita prevista antes do clique.'
+        : `A comparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+    refreshPartnerPilotSummary();
   }
 
   function refreshLocalDraftComparisonSummary() {
@@ -14086,14 +14307,13 @@ ${decisionSummary}` : '',
   }
 
   function applyComparisonToBookForm() {
+    const readiness = getComparisonReadinessState();
     if (!partnerDocumentActionState.compareAllowed) {
       setPartnerProbeMessage('Comparação documental bloqueada para esta parceira nesta etapa.', 'warn');
       return;
     }
-
-    const readiness = getComparisonReadinessState();
-    if (!readiness.ready) {
-      setPartnerProbeMessage(`Ainda faltam ${formatPartnerMissingItems(readiness.missing)} antes de levar a comparação para a ficha.`, 'warn');
+    if (!readiness.canWrite) {
+      setPartnerProbeMessage(`A comparação ainda não pode ser levada para a ficha.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`, 'warn');
       return;
     }
 
@@ -14295,199 +14515,38 @@ ${decisionSummary}` : '',
     return lines.join('\n');
   }
 
-  function getImportReadinessState() {
-    const missing = [];
-    const carryPreview = getImportCarryPreviewText();
-    const takeSummary = String(importTakeSummaryEl?.value || '').trim();
-    const skipSummary = String(importSkipSummaryEl?.value || '').trim();
-    const provenanceSummary = String(importProvenanceSummaryEl?.value || '').trim();
-    const decisionSummary = String(importDecisionSummaryEl?.value || '').trim();
-    const formatValue = String(importFormatSelectEl?.value || '').trim();
-    const methodValue = String(importMethodSelectEl?.value || '').trim();
-    const alreadyPresent = carryPreview
-      ? hasPartnerProvenanceBlock(String(bookProvenanceNoteEl?.value || '').trim(), carryPreview)
-      : false;
-
-    if (!partnerDocumentActionState.importAllowed) {
-      missing.push('autorização política de importação controlada');
-    }
-    if (!formatValue) {
-      missing.push('formato de importação');
-    }
-    if (!methodValue) {
-      missing.push('modo de importação');
-    }
-    if (!takeSummary && !skipSummary) {
-      missing.push('elementos a retomar ou a não retomar');
-    }
-    if (!provenanceSummary) {
-      missing.push('proveniência a conservar');
-    }
-    if (!decisionSummary) {
-      missing.push('decisão local da preparação');
-    }
-    if (!carryPreview) {
-      missing.push('bloco local de proveniência');
-    }
-
-    return {
-      ready: partnerDocumentActionState.importAllowed && !missing.length,
-      missing,
-      carryPreview,
-      alreadyPresent,
-      takeSummary,
-      skipSummary,
-      provenanceSummary,
-      decisionSummary,
-      formatValue,
-      methodValue,
-    };
-  }
-
-  function getImportChecklistText() {
-    const readiness = getImportReadinessState();
-    const checklist = [];
-
-    checklist.push(readiness.formatValue ? `• formato preparado: ${getSelectedOptionLabel(importFormatSelectEl)}` : '• falta escolher o formato de importação');
-    checklist.push(readiness.methodValue ? `• modo preparado: ${getSelectedOptionLabel(importMethodSelectEl)}` : '• falta escolher o modo de importação');
-    checklist.push(readiness.takeSummary || readiness.skipSummary ? '• há decisão mínima sobre o que entra ou fica de fora' : '• falta decidir o que retomar ou excluir');
-    checklist.push(readiness.provenanceSummary ? '• proveniência a conservar já registrada' : '• falta registrar a proveniência a conservar');
-    checklist.push(readiness.decisionSummary ? '• decisão local da preparação já registrada' : '• falta registrar a decisão local da preparação');
-    checklist.push(readiness.carryPreview ? '• bloco local de proveniência já montado' : '• bloco local de proveniência ainda não montado');
-    checklist.push(partnerDocumentActionState.importAllowed ? '• política atual permite preparação de importação controlada' : '• política atual não permite preparação de importação controlada');
-
-    return checklist.join('
-');
-  }
-
-  function getImportPrudenceSignalText() {
-    const readiness = getImportReadinessState();
-
-    if (!partnerDocumentActionState.importAllowed) {
-      return 'Importação controlada não autorizada: manter só leitura política, técnica e preparação prudente sem escrita na ficha.';
-    }
-
-    if (!readiness.takeSummary && !readiness.skipSummary) {
-      return 'Importação autorizada politicamente, mas ainda falta decidir com clareza o que deve entrar e o que deve ficar de fora.';
-    }
-
-    if (!readiness.provenanceSummary) {
-      return 'Importação autorizada politicamente, mas ainda falta registrar a proveniência que legitima a retomada local.';
-    }
-
-    if (!readiness.decisionSummary) {
-      return 'Importação autorizada politicamente, porém ainda falta formular a decisão local que enquadra esta preparação.';
-    }
-
-    if (!readiness.carryPreview) {
-      return 'A preparação já avançou, mas o bloco local de proveniência ainda não ficou estável o suficiente para escrita na ficha.';
-    }
-
-    if (readiness.alreadyPresent) {
-      return 'A preparação está suficientemente descrita, mas o bloco local já está presente na ficha; só reaplica se houve mudança real na revisão humana.';
-    }
-
-    if (partnerDocumentActionState.mutualizeAllowed) {
-      return 'Importação e mutualização aparecem autorizadas politicamente, mas este microfluxo continua limitado à escrita local assistida, sem importação automática nem modificação livre da camada compartilhada.';
-    }
-
-    return 'Preparação pronta para escrever somente parâmetros locais e nota de proveniência, sempre sob revisão humana.';
-  }
-
   function getImportOperationalStateText() {
     const readiness = getImportReadinessState();
     const lines = [];
-
-    lines.push(
-      partnerDocumentActionState.importWorkspaceOpen
-        ? 'Espaço de preparação de importação: aberto nesta tela.'
-        : 'Espaço de preparação de importação: fechado nesta tela.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.importAllowed
-        ? 'Política atual: importação autorizada sob controle local.'
-        : 'Política atual: importação não autorizada nesta etapa.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.mutualizeAllowed
-        ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.'
-        : 'Política atual: mutualização não autorizada nesta etapa.'
-    );
-
-    lines.push(
-      partnerDocumentActionState.compareAllowed
-        ? 'Comparação continua disponível como camada preparatória.'
-        : 'Comparação não aparece disponível para esta parceira agora.'
-    );
-
-    lines.push(
-      readiness.ready
-        ? 'Pronto para levar à ficha: sim.'
-        : `Pronto para levar à ficha: não. Faltam ${formatPartnerMissingItems(readiness.missing)}.`
-    );
-
-    lines.push(
-      readiness.carryPreview
-        ? 'Bloco local de proveniência: montado.'
-        : 'Bloco local de proveniência: ainda não montado.'
-    );
-
-    lines.push(
-      readiness.alreadyPresent
-        ? 'Nota de proveniência na ficha: o bloco local preparado já está presente.'
-        : 'Nota de proveniência na ficha: o bloco local preparado ainda será acrescentado.'
-    );
-
-    return lines.join('
-');
+    lines.push(partnerDocumentActionState.importWorkspaceOpen ? 'Espaço de preparação de importação aberto nesta tela.' : 'Espaço de preparação de importação fechado nesta tela.');
+    lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada sob controle local.' : 'Política atual: importação não autorizada nesta etapa.');
+    lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.' : 'Política atual: mutualização não autorizada nesta etapa.');
+    lines.push(partnerDocumentActionState.compareAllowed ? 'Comparação continua disponível como camada preparatória.' : 'Comparação não aparece disponível para esta parceira agora.');
+    lines.push(readiness.canWrite ? 'Preparação suficientemente descrita para escrita local assistida.' : 'Preparação ainda insuficiente para escrita local assistida.');
+    if (readiness.missing.length) lines.push(formatPartnerMissingItems(readiness.missing, 'Faltas atuais desta preparação:'));
+    return lines.join('\n');
   }
 
   function refreshImportWorkspaceDerivedTexts() {
     const readiness = getImportReadinessState();
-    const carryPreview = readiness.carryPreview;
-
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importCarryPreviewEl.value = carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
+    importCarryPreviewEl.value = readiness.carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
     importChecklistEl.value = getImportChecklistText();
     importPrudenceSignalEl.value = getImportPrudenceSignalText();
-
-    applyImportPrepBtn.disabled = !readiness.ready;
-    applyImportPrepBtn.textContent = readiness.ready
-      ? (readiness.alreadyPresent ? 'Reaplicar preparação à ficha' : 'Levar preparação para a ficha')
-      : 'Completar preparação antes de levar';
-    applyImportPrepBtn.title = readiness.ready
-      ? (readiness.alreadyPresent
-          ? 'O bloco local já está na ficha; use este botão só se a preparação mudou.'
-          : 'Leva somente parâmetros locais e nota de proveniência para a ficha atual.')
-      : `Ainda faltam ${formatPartnerMissingItems(readiness.missing)}.`;
-
     importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado em Fonte de parceira, governança, ID, URL, formato, modo e nota de proveniência.';
-
     importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
       ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
-      : readiness.ready
-        ? (readiness.alreadyPresent
-            ? 'A preparação está pronta e o bloco local já aparece na ficha. Revê se houve mudança real antes de reaplicar.'
-            : 'A preparação está pronta. Revê formato, modo, proveniência e decisão local antes de levar a escrita para a ficha.')
-        : `Ainda faltam ${formatPartnerMissingItems(readiness.missing)} antes de levar a preparação para a ficha.`;
-
+      : readiness.canWrite
+        ? 'A preparação está pronta para escrita local assistida. Revê tudo antes de levar a preparação para a ficha.'
+        : `A preparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
       ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
-
-    if (partnerDocumentActionState.importWorkspaceOpen) {
-      importWorkspaceStatusEl.textContent = partnerDocumentActionState.importAllowed
-        ? (readiness.ready
-            ? 'Preparação local aberta e pronta para escrita assistida na ficha.'
-            : `Preparação local aberta, mas ainda incompleta: faltam ${formatPartnerMissingItems(readiness.missing)}.`)
-        : 'A preparação local continua bloqueada pela política atual desta parceira.';
-    }
+    refreshPartnerPilotSummary();
   }
 
   function setImportWorkspaceStatus(text = '') {
@@ -14522,14 +14581,13 @@ ${decisionSummary}` : '',
   }
 
   function applyImportPreparationToBookForm() {
+    const readiness = getImportReadinessState();
     if (!partnerDocumentActionState.importAllowed) {
       setPartnerProbeMessage('Importação controlada bloqueada para esta parceira nesta etapa.', 'warn');
       return;
     }
-
-    const readiness = getImportReadinessState();
-    if (!readiness.ready) {
-      setPartnerProbeMessage(`Ainda faltam ${formatPartnerMissingItems(readiness.missing)} antes de levar a preparação para a ficha.`, 'warn');
+    if (!readiness.canWrite) {
+      setPartnerProbeMessage(`A preparação ainda não pode ser levada para a ficha.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`, 'warn');
       return;
     }
 
@@ -14744,6 +14802,7 @@ ${decisionSummary}` : '',
     setPartnerRightsMatrixReadout();
     setPartnerNextStepReadout('empty');
     setPartnerBoundaryReadout('empty');
+    refreshPartnerPilotSummary();
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
@@ -14784,18 +14843,21 @@ ${decisionSummary}` : '',
       actionHintEl.textContent = `${nextGateState.noAgreementMessage} Define primeiro os acordos no painel e volta aqui para aplicá-los.`;
       setPartnerNextStepReadout('agreement_blocked', row, nextGateState);
       setPartnerBoundaryReadout('agreement_blocked', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
       setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
       setPartnerBoundaryReadout('registered_but_blocked', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'compare_only') {
       actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
       setPartnerNextStepReadout('compare_only', row, nextGateState);
       setPartnerBoundaryReadout('compare_only', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'import_allowed') {
@@ -14804,17 +14866,20 @@ ${decisionSummary}` : '',
         : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
       setPartnerNextStepReadout('import_allowed', row, nextGateState);
       setPartnerBoundaryReadout('import_allowed', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'not_registered') {
       actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
       setPartnerNextStepReadout('not_registered', row, nextGateState);
       setPartnerBoundaryReadout('not_registered', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
     setPartnerNextStepReadout('empty', row, nextGateState);
     setPartnerBoundaryReadout('empty', row, nextGateState);
+    refreshPartnerPilotSummary();
   }
 
   function setPartnerPolicyReadout(row, gateState = null) {
@@ -15432,4 +15497,3 @@ ${decisionSummary}` : '',
   </script>
 </body>
 </html>
-
