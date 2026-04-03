@@ -9827,6 +9827,7 @@
       let lastError = null;
       const collectedRows = [];
       const seenKeys = new Set();
+      let identityRow = null;
 
       const pushRows = (rows) => {
         const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
@@ -9837,7 +9838,6 @@
             String(row?.library_id || row?.library_slug || row?.default_library_slug || '').trim(),
             String(row?.role || '').trim(),
             String(row?.status || '').trim(),
-            String(row?.can_access_catalogacao ?? '').trim(),
           ]);
           if (seenKeys.has(key)) continue;
           seenKeys.add(key);
@@ -9845,16 +9845,18 @@
         }
       };
 
-      const attempts = [
+      const directAttempts = [
         () => supabase.from('my_access').select('*'),
         () => supabase.schema('api').from('my_access').select('*'),
+        () => supabase.from('my_session_context').select('*').limit(1),
+        () => supabase.schema('api').from('my_session_context').select('*').limit(1),
       ];
 
-      const results = await Promise.allSettled(
-        attempts.map((run) => withTimeout(run(), 'catalogação access read', 2200))
+      const directResults = await Promise.allSettled(
+        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1800))
       );
 
-      for (const result of results) {
+      for (const result of directResults) {
         if (result.status === 'fulfilled') {
           const res = result.value;
           if (!res?.error) {
@@ -9862,14 +9864,54 @@
             continue;
           }
           lastError = res.error;
-          console.warn('Leitura de api/public.my_access retornou erro na catalogação.', res.error);
+          console.warn('Leitura de acesso retornou erro na catalogação.', res.error);
           continue;
         }
         lastError = result.reason;
-        console.warn('Leitura de api/public.my_access falhou por exceção na catalogação.', result.reason);
+        console.warn('Leitura de acesso falhou por exceção na catalogação.', result.reason);
       }
 
-      return { record: pickCurrentCatalogacaoAccess(collectedRows), identityRow: null, allRows: collectedRows, error: lastError };
+      const [profileOutcome, membershipOutcome] = await Promise.allSettled([
+        withTimeout(
+          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
+          'profiles access read',
+          2400
+        ),
+        withTimeout(
+          supabase.from('user_library_memberships').select('*').eq('user_id', userId),
+          'membership access read',
+          2600
+        ),
+      ]);
+
+      if (profileOutcome.status === 'fulfilled') {
+        const profileRead = profileOutcome.value;
+        if (!profileRead?.error) {
+          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
+          if (identityRow) pushRows(identityRow);
+        } else {
+          lastError = profileRead.error;
+          console.warn('profiles access read failed:', profileRead.error);
+        }
+      } else {
+        lastError = profileOutcome.reason;
+        console.warn('profiles access read exception:', profileOutcome.reason);
+      }
+
+      if (membershipOutcome.status === 'fulfilled') {
+        const membershipRead = membershipOutcome.value;
+        if (!membershipRead?.error) {
+          pushRows(membershipRead?.data || []);
+        } else {
+          lastError = membershipRead.error;
+          console.warn('membership access read failed:', membershipRead.error);
+        }
+      } else {
+        lastError = membershipOutcome.reason;
+        console.warn('membership access read exception:', membershipOutcome.reason);
+      }
+
+      return { record: pickCurrentCatalogacaoAccess(collectedRows), identityRow, allRows: collectedRows, error: lastError };
     }
 
     async function loadProfile() {
@@ -9877,25 +9919,41 @@
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
       const accessRead = await fetchAccessRecord(userId);
-      const accessRow = accessRead.record || null;
+      const cachedAccess = readCatalogacaoAccessCache(userId);
+      const accessRow = accessRead.record
+        || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || cachedAccess
+        || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
 
-      state.profile = accessRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = !!accessRow && isTruthyAccessFlag(accessRow?.can_access_catalogacao);
+      state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
+
+      if (state.isLibrarian && accessRow) {
+        writeCatalogacaoAccessCache(userId, accessRow);
+      }
+
+      updateLoginButton();
 
       if (state.isLibrarian) {
         refs.userEmail.textContent = accessRow?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
         clearMessage(refs.globalMessage);
-        updateLoginButton();
         return state.profile;
       }
 
       clearCatalogacaoAccessCache();
-      refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+
+      if (state.session?.user?.id && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
+        refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+        refs.rolePill.className = 'pill warn';
+        throw new Error('A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.');
+      }
+
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
-      updateLoginButton();
       showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
       throw new Error('Usuário sem permissão bibliotecária.');
     }
@@ -10135,16 +10193,37 @@
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
-      updateLoginButton();
+
+      const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
+      const hasKnownSession = !!state.session?.user?.id;
+
+      refs.userEmail.textContent = hasKnownSession ? knownEmail : 'Sem sessão';
+      refs.rolePill.textContent = hasKnownSession ? 'Atualizando dados…' : 'Conferindo sessão…';
+      refs.rolePill.className = 'pill warn';
 
       try {
         clearMessage(refs.globalMessage);
-        refs.userEmail.textContent = state.session?.user?.email || 'Sem sessão';
-        refs.rolePill.textContent = state.session?.user?.id ? 'Conferindo acesso…' : 'Conferindo sessão…';
-        refs.rolePill.className = 'pill warn';
 
-        await requireSession();
-        await loadProfile();
+        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
+        if (!sessionStep.ok || !state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+          showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
+          return;
+        }
+
+        refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida';
+        refs.rolePill.className = 'pill info';
+
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 9000);
+        if (!profileStep.ok) {
+          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
+          updateLoginButton();
+          return;
+        }
 
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
@@ -10155,7 +10234,6 @@
           settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 9000),
         ]);
         setTab(currentTab);
-
         if (refs.labelBatchPreviewId?.value) {
           try {
             await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
@@ -10163,7 +10241,6 @@
             console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
           }
         }
-
         updateStats();
         updateLoginButton();
 
@@ -10178,14 +10255,17 @@
           showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
         }
       } catch (error) {
+        updateLoginButton();
         console.error(error);
         if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          refs.rolePill.textContent = 'Faça login para usar a catalogação';
+          refs.rolePill.className = 'pill danger';
         } else if (!state.isLibrarian) {
-          refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
-          updateLoginButton();
+        } else {
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+          refs.rolePill.className = 'pill danger';
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
@@ -12116,7 +12196,6 @@ function renderCatalogBooks() {
   });
 }
 
-function renderCatalogOtherDocuments() {
 function renderCatalogOtherDocuments() {
   const items = getVisibleCatalogOtherDocumentItems();
   const draftLinkMap = getCatalogBookDraftLinkMap();
