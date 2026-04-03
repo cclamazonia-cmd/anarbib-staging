@@ -2464,8 +2464,8 @@ function buildAuthorHref(authorId, row = null) {
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
-  const resolvedBookId = row?.book_id ?? row?.id;
-  if (resolvedBookId != null && String(resolvedBookId).trim()) url.searchParams.set('book_id', String(resolvedBookId));
+  const resolvedBookId = Number(row?.book_id ?? row?.id ?? 0) || 0;
+  if (resolvedBookId > 0) url.searchParams.set('book_id', String(resolvedBookId));
   const explicitViewContext = resolveExplicitViewLibraryContext(row);
   if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
   if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
