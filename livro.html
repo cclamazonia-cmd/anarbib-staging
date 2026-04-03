@@ -2842,8 +2842,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const colLibrarySlug = findCol(keys, ["library_slug"]);
       const colLibraryName = findCol(keys, ["library_name", "biblioteca"]);
 
-      if (!bib_ref && data?.bib_ref != null) {
-        bib_ref = String(data.bib_ref || "").trim();
+      if (data?.bib_ref != null) {
+        bib_ref = String(data.bib_ref || bib_ref || "").trim();
       }
 
       const titulo = colTit ? (data[colTit] || "") : "";
