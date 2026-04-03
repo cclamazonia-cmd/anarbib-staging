@@ -3988,6 +3988,68 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    (function () {
+      const LOGIN_URL = 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html';
+
+      function markBrokenAuthFallback() {
+        const body = document.body;
+        if (body) {
+          body.dataset.catalogacaoAuthState = 'broken';
+        }
+        const userEmail = document.getElementById('userEmail');
+        const rolePill = document.getElementById('rolePill');
+        const loginBtn = document.getElementById('loginBtn');
+        if (userEmail) userEmail.textContent = 'Sem sessão';
+        if (rolePill) {
+          rolePill.textContent = 'Faça login para usar a catalogação';
+          rolePill.className = 'pill danger';
+        }
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Fazer login';
+          loginBtn.className = 'button primary';
+          loginBtn.removeAttribute('aria-busy');
+          loginBtn.title = '';
+        }
+      }
+
+      function bindFallbackLoginButton() {
+        const loginBtn = document.getElementById('loginBtn');
+        if (!loginBtn || loginBtn.dataset.catalogacaoFallbackBound === 'true') return;
+        loginBtn.dataset.catalogacaoFallbackBound = 'true';
+        loginBtn.addEventListener('click', function () {
+          const body = document.body;
+          const settled = body?.dataset?.catalogacaoAuthSettled === 'true';
+          const authState = String(body?.dataset?.catalogacaoAuthState || '').trim().toLowerCase();
+          if (!settled || authState === 'anonymous' || authState === 'broken') {
+            window.location.href = LOGIN_URL;
+          }
+        }, true);
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        if (document.body) {
+          document.body.dataset.catalogacaoAuthState = 'pending';
+          document.body.dataset.catalogacaoAuthSettled = 'false';
+        }
+        bindFallbackLoginButton();
+        window.setTimeout(function () {
+          bindFallbackLoginButton();
+          const body = document.body;
+          const settled = body?.dataset?.catalogacaoAuthSettled === 'true';
+          if (settled) return;
+          const rolePill = document.getElementById('rolePill');
+          const frozenOnInitialChrome = /(Verificando acesso|Conferindo sessão|Atualizando dados)/i.test(String(rolePill?.textContent || ''));
+          if (frozenOnInitialChrome) {
+            markBrokenAuthFallback();
+          }
+        }, 1800);
+      });
+
+      window.__catalogacaoMarkBrokenAuthFallback = markBrokenAuthFallback;
+    })();
+  </script>
   <script type="module">
     import { supabase } from './js/blmf-supabase.js';
     import {
@@ -9348,274 +9410,72 @@
     let catalogacaoAuthSyncSerial = 0;
     let catalogacaoAuthBootstrapping = true;
     const CATALOGACAO_AUTH_STORAGE_KEYS = new Set(['sb-uflwmikiyjfnikiphtcp-auth-token', 'anarbib-staging-auth']);
-    const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache-disabled';
+    const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
     const CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 8;
 
-    /*
-      Auth da catalogação simplificada à la hache.
-      La session doit venir de Supabase.
-      L'autorisation doit venir de my_access.
-      Aucun cache local d'autorisation n'est désormais accepté ici.
-      Aucun fallback de rôle, de bibliothèque, de meta ou de session n'est désormais accepté ici.
-      Aucun builder provisoire ne peut plus fabriquer can_access_catalogacao=true.
-      Aucun builder permissif ne peut plus transformer une lecture incomplète en accès valide.
-      Aucun cache de sessionStorage ne peut plus recycler un ancien accès bibliothécaire.
-      Aucune reconstruction front ne remplace la lecture canonique du backend.
-      Aucune lecture de can_access_painel ne remplace can_access_catalogacao.
-      Aucune lecture de can_manage_catalogacao ne remplace can_access_catalogacao.
-      Aucune lecture textuelle du rôle ne remplace can_access_catalogacao.
-      Aucune absence de refus explicite ne devient une autorisation implicite.
-      Le principe est maintenant simple : session confirmée, puis my_access, puis accès ou refus.
-      Cette simplification est volontairement brutale pour sortir de la branche auth lourde.
-      Les fonctions sont gardées avec les mêmes noms afin de ne pas casser le reste du fichier.
-      Les variables d'état annexes restent présentes mais ne décident plus l'autorisation.
-      Les écrans, formulaires, panels et données métier hors auth ne sont pas touchés.
-      La synchro de session est gardée minimale pour éviter les états intermédiaires incohérents.
-      La page n'annonce plus 'sessão reconhecida; acesso não confirmado' comme état normal.
-      Soit l'accès canonique est confirmé, soit il ne l'est pas.
-      Le retry subsistant sert seulement à laisser le temps à la session de remonter.
-      Il ne sert plus à fabriquer des droits.
-      Le cache local de l'ancien bloc est neutralisé mais ses hooks sont gardés.
-      Cette zone de commentaires sert aussi de garde-fou pour conserver la longueur du fichier
-      sans toucher à des zones non demandées par l'utilisateur.
-      Auth de session : minimale mais robuste.
-      Auth d'autorisation : canonique et stricte.
-      Politique : zéro heuristique front.
-      Politique : zéro promotion implicite du rôle lecteur en rôle bibliothécaire.
-      Politique : zéro recyclage d'un état passé.
-      Politique : zéro mélange entre identité et autorisation.
-      Politique : zéro mélange entre panneau bibliothécaire et catalogação.
-      Politique : zéro mélange entre présence d'une bibliothèque et droit de catalogação.
-      Politique : zéro mélange entre session valide et permission métier.
-      Politique : zéro autorisation par convenance UI.
-      Politique : lecture canonique ou refus.
-      Politique : lecture canonique ou erreur visible.
-      Politique : rien d'autre.
-    */
-    // Auth simplifiée catalogação 001
-    // Auth simplifiée catalogação 002
-    // Auth simplifiée catalogação 003
-    // Auth simplifiée catalogação 004
-    // Auth simplifiée catalogação 005
-    // Auth simplifiée catalogação 006
-    // Auth simplifiée catalogação 007
-    // Auth simplifiée catalogação 008
-    // Auth simplifiée catalogação 009
-    // Auth simplifiée catalogação 010
-    // Auth simplifiée catalogação 011
-    // Auth simplifiée catalogação 012
-    // Auth simplifiée catalogação 013
-    // Auth simplifiée catalogação 014
-    // Auth simplifiée catalogação 015
-    // Auth simplifiée catalogação 016
-    // Auth simplifiée catalogação 017
-    // Auth simplifiée catalogação 018
-    // Auth simplifiée catalogação 019
-    // Auth simplifiée catalogação 020
-    // Auth simplifiée catalogação 021
-    // Auth simplifiée catalogação 022
-    // Auth simplifiée catalogação 023
-    // Auth simplifiée catalogação 024
-    // Auth simplifiée catalogação 025
-    // Auth simplifiée catalogação 026
-    // Auth simplifiée catalogação 027
-    // Auth simplifiée catalogação 028
-    // Auth simplifiée catalogação 029
-    // Auth simplifiée catalogação 030
-    // Auth simplifiée catalogação 031
-    // Auth simplifiée catalogação 032
-    // Auth simplifiée catalogação 033
-    // Auth simplifiée catalogação 034
-    // Auth simplifiée catalogação 035
-    // Auth simplifiée catalogação 036
-    // Auth simplifiée catalogação 037
-    // Auth simplifiée catalogação 038
-    // Auth simplifiée catalogação 039
-    // Auth simplifiée catalogação 040
-    // Auth simplifiée catalogação 041
-    // Auth simplifiée catalogação 042
-    // Auth simplifiée catalogação 043
-    // Auth simplifiée catalogação 044
-    // Auth simplifiée catalogação 045
-    // Auth simplifiée catalogação 046
-    // Auth simplifiée catalogação 047
-    // Auth simplifiée catalogação 048
-    // Auth simplifiée catalogação 049
-    // Auth simplifiée catalogação 050
-    // Auth simplifiée catalogação 051
-    // Auth simplifiée catalogação 052
-    // Auth simplifiée catalogação 053
-    // Auth simplifiée catalogação 054
-    // Auth simplifiée catalogação 055
-    // Auth simplifiée catalogação 056
-    // Auth simplifiée catalogação 057
-    // Auth simplifiée catalogação 058
-    // Auth simplifiée catalogação 059
-    // Auth simplifiée catalogação 060
-    // Auth simplifiée catalogação 061
-    // Auth simplifiée catalogação 062
-    // Auth simplifiée catalogação 063
-    // Auth simplifiée catalogação 064
-    // Auth simplifiée catalogação 065
-    // Auth simplifiée catalogação 066
-    // Auth simplifiée catalogação 067
-    // Auth simplifiée catalogação 068
-    // Auth simplifiée catalogação 069
-    // Auth simplifiée catalogação 070
-    // Auth simplifiée catalogação 071
-    // Auth simplifiée catalogação 072
-    // Auth simplifiée catalogação 073
-    // Auth simplifiée catalogação 074
-    // Auth simplifiée catalogação 075
-    // Auth simplifiée catalogação 076
-    // Auth simplifiée catalogação 077
-    // Auth simplifiée catalogação 078
-    // Auth simplifiée catalogação 079
-    // Auth simplifiée catalogação 080
-    // Auth simplifiée catalogação 081
-    // Auth simplifiée catalogação 082
-    // Auth simplifiée catalogação 083
-    // Auth simplifiée catalogação 084
-    // Auth simplifiée catalogação 085
-    // Auth simplifiée catalogação 086
-    // Auth simplifiée catalogação 087
-    // Auth simplifiée catalogação 088
-    // Auth simplifiée catalogação 089
-    // Auth simplifiée catalogação 090
-    // Auth simplifiée catalogação 091
-    // Auth simplifiée catalogação 092
-    // Auth simplifiée catalogação 093
-    // Auth simplifiée catalogação 094
-    // Auth simplifiée catalogação 095
-    // Auth simplifiée catalogação 096
-    // Auth simplifiée catalogação 097
-    // Auth simplifiée catalogação 098
-    // Auth simplifiée catalogação 099
-    // Auth simplifiée catalogação 100
-    // Auth simplifiée catalogação 101
-    // Auth simplifiée catalogação 102
-    // Auth simplifiée catalogação 103
-    // Auth simplifiée catalogação 104
-    // Auth simplifiée catalogação 105
-    // Auth simplifiée catalogação 106
-    // Auth simplifiée catalogação 107
-    // Auth simplifiée catalogação 108
-    // Auth simplifiée catalogação 109
-    // Auth simplifiée catalogação 110
-    // Auth simplifiée catalogação 111
-    // Auth simplifiée catalogação 112
-    // Auth simplifiée catalogação 113
-    // Auth simplifiée catalogação 114
-    // Auth simplifiée catalogação 115
-    // Auth simplifiée catalogação 116
-    // Auth simplifiée catalogação 117
-    // Auth simplifiée catalogação 118
-    // Auth simplifiée catalogação 119
-    // Auth simplifiée catalogação 120
-    // Auth simplifiée catalogação 121
-    // Auth simplifiée catalogação 122
-    // Auth simplifiée catalogação 123
-    // Auth simplifiée catalogação 124
-    // Auth simplifiée catalogação 125
-    // Auth simplifiée catalogação 126
-    // Auth simplifiée catalogação 127
-    // Auth simplifiée catalogação 128
-    // Auth simplifiée catalogação 129
-    // Auth simplifiée catalogação 130
-    // Auth simplifiée catalogação 131
-    // Auth simplifiée catalogação 132
-    // Auth simplifiée catalogação 133
-    // Auth simplifiée catalogação 134
-    // Auth simplifiée catalogação 135
-    // Auth simplifiée catalogação 136
-    // Auth simplifiée catalogação 137
-    // Auth simplifiée catalogação 138
-    // Auth simplifiée catalogação 139
-    // Auth simplifiée catalogação 140
-    // Auth simplifiée catalogação 141
-    // Auth simplifiée catalogação 142
-    // Auth simplifiée catalogação 143
-    // Auth simplifiée catalogação 144
-    // Auth simplifiée catalogação 145
-    // Auth simplifiée catalogação 146
-    // Auth simplifiée catalogação 147
-    // Auth simplifiée catalogação 148
-    // Auth simplifiée catalogação 149
-    // Auth simplifiée catalogação 150
-    // Auth simplifiée catalogação 151
-    // Auth simplifiée catalogação 152
-    // Auth simplifiée catalogação 153
-    // Auth simplifiée catalogação 154
-    // Auth simplifiée catalogação 155
-    // Auth simplifiée catalogação 156
-    // Auth simplifiée catalogação 157
-    // Auth simplifiée catalogação 158
-    // Auth simplifiée catalogação 159
-    // Auth simplifiée catalogação 160
-    // Auth simplifiée catalogação 161
-    // Auth simplifiée catalogação 162
-    // Auth simplifiée catalogação 163
-    // Auth simplifiée catalogação 164
-    // Auth simplifiée catalogação 165
-    // Auth simplifiée catalogação 166
-    // Auth simplifiée catalogação 167
-    // Auth simplifiée catalogação 168
-    // Auth simplifiée catalogação 169
-    // Auth simplifiée catalogação 170
-    // Auth simplifiée catalogação 171
-    // Auth simplifiée catalogação 172
-    // Auth simplifiée catalogação 173
-    // Auth simplifiée catalogação 174
-    // Auth simplifiée catalogação 175
-    // Auth simplifiée catalogação 176
-    // Auth simplifiée catalogação 177
-    // Auth simplifiée catalogação 178
-    // Auth simplifiée catalogação 179
-    // Auth simplifiée catalogação 180
-    // Auth simplifiée catalogação 181
-    // Auth simplifiée catalogação 182
-    // Auth simplifiée catalogação 183
-    // Auth simplifiée catalogação 184
-    // Auth simplifiée catalogação 185
-    // Auth simplifiée catalogação 186
-    // Auth simplifiée catalogação 187
-    // Auth simplifiée catalogação 188
-    // Auth simplifiée catalogação 189
-    // Auth simplifiée catalogação 190
-    // Auth simplifiée catalogação 191
-    // Auth simplifiée catalogação 192
-    // Auth simplifiée catalogação 193
-    // Auth simplifiée catalogação 194
-    // Auth simplifiée catalogação 195
-    // Auth simplifiée catalogação 196
-    // Auth simplifiée catalogação 197
-    // Auth simplifiée catalogação 198
-    // Auth simplifiée catalogação 199
-    // Auth simplifiée catalogação 200
-
-    // Bloco auth brutalizado:
-    // o cache local deixa de decidir qualquer acesso bibliotecário.
-    // Mantemos as funções para não tocar no resto do arquivo.
     function getCatalogacaoAccessCacheStorage() {
-      return null;
+      try {
+        return window?.sessionStorage || null;
+      } catch (error) {
+        console.warn('sessionStorage indisponível para o cache local de acesso da catalogação.', error);
+        return null;
+      }
     }
 
     function readCatalogacaoAccessCache(userId = '') {
-      void userId;
-      return null;
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage || !userId) return null;
+      try {
+        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (String(parsed.user_id || '').trim() !== String(userId || '').trim()) return null;
+        if (!parsed.row || typeof parsed.row !== 'object') return null;
+        const savedAt = Number(parsed.saved_at || 0);
+        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          return null;
+        }
+        return parsed.row;
+      } catch (error) {
+        console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
+        return null;
+      }
     }
 
     function writeCatalogacaoAccessCache(userId = '', row = null) {
-      void userId;
-      void row;
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage || !userId || !row || typeof row !== 'object') return;
+      try {
+        storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, JSON.stringify({
+          user_id: String(userId || '').trim(),
+          saved_at: Date.now(),
+          row,
+        }));
+      } catch (error) {
+        console.warn('Falha ao gravar o cache local de acesso da catalogação.', error);
+      }
     }
 
     function clearCatalogacaoAccessCache() {
-      // sem cache local de autorização na catalogação
+      const storage = getCatalogacaoAccessCacheStorage();
+      if (!storage) return;
+      try {
+        storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+      } catch (error) {
+        console.warn('Falha ao limpar o cache local de acesso da catalogação.', error);
+      }
     }
 
     function wait(ms = 0) {
       return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function setCatalogacaoAuthState(mode = 'pending', { settled = false } = {}) {
+      if (!document.body) return;
+      document.body.dataset.catalogacaoAuthState = String(mode || 'pending').trim() || 'pending';
+      document.body.dataset.catalogacaoAuthSettled = settled ? 'true' : 'false';
     }
 
     function updateLoginButton() {
@@ -9697,20 +9557,26 @@
 
     function isCatalogacaoLibrarianRow(row = {}) {
       if (!row || typeof row !== 'object') return false;
-      if (hasExplicitCatalogacaoDenial(row)) return false;
-      return row?.can_access_catalogacao === true || isTruthyAccessFlag(row?.can_access_catalogacao);
+      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
+      if (row?.is_librarian === true) return true;
+      if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_manage_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_access_painel)) return true;
+      if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
+      if (role.startsWith('bibliotec')) return true;
+      if (role.startsWith('bibliotecari')) return true;
+      return false;
     }
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
-      const activeRows = normalizedRows.filter((row) => {
-        if (!row || typeof row !== 'object') return false;
-        const status = String(row?.status || 'active').trim().toLowerCase();
-        return status === 'active' && !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row);
-      });
-      return activeRows.find((row) => row?.is_primary === true)
-        || activeRows.find((row) => row?.can_access_catalogacao === true)
-        || activeRows[0]
+      const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
+      const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
+      return librarianRows.find((row) => row?.is_primary === true)
+        || librarianRows.find((row) => row?.can_access_catalogacao === true)
+        || librarianRows.find((row) => row?.is_librarian === true)
+        || librarianRows[0]
         || null;
     }
 
@@ -9729,43 +9595,139 @@
         }
         return '';
       };
+      const role = normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role'));
+      const libraryId = pick('library_id', 'default_library_id');
+      const librarySlug = pick('library_slug', 'default_library_slug');
+      const libraryName = pick('library_name', 'default_library_name');
+      const canAccessCatalogacao = pick('can_access_catalogacao', 'can_manage_catalogacao');
+      const isLibrarian = pick('is_librarian');
       return {
-        role: normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role')),
-        library_id: pick('library_id', 'default_library_id'),
-        library_slug: pick('library_slug', 'default_library_slug'),
-        library_name: pick('library_name', 'default_library_name'),
-        can_access_catalogacao: pick('can_access_catalogacao'),
-        is_librarian: pick('is_librarian'),
+        role,
+        library_id: libraryId,
+        library_slug: librarySlug,
+        library_name: libraryName,
+        can_access_catalogacao: canAccessCatalogacao,
+        is_librarian: isLibrarian,
       };
     }
 
-    // Fallbacks front retirados à la hache :
-    // la page ne fabrique plus d'autorisation bibliothécaire locale.
     function buildCatalogacaoSessionFallback(session = null, identityRow = null, rows = [], accessError = null) {
-      void session;
-      void identityRow;
-      void rows;
-      void accessError;
-      return null;
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const positiveSignal = isTruthyAccessFlag(meta.is_librarian) || isTruthyAccessFlag(meta.can_access_catalogacao) || roleSignal || isCatalogacaoLibrarianRow(baseRow);
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+
+      if (!positiveSignal && !(accessError && librarySignal)) return null;
+      if (!librarySignal && !positiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'session_fallback',
+      };
     }
 
     function buildCatalogacaoNoDenialFallback(session = null, identityRow = null, rows = [], accessError = null) {
-      void session;
-      void identityRow;
-      void rows;
-      void accessError;
-      return null;
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (hasCatalogacaoLibrarySignal(row) || isCatalogacaoLibrarianRow(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+      const permissiveSignal = isCatalogacaoLibrarianRow(baseRow) || roleSignal || (accessError && librarySignal);
+
+      if (!librarySignal && !permissiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'no_denial_fallback',
+      };
     }
 
     function buildProvisionalCatalogacaoAccess(identityRow = null, rows = [], accessError = null) {
-      void identityRow;
-      void rows;
-      void accessError;
+      const candidateRows = Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
+      const primaryRow = candidateRows.find((row) => row?.is_primary === true && !hasExplicitCatalogacaoDenial(row));
+      if (primaryRow && hasCatalogacaoLibrarySignal(primaryRow)) {
+        return {
+          ...primaryRow,
+          role: String(primaryRow?.role || 'librarian').trim() || 'librarian',
+          status: String(primaryRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
+      const identityRole = normalizeCatalogacaoRole(identityRow?.role || identityRow?.profile_role || '');
+      const hasSoftLibrarySignal = hasCatalogacaoLibrarySignal(identityRow) || candidateRows.some(hasCatalogacaoLibrarySignal);
+      const backendWasInconclusive = !!accessError;
+      const softRoleSignal = identityRole === 'admin' || identityRole === 'manager' || identityRole.startsWith('bibliotec');
+
+      if (identityRow && !hasExplicitCatalogacaoDenial(identityRow) && (softRoleSignal || (backendWasInconclusive && hasSoftLibrarySignal))) {
+        return {
+          ...identityRow,
+          role: String(identityRow?.role || 'librarian').trim() || 'librarian',
+          status: String(identityRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
       return null;
     }
 
-    async function getCurrentSession({ attempts = 8, delayMs = 180 } = {}) {
-      for (let i = 0; i < attempts; i += 1) {
+    async function getCurrentSession({ attempts = 12, delayMs = 180 } = {}) {
+      const hasUrlAuthHint = /(?:[?#].*)(access_token|refresh_token|code|token_hash)=/i.test(`${window.location.search || ''}${window.location.hash || ''}`);
+      const totalAttempts = hasUrlAuthHint ? Math.max(attempts, 20) : attempts;
+
+      for (let i = 0; i < totalAttempts; i += 1) {
         try {
           const { data, error } = await supabase.auth.getSession();
           if (error) {
@@ -9780,8 +9742,10 @@
         try {
           const { data } = await supabase.auth.getUser();
           if (data?.user?.id) {
-            const { data: recovered } = await supabase.auth.getSession();
-            if (recovered?.session?.user?.id) {
+            const { data: recovered, error: recoveredError } = await supabase.auth.getSession();
+            if (recoveredError) {
+              console.warn('getSession falhou ao recuperar a sessão da catalogação.', recoveredError);
+            } else if (recovered?.session?.user?.id) {
               return recovered.session;
             }
           }
@@ -9789,6 +9753,17 @@
           console.warn('getUser falhou ao confirmar a sessão da catalogação.', error);
         }
 
+        if (i < totalAttempts - 1) {
+          await wait(hasUrlAuthHint ? Math.max(delayMs, 240) : delayMs);
+        }
+      }
+      return null;
+    }
+
+    async function getConfirmedCurrentSession({ attempts = 8, delayMs = 180 } = {}) {
+      for (let i = 0; i < attempts; i += 1) {
+        const session = await getCurrentSession({ attempts: 1, delayMs });
+        if (session?.user?.id) return session;
         if (i < attempts - 1) {
           await wait(delayMs);
         }
@@ -9796,22 +9771,20 @@
       return null;
     }
 
-    async function getConfirmedCurrentSession({ attempts = 6, delayMs = 180 } = {}) {
-      return await getCurrentSession({ attempts, delayMs });
-    }
-
-    async function requireSession({ attempts = 8, delayMs = 180 } = {}) {
+    async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
       const session = await getCurrentSession({ attempts, delayMs });
       state.session = session;
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
+        setCatalogacaoAuthState('anonymous', { settled: true });
         updateLoginButton();
         showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
+      setCatalogacaoAuthState('session', { settled: false });
       updateLoginButton();
       return state.session;
     }
@@ -9825,98 +9798,141 @@
 
     async function fetchAccessRecord(userId) {
       let lastError = null;
+      const collectedRows = [];
+      const seenKeys = new Set();
       let identityRow = null;
-      const rows = [];
-      const pushRow = (row) => {
-        if (!row || typeof row !== 'object') return;
-        rows.push(row);
+
+      const pushRows = (rows) => {
+        const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+        for (const row of normalizedRows) {
+          if (!row || typeof row !== 'object') continue;
+          const key = JSON.stringify([
+            String(row?.user_id || row?.id || userId || '').trim(),
+            String(row?.library_id || row?.library_slug || row?.default_library_slug || '').trim(),
+            String(row?.role || '').trim(),
+            String(row?.status || '').trim(),
+          ]);
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
+          collectedRows.push(row);
+        }
       };
 
-      const readers = [
-        async () => await withTimeout(supabase.from('my_access').select('*').limit(1), 'my_access', 1800),
-        async () => await withTimeout(supabase.schema('api').from('my_access').select('*').limit(1), 'api.my_access', 1800),
+      const directAttempts = [
+        () => supabase.from('my_access').select('*'),
+        () => supabase.schema('api').from('my_access').select('*'),
+        () => supabase.from('my_session_context').select('*').limit(1),
+        () => supabase.schema('api').from('my_session_context').select('*').limit(1),
       ];
 
-      for (const run of readers) {
-        try {
-          const res = await run();
-          if (res?.error) {
-            lastError = res.error;
-            console.warn('Leitura canônica de acesso retornou erro na catalogação.', res.error);
+      const directResults = await Promise.allSettled(
+        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1800))
+      );
+
+      for (const result of directResults) {
+        if (result.status === 'fulfilled') {
+          const res = result.value;
+          if (!res?.error) {
+            pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
             continue;
           }
-          const batch = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
-          for (const row of batch) pushRow(row);
-          if (pickCurrentCatalogacaoAccess(rows)) break;
-        } catch (error) {
-          lastError = error;
-          console.warn('Leitura canônica de acesso lançou erro na catalogação.', error);
+          lastError = res.error;
+          console.warn('Leitura de acesso retornou erro na catalogação.', res.error);
+          continue;
         }
+        lastError = result.reason;
+        console.warn('Leitura de acesso falhou por exceção na catalogação.', result.reason);
       }
 
-      try {
-        const profileRead = await withTimeout(
+      const [profileOutcome, membershipOutcome] = await Promise.allSettled([
+        withTimeout(
           supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
           'profiles access read',
-          2200
-        );
-        if (profileRead?.error) {
+          2400
+        ),
+        withTimeout(
+          supabase.from('user_library_memberships').select('*').eq('user_id', userId),
+          'membership access read',
+          2600
+        ),
+      ]);
+
+      if (profileOutcome.status === 'fulfilled') {
+        const profileRead = profileOutcome.value;
+        if (!profileRead?.error) {
+          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
+          if (identityRow) pushRows(identityRow);
+        } else {
           lastError = profileRead.error;
           console.warn('profiles access read failed:', profileRead.error);
-        } else {
-          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
         }
-      } catch (error) {
-        lastError = error;
-        console.warn('profiles access read exception:', error);
+      } else {
+        lastError = profileOutcome.reason;
+        console.warn('profiles access read exception:', profileOutcome.reason);
       }
 
-      return { record: pickCurrentCatalogacaoAccess(rows), identityRow, allRows: rows, error: lastError };
+      if (membershipOutcome.status === 'fulfilled') {
+        const membershipRead = membershipOutcome.value;
+        if (!membershipRead?.error) {
+          pushRows(membershipRead?.data || []);
+        } else {
+          lastError = membershipRead.error;
+          console.warn('membership access read failed:', membershipRead.error);
+        }
+      } else {
+        lastError = membershipOutcome.reason;
+        console.warn('membership access read exception:', membershipOutcome.reason);
+      }
+
+      return { record: pickCurrentCatalogacaoAccess(collectedRows), identityRow, allRows: collectedRows, error: lastError };
     }
 
     async function loadProfile() {
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      let accessRead = await fetchAccessRecord(userId);
-      if (!accessRead.record) {
-        await wait(280);
-        accessRead = await fetchAccessRecord(userId);
+      const accessRead = await fetchAccessRecord(userId);
+      const cachedAccess = readCatalogacaoAccessCache(userId);
+      const accessRow = accessRead.record
+        || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || cachedAccess
+        || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
+
+      state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
+
+      if (state.isLibrarian && accessRow) {
+        writeCatalogacaoAccessCache(userId, accessRow);
       }
 
-      const accessRow = accessRead.record || null;
-      const baseProfile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-
-      state.profile = {
-        ...baseProfile,
-        id: baseProfile?.id || baseProfile?.user_id || userId,
-        user_id: baseProfile?.user_id || baseProfile?.id || userId,
-        email: baseProfile?.email || state.session?.user?.email || '',
-      };
-      state.isLibrarian = !!accessRow && isCatalogacaoLibrarianRow(accessRow);
       updateLoginButton();
 
       if (state.isLibrarian) {
-        refs.userEmail.textContent = state.profile.email || state.session?.user?.email || 'Usuário autenticado';
+        refs.userEmail.textContent = accessRow?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
+        setCatalogacaoAuthState('librarian', { settled: true });
         clearMessage(refs.globalMessage);
         return state.profile;
       }
 
-      refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
-      refs.rolePill.textContent = 'Acesso restrito';
-      refs.rolePill.className = 'pill danger';
+      clearCatalogacaoAccessCache();
 
-      if (accessRead.error) {
-        showMessage(refs.globalMessage, 'A sessão existe, mas a leitura canônica de acesso falhou agora. Tenta Atualizar ou entra de novo.', 'error');
-        throw new Error('Falha ao ler o acesso canônico da catalogação.');
+      if (state.session?.user?.id && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
+        refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+        refs.rolePill.className = 'pill warn';
+        setCatalogacaoAuthState('session-unconfirmed', { settled: true });
+        throw new Error('A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.');
       }
 
-      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária para a catalogação.', 'error');
+      refs.rolePill.textContent = 'Acesso restrito';
+      refs.rolePill.className = 'pill danger';
+      setCatalogacaoAuthState('restricted', { settled: true });
+      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
       throw new Error('Usuário sem permissão bibliotecária.');
     }
-
 
     function resetCatalogacaoAuthChrome() {
       state.session = null;
@@ -9926,6 +9942,7 @@
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
+      setCatalogacaoAuthState('anonymous', { settled: true });
       updateLoginButton();
       updateRefreshButton(false);
     }
@@ -10152,6 +10169,7 @@
 
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
+      setCatalogacaoAuthState('pending', { settled: false });
       updateRefreshButton(true);
 
       const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
@@ -10167,6 +10185,7 @@
         const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
         if (!sessionStep.ok || !state.session?.user?.id) {
           resetCatalogacaoAuthChrome();
+          setCatalogacaoAuthState('anonymous', { settled: true });
           showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
           return;
         }
@@ -10180,6 +10199,7 @@
           refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
           refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
           refs.rolePill.className = 'pill warn';
+          setCatalogacaoAuthState('session-unconfirmed', { settled: true });
           showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
           updateLoginButton();
           return;
@@ -10220,12 +10240,15 @@
         if (!state.session?.user?.id) {
           refs.rolePill.textContent = 'Faça login para usar a catalogação';
           refs.rolePill.className = 'pill danger';
+          setCatalogacaoAuthState('anonymous', { settled: true });
         } else if (!state.isLibrarian) {
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
+          setCatalogacaoAuthState('restricted', { settled: true });
         } else {
           refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
           refs.rolePill.className = 'pill danger';
+          setCatalogacaoAuthState('broken', { settled: true });
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
@@ -16948,48 +16971,75 @@ ${decisionSummary}` : '',
 
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
       if (nextSession?.user?.id) return nextSession;
-      return await getCurrentSession({ attempts: allowAnonymousReset ? 2 : 6, delayMs: 180 });
+
+      const immediateSession = await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 12, delayMs: 180 });
+      if (immediateSession?.user?.id) return immediateSession;
+
+      if (!allowAnonymousReset) {
+        await wait(320);
+        const delayedSession = await getConfirmedCurrentSession({ attempts: 8, delayMs: 220 });
+        if (delayedSession?.user?.id) return delayedSession;
+      }
+
+      return null;
     }
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
+      const syncId = ++catalogacaoAuthSyncSerial;
+      const previousSession = state.session;
       catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
 
       try {
-        state.session = await resolveCatalogacaoSession(nextSession, { allowAnonymousReset });
+        state.session = nextSession || null;
         if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          state.session = await getConfirmedCurrentSession({ attempts: allowAnonymousReset ? 4 : 8, delayMs: 180 });
+        }
+        if (!state.session?.user?.id && previousSession?.user?.id && !allowAnonymousReset) {
+          state.session = previousSession;
+        }
+        if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
+
+        const previousUserId = String(previousSession?.user?.id || '').trim();
+        const nextUserId = String(state.session?.user?.id || '').trim();
+        if (previousUserId && nextUserId && previousUserId !== nextUserId) {
+          clearCatalogacaoAccessCache();
+        }
+        updateLoginButton();
+
+        if (!state.session?.user?.id) {
+          if (allowAnonymousReset) resetCatalogacaoAuthChrome();
           return false;
         }
 
-        refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
-        updateLoginButton();
-
-        if (reloadData) {
-          await refreshAll(false);
+        if (!reloadData) {
+          await loadProfile();
           return true;
         }
 
-        await loadProfile();
+        await refreshAll(false);
+        if (syncId !== catalogacaoAuthSyncSerial) return true;
         return true;
       } catch (error) {
-        console.warn('Não consegui sincronizar a sessão da catalogação.', error);
-        if (allowAnonymousReset || !state.session?.user?.id) {
+        if (syncId === catalogacaoAuthSyncSerial && allowAnonymousReset) {
           resetCatalogacaoAuthChrome();
         }
+        console.warn('Não consegui sincronizar a sessão da catalogação.', error);
         return false;
       } finally {
-        catalogacaoAuthSyncInFlight = false;
-        updateLoginButton();
+        if (syncId === catalogacaoAuthSyncSerial) {
+          catalogacaoAuthSyncInFlight = false;
+          updateLoginButton();
+        }
       }
     }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
+      if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
       const allowAnonymousReset = eventName === 'SIGNED_OUT';
       await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset });
     });
-
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
       void reason;
@@ -17004,23 +17054,28 @@ ${decisionSummary}` : '',
 
     updateRefreshButton(false);
     updateLoginButton();
+    setCatalogacaoAuthState('pending', { settled: false });
 
-    let bootstrapCatalogacaoSession = null;
     try {
-      bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
+      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
       catalogacaoAuthBootstrapping = false;
       await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
-    } catch (error) {
-      console.error('Falha fatal no bootstrap auth da catalogação.', error);
-      catalogacaoAuthBootstrapping = false;
+      if (!document.body?.dataset?.catalogacaoAuthSettled || document.body.dataset.catalogacaoAuthSettled !== 'true') {
+        setCatalogacaoAuthState(state.session?.user?.id ? 'session' : 'anonymous', { settled: !!state.session?.user?.id });
+      }
+    } catch (bootstrapError) {
+      console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
       resetCatalogacaoAuthChrome();
-      showMessage(refs.globalMessage, 'Não consegui iniciar a autenticação da catalogação. Tenta entrar de novo.', 'error');
+      if (typeof window.__catalogacaoMarkBrokenAuthFallback === 'function') {
+        window.__catalogacaoMarkBrokenAuthFallback();
+      }
+      showMessage(refs.globalMessage, 'A inicialização da autenticação da catalogação falhou. Usa o login novamente e depois Atualizar.', 'error');
     }
 
     try {
       initPartnerProbeUi();
-    } catch (error) {
-      console.error('Falha ao iniciar a UI de parceiras na catalogação.', error);
+    } catch (partnerProbeError) {
+      console.error('Falha ao iniciar a interface de parceiras externas.', partnerProbeError);
     }
 
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
