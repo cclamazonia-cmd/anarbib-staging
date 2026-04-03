@@ -4010,6 +4010,15 @@
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
     const LOGIN_URL = ROUTES.CADASTRO;
+    function buildCatalogacaoLoginUrl(nextUrl = window.location.href) {
+      try {
+        const url = new URL(LOGIN_URL);
+        url.searchParams.set('next', nextUrl);
+        return url.toString();
+      } catch (_) {
+        return LOGIN_URL;
+      }
+    }
     const DIGITAL_PUBLIC_BUCKET = 'anarbib-pdf-public';
     const DIGITAL_RESTRICTED_BUCKET = 'pdf-restrito';
     const DIGITAL_PUBLIC_BUCKET_LEGACY = 'pdf-publico';
@@ -9412,27 +9421,10 @@
 
     function updateLoginButton() {
       if (!refs.loginBtn) return;
-      const hasSession = !!state.session?.user?.id;
       refs.loginBtn.disabled = false;
       refs.loginBtn.removeAttribute('aria-busy');
-
-      if (catalogacaoAuthSyncInFlight) {
-        refs.loginBtn.setAttribute('aria-busy', 'true');
-        if (hasSession) {
-          refs.loginBtn.textContent = 'Logout';
-          refs.loginBtn.className = 'button secondary';
-          refs.loginBtn.title = 'Sessão ativa. Você já pode sair sem esperar a sincronização terminar.';
-        } else {
-          refs.loginBtn.disabled = true;
-          refs.loginBtn.textContent = 'Fazer login';
-          refs.loginBtn.className = 'button primary';
-          refs.loginBtn.title = 'Sessão ainda não confirmada.';
-        }
-        return;
-      }
-
       refs.loginBtn.title = '';
-      if (hasSession) {
+      if (state.session?.user?.id) {
         refs.loginBtn.textContent = 'Logout';
         refs.loginBtn.className = 'button secondary';
       } else {
@@ -9655,56 +9647,18 @@
       return null;
     }
 
-    async function getCurrentSession({ attempts = 12, delayMs = 180 } = {}) {
-      const hasUrlAuthHint = /(?:[?#].*)(access_token|refresh_token|code|token_hash)=/i.test(`${window.location.search || ''}${window.location.hash || ''}`);
-      const totalAttempts = hasUrlAuthHint ? Math.max(attempts, 20) : attempts;
-
-      for (let i = 0; i < totalAttempts; i += 1) {
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          if (error) {
-            console.warn('getSession falhou ao confirmar a sessão da catalogação.', error);
-          } else if (data?.session?.user?.id) {
-            return data.session;
-          }
-        } catch (error) {
-          console.warn('getSession lançou erro ao confirmar a sessão da catalogação.', error);
-        }
-
-        try {
-          const { data } = await supabase.auth.getUser();
-          if (data?.user?.id) {
-            const { data: recovered, error: recoveredError } = await supabase.auth.getSession();
-            if (recoveredError) {
-              console.warn('getSession falhou ao recuperar a sessão da catalogação.', recoveredError);
-            } else if (recovered?.session?.user?.id) {
-              return recovered.session;
-            }
-          }
-        } catch (error) {
-          console.warn('getUser falhou ao confirmar a sessão da catalogação.', error);
-        }
-
-        if (i < totalAttempts - 1) {
-          await wait(hasUrlAuthHint ? Math.max(delayMs, 240) : delayMs);
-        }
-      }
-      return null;
+    async function getCurrentSession(_options = {}) {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data?.session || null;
     }
 
-    async function getConfirmedCurrentSession({ attempts = 8, delayMs = 180 } = {}) {
-      for (let i = 0; i < attempts; i += 1) {
-        const session = await getCurrentSession({ attempts: 1, delayMs });
-        if (session?.user?.id) return session;
-        if (i < attempts - 1) {
-          await wait(delayMs);
-        }
-      }
-      return null;
+    async function getConfirmedCurrentSession(_options = {}) {
+      return getCurrentSession();
     }
 
-    async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
-      const session = await getCurrentSession({ attempts, delayMs });
+    async function requireSession() {
+      const session = await getCurrentSession();
       state.session = session;
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
@@ -9716,10 +9670,9 @@
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       updateLoginButton();
-      return state.session;
     }
 
-    function withTimeout(promise, label, ms = 2200) {
+    function withTimeout(promise, label, ms = 4000) {
       return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
@@ -9728,33 +9681,27 @@
 
     async function fetchAccessRecord(userId) {
       const accessSelect = 'id, user_id, email, public_id, first_name, last_name, is_librarian, is_restricted, can_access_conta, can_access_painel, can_access_catalogacao, default_library_id, default_library_slug, default_library_name, library_id, library_slug, library_name, role, status, is_primary';
-      let lastError = null;
 
-      const attempts = [
-        () => supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
-        () => supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
-      ];
-
-      for (const run of attempts) {
-        try {
-          const result = await withTimeout(run(), 'catalogação access read', 4200);
-          if (!result?.error && result?.data) {
-            return result.data;
-          }
-          if (result?.error) {
-            lastError = result.error;
-            console.warn('Leitura de acesso retornou erro na catalogação.', result.error);
-          }
-        } catch (error) {
-          lastError = error;
-          console.warn('Leitura de acesso falhou por exceção na catalogação.', error);
-        }
+      try {
+        const publicRead = await withTimeout(
+          supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'public.my_access read'
+        );
+        if (!publicRead.error && publicRead.data) return publicRead.data;
+        if (publicRead.error) console.warn('public.my_access read failed:', publicRead.error);
+      } catch (error) {
+        console.warn('public.my_access read exception:', error);
       }
 
-      if (lastError) {
-        throw (lastError instanceof Error)
-          ? lastError
-          : new Error(String(lastError?.message || lastError || 'Falha ao ler my_access.'));
+      try {
+        const apiRead = await withTimeout(
+          supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'api.my_access read'
+        );
+        if (!apiRead.error && apiRead.data) return apiRead.data;
+        if (apiRead.error) console.warn('api.my_access read failed:', apiRead.error);
+      } catch (error) {
+        console.warn('api.my_access read exception:', error);
       }
 
       return null;
@@ -9765,46 +9712,35 @@
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
       const data = await fetchAccessRecord(userId);
+
       state.profile = data || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
       state.isLibrarian = data?.can_access_catalogacao === true;
+
       updateLoginButton();
 
       if (state.isLibrarian) {
         refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
-        setCatalogacaoAuthState('librarian', { settled: true });
         clearMessage(refs.globalMessage);
-        return state.profile;
+        return;
       }
 
-      refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
-      setCatalogacaoAuthState('restricted', { settled: true });
-      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária para usar a catalogação.', 'error');
+      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
       throw new Error('Usuário sem permissão bibliotecária.');
     }
+
     function resetCatalogacaoAuthChrome() {
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
-      clearCatalogacaoAccessCache();
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
       updateLoginButton();
       updateRefreshButton(false);
-    }
-
-    async function settleCatalogacaoStep(label, task, timeoutMs = 3600) {
-      try {
-        const result = await withTimeout(Promise.resolve().then(task), label, timeoutMs);
-        return { ok: true, label, result };
-      } catch (error) {
-        console.warn(`Falha ao carregar ${label} na catalogação.`, error);
-        return { ok: false, label, error };
-      }
     }
 
     async function loadBatches() {
@@ -10018,17 +9954,15 @@
     }
 
     async function refreshAll(showSuccess = false) {
-      if (catalogacaoUiRefreshInFlight) return;
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
       refs.userEmail.textContent = 'Verificando sessão…';
       refs.rolePill.textContent = 'Verificando acesso…';
       refs.rolePill.className = 'pill warn';
-      setCatalogacaoAuthState('pending', { settled: false });
 
       try {
         clearMessage(refs.globalMessage);
-        await requireSession({ attempts: 24, delayMs: 220 });
+        await requireSession();
         await loadProfile();
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
@@ -10044,7 +9978,6 @@
         }
         updateStats();
         updateLoginButton();
-        setCatalogacaoAuthState('librarian', { settled: true });
 
         const failedSources = [];
         if (batchesResult?.ok === false) failedSources.push('lotes');
@@ -10052,7 +9985,7 @@
         if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
         if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
         if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
-        if (catalogResult?.ok === false && !catalogResult?.errors?.length) failedSources.push('catálogo publicado');
+        if (catalogResult?.errors?.some(entry => entry.source === 'otherDocuments')) failedSources.push('outros documentos');
 
         if (failedSources.length) {
           showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
@@ -10063,23 +9996,24 @@
         updateLoginButton();
         console.error(error);
         if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          refs.rolePill.textContent = 'Faça login para usar a catalogação';
+          refs.rolePill.className = 'pill danger';
         } else if (!state.isLibrarian) {
-          refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
-          setCatalogacaoAuthState('restricted', { settled: true });
         } else {
           refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
           refs.rolePill.className = 'pill danger';
-          setCatalogacaoAuthState('broken', { settled: true });
         }
-        showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
+        if (state.session?.user?.id && error?.message) {
+          showMessage(refs.globalMessage, error.message, 'error');
+        }
       } finally {
         catalogacaoUiRefreshInFlight = false;
         updateRefreshButton(false);
       }
     }
+
     async function saveDraft(table, payload, messageTarget, successText) {
       clearMessage(messageTarget);
       const currentTab = getActiveCatalogacaoTab();
@@ -13561,16 +13495,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     }
 
     el('refreshAllBtn').addEventListener('click', async () => {
-      updateRefreshButton(true);
-      try {
-        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
-        await syncCatalogacaoAuthState(liveSession, {
-          reloadData: !!liveSession?.user?.id,
-          allowAnonymousReset: !liveSession?.user?.id,
-        });
-      } finally {
-        updateRefreshButton(false);
-      }
+      await refreshAll(true);
     });
     el('refreshQueueBtn').addEventListener('click', loadQueue);
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
@@ -13623,22 +13548,15 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     refs.loginBtn.addEventListener('click', async () => {
       const hasSession = !!state.session?.user?.id;
       if (!hasSession) {
-        window.location.href = buildCatalogacaoLoginUrl();
+        window.location.href = buildCatalogacaoLoginUrl(window.location.href);
         return;
       }
-      refs.loginBtn.disabled = true;
       try {
-        await Promise.race([
-          supabase.auth.signOut(),
-          new Promise((resolve) => setTimeout(resolve, 2500))
-        ]);
+        await supabase.auth.signOut();
       } catch (error) {
         console.warn('signOut failed:', error);
-      } finally {
-        resetCatalogacaoAuthChrome();
-        refs.loginBtn.disabled = false;
-        window.location.href = LOGIN_URL;
       }
+      window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-contrib-action]');
@@ -16792,197 +16710,70 @@ ${decisionSummary}` : '',
   refreshBookPartnerGovernanceUi({ silent: true });
 }
 
+    async function resolveCatalogacaoSession(nextSession, _options = {}) {
+      return nextSession || await getCurrentSession();
+    }
+
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
-      catalogacaoAuthSyncInFlight = true;
+      state.session = nextSession || await getCurrentSession();
       updateLoginButton();
 
-      try {
-        state.session = nextSession?.user?.id
-          ? nextSession
-          : await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 24, delayMs: 220 });
-
-        if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
-          return false;
-        }
-
-        refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
-
-        if (reloadData) {
-          await refreshAll(false);
-        } else {
-          await loadProfile();
-        }
-        return true;
-      } catch (error) {
-        console.warn('Não consegui sincronizar a sessão da catalogação.', error);
-        if (allowAnonymousReset || !state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
-        }
+      if (!state.session?.user?.id) {
+        if (allowAnonymousReset || !reloadData) resetCatalogacaoAuthChrome();
         return false;
-      } finally {
-        catalogacaoAuthSyncInFlight = false;
-        updateLoginButton();
       }
+
+      if (reloadData) {
+        await refreshAll(false);
+        return true;
+      }
+
+      refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
+      try {
+        await loadProfile();
+      } catch (error) {
+        console.warn('Falha ao atualizar o perfil da catalogação após mudança de sessão.', error);
+      }
+      return true;
     }
 
-    supabase.auth.onAuthStateChange((event, session) => {
-      const eventName = String(event || '').trim().toUpperCase();
-      if (eventName === 'SIGNED_OUT') {
-        resetCatalogacaoAuthChrome();
-        return;
+    supabase.auth.onAuthStateChange((_event, session) => {
+      state.session = session;
+      if (session) {
+        refs.userEmail.textContent = session.user.email || 'Usuário autenticado';
+        if (!state.isLibrarian) {
+          refs.rolePill.textContent = 'Sessão ativa';
+          refs.rolePill.className = 'pill info';
+        }
+      } else {
+        state.profile = null;
+        state.isLibrarian = false;
+        refs.userEmail.textContent = 'Sem sessão';
+        refs.rolePill.textContent = 'Faça login para usar a catalogação';
+        refs.rolePill.className = 'pill danger';
       }
-      if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) {
-        return;
-      }
-      Promise.resolve(syncCatalogacaoAuthState(session, { reloadData: !!session?.user?.id, allowAnonymousReset: false }))
-        .catch((error) => console.warn('Falha no onAuthStateChange da catalogação.', error));
+      updateLoginButton();
     });
 
-    async function probeCatalogacaoSessionOnVisibility(reason = '') {
-      void reason;
-      return false;
-    }
-
-    // Revalidação automática por storage desativada para evitar refreshs intempestivos da catalogação.
-
-    // Revalidação automática no foco desativada para evitar refreshs intempestivos da catalogação.
-
-    // Revalidação automática no retorno da página desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('hashchange', () => {
+      const hashTab = getCatalogacaoTabFromHash();
+      if (hashTab) setTab(hashTab);
+    });
 
     updateRefreshButton(false);
+    applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
+    applyStoredCatalogacaoFilters();
+    setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
+    resetBookForm();
+    resetAuthorForm();
+    resetExemplarForm();
+    renderExemplarBatchQueue();
+    renderLabelSheet([], '');
+    renderTrash();
     updateLoginButton();
-    setCatalogacaoAuthState('pending', { settled: false });
+    initPartnerProbeUi();
+    refreshAll();
 
-    try {
-      catalogacaoAuthBootstrapping = true;
-      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 24, delayMs: 220 });
-      catalogacaoAuthBootstrapping = false;
-
-      if (bootstrapCatalogacaoSession?.user?.id) {
-        state.session = bootstrapCatalogacaoSession;
-        await refreshAll(false);
-      } else {
-        resetCatalogacaoAuthChrome();
-      }
-    } catch (bootstrapError) {
-      console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
-      resetCatalogacaoAuthChrome();
-      if (typeof window.__catalogacaoMarkBrokenAuthFallback === 'function') {
-        window.__catalogacaoMarkBrokenAuthFallback();
-      }
-      showMessage(refs.globalMessage, 'A inicialização da autenticação da catalogação falhou. Usa o login novamente e depois Atualizar.', 'error');
-    }
-
-    try {
-      initPartnerProbeUi();
-    } catch (partnerProbeError) {
-      console.error('Falha ao iniciar a interface de parceiras externas.', partnerProbeError);
-    }
-
-    // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
-    // auth brutal pad 01
-    // auth brutal pad 02
-    // auth brutal pad 03
-    // auth brutal pad 04
-    // auth brutal pad 05
-    // auth brutal pad 06
-    // auth brutal pad 07
-    // auth brutal pad 08
-    // auth brutal pad 09
-    // auth brutal pad 10
-
-    // auth stability pad 001
-    // auth stability pad 002
-    // auth stability pad 003
-    // auth stability pad 004
-    // auth stability pad 005
-    // auth stability pad 006
-    // auth stability pad 007
-    // auth stability pad 008
-    // auth stability pad 009
-    // auth stability pad 010
-    // auth stability pad 011
-    // auth stability pad 012
-    // auth stability pad 013
-    // auth stability pad 014
-    // auth stability pad 015
-    // auth stability pad 016
-    // auth stability pad 017
-    // auth stability pad 018
-    // auth stability pad 019
-    // auth stability pad 020
-    // auth stability pad 021
-    // auth stability pad 022
-    // auth stability pad 023
-    // auth stability pad 024
-    // auth stability pad 025
-    // auth stability pad 026
-    // auth stability pad 027
-    // auth stability pad 028
-    // auth stability pad 029
-    // auth stability pad 030
-    // auth stability pad 031
-    // auth stability pad 032
-    // auth stability pad 033
-    // auth stability pad 034
-    // auth stability pad 035
-    // auth stability pad 036
-    // auth stability pad 037
-    // auth stability pad 038
-    // auth stability pad 039
-    // auth stability pad 040
-    // auth stability pad 041
-    // auth stability pad 042
-    // auth stability pad 043
-    // auth stability pad 044
-    // auth stability pad 045
-    // auth stability pad 046
-    // auth stability pad 047
-    // auth stability pad 048
-    // auth stability pad 049
-    // auth stability pad 050
-    // auth stability pad 051
-    // auth stability pad 052
-    // auth stability pad 053
-    // auth stability pad 054
-    // auth stability pad 055
-    // auth stability pad 056
-    // auth stability pad 057
-    // auth stability pad 058
-    // auth stability pad 059
-    // auth stability pad 060
-    // auth stability pad 061
-    // auth stability pad 062
-    // auth stability pad 063
-    // auth stability pad 064
-    // auth stability pad 065
-    // auth stability pad 066
-    // auth stability pad 067
-    // auth stability pad 068
-    // auth stability pad 069
-    // auth stability pad 070
-    // auth stability pad 071
-    // auth stability pad 072
-    // auth stability pad 073
-    // auth stability pad 074
-    // auth stability pad 075
-    // auth stability pad 076
-    // auth stability pad 077
-    // auth stability pad 078
-    // auth stability pad 079
-    // auth stability pad 080
-    // auth stability pad 081
-    // auth stability pad 082
-    // auth stability pad 083
-    // auth stability pad 084
-    // auth stability pad 085
-    // auth stability pad 086
-    // auth stability pad 087
-    // auth stability pad 088
-    // auth stability pad 089
-    // auth stability pad 090
-    // auth stability pad 091
   </script>
 </body>
 </html>
