@@ -2774,7 +2774,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
           const chosenRow = (() => {
             if (localContextRequested) {
-              return v2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || null;
+              return v2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || v2.data[0] || null;
             }
             return v2.data[0] || null;
           })();
@@ -2819,6 +2819,66 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao consultar books em fallback", err);
+        }
+      }
+
+      if (!booksTable && !requestedBookId && bib_ref) {
+        try {
+          let holdingsByLocalRef = supabase
+            .from("book_holdings")
+            .select("book_id,library_id,local_bib_ref")
+            .eq("local_bib_ref", bib_ref)
+            .limit(5);
+
+          if (libraryContext.libraryId) {
+            holdingsByLocalRef = holdingsByLocalRef.eq("library_id", libraryContext.libraryId);
+          }
+
+          const { data: localHoldingRows, error: localHoldingError } = await holdingsByLocalRef;
+
+          if (!localHoldingError && Array.isArray(localHoldingRows) && localHoldingRows.length) {
+            const distinctBookIds = Array.from(new Set(
+              localHoldingRows
+                .map((row) => Number(row?.book_id || 0))
+                .filter((value) => Number.isFinite(value) && value > 0)
+            ));
+
+            if (distinctBookIds.length === 1) {
+              const localBookId = distinctBookIds[0];
+              const localV2 = await supabase
+                .from("v_book_detail_public_v2")
+                .select(v2Select)
+                .eq("book_id", localBookId)
+                .limit(50);
+
+              if (!localV2.error && Array.isArray(localV2.data) && localV2.data.length) {
+                const chosenLocalRow = localV2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || localV2.data[0] || null;
+                if (chosenLocalRow) {
+                  booksTable = "v_book_detail_public_v2";
+                  data = chosenLocalRow;
+                  sample = chosenLocalRow;
+                  keys = Object.keys(chosenLocalRow);
+                }
+              }
+
+              if (!booksTable) {
+                const localBookFallback = await supabase
+                  .from("books")
+                  .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+                  .eq("id", localBookId)
+                  .maybeSingle();
+
+                if (!localBookFallback.error && localBookFallback.data) {
+                  booksTable = "books";
+                  data = localBookFallback.data;
+                  sample = data;
+                  keys = Object.keys(data);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao resolver local_bib_ref em fallback final", err);
         }
       }
 
