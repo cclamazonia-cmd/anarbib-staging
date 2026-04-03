@@ -2744,10 +2744,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         const v2 = await v2Query;
 
         if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
-          const chosenBaseRow = localContextRequested
-            ? (v2.data.find((row) => !!findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || v2.data[0])
-            : v2.data[0];
-          const candidateRow = { ...chosenBaseRow };
+          const chosenRow = v2.data.find((row) => !!findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || v2.data[0];
+          const candidateRow = { ...chosenRow };
           const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
           if (matchedHolding) {
             if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
