@@ -9487,25 +9487,27 @@
       return role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente';
     }
 
-    function hasCanonicalCatalogacaoGrant(row = {}) {
-      if (!row || typeof row !== 'object') return false;
-      if (row?.is_restricted === true) return false;
-      if (row?.can_access_catalogacao === false) return false;
-      return isTruthyAccessFlag(row?.can_access_catalogacao);
-    }
-
     function isCatalogacaoLibrarianRow(row = {}) {
       if (!row || typeof row !== 'object') return false;
-      if (hasExplicitCatalogacaoDenial(row)) return false;
-      return hasCanonicalCatalogacaoGrant(row);
+      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
+      if (row?.is_librarian === true) return true;
+      if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_manage_catalogacao)) return true;
+      if (isTruthyAccessFlag(row?.can_access_painel)) return true;
+      if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
+      if (role.startsWith('bibliotec')) return true;
+      if (role.startsWith('bibliotecari')) return true;
+      return false;
     }
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
       const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
-      const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && hasCanonicalCatalogacaoGrant(row));
+      const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
       return librarianRows.find((row) => row?.is_primary === true)
-        || librarianRows.find((row) => isTruthyAccessFlag(row?.can_access_catalogacao))
+        || librarianRows.find((row) => row?.can_access_catalogacao === true)
+        || librarianRows.find((row) => row?.is_librarian === true)
         || librarianRows[0]
         || null;
     }
@@ -9542,138 +9544,142 @@
     }
 
     function buildCatalogacaoSessionFallback(session = null, identityRow = null, rows = [], accessError = null) {
-      return null;
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const positiveSignal = isTruthyAccessFlag(meta.is_librarian) || isTruthyAccessFlag(meta.can_access_catalogacao) || roleSignal || isCatalogacaoLibrarianRow(baseRow);
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+
+      if (!positiveSignal && !(accessError && librarySignal)) return null;
+      if (!librarySignal && !positiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'session_fallback',
+      };
     }
 
     function buildCatalogacaoNoDenialFallback(session = null, identityRow = null, rows = [], accessError = null) {
-      return null;
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (hasCatalogacaoLibrarySignal(row) || isCatalogacaoLibrarianRow(row))) || null;
+      const baseRow = {
+        ...(preferredRow || {}),
+        ...(identityRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: identityRow?.role || preferredRow?.role || meta.role || '',
+        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
+        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
+        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
+        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
+        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+      };
+
+      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+
+      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
+      const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
+      const permissiveSignal = isCatalogacaoLibrarianRow(baseRow) || roleSignal || (accessError && librarySignal);
+
+      if (!librarySignal && !permissiveSignal) return null;
+
+      return {
+        ...baseRow,
+        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        status: String(baseRow.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'no_denial_fallback',
+      };
     }
 
     function buildProvisionalCatalogacaoAccess(identityRow = null, rows = [], accessError = null) {
+      const candidateRows = Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
+      const primaryRow = candidateRows.find((row) => row?.is_primary === true && !hasExplicitCatalogacaoDenial(row));
+      if (primaryRow && hasCatalogacaoLibrarySignal(primaryRow) && accessError) {
+        return {
+          ...primaryRow,
+          role: String(primaryRow?.role || 'librarian').trim() || 'librarian',
+          status: String(primaryRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
+      const identityRole = normalizeCatalogacaoRole(identityRow?.role || identityRow?.profile_role || '');
+      const hasSoftLibrarySignal = hasCatalogacaoLibrarySignal(identityRow) || candidateRows.some(hasCatalogacaoLibrarySignal);
+      const backendWasInconclusive = !!accessError;
+      const softRoleSignal = identityRole === 'admin' || identityRole === 'manager' || identityRole.startsWith('bibliotec');
+
+      if (identityRow && !hasExplicitCatalogacaoDenial(identityRow) && backendWasInconclusive && (softRoleSignal || hasSoftLibrarySignal)) {
+        return {
+          ...identityRow,
+          role: String(identityRow?.role || 'librarian').trim() || 'librarian',
+          status: String(identityRow?.status || 'active').trim() || 'active',
+          is_librarian: true,
+          can_access_catalogacao: true,
+        };
+      }
+
       return null;
     }
 
-    // auth-guardrail-padding: neutralização deliberada das heurísticas de autorização front.
-    // auth-guardrail-padding-001: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-002: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-003: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-004: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-005: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-006: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-007: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-008: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-009: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-010: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-011: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-012: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-013: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-014: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-015: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-016: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-017: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-018: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-019: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-020: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-021: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-022: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-023: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-024: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-025: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-026: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-027: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-028: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-029: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-030: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-031: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-032: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-033: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-034: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-035: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-036: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-037: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-038: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-039: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-040: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-041: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-042: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-043: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-044: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-045: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-046: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-047: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-048: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-049: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-050: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-051: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-052: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-053: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-054: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-055: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-056: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-057: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-058: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-059: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-060: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-061: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-062: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-063: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-064: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-065: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-066: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-067: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-068: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-069: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-070: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-071: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-072: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-073: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-074: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-075: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-076: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-077: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-078: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-079: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-080: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-081: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-082: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-083: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-084: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-085: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-086: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-087: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-088: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-089: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-090: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-091: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-092: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-093: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-094: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-095: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-096: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-097: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-098: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-099: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-100: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-101: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-102: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-103: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-104: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-105: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-106: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-107: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-108: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-109: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-110: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-111: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-112: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-113: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-114: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-115: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-116: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-117: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-118: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-119: preservar contagem de linhas sem reintroduzir lógica permissiva.
-    // auth-guardrail-padding-120: preservar contagem de linhas sem reintroduzir lógica permissiva.
+    function hasConfirmedCatalogacaoGrant(row = null) {
+      if (!row || typeof row !== 'object') return false;
+      if (hasExplicitCatalogacaoDenial(row)) return false;
+      if (row?.can_access_catalogacao === true) return true;
+      if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
+      if (row?.is_librarian === true && String(row?.status || 'active').trim().toLowerCase() === 'active') return true;
+      return false;
+    }
+
+    function shouldUseCatalogacaoHeuristicFallback(accessRead = null) {
+      if (!accessRead || typeof accessRead !== 'object') return false;
+      if (hasConfirmedCatalogacaoGrant(accessRead?.record)) return false;
+      return !!accessRead?.error;
+    }
+
+    async function refetchCatalogacaoAccessRecordIfNeeded(userId = '', accessRead = null) {
+      if (!userId) return accessRead || null;
+      const currentRead = accessRead && typeof accessRead === 'object' ? accessRead : null;
+      if (!currentRead) return fetchAccessRecord(userId);
+      if (currentRead.record || currentRead.error) return currentRead;
+      await wait(240);
+      const retriedRead = await fetchAccessRecord(userId);
+      if (retriedRead?.record || retriedRead?.error) return retriedRead;
+      return currentRead;
+    }
 
     async function getCurrentSession({ attempts = 12, delayMs = 180 } = {}) {
       const hasUrlAuthHint = /(?:[?#].*)(access_token|refresh_token|code|token_hash)=/i.test(`${window.location.search || ''}${window.location.hash || ''}`);
@@ -9841,16 +9847,26 @@
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const accessRead = await fetchAccessRecord(userId);
-      const accessRow = accessRead.record || null;
+      let accessRead = await fetchAccessRecord(userId);
+      accessRead = await refetchCatalogacaoAccessRecordIfNeeded(userId, accessRead);
+
+      const cachedAccess = readCatalogacaoAccessCache(userId);
+      const useHeuristicFallback = shouldUseCatalogacaoHeuristicFallback(accessRead);
+      const fallbackAccess = useHeuristicFallback
+        ? (
+            buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
+            || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+            || cachedAccess
+            || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+          )
+        : null;
+      const accessRow = accessRead.record || fallbackAccess || null;
 
       state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && hasCanonicalCatalogacaoGrant(accessRow);
+      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
 
       if (state.isLibrarian && accessRow) {
         writeCatalogacaoAccessCache(userId, accessRow);
-      } else {
-        clearCatalogacaoAccessCache();
       }
 
       updateLoginButton();
@@ -9863,11 +9879,19 @@
         return state.profile;
       }
 
-      refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+      clearCatalogacaoAccessCache();
+
+      if (state.session?.user?.id && accessRead?.error && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
+        refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida; acesso ainda instável';
+        refs.rolePill.className = 'pill warn';
+        throw new Error('A sessão foi reconhecida, mas a leitura do acesso bibliotecário ainda está instável. Tenta Atualizar novamente.');
+      }
+
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
-      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária confirmada em api.my_access.', 'error');
-      throw new Error('Usuário sem permissão bibliotecária confirmada em api.my_access.');
+      showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
+      throw new Error('Usuário sem permissão bibliotecária.');
     }
 
     function resetCatalogacaoAuthChrome() {
