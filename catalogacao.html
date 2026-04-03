@@ -3697,6 +3697,18 @@
             </div>
           </div>
         
+          <div id="partnerRightsMatrixSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da matriz:</strong> ainda não atualizada.</div>
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+            <div class="field">
+              <label for="partnerRightsOperationalMatrixOutput">O que pode sair localmente agora</label>
+              <textarea id="partnerRightsOperationalMatrixOutput" rows="5" readonly placeholder="A leitura operacional resumida da matriz aparecerá aqui."></textarea>
+            </div>
+            <div class="field">
+              <label for="partnerRightsBoundaryMatrixOutput">O que continua protegido ou bloqueado</label>
+              <textarea id="partnerRightsBoundaryMatrixOutput" rows="5" readonly placeholder="Os bloqueios e limites resumidos da matriz aparecerão aqui."></textarea>
+            </div>
+          </div>
+
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
               <label for="partnerPresetSelect">Parceira conhecida</label>
@@ -14164,6 +14176,9 @@ function initPartnerProbeUi() {
   const partnerRightSharedEl = document.getElementById('partnerRightSharedOutput');
   const partnerRightPublishEl = document.getElementById('partnerRightPublishOutput');
   const partnerRightsSummaryEl = document.getElementById('partnerRightsSummaryOutput');
+  const partnerRightsMatrixSurfaceSummaryEl = document.getElementById('partnerRightsMatrixSurfaceSummary');
+  const partnerRightsOperationalMatrixEl = document.getElementById('partnerRightsOperationalMatrixOutput');
+  const partnerRightsBoundaryMatrixEl = document.getElementById('partnerRightsBoundaryMatrixOutput');
   const partnerNextStepEl = document.getElementById('partnerNextStepOutput');
   const partnerNextStepHintEl = document.getElementById('partnerNextStepHint');
   const partnerBoundaryEl = document.getElementById('partnerBoundaryOutput');
@@ -14263,7 +14278,8 @@ function initPartnerProbeUi() {
     !mutualizeAllowedEl || !technicalProbeLastAtEl || !policySummaryEl || !politicalNoticeEl ||
     !partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl ||
     !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl ||
-    !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !partnerBoundaryEl || !partnerUnlockConditionEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
+    !partnerRightsSummaryEl || !partnerRightsMatrixSurfaceSummaryEl || !partnerRightsOperationalMatrixEl || !partnerRightsBoundaryMatrixEl ||
+    !partnerNextStepEl || !partnerNextStepHintEl || !partnerBoundaryEl || !partnerUnlockConditionEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
     !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
@@ -16360,11 +16376,17 @@ ${decisionSummary}` : '',
   }
 
   function setPartnerRightsMatrixReadout(row = null, gateState = null) {
-    if (!partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl || !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl || !partnerRightsSummaryEl) return;
+    if (
+      !partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl ||
+      !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl ||
+      !partnerRightsSummaryEl || !partnerRightsMatrixSurfaceSummaryEl ||
+      !partnerRightsOperationalMatrixEl || !partnerRightsBoundaryMatrixEl
+    ) return;
 
     const nextGateState = gateState || getPartnerAgreementGateState(getCurrentPartnerSlug(), null);
     const registered = !!row;
-    const hasPartnerContext = registered || !!normalizePartnerSlug(getCurrentPartnerSlug() || '');
+    const currentSlug = normalizePartnerSlug(getCurrentPartnerSlug() || '');
+    const hasPartnerContext = registered || !!currentSlug;
     const gateBlocked = !!nextGateState.catalogacaoGateBlocked;
     const compareAllowed = !!row?.compare_allowed && !gateBlocked;
     const importAllowed = !!row?.import_allowed && !gateBlocked;
@@ -16378,44 +16400,109 @@ ${decisionSummary}` : '',
       partnerRightSharedEl.value = '—';
       partnerRightPublishEl.value = '—';
       partnerRightsSummaryEl.value = 'Nenhuma leitura operacional ainda.';
+      partnerRightsOperationalMatrixEl.value = 'Sem parceira em foco ainda. A leitura política, a comparação local e a retomada local continuam sem abertura operacional nesta etapa.';
+      partnerRightsBoundaryMatrixEl.value = 'Sem parceira formalizada ou selecionada, nada desta matriz autoriza escrita documental local, modificação da camada compartilhada ou publicação.';
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> sem parceira em foco, a matriz ainda não abre nenhum gesto documental.';
       return;
     }
 
-    partnerRightReadEl.value = registered ? 'Leitura política visível' : 'Leitura preliminar só local';
-    partnerRightCompareEl.value = compareAllowed ? 'Autorizada' : (registered ? (gateBlocked ? 'Bloqueada por acordo' : 'Bloqueada nesta etapa') : 'Bloqueada');
-    partnerRightDraftEl.value = importAllowed ? 'Autorizado com revisão' : (compareAllowed ? 'Preparação manual somente' : (registered ? (gateBlocked ? 'Bloqueado por acordo' : 'Bloqueado nesta etapa') : 'Bloqueado'));
-    partnerRightEnrichEl.value = (compareAllowed || importAllowed) ? 'Autorizado com proveniência' : (registered ? 'Somente leitura local' : 'Bloqueado');
-    partnerRightSharedEl.value = mutualizeAllowed ? 'Não livre / sob acordo' : (registered ? (gateBlocked ? 'Bloqueada por acordo' : 'Não autorizada nesta etapa') : 'Inexistente');
+    partnerRightReadEl.value = registered ? 'Visível agora' : 'Leitura local preparatória';
+    partnerRightCompareEl.value = compareAllowed
+      ? 'Pode comparar localmente'
+      : (registered ? (gateBlocked ? 'Exige acordo explícito' : 'Não aberto nesta etapa') : 'Aguardando formalização');
+    partnerRightDraftEl.value = importAllowed
+      ? 'Pode criar retomada local'
+      : (compareAllowed ? 'Só preparação manual' : (registered ? (gateBlocked ? 'Exige acordo explícito' : 'Ainda bloqueado') : 'Aguardando formalização'));
+    partnerRightEnrichEl.value = (compareAllowed || importAllowed)
+      ? 'Pode enriquecer a camada local'
+      : (registered ? (gateBlocked ? 'Exige acordo explícito' : 'Só leitura e nota local') : 'Bloqueado');
+    partnerRightSharedEl.value = mutualizeAllowed
+      ? 'Nunca livre; sempre sob acordo'
+      : (registered ? (gateBlocked ? 'Bloqueada sem acordo explícito' : 'Protegida nesta etapa') : 'Inacessível');
     partnerRightPublishEl.value = registered
-      ? 'Só na tua biblioteca'
+      ? ((compareAllowed || importAllowed) ? 'Só publicação local' : 'Sem saída documental ainda')
       : 'Ainda não aplicável';
 
     if (!registered) {
       partnerRightsSummaryEl.value = 'Parceira ainda não formalizada: a leitura e a identificação locais podem avançar, mas comparação, retomada local, enriquecimento e publicação seguem bloqueados.';
+      partnerRightsOperationalMatrixEl.value = [
+        'Pode agora: ler politicamente o caso, organizar a identificação local da parceira e preparar a recepção artesanal.',
+        'Não pode ainda: comparar documentalmente, abrir retomada local, enriquecer fortemente a ficha ou publicar algo a partir desta matriz.'
+      ].join(' ');
+      partnerRightsBoundaryMatrixEl.value = [
+        'Continua protegido: qualquer camada compartilhada da parceira, qualquer gesto de mutualização e qualquer publicação local derivada de comparação ou preparação.',
+        'Bloqueio principal: a parceira ainda não está formalizada ou aplicada como contexto ativo nesta superfície.'
+      ].join(' ');
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> leitura política e identificação local podem avançar, mas a matriz ainda não abre comparação nem retomada local.';
       return;
     }
 
     if (gateBlocked) {
       partnerRightsSummaryEl.value = `${String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.')} A leitura política permanece visível, mas comparação, retomada local e mutualização continuam bloqueadas.`;
+      partnerRightsOperationalMatrixEl.value = [
+        'Pode agora: ler politicamente a parceira, reler a governança ativa e manter a identificação local preparada.',
+        'Não pode agora: comparar localmente, criar rascunho local de retomada, enriquecer a camada local a partir da parceira nem publicar algo derivado desta matriz.'
+      ].join(' ');
+      partnerRightsBoundaryMatrixEl.value = [
+        'Continua protegido: a camada compartilhada da parceira, a mutualização, a modificação do registro externo e a publicação na tua biblioteca a partir deste fluxo.',
+        `Bloqueio principal: ${String(nextGateState.noAgreementMessage || 'falta acordo explícito ativo')}.`
+      ].join(' ');
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> a leitura política segue visível, mas o acordo explícito ainda bloqueia comparação, retomada local e escrita documental.';
       return;
     }
 
     if (mutualizeAllowed) {
       partnerRightsSummaryEl.value = 'Comparação, retomada local e mutualização aparecem autorizadas nesta etapa, sempre sem modificação livre do registro da parceira.';
+      partnerRightsOperationalMatrixEl.value = [
+        'Pode agora: comparar localmente, criar rascunho local de retomada, enriquecer a camada local com proveniência explícita e publicar na tua biblioteca após trabalho local.',
+        'Mesmo aqui, a matriz continua separando a publicação local da eventual camada compartilhada.'
+      ].join(' ');
+      partnerRightsBoundaryMatrixEl.value = [
+        'Continua protegido: o registro da parceira não vira campo livre de edição; a camada compartilhada permanece sob acordo e fora de modificação livre nesta interface.',
+        'A mutualização autorizada não elimina a obrigação de revisão humana nem a distinção entre tua camada local e a camada comum.'
+      ].join(' ');
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> comparação, retomada local, enriquecimento da camada local e publicação local estão abertas; a camada compartilhada permanece protegida e nunca livre.';
       return;
     }
 
     if (importAllowed) {
       partnerRightsSummaryEl.value = 'Comparação e retomada local aparecem autorizadas nesta etapa, com revisão humana e proveniência explícita.';
+      partnerRightsOperationalMatrixEl.value = [
+        'Pode agora: comparar localmente, criar rascunho local de retomada, enriquecer a camada local com revisão humana e publicar na tua biblioteca depois da revisão local.',
+        'A escrita permitida continua local; ela não se confunde com modificação da camada compartilhada.'
+      ].join(' ');
+      partnerRightsBoundaryMatrixEl.value = [
+        'Continua protegido: a mutualização plena, a camada compartilhada da parceira e qualquer modificação livre do registro externo.',
+        'Bloqueio remanescente: a cooperação mais forte continua dependente de autorização política adicional.'
+      ].join(' ');
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> comparação, retomada local, enriquecimento da camada local e publicação local estão abertas; mutualização e camada compartilhada seguem protegidas.';
       return;
     }
 
     if (compareAllowed) {
       partnerRightsSummaryEl.value = 'Só a comparação manual aparece autorizada nesta etapa; retomada local, enriquecimento forte e mutualização seguem bloqueados.';
+      partnerRightsOperationalMatrixEl.value = [
+        'Pode agora: comparar localmente, registrar diferenças, preparar a leitura prudente do caso e enriquecer a nota de proveniência local de forma limitada.',
+        'Não pode ainda: abrir retomada local, modificar a camada compartilhada ou publicar na tua biblioteca a partir de uma preparação não autorizada.'
+      ].join(' ');
+      partnerRightsBoundaryMatrixEl.value = [
+        'Continua protegido: a retomada local como rascunho de trabalho, a mutualização e toda a camada compartilhada da parceira.',
+        'Bloqueio remanescente: a política atual abre só a comparação documental manual.'
+      ].join(' ');
+      partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> só a comparação documental local está aberta; retomada local, publicação derivada e camada compartilhada permanecem protegidas.';
       return;
     }
 
     partnerRightsSummaryEl.value = 'A parceira está formalizada, mas as ações documentárias continuam bloqueadas nesta etapa.';
+    partnerRightsOperationalMatrixEl.value = [
+      'Pode agora: ler politicamente a parceira, reler a governança e manter a identificação local organizada.',
+      'Não pode agora: comparar, criar retomada local, enriquecer a camada local a partir da parceira ou publicar algo derivado desta matriz.'
+    ].join(' ');
+    partnerRightsBoundaryMatrixEl.value = [
+      'Continua protegido: a camada compartilhada da parceira, qualquer mutualização e qualquer saída documental local a partir deste bloco.',
+      'Bloqueio principal: a situação relacional formaliza a parceira, mas ainda não abre uso documental nesta etapa.'
+    ].join(' ');
+    partnerRightsMatrixSurfaceSummaryEl.innerHTML = '<strong>Leitura da matriz:</strong> a parceira está formalizada, mas a matriz ainda não abre comparação, retomada local nem publicação.';
   }
 
   function setPartnerNextStepReadout(mode = 'empty', row = null, gateState = null) {
