@@ -1307,7 +1307,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return candidateRow;
     }
 
-    async function tryLoadBookByHoldingContext(bib_ref = "", libraryContext = {}
+    async function tryLoadBookByHoldingContext(bib_ref = "", libraryContext = {}, v2Select = "", fallbackSelect = "") {
 
     async function tryResolveBookViaPublicViewScan(bib_ref = "", libraryContext = {}, v2Select = "") {
       const ref = String(bib_ref || "").trim();
@@ -1382,7 +1382,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         return null;
       }
     }
-, v2Select = "", fallbackSelect = "") {
       const libraryId = String(libraryContext?.libraryId || "").trim();
       const localBibRef = String(bib_ref || "").trim();
       if (!libraryId || !localBibRef) return null;
