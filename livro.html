@@ -335,7 +335,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       statusHint: firstNonEmptyString(sessionContextRow?.session_status_hint),
       nextAvailableOn: firstNonEmptyString(sessionContextRow?.session_next_available_on),
       dueAt: firstNonEmptyString(sessionContextRow?.session_due_at, sessionContextRow?.due_at, sessionContextRow?.return_due_at, sessionContextRow?.loan_due_at),
-      pickupScheduledFor: firstNonEmptyString(sessionContextRow?.session_pickup_scheduled_for, sessionContextRow?.pickup_scheduled_for, sessionContextRow?.scheduled_for, sessionContextRow?.retirada_agendada_para),
+      pickupScheduledFor: firstNonEmptyString(sessionContextRow?.session_pickup_scheduled_for, sessionContextRow?.pickup_scheduled_for),
       sessionHasHolding,
       bookId: Number(sessionContextRow?.book_id || bookRow?.book_id || bookRow?.id || 0) || null
     };
@@ -366,7 +366,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
             statusHint: firstNonEmptyString(row?.session_status_hint),
             nextAvailableOn: "",
             dueAt: firstNonEmptyString(row?.session_due_at, row?.due_at, row?.return_due_at, row?.loan_due_at),
-            pickupScheduledFor: firstNonEmptyString(row?.session_pickup_scheduled_for, row?.pickup_scheduled_for, row?.scheduled_for, row?.retirada_agendada_para),
+            pickupScheduledFor: firstNonEmptyString(row?.session_pickup_scheduled_for, row?.pickup_scheduled_for),
             sessionHasHolding: true,
             bookId: Number(row?.book_id || bookRow?.book_id || bookRow?.id || 0) || null
           };
@@ -627,7 +627,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       librarySlug: "",
       libraryName: ""
     };
-    const STANDARD_LOAN_DAYS = 21;
 
 
     function setReserveButtonState(buttonState = {}) {
@@ -677,15 +676,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       });
     }
 
-    function addUtcDays(value, days) {
-      const parsed = parseAvailabilityDate(value);
-      if (!parsed) return null;
-      const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
-      next.setUTCDate(next.getUTCDate() + Number(days || 0));
-      return Number.isNaN(next.getTime()) ? null : next;
-    }
-
-    function collectDirectAvailabilityDateCandidates(source, collector = []) {
+    function collectAvailabilityDateCandidates(source, collector = []) {
       if (!source || typeof source !== "object") return collector;
 
       const candidateKeys = [
@@ -708,29 +699,14 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         "devolucao_prevista",
         "devolucao_prevista_em",
         "expected_return_at",
-        "loan_due_at"
-      ];
-
-      for (const key of candidateKeys) {
-        const parsed = parseAvailabilityDate(source?.[key]);
-        if (!parsed) continue;
-        collector.push({ key, date: parsed, iso: parsed.toISOString() });
-      }
-
-      return collector;
-    }
-
-    function collectScheduledLoanAvailabilityDateCandidates(source, collector = []) {
-      if (!source || typeof source !== "object") return collector;
-
-      const candidateKeys = [
+        "loan_due_at",
         "pickup_scheduled_for",
         "scheduled_for",
         "retirada_agendada_para"
       ];
 
       for (const key of candidateKeys) {
-        const parsed = addUtcDays(source?.[key], STANDARD_LOAN_DAYS);
+        const parsed = parseAvailabilityDate(source?.[key]);
         if (!parsed) continue;
         collector.push({ key, date: parsed, iso: parsed.toISOString() });
       }
@@ -780,16 +756,9 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         };
       }
 
-      const directDateCandidates = [];
-      const scheduledLoanDateCandidates = [];
-      candidateSources.forEach((source) => {
-        collectDirectAvailabilityDateCandidates(source, directDateCandidates);
-        collectScheduledLoanAvailabilityDateCandidates(source, scheduledLoanDateCandidates);
-      });
-
-      const earliest = directDateCandidates.length
-        ? pickEarliestAvailabilityDate(directDateCandidates)
-        : (scheduledLoanDateCandidates.length ? pickEarliestAvailabilityDate(scheduledLoanDateCandidates) : null);
+      const dateCandidates = [];
+      candidateSources.forEach((source) => collectAvailabilityDateCandidates(source, dateCandidates));
+      const earliest = pickEarliestAvailabilityDate(dateCandidates);
 
       return {
         isAvailableNow: false,
@@ -1307,136 +1276,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return candidateRow;
     }
 
-    async function tryResolveBookViaPublicViewScanPublic(bib_ref = "", libraryContext = {}, v2Select = "") {
-      const ref = String(bib_ref || "").trim();
-      if (!ref) return null;
-
-      try {
-        const holdingProbe = {};
-        if (ref) holdingProbe.local_bib_ref = ref;
-        if (libraryContext?.libraryId) holdingProbe.library_id = libraryContext.libraryId;
-
-        let result = await supabase
-          .from("v_book_detail_public_v2")
-          .select(v2Select)
-          .contains("holding_libraries_json", [holdingProbe])
-          .limit(50);
-
-        if ((result.error || !Array.isArray(result.data) || !result.data.length) && !libraryContext?.libraryId) {
-          result = await supabase
-            .from("v_book_detail_public_v2")
-            .select(v2Select)
-            .contains("holding_libraries_json", [{ local_bib_ref: ref }])
-            .limit(50);
-        }
-
-        if (result.error || !Array.isArray(result.data) || !result.data.length) return null;
-
-        const chosenRow = (() => {
-          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-            return result.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || result.data[0] || null;
-          }
-          return result.data[0] || null;
-        })();
-
-        if (!chosenRow) return null;
-
-        const candidateRow = { ...chosenRow };
-        const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-        if (matchedHolding) {
-          if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-          if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-          if (matchedHolding?.library_name) {
-            candidateRow.library_name = matchedHolding.library_name;
-            candidateRow.biblioteca = matchedHolding.library_name;
-          }
-        }
-
-        return {
-          booksTable: "v_book_detail_public_v2",
-          data: candidateRow
-        };
-      } catch (err) {
-        console.warn("AnarBib livro: falha na resolução pública por holding_libraries_json", err);
-        return null;
-      }
-    }
-
     async function tryLoadBookByHoldingContext(bib_ref = "", libraryContext = {}, v2Select = "", fallbackSelect = "") {
-
-    async function tryResolveBookViaPublicViewScan(bib_ref = "", libraryContext = {}, v2Select = "") {
-      const ref = String(bib_ref || "").trim();
-      if (!ref) return null;
-
-      try {
-        const scan = await supabase
-          .from("v_book_detail_public_v2")
-          .select("id,book_id,bib_ref,holding_libraries_json")
-          .limit(8000);
-
-        if (scan.error || !Array.isArray(scan.data) || !scan.data.length) return null;
-
-        const normalizedRef = normalizeBibRefValue(ref);
-
-        const matchedPublicRow = scan.data.find((row) => {
-          if (normalizeBibRefValue(row?.bib_ref) === normalizedRef) return true;
-
-          const holdings = parseJsonArray(row?.holding_libraries_json);
-          if (!holdings.length) return false;
-
-          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-            return holdings.some((holding) => {
-              const holdingRef = normalizeBibRefValue(firstNonEmptyString(holding?.local_bib_ref, holding?.bib_ref));
-              return holdingRef === normalizedRef && librariesMatch(buildLibraryScopeFromHolding(holding), libraryContext);
-            });
-          }
-
-          return holdings.some((holding) => {
-            const holdingRef = normalizeBibRefValue(firstNonEmptyString(holding?.local_bib_ref, holding?.bib_ref));
-            return holdingRef === normalizedRef;
-          });
-        }) || null;
-
-        const resolvedBookId = Number(matchedPublicRow?.book_id || matchedPublicRow?.id || 0);
-        if (!Number.isFinite(resolvedBookId) || resolvedBookId <= 0) return null;
-
-        const full = await supabase
-          .from("v_book_detail_public_v2")
-          .select(v2Select)
-          .or(`id.eq.${resolvedBookId},book_id.eq.${resolvedBookId}`)
-          .limit(50);
-
-        if (full.error || !Array.isArray(full.data) || !full.data.length) return null;
-
-        const chosenFullRow = (() => {
-          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-            return full.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || full.data[0] || null;
-          }
-          return full.data[0] || null;
-        })();
-
-        if (!chosenFullRow) return null;
-
-        const candidateRow = { ...chosenFullRow };
-        const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-        if (matchedHolding) {
-          if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-          if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-          if (matchedHolding?.library_name) {
-            candidateRow.library_name = matchedHolding.library_name;
-            candidateRow.biblioteca = matchedHolding.library_name;
-          }
-        }
-
-        return {
-          booksTable: "v_book_detail_public_v2",
-          data: candidateRow
-        };
-      } catch (err) {
-        console.warn("AnarBib livro: falha no scan público de v_book_detail_public_v2", err);
-        return null;
-      }
-    }
       const libraryId = String(libraryContext?.libraryId || "").trim();
       const localBibRef = String(bib_ref || "").trim();
       if (!libraryId || !localBibRef) return null;
@@ -1462,17 +1302,14 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           .from("v_book_detail_public_v2")
           .select(v2Select)
           .eq("book_id", bookId)
-          .limit(50);
+          .maybeSingle();
 
-        if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
-          const chosenRow = v2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || v2.data[0] || null;
-          if (chosenRow) {
-            const matchedHolding = findHoldingForLibraryContext(chosenRow?.holding_libraries_json, libraryContext) || holdingRow;
-            return {
-              booksTable: "v_book_detail_public_v2",
-              data: applyHoldingContextToBookRow(chosenRow, matchedHolding)
-            };
-          }
+        if (!v2.error && v2.data) {
+          const matchedHolding = findHoldingForLibraryContext(v2.data?.holding_libraries_json, libraryContext) || holdingRow;
+          return {
+            booksTable: "v_book_detail_public_v2",
+            data: applyHoldingContextToBookRow(v2.data, matchedHolding)
+          };
         }
 
         if (v2.error && !canFallbackHoldingResolutionError(v2.error)) {
@@ -2844,88 +2681,10 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       setStatus("Não foi possível reservar: " + String(reservaError?.message || reservaError || "erro desconhecido"), "warn");
     }
 
-
-    async function tryResolveBookViaPublicViewFullScanFallback(refOrId = "", libraryContext = {}, v2Select = "") {
-      const rawRef = String(refOrId || "").trim();
-      if (!rawRef) return null;
-
-      try {
-        const scan = await supabase
-          .from("v_book_detail_public_v2")
-          .select("id,book_id,bib_ref,holding_libraries_json")
-          .limit(8000);
-
-        if (scan.error || !Array.isArray(scan.data) || !scan.data.length) return null;
-
-        const normalizedRef = normalizeBibRefValue(rawRef);
-        const matchedPublicRow = scan.data.find((row) => {
-          if (normalizeBibRefValue(row?.bib_ref) === normalizedRef) return true;
-          const rowId = Number(row?.id || 0);
-          const rowBookId = Number(row?.book_id || 0);
-          if (/^\d+$/.test(normalizedRef) && (String(rowId) === normalizedRef || String(rowBookId) === normalizedRef)) return true;
-
-          const holdings = parseJsonArray(row?.holding_libraries_json);
-          if (!holdings.length) return false;
-
-          const matchingHoldings = holdings.filter((holding) => {
-            const holdingRef = normalizeBibRefValue(firstNonEmptyString(holding?.local_bib_ref, holding?.bib_ref));
-            return holdingRef === normalizedRef;
-          });
-
-          if (!matchingHoldings.length) return false;
-
-          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-            return matchingHoldings.some((holding) => librariesMatch(buildLibraryScopeFromHolding(holding), libraryContext));
-          }
-
-          return true;
-        }) || null;
-
-        const resolvedBookId = Number(matchedPublicRow?.book_id || matchedPublicRow?.id || 0);
-        if (!Number.isFinite(resolvedBookId) || resolvedBookId <= 0) return null;
-
-        const full = await supabase
-          .from("v_book_detail_public_v2")
-          .select(v2Select)
-          .or(`id.eq.${resolvedBookId},book_id.eq.${resolvedBookId}`)
-          .limit(50);
-
-        if (full.error || !Array.isArray(full.data) || !full.data.length) return null;
-
-        const chosenFullRow = (() => {
-          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
-            return full.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || full.data[0] || null;
-          }
-          return full.data[0] || null;
-        })();
-
-        if (!chosenFullRow) return null;
-
-        const candidateRow = { ...chosenFullRow };
-        const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-        if (matchedHolding) {
-          if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-          if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-          if (matchedHolding?.library_name) {
-            candidateRow.library_name = matchedHolding.library_name;
-            candidateRow.biblioteca = matchedHolding.library_name;
-          }
-        }
-
-        return {
-          booksTable: "v_book_detail_public_v2",
-          data: candidateRow
-        };
-      } catch (err) {
-        console.warn("AnarBib livro: falha no fallback full-scan da vista pública", err);
-        return null;
-      }
-    }
-
     async function loadBook() {
       let bib_ref = getBibRefFromUrl();
       const requestedBookId = getBookIdFromUrl();
-      const libraryContext = await enrichLibraryScope(getLibraryContextFromUrl());
+      const libraryContext = getLibraryContextFromUrl();
 
       if (!bib_ref && !requestedBookId) {
         $("title").textContent = "Livro não encontrado";
@@ -2970,30 +2729,18 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) try {
-        let v2Query = supabase
+        const v2FilterField = requestedBookId ? "id" : "bib_ref";
+        const v2FilterValue = requestedBookId || bib_ref;
+        const v2 = await supabase
           .from("v_book_detail_public_v2")
           .select(v2Select)
-          .limit(50);
+          .eq(v2FilterField, v2FilterValue)
+          .maybeSingle();
 
-        if (requestedBookId) {
-          v2Query = v2Query.or(`id.eq.${requestedBookId},book_id.eq.${requestedBookId}`);
-        } else {
-          v2Query = v2Query.eq("bib_ref", bib_ref);
-        }
-
-        const v2 = await v2Query;
-
-        if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
-          const chosenRow = (() => {
-            if (localContextRequested) {
-              return v2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || v2.data[0] || null;
-            }
-            return v2.data[0] || null;
-          })();
-
-          if (chosenRow) {
-            const candidateRow = { ...chosenRow };
-            const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+        if (!v2.error && v2.data) {
+          const candidateRow = { ...v2.data };
+          const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+          if (!localContextRequested || matchedHolding) {
             if (matchedHolding) {
               if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
               if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
@@ -3029,78 +2776,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao consultar books em fallback", err);
-        }
-      }
-
-      if (!booksTable && !requestedBookId && bib_ref) {
-        try {
-          let holdingsByLocalRef = supabase
-            .from("book_holdings")
-            .select("book_id,library_id,local_bib_ref")
-            .eq("local_bib_ref", bib_ref)
-            .limit(5);
-
-          if (libraryContext.libraryId) {
-            holdingsByLocalRef = holdingsByLocalRef.eq("library_id", libraryContext.libraryId);
-          }
-
-          const { data: localHoldingRows, error: localHoldingError } = await holdingsByLocalRef;
-
-          if (!localHoldingError && Array.isArray(localHoldingRows) && localHoldingRows.length) {
-            const chosenHoldingRow = (() => {
-              if (libraryContext.libraryId) {
-                return localHoldingRows.find((row) => String(row?.library_id || "").trim() === String(libraryContext.libraryId || "").trim()) || null;
-              }
-              return localHoldingRows[0] || null;
-            })();
-
-            const localBookId = Number(chosenHoldingRow?.book_id || 0);
-            if (Number.isFinite(localBookId) && localBookId > 0) {
-              const localV2 = await supabase
-                .from("v_book_detail_public_v2")
-                .select(v2Select)
-                .eq("book_id", localBookId)
-                .limit(50);
-
-              if (!localV2.error && Array.isArray(localV2.data) && localV2.data.length) {
-                const chosenLocalRow = localV2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || localV2.data[0] || null;
-                if (chosenLocalRow) {
-                  booksTable = "v_book_detail_public_v2";
-                  data = chosenLocalRow;
-                  sample = chosenLocalRow;
-                  keys = Object.keys(chosenLocalRow);
-                }
-              }
-
-              if (!booksTable) {
-                const localBookFallback = await supabase
-                  .from("books")
-                  .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
-                  .eq("id", localBookId)
-                  .maybeSingle();
-
-                if (!localBookFallback.error && localBookFallback.data) {
-                  booksTable = "books";
-                  data = localBookFallback.data;
-                  sample = data;
-                  keys = Object.keys(data);
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("AnarBib livro: falha ao resolver local_bib_ref em fallback final", err);
-        }
-      }
-
-
-      if (!booksTable && bib_ref) {
-        const scannedPublicBook = await tryResolveBookViaPublicViewFullScanFallback(bib_ref || requestedBookId, libraryContext, v2Select);
-        if (scannedPublicBook?.booksTable && scannedPublicBook?.data) {
-          booksTable = scannedPublicBook.booksTable;
-          data = scannedPublicBook.data;
-          sample = data;
-          keys = Object.keys(data);
         }
       }
 
@@ -3373,7 +3048,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const directPdfUrl = publicDigitalAccess.previewUrl;
       if (directPdfUrl) {
         $("btnAbrirPdf").style.display = "inline-flex";
-        $("btnAbrirPdf").addEventListener("click", () => location.assign(directPdfUrl));
+        $("btnAbrirPdf").onclick = () => location.assign(directPdfUrl);
       }
 
       setDigitalAvailability({
@@ -3396,7 +3071,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       setStatus(accessState.label, accessState.cls);
       setReserveButtonState(accessState);
 
-      $("btnLer").addEventListener("click", async () => {
+      $("btnLer").onclick = async () => {
         const compatBibRef = firstNonEmptyString(bib_ref, data?.bib_ref);
         const targetLerUrl = buildLerUrl(compatBibRef, data, libraryContext, publicDigitalAccess);
         const hasAnyDigitalAccess = publicDigitalAccess.hasDigitalAvailability || restrictedDigitalAccess.hasRestrictedAccess;
@@ -3453,16 +3128,46 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           console.warn("AnarBib livro: falha ao verificar leitura restrita", err);
           setStatus("Não foi possível verificar o acesso ao exemplar digital agora.", "warn");
         }
-      });
+      };
 
-      $("btnReservar").addEventListener("click", () => reserve(bib_ref, data, libraryContext));
+      $("btnReservar").onclick = () => reserve(bib_ref, data, libraryContext);
     }
 
-    await setupContaButton();
-    await loadCurrentActiveReservationBibRefs();
-    await loadCurrentActiveConsultaBibRefs();
-    applyPublicServiceState();
-    await loadBook();
+    async function bootstrapPublicBookPage() {
+      try {
+        await loadBook();
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao carregar a ficha pública", err);
+        $("title").textContent = "Livro não encontrado";
+        $("heroIntro").textContent = "Não foi possível carregar esta ficha agora.";
+        setLine("subtitleLine", "");
+        $("authorLine").textContent = "—";
+        setCover("");
+        document.title = "AnarBib - Livro";
+        setStatus("Não foi possível carregar esta ficha agora.", "warn");
+      }
+    }
+
+    async function bootstrapAuthEnhancements() {
+      try {
+        await setupContaButton();
+        await loadCurrentActiveReservationBibRefs();
+        await loadCurrentActiveConsultaBibRefs();
+        applyPublicServiceState();
+
+        if (currentUserContext?.isLoggedIn) {
+          await loadBook();
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: melhorias auth indisponíveis; mantendo a ficha pública acessível", err);
+        try {
+          applyPublicServiceState();
+        } catch (_) {}
+      }
+    }
+
+    await bootstrapPublicBookPage();
+    void bootstrapAuthEnhancements();
   </script>
 </body>
 </html>
