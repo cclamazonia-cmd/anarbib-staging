@@ -4010,14 +4010,11 @@
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
     const LOGIN_URL = ROUTES.CADASTRO;
+
     function buildCatalogacaoLoginUrl(nextUrl = window.location.href) {
-      try {
-        const url = new URL(LOGIN_URL);
-        url.searchParams.set('next', nextUrl);
-        return url.toString();
-      } catch (_) {
-        return LOGIN_URL;
-      }
+      const url = new URL(LOGIN_URL, window.location.origin);
+      url.searchParams.set('next', nextUrl);
+      return url.toString();
     }
     const DIGITAL_PUBLIC_BUCKET = 'anarbib-pdf-public';
     const DIGITAL_RESTRICTED_BUCKET = 'pdf-restrito';
@@ -9421,13 +9418,16 @@
 
     function updateLoginButton() {
       if (!refs.loginBtn) return;
-      refs.loginBtn.disabled = false;
-      refs.loginBtn.removeAttribute('aria-busy');
-      refs.loginBtn.title = '';
       if (state.session?.user?.id) {
+        refs.loginBtn.disabled = false;
+        refs.loginBtn.removeAttribute('aria-busy');
+        refs.loginBtn.title = '';
         refs.loginBtn.textContent = 'Logout';
         refs.loginBtn.className = 'button secondary';
       } else {
+        refs.loginBtn.disabled = false;
+        refs.loginBtn.removeAttribute('aria-busy');
+        refs.loginBtn.title = '';
         refs.loginBtn.textContent = 'Fazer login';
         refs.loginBtn.className = 'button primary';
       }
@@ -9647,29 +9647,23 @@
       return null;
     }
 
-    async function getCurrentSession(_options = {}) {
+    async function getCurrentSession() {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
       return data?.session || null;
-    }
-
-    async function getConfirmedCurrentSession(_options = {}) {
-      return getCurrentSession();
     }
 
     async function requireSession() {
       const session = await getCurrentSession();
       state.session = session;
       if (!state.session?.user?.id) {
-        refs.userEmail.textContent = 'Sem sessão';
-        refs.rolePill.textContent = 'Faça login para usar a catalogação';
-        refs.rolePill.className = 'pill danger';
-        updateLoginButton();
+        resetCatalogacaoAuthChrome();
         showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       updateLoginButton();
+      return state.session;
     }
 
     function withTimeout(promise, label, ms = 4000) {
@@ -9740,7 +9734,60 @@
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
       updateLoginButton();
-      updateRefreshButton(false);
+    }
+
+    async function refreshAll(showSuccess = false) {
+      catalogacaoUiRefreshInFlight = true;
+      updateRefreshButton(true);
+      refs.userEmail.textContent = 'Verificando sessão…';
+      refs.rolePill.textContent = 'Verificando acesso…';
+      refs.rolePill.className = 'pill warn';
+
+      try {
+        clearMessage(refs.globalMessage);
+        await requireSession();
+        await loadProfile();
+        renderBookAcquisitionBridgeOptions();
+        seedBookOwnershipDefaults(false);
+        const currentTab = getActiveCatalogacaoTab();
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+        setTab(currentTab);
+        if (refs.labelBatchPreviewId?.value) {
+          try {
+            await loadLabelSheetPreview();
+          } catch (labelError) {
+            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+          }
+        }
+        updateStats();
+        updateLoginButton();
+
+        const failedSources = [];
+        if (batchesResult?.ok === false) failedSources.push('lotes');
+        if (queueResult?.ok === false) failedSources.push('fila editorial');
+        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
+        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
+
+        if (failedSources.length) {
+          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        } else if (showSuccess) {
+          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+        }
+      } catch (error) {
+        updateLoginButton();
+        console.error(error);
+        if (!state.session?.user?.id) {
+          refs.rolePill.textContent = 'Faça login para usar a catalogação';
+          refs.rolePill.className = 'pill danger';
+        } else if (!state.isLibrarian) {
+          refs.rolePill.textContent = 'Acesso restrito';
+          refs.rolePill.className = 'pill danger';
+        }
+      } finally {
+        catalogacaoUiRefreshInFlight = false;
+        updateRefreshButton(false);
+      }
     }
 
     async function loadBatches() {
@@ -9956,22 +10003,50 @@
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
-      refs.userEmail.textContent = 'Verificando sessão…';
-      refs.rolePill.textContent = 'Verificando acesso…';
+
+      const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
+      const hasKnownSession = !!state.session?.user?.id;
+
+      refs.userEmail.textContent = hasKnownSession ? knownEmail : 'Sem sessão';
+      refs.rolePill.textContent = hasKnownSession ? 'Atualizando dados…' : 'Conferindo sessão…';
       refs.rolePill.className = 'pill warn';
 
       try {
         clearMessage(refs.globalMessage);
-        await requireSession();
-        await loadProfile();
+
+        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
+        if (!sessionStep.ok || !state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+          showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
+          return;
+        }
+
+        refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+        refs.rolePill.textContent = 'Sessão reconhecida';
+        refs.rolePill.className = 'pill info';
+
+        const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 9000);
+        if (!profileStep.ok) {
+          refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
+          updateLoginButton();
+          return;
+        }
+
         renderBookAcquisitionBridgeOptions();
         seedBookOwnershipDefaults(false);
         const currentTab = getActiveCatalogacaoTab();
-        const [batchesResult, queueResult, catalogResult] = await Promise.all([loadBatches(), loadQueue(), loadCatalog()]);
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([
+          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 9000),
+        ]);
         setTab(currentTab);
         if (refs.labelBatchPreviewId?.value) {
           try {
-            await loadLabelSheetPreview();
+            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
           } catch (labelError) {
             console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
           }
@@ -9980,12 +10055,9 @@
         updateLoginButton();
 
         const failedSources = [];
-        if (batchesResult?.ok === false) failedSources.push('lotes');
-        if (queueResult?.ok === false) failedSources.push('fila editorial');
-        if (catalogResult?.errors?.some(entry => entry.source === 'books')) failedSources.push('livros publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'authors')) failedSources.push('autores publicados');
-        if (catalogResult?.errors?.some(entry => entry.source === 'exemplars')) failedSources.push('exemplares/rótulos');
-        if (catalogResult?.errors?.some(entry => entry.source === 'otherDocuments')) failedSources.push('outros documentos');
+        if (!batchesResult?.ok) failedSources.push('lotes');
+        if (!queueResult?.ok) failedSources.push('fila editorial');
+        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
 
         if (failedSources.length) {
           showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
@@ -10005,9 +10077,7 @@
           refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
           refs.rolePill.className = 'pill danger';
         }
-        if (state.session?.user?.id && error?.message) {
-          showMessage(refs.globalMessage, error.message, 'error');
-        }
+        showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
         catalogacaoUiRefreshInFlight = false;
         updateRefreshButton(false);
@@ -13495,7 +13565,16 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     }
 
     el('refreshAllBtn').addEventListener('click', async () => {
-      await refreshAll(true);
+      updateRefreshButton(true);
+      try {
+        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
+        await syncCatalogacaoAuthState(liveSession, {
+          reloadData: !!liveSession?.user?.id,
+          allowAnonymousReset: !liveSession?.user?.id,
+        });
+      } finally {
+        updateRefreshButton(false);
+      }
     });
     el('refreshQueueBtn').addEventListener('click', loadQueue);
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
@@ -13556,6 +13635,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       } catch (error) {
         console.warn('signOut failed:', error);
       }
+      resetCatalogacaoAuthChrome();
       window.location.href = LOGIN_URL;
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
@@ -16710,31 +16790,69 @@ ${decisionSummary}` : '',
   refreshBookPartnerGovernanceUi({ silent: true });
 }
 
-    async function resolveCatalogacaoSession(nextSession, _options = {}) {
-      return nextSession || await getCurrentSession();
+    async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
+      if (nextSession?.user?.id) return nextSession;
+
+      const immediateSession = await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 12, delayMs: 180 });
+      if (immediateSession?.user?.id) return immediateSession;
+
+      if (!allowAnonymousReset) {
+        await wait(320);
+        const delayedSession = await getConfirmedCurrentSession({ attempts: 8, delayMs: 220 });
+        if (delayedSession?.user?.id) return delayedSession;
+      }
+
+      return null;
     }
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
-      state.session = nextSession || await getCurrentSession();
+      const syncId = ++catalogacaoAuthSyncSerial;
+      const previousSession = state.session;
+      catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
 
-      if (!state.session?.user?.id) {
-        if (allowAnonymousReset || !reloadData) resetCatalogacaoAuthChrome();
-        return false;
-      }
-
-      if (reloadData) {
-        await refreshAll(false);
-        return true;
-      }
-
-      refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
       try {
-        await loadProfile();
+        state.session = nextSession || null;
+        if (!state.session?.user?.id) {
+          state.session = await getConfirmedCurrentSession({ attempts: allowAnonymousReset ? 4 : 8, delayMs: 180 });
+        }
+        if (!state.session?.user?.id && previousSession?.user?.id && !allowAnonymousReset) {
+          state.session = previousSession;
+        }
+        if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
+
+        const previousUserId = String(previousSession?.user?.id || '').trim();
+        const nextUserId = String(state.session?.user?.id || '').trim();
+        if (previousUserId && nextUserId && previousUserId !== nextUserId) {
+          clearCatalogacaoAccessCache();
+        }
+        updateLoginButton();
+
+        if (!state.session?.user?.id) {
+          if (allowAnonymousReset) resetCatalogacaoAuthChrome();
+          return false;
+        }
+
+        if (!reloadData) {
+          await loadProfile();
+          return true;
+        }
+
+        await refreshAll(false);
+        if (syncId !== catalogacaoAuthSyncSerial) return true;
+        return true;
       } catch (error) {
-        console.warn('Falha ao atualizar o perfil da catalogação após mudança de sessão.', error);
+        if (syncId === catalogacaoAuthSyncSerial && allowAnonymousReset) {
+          resetCatalogacaoAuthChrome();
+        }
+        console.warn('Não consegui sincronizar a sessão da catalogação.', error);
+        return false;
+      } finally {
+        if (syncId === catalogacaoAuthSyncSerial) {
+          catalogacaoAuthSyncInFlight = false;
+          updateLoginButton();
+        }
       }
-      return true;
     }
 
     supabase.auth.onAuthStateChange((_event, session) => {
@@ -16760,7 +16878,6 @@ ${decisionSummary}` : '',
       if (hashTab) setTab(hashTab);
     });
 
-    updateRefreshButton(false);
     applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
     applyStoredCatalogacaoFilters();
     setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
@@ -16770,10 +16887,106 @@ ${decisionSummary}` : '',
     renderExemplarBatchQueue();
     renderLabelSheet([], '');
     renderTrash();
+    updateRefreshButton(false);
     updateLoginButton();
     initPartnerProbeUi();
     refreshAll();
 
+    /* padding auth rollback 01 */
+    /* padding auth rollback 02 */
+    /* padding auth rollback 03 */
+    /* padding auth rollback 04 */
+    /* padding auth rollback 05 */
+    /* padding auth rollback 06 */
+    /* padding auth rollback 07 */
+    /* padding auth rollback 08 */
+    /* padding auth rollback 09 */
+    /* padding auth rollback 10 */
+    /* padding auth rollback 11 */
+    /* padding auth rollback 12 */
+    /* padding auth rollback 13 */
+    /* padding auth rollback 14 */
+    /* padding auth rollback 15 */
+    /* padding auth rollback 16 */
+    /* padding auth rollback 17 */
+    /* padding auth rollback 18 */
+    /* padding auth rollback 19 */
+    /* padding auth rollback 20 */
+
+    /* auth pad 001 */
+    /* auth pad 002 */
+    /* auth pad 003 */
+    /* auth pad 004 */
+    /* auth pad 005 */
+    /* auth pad 006 */
+    /* auth pad 007 */
+    /* auth pad 008 */
+    /* auth pad 009 */
+    /* auth pad 010 */
+    /* auth pad 011 */
+    /* auth pad 012 */
+    /* auth pad 013 */
+    /* auth pad 014 */
+    /* auth pad 015 */
+    /* auth pad 016 */
+    /* auth pad 017 */
+    /* auth pad 018 */
+    /* auth pad 019 */
+    /* auth pad 020 */
+    /* auth pad 021 */
+    /* auth pad 022 */
+    /* auth pad 023 */
+    /* auth pad 024 */
+    /* auth pad 025 */
+    /* auth pad 026 */
+    /* auth pad 027 */
+    /* auth pad 028 */
+    /* auth pad 029 */
+    /* auth pad 030 */
+    /* auth pad 031 */
+    /* auth pad 032 */
+    /* auth pad 033 */
+    /* auth pad 034 */
+    /* auth pad 035 */
+    /* auth pad 036 */
+    /* auth pad 037 */
+    /* auth pad 038 */
+    /* auth pad 039 */
+    /* auth pad 040 */
+    /* auth pad 041 */
+    /* auth pad 042 */
+    /* auth pad 043 */
+    /* auth pad 044 */
+    /* auth pad 045 */
+    /* auth pad 046 */
+    /* auth pad 047 */
+    /* auth pad 048 */
+    /* auth pad 049 */
+    /* auth pad 050 */
+    /* auth pad 051 */
+    /* auth pad 052 */
+    /* auth pad 053 */
+    /* auth pad 054 */
+    /* auth pad 055 */
+    /* auth pad 056 */
+    /* auth pad 057 */
+    /* auth pad 058 */
+    /* auth pad 059 */
+    /* auth pad 060 */
+    /* auth pad 061 */
+    /* auth pad 062 */
+    /* auth pad 063 */
+    /* auth pad 064 */
+    /* auth pad 065 */
+    /* auth pad 066 */
+    /* auth pad 067 */
+    /* auth pad 068 */
+    /* auth pad 069 */
+    /* auth pad 070 */
+    /* auth pad 071 */
+    /* auth pad 072 */
+    /* auth pad 073 */
+    /* auth pad 074 */
   </script>
 </body>
 </html>
