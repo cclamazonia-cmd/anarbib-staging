@@ -335,7 +335,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       statusHint: firstNonEmptyString(sessionContextRow?.session_status_hint),
       nextAvailableOn: firstNonEmptyString(sessionContextRow?.session_next_available_on),
       dueAt: firstNonEmptyString(sessionContextRow?.session_due_at, sessionContextRow?.due_at, sessionContextRow?.return_due_at, sessionContextRow?.loan_due_at),
-      pickupScheduledFor: firstNonEmptyString(sessionContextRow?.session_pickup_scheduled_for, sessionContextRow?.pickup_scheduled_for),
+      pickupScheduledFor: firstNonEmptyString(sessionContextRow?.session_pickup_scheduled_for, sessionContextRow?.pickup_scheduled_for, sessionContextRow?.scheduled_for, sessionContextRow?.retirada_agendada_para),
       sessionHasHolding,
       bookId: Number(sessionContextRow?.book_id || bookRow?.book_id || bookRow?.id || 0) || null
     };
@@ -366,7 +366,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
             statusHint: firstNonEmptyString(row?.session_status_hint),
             nextAvailableOn: "",
             dueAt: firstNonEmptyString(row?.session_due_at, row?.due_at, row?.return_due_at, row?.loan_due_at),
-            pickupScheduledFor: firstNonEmptyString(row?.session_pickup_scheduled_for, row?.pickup_scheduled_for),
+            pickupScheduledFor: firstNonEmptyString(row?.session_pickup_scheduled_for, row?.pickup_scheduled_for, row?.scheduled_for, row?.retirada_agendada_para),
             sessionHasHolding: true,
             bookId: Number(row?.book_id || bookRow?.book_id || bookRow?.id || 0) || null
           };
@@ -627,6 +627,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       librarySlug: "",
       libraryName: ""
     };
+    const STANDARD_LOAN_DAYS = 21;
 
 
     function setReserveButtonState(buttonState = {}) {
@@ -676,7 +677,15 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       });
     }
 
-    function collectAvailabilityDateCandidates(source, collector = []) {
+    function addUtcDays(value, days) {
+      const parsed = parseAvailabilityDate(value);
+      if (!parsed) return null;
+      const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+      next.setUTCDate(next.getUTCDate() + Number(days || 0));
+      return Number.isNaN(next.getTime()) ? null : next;
+    }
+
+    function collectDirectAvailabilityDateCandidates(source, collector = []) {
       if (!source || typeof source !== "object") return collector;
 
       const candidateKeys = [
@@ -699,14 +708,29 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         "devolucao_prevista",
         "devolucao_prevista_em",
         "expected_return_at",
-        "loan_due_at",
+        "loan_due_at"
+      ];
+
+      for (const key of candidateKeys) {
+        const parsed = parseAvailabilityDate(source?.[key]);
+        if (!parsed) continue;
+        collector.push({ key, date: parsed, iso: parsed.toISOString() });
+      }
+
+      return collector;
+    }
+
+    function collectScheduledLoanAvailabilityDateCandidates(source, collector = []) {
+      if (!source || typeof source !== "object") return collector;
+
+      const candidateKeys = [
         "pickup_scheduled_for",
         "scheduled_for",
         "retirada_agendada_para"
       ];
 
       for (const key of candidateKeys) {
-        const parsed = parseAvailabilityDate(source?.[key]);
+        const parsed = addUtcDays(source?.[key], STANDARD_LOAN_DAYS);
         if (!parsed) continue;
         collector.push({ key, date: parsed, iso: parsed.toISOString() });
       }
@@ -756,9 +780,16 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         };
       }
 
-      const dateCandidates = [];
-      candidateSources.forEach((source) => collectAvailabilityDateCandidates(source, dateCandidates));
-      const earliest = pickEarliestAvailabilityDate(dateCandidates);
+      const directDateCandidates = [];
+      const scheduledLoanDateCandidates = [];
+      candidateSources.forEach((source) => {
+        collectDirectAvailabilityDateCandidates(source, directDateCandidates);
+        collectScheduledLoanAvailabilityDateCandidates(source, scheduledLoanDateCandidates);
+      });
+
+      const earliest = directDateCandidates.length
+        ? pickEarliestAvailabilityDate(directDateCandidates)
+        : (scheduledLoanDateCandidates.length ? pickEarliestAvailabilityDate(scheduledLoanDateCandidates) : null);
 
       return {
         isAvailableNow: false,
@@ -2735,24 +2766,33 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           .from("v_book_detail_public_v2")
           .select(v2Select)
           .eq(v2FilterField, v2FilterValue)
-          .maybeSingle();
+          .limit(50);
 
-        if (!v2.error && v2.data) {
-          const candidateRow = { ...v2.data };
-          const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-          if (!localContextRequested || matchedHolding) {
-            if (matchedHolding) {
-              if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-              if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-              if (matchedHolding?.library_name) {
-                candidateRow.library_name = matchedHolding.library_name;
-                candidateRow.biblioteca = matchedHolding.library_name;
-              }
+        if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
+          const chosenRow = (() => {
+            if (localContextRequested) {
+              return v2.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || null;
             }
-            booksTable = "v_book_detail_public_v2";
-            data = candidateRow;
-            sample = candidateRow;
-            keys = Object.keys(candidateRow);
+            return v2.data[0] || null;
+          })();
+
+          if (chosenRow) {
+            const candidateRow = { ...chosenRow };
+            const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+            if (!localContextRequested || matchedHolding) {
+              if (matchedHolding) {
+                if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+                if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+                if (matchedHolding?.library_name) {
+                  candidateRow.library_name = matchedHolding.library_name;
+                  candidateRow.biblioteca = matchedHolding.library_name;
+                }
+              }
+              booksTable = "v_book_detail_public_v2";
+              data = candidateRow;
+              sample = candidateRow;
+              keys = Object.keys(candidateRow);
+            }
           }
         }
       } catch (err) {
