@@ -16878,19 +16878,75 @@ ${decisionSummary}` : '',
       if (hashTab) setTab(hashTab);
     });
 
-    applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
-    applyStoredCatalogacaoFilters();
-    setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
-    resetBookForm();
-    resetAuthorForm();
-    resetExemplarForm();
-    renderExemplarBatchQueue();
-    renderLabelSheet([], '');
-    renderTrash();
-    updateRefreshButton(false);
-    updateLoginButton();
-    initPartnerProbeUi();
-    refreshAll();
+    async function bootstrapCatalogacaoSafely() {
+      try {
+        applyCatalogacaoMode(getStoredCatalogacaoMode() || 'simple');
+      } catch (error) {
+        console.warn('Falha ao aplicar o modo inicial da catalogação.', error);
+      }
+      try {
+        applyStoredCatalogacaoFilters();
+      } catch (error) {
+        console.warn('Falha ao restaurar filtros persistidos da catalogação.', error);
+      }
+      try {
+        setTab(getCatalogacaoTabFromHash() || getStoredCatalogacaoTab() || getActiveCatalogacaoTab());
+      } catch (error) {
+        console.warn('Falha ao restaurar a aba inicial da catalogação.', error);
+      }
+      try {
+        resetBookForm();
+      } catch (error) {
+        console.warn('Falha ao resetar o formulário de livros no bootstrap.', error);
+      }
+      try {
+        resetAuthorForm();
+      } catch (error) {
+        console.warn('Falha ao resetar o formulário de autores no bootstrap.', error);
+      }
+      try {
+        resetExemplarForm();
+      } catch (error) {
+        console.warn('Falha ao resetar o formulário de exemplares no bootstrap.', error);
+      }
+      try {
+        renderExemplarBatchQueue();
+      } catch (error) {
+        console.warn('Falha ao montar a fila inicial de exemplares.', error);
+      }
+      try {
+        renderLabelSheet([], '');
+      } catch (error) {
+        console.warn('Falha ao montar a prévia inicial dos rótulos.', error);
+      }
+      try {
+        renderTrash();
+      } catch (error) {
+        console.warn('Falha ao montar a lixeira inicial.', error);
+      }
+
+      updateRefreshButton(false);
+      updateLoginButton();
+
+      try {
+        await refreshAll(false);
+      } catch (error) {
+        console.warn('Falha ao iniciar a verificação de sessão da catalogação.', error);
+        if (refs.userEmail) refs.userEmail.textContent = 'Sem sessão';
+        if (refs.rolePill) {
+          refs.rolePill.textContent = 'Faça login para usar a catalogação';
+          refs.rolePill.className = 'pill danger';
+        }
+      }
+
+      try {
+        initPartnerProbeUi();
+      } catch (error) {
+        console.warn('Falha ao iniciar o módulo de parceiras externas.', error);
+      }
+    }
+
+    void bootstrapCatalogacaoSafely();
 
     /* padding auth rollback 01 */
     /* padding auth rollback 02 */
