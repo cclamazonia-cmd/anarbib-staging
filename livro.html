@@ -2840,14 +2840,15 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           const { data: localHoldingRows, error: localHoldingError } = await holdingsByLocalRef;
 
           if (!localHoldingError && Array.isArray(localHoldingRows) && localHoldingRows.length) {
-            const distinctBookIds = Array.from(new Set(
-              localHoldingRows
-                .map((row) => Number(row?.book_id || 0))
-                .filter((value) => Number.isFinite(value) && value > 0)
-            ));
+            const chosenHoldingRow = (() => {
+              if (libraryContext.libraryId) {
+                return localHoldingRows.find((row) => String(row?.library_id || "").trim() === String(libraryContext.libraryId || "").trim()) || null;
+              }
+              return localHoldingRows[0] || null;
+            })();
 
-            if (distinctBookIds.length === 1) {
-              const localBookId = distinctBookIds[0];
+            const localBookId = Number(chosenHoldingRow?.book_id || 0);
+            if (Number.isFinite(localBookId) && localBookId > 0) {
               const localV2 = await supabase
                 .from("v_book_detail_public_v2")
                 .select(v2Select)
