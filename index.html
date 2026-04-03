@@ -1589,9 +1589,6 @@ function countSessionLibraryVisibleExemplares(row, userLibrary) {
 }
 function getSessionScopedLocalRows(row, userLibrary) {
   const candidates = getRowLibraryCandidates(row);
-  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
-  if (directMatches.length) return directMatches;
-
   const hintedMatches = candidates.filter((item) => {
     const hasSessionSignal = !!(
       item?.session_has_holding
@@ -1607,6 +1604,9 @@ function getSessionScopedLocalRows(row, userLibrary) {
     return !userLibrary.library_id && !userLibrary.library_slug && !userLibrary.library_name;
   });
   if (hintedMatches.length) return hintedMatches;
+
+  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
+  if (directMatches.length) return directMatches;
 
   const rowHasSessionSignal = !!(
     row?.session_has_holding
@@ -2477,6 +2477,7 @@ function buildAuthorHref(authorId, row = null) {
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
+  if (row?.id != null && String(row.id).trim() !== '') url.searchParams.set('book_id', String(row.id));
   const explicitViewContext = resolveExplicitViewLibraryContext(row);
   if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
   if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
