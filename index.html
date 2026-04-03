@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AnarBib - catálogo(s)</title>
+<title>Catálogo(s) AnarBib</title>
 <meta name="description" content="Catálogo(s) AnarBib. Consulte referências, autores, títulos, editoras, anos e disponibilidade.">
 <meta name="theme-color" content="#7a0b14">
 <link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">
@@ -1478,9 +1478,17 @@ function countSessionLibraryVisibleExemplares(row, userLibrary) {
 }
 function getSessionScopedLocalRows(row, userLibrary) {
   const candidates = getRowLibraryCandidates(row);
+  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
+  if (directMatches.length) return directMatches;
 
   const hintedMatches = candidates.filter((item) => {
-    if (!hasSessionAvailabilitySignal(item)) return false;
+    const hasSessionSignal = !!(
+      item?.session_has_holding
+      || firstNonEmptyString(item?.session_status_hint)
+      || Number(item?.session_exemplares_total ?? 0) > 0
+      || Number(item?.session_available_count ?? 0) > 0
+    );
+    if (!hasSessionSignal) return false;
     if (!userLibrary) return true;
     if (userLibrary.library_id && item?.session_library_id && String(userLibrary.library_id) === String(item.session_library_id)) return true;
     if (userLibrary.library_slug && item?.session_library_slug && normalize(userLibrary.library_slug) === normalize(item.session_library_slug)) return true;
@@ -1489,11 +1497,13 @@ function getSessionScopedLocalRows(row, userLibrary) {
   });
   if (hintedMatches.length) return hintedMatches;
 
-  const rowHasSessionSignal = hasSessionAvailabilitySignal(row);
+  const rowHasSessionSignal = !!(
+    row?.session_has_holding
+    || firstNonEmptyString(row?.session_status_hint)
+    || Number(row?.session_exemplares_total ?? 0) > 0
+    || Number(row?.session_available_count ?? 0) > 0
+  );
   if (rowHasSessionSignal) return [row];
-
-  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
-  if (directMatches.length) return directMatches;
 
   return [];
 }
@@ -1505,7 +1515,7 @@ function getStatusInfo(r) {
   if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
-      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable', nextDateLabel: '' };
+      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
     }
 
     const localRows = canUsePersonalizedAvailability
@@ -1515,7 +1525,7 @@ function getStatusInfo(r) {
     const localHintedStatus = localRows
       .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
       .find(Boolean);
-    if (localHintedStatus) return { ...localHintedStatus, nextDateLabel: '' };
+    if (localHintedStatus) return localHintedStatus;
 
     const rowSessionLibraryLike = {
       library_id: r?.session_library_id ?? r?.library_id ?? null,
@@ -1526,46 +1536,35 @@ function getStatusInfo(r) {
     const rowHintedStatus = canUsePersonalizedAvailability && rowMatchesUserLibrary(rowSessionLibraryLike, userLibrary)
       ? mapSessionStatusHintToStatus(r?.session_status_hint)
       : null;
-    if (rowHintedStatus) return { ...rowHintedStatus, nextDateLabel: '' };
+    if (rowHintedStatus) return rowHintedStatus;
 
     if (!localRows.length) {
-      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable', nextDateLabel: '' };
+      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
     }
 
     const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
+    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
 
-    const availabilityInfo = deriveAvailabilityInfoForRow(r, localRows, {
-      preferSession: canUsePersonalizedAvailability,
-      includeRow: true
-    });
+    const localAvailabilityValues = localRows
+      .map((item) => item?.session_available_count ?? item?.available_count)
+      .filter((value) => value != null && value !== '');
+    const rowLocalAvailabilityValue = rowMatchesUserLibrary(r, userLibrary)
+      ? (r?.session_available_count ?? r?.available_count)
+      : null;
+    const hasLocalAvailabilitySignal = localAvailabilityValues.length > 0 || (rowLocalAvailabilityValue != null && rowLocalAvailabilityValue !== '');
+    const localAvailable = localAvailabilityValues.some((value) => Number(value) > 0)
+      || (rowLocalAvailabilityValue != null && rowLocalAvailabilityValue !== '' && Number(rowLocalAvailabilityValue) > 0);
+    if (localAvailable) return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
 
-    if (availabilityInfo?.isAvailableNow) {
-      return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available', nextDateLabel: '' };
+    if (hasLocalAvailabilitySignal || canUsePersonalizedAvailability) {
+      return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
     }
 
-    return {
-      key: 'unavailable',
-      filterKey: 'unavailable_now',
-      label: availabilityInfo?.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : 'Indisponível',
-      cls: 'status-unavailable',
-      nextDateLabel: availabilityInfo?.nextDateLabel || ''
-    };
+    return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
   }
 
-  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
-
-  const availabilityInfo = deriveAvailabilityInfoForRow(r, getRowLibraryCandidates(r), {
-    preferSession: false,
-    includeRow: true
-  });
-  if (availabilityInfo?.isAvailableNow) {
-    return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available', nextDateLabel: '' };
-  }
-  if (availabilityInfo?.nextDateLabel) {
-    return { key: 'unavailable', filterKey: 'unavailable_now', label: `Disponível dia ${availabilityInfo.nextDateLabel}`, cls: 'status-unavailable', nextDateLabel: availabilityInfo.nextDateLabel };
-  }
-  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable', nextDateLabel: '' };
+  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
 }
 function parseQuery(raw) {
   const out = { tokens: [], phrases: [] };
@@ -1652,155 +1651,6 @@ function getSelectedLibraryLabels() {
 
 function normalizeBibRefValue(value) {
   return String(value || '').trim();
-}
-const STANDARD_LOAN_DAYS = 21;
-function parseAvailabilityDate(value) {
-  if (value == null || value === '') return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  let parsed = null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    parsed = new Date(`${raw}T00:00:00Z`);
-  } else {
-    parsed = new Date(raw);
-  }
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-function startOfUtcDay(date) {
-  const parsed = parseAvailabilityDate(date);
-  if (!parsed) return null;
-  return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
-}
-function addUtcDays(date, days) {
-  const base = startOfUtcDay(date);
-  if (!base || !Number.isFinite(Number(days))) return null;
-  const shifted = new Date(base.getTime());
-  shifted.setUTCDate(shifted.getUTCDate() + Number(days));
-  return shifted;
-}
-function formatAvailabilityDate(value) {
-  const parsed = parseAvailabilityDate(value);
-  if (!parsed) return '';
-  return parsed.toLocaleDateString('pt-BR', {
-    timeZone: 'UTC',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
-function collectExplicitAvailabilityDateCandidates(source, collector = []) {
-  if (!source || typeof source !== 'object') return collector;
-  const directKeys = [
-    'session_next_available_on','next_available_at','next_available_on','available_from','available_on',
-    'expected_available_at','expected_available_on','estimated_available_at','estimated_available_on',
-    'proxima_disponibilidade','proxima_disponibilidade_em','data_disponivel','data_disponibilidade',
-    'data_prevista_disponibilidade','return_due_at','due_at','devolucao_prevista','devolucao_prevista_em',
-    'expected_return_at','loan_due_at','default_due_at'
-  ];
-  for (const key of directKeys) {
-    const parsed = parseAvailabilityDate(source?.[key]);
-    if (!parsed) continue;
-    collector.push({ key, date: parsed, iso: parsed.toISOString(), source: 'direct' });
-  }
-  return collector;
-}
-function collectReservationBlockingCandidates(source, collector = []) {
-  if (!source || typeof source !== 'object') return collector;
-  const reservationKeys = [
-    'pickup_scheduled_for','scheduled_for','retirada_agendada_para','reservation_scheduled_for','reserved_for','reserva_agendada_para'
-  ];
-  const today = startOfUtcDay(new Date());
-  if (!today) return collector;
-  for (const key of reservationKeys) {
-    const parsed = startOfUtcDay(source?.[key]);
-    if (!parsed) continue;
-    const diffDays = Math.floor((parsed.getTime() - today.getTime()) / 86400000);
-    if (diffDays < 0 || diffDays >= STANDARD_LOAN_DAYS) continue;
-    const blockedUntil = addUtcDays(parsed, STANDARD_LOAN_DAYS);
-    if (!blockedUntil) continue;
-    collector.push({ key, date: blockedUntil, iso: blockedUntil.toISOString(), source: 'reservation-block' });
-  }
-  return collector;
-}
-function pickEarliestAvailabilityDate(candidates = []) {
-  return (Array.isArray(candidates) ? candidates : [])
-    .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
-    .sort((a, b) => a.date.getTime() - b.date.getTime())[0] || null;
-}
-function pickLatestAvailabilityDate(candidates = []) {
-  return (Array.isArray(candidates) ? candidates : [])
-    .filter((entry) => entry?.date instanceof Date && !Number.isNaN(entry.date.getTime()))
-    .sort((a, b) => b.date.getTime() - a.date.getTime())[0] || null;
-}
-function hasSessionAvailabilitySignal(item) {
-  return !!(
-    item?.session_has_holding
-    || firstNonEmptyString(item?.session_status_hint)
-    || item?.session_library_id != null
-    || firstNonEmptyString(item?.session_library_slug)
-    || firstNonEmptyString(item?.session_library_name)
-    || item?.session_exemplares_total != null
-    || item?.session_available_count != null
-  );
-}
-function readAvailableNowCount(item, preferSession = false) {
-  if (!item || typeof item !== 'object') return 0;
-  if (preferSession) {
-    if (item?.session_available_count != null) return Number(item.session_available_count) || 0;
-    if (hasSessionAvailabilitySignal(item)) return 0;
-  }
-  return Number(item?.available_count ?? item?.available_now_count ?? 0) || 0;
-}
-function deriveAvailabilityInfoForRow(row, localRows = [], options = {}) {
-  const preferSession = options?.preferSession === true;
-  const includeRow = options?.includeRow !== false;
-  const candidateSources = [];
-  if (Array.isArray(localRows) && localRows.length) candidateSources.push(...localRows);
-  if (includeRow && row) candidateSources.push(row);
-  if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) candidateSources.push(...row._holdingLibrariesInfo);
-  if (Array.isArray(row?._holdingRows) && row._holdingRows.length) candidateSources.push(...row._holdingRows);
-
-  const hasAvailableNow = (Array.isArray(localRows) && localRows.length)
-    ? localRows.some((item) => readAvailableNowCount(item, preferSession) > 0)
-    : candidateSources.some((item) => readAvailableNowCount(item, preferSession) > 0);
-
-  const explicitCandidates = [];
-  const reservationBlockingCandidates = [];
-  candidateSources.forEach((source) => {
-    collectExplicitAvailabilityDateCandidates(source, explicitCandidates);
-    collectReservationBlockingCandidates(source, reservationBlockingCandidates);
-  });
-
-  const earliestReservationBlock = pickEarliestAvailabilityDate(reservationBlockingCandidates);
-  const earliestExplicit = pickEarliestAvailabilityDate(explicitCandidates);
-  const latestUnavailableDate = pickLatestAvailabilityDate([
-    ...(earliestExplicit ? [earliestExplicit] : []),
-    ...(earliestReservationBlock ? [earliestReservationBlock] : [])
-  ]);
-
-  if (hasAvailableNow && earliestReservationBlock) {
-    return {
-      isAvailableNow: false,
-      nextDate: earliestReservationBlock.date,
-      nextDateLabel: formatAvailabilityDate(earliestReservationBlock.date),
-      blockedByReservation: true
-    };
-  }
-  if (hasAvailableNow) {
-    return {
-      isAvailableNow: true,
-      nextDate: null,
-      nextDateLabel: '',
-      blockedByReservation: false
-    };
-  }
-  return {
-    isAvailableNow: false,
-    nextDate: latestUnavailableDate?.date || null,
-    nextDateLabel: latestUnavailableDate ? formatAvailabilityDate(latestUnavailableDate.date) : '',
-    blockedByReservation: !!earliestReservationBlock
-  };
 }
 function hasActiveReservationBibRef(bibRef) {
   const key = normalizeBibRefValue(bibRef);
@@ -2803,17 +2653,13 @@ function normalizeHoldingLibraries(value, row = null) {
     const library_slug = firstNonEmptyString(item.library_slug);
     const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
-    const available_count = Number(item.available_count ?? item.available_now_count ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
     const hasTopLevelSessionSignal = !!(
       row?.session_has_holding
       || firstNonEmptyString(row?.session_status_hint)
-      || row?.session_exemplares_total != null
-      || row?.session_available_count != null
-      || firstNonEmptyString(row?.session_library_slug)
-      || firstNonEmptyString(row?.session_library_name)
-      || row?.session_library_id != null
+      || Number(row?.session_exemplares_total ?? 0) > 0
+      || Number(row?.session_available_count ?? 0) > 0
     );
     const matchesSessionLibrary = rowMatchesUserLibrary({ library_id, library_slug, library_name }, sessionLibrary);
     const isSingleHoldingFallback = source.length === 1 && hasTopLevelSessionSignal;
@@ -2828,36 +2674,13 @@ function normalizeHoldingLibraries(value, row = null) {
       session_library_slug: firstNonEmptyString(row?.session_library_slug),
       session_library_name: firstNonEmptyString(row?.session_library_name),
       exemplares_total,
-      available_count,
+      available_count: Number(item.available_count ?? 0) || 0,
       tombos_json,
       loanable: item?.loanable === false ? false : (row?.loanable === false ? false : true),
       session_has_holding: !!matchesSession,
-      session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : null,
-      session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : null,
-      session_status_hint: matchesSession ? firstNonEmptyString(row?.session_status_hint) : '',
-      session_next_available_on: matchesSession ? firstNonEmptyString(row?.session_next_available_on, item?.session_next_available_on, item?.next_available_on, item?.next_available_at) : firstNonEmptyString(item?.session_next_available_on, item?.next_available_on, item?.next_available_at),
-      next_available_on: firstNonEmptyString(item?.next_available_on),
-      next_available_at: firstNonEmptyString(item?.next_available_at),
-      available_from: firstNonEmptyString(item?.available_from),
-      available_on: firstNonEmptyString(item?.available_on),
-      expected_available_at: firstNonEmptyString(item?.expected_available_at),
-      expected_available_on: firstNonEmptyString(item?.expected_available_on),
-      estimated_available_at: firstNonEmptyString(item?.estimated_available_at),
-      estimated_available_on: firstNonEmptyString(item?.estimated_available_on),
-      proxima_disponibilidade: firstNonEmptyString(item?.proxima_disponibilidade),
-      proxima_disponibilidade_em: firstNonEmptyString(item?.proxima_disponibilidade_em),
-      data_disponivel: firstNonEmptyString(item?.data_disponivel),
-      data_disponibilidade: firstNonEmptyString(item?.data_disponibilidade),
-      data_prevista_disponibilidade: firstNonEmptyString(item?.data_prevista_disponibilidade),
-      return_due_at: firstNonEmptyString(item?.return_due_at, row?.return_due_at),
-      due_at: firstNonEmptyString(item?.due_at, row?.due_at),
-      devolucao_prevista: firstNonEmptyString(item?.devolucao_prevista, row?.devolucao_prevista),
-      devolucao_prevista_em: firstNonEmptyString(item?.devolucao_prevista_em, row?.devolucao_prevista_em),
-      expected_return_at: firstNonEmptyString(item?.expected_return_at, row?.expected_return_at),
-      loan_due_at: firstNonEmptyString(item?.loan_due_at, row?.loan_due_at),
-      pickup_scheduled_for: firstNonEmptyString(item?.pickup_scheduled_for, row?.pickup_scheduled_for),
-      scheduled_for: firstNonEmptyString(item?.scheduled_for, row?.scheduled_for),
-      retirada_agendada_para: firstNonEmptyString(item?.retirada_agendada_para, row?.retirada_agendada_para)
+      session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : 0,
+      session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : 0,
+      session_status_hint: matchesSession ? firstNonEmptyString(row?.session_status_hint) : ''
     });
   }
   return out;
@@ -3036,32 +2859,9 @@ async function loadRowsFromSupabase() {
         session_library_slug: firstNonEmptyString(r.session_library_slug),
         session_library_name: firstNonEmptyString(r.session_library_name),
         session_has_holding: !!r.session_has_holding,
-        session_exemplares_total: r.session_exemplares_total != null ? (Number(r.session_exemplares_total ?? 0) || 0) : null,
-        session_available_count: r.session_available_count != null ? (Number(r.session_available_count ?? 0) || 0) : null,
+        session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
+        session_available_count: Number(r.session_available_count ?? 0) || 0,
         session_status_hint: firstNonEmptyString(r.session_status_hint),
-        session_next_available_on: firstNonEmptyString(r.session_next_available_on),
-        next_available_at: firstNonEmptyString(r.next_available_at),
-        next_available_on: firstNonEmptyString(r.next_available_on),
-        available_from: firstNonEmptyString(r.available_from),
-        available_on: firstNonEmptyString(r.available_on),
-        expected_available_at: firstNonEmptyString(r.expected_available_at),
-        expected_available_on: firstNonEmptyString(r.expected_available_on),
-        estimated_available_at: firstNonEmptyString(r.estimated_available_at),
-        estimated_available_on: firstNonEmptyString(r.estimated_available_on),
-        proxima_disponibilidade: firstNonEmptyString(r.proxima_disponibilidade),
-        proxima_disponibilidade_em: firstNonEmptyString(r.proxima_disponibilidade_em),
-        data_disponivel: firstNonEmptyString(r.data_disponivel),
-        data_disponibilidade: firstNonEmptyString(r.data_disponibilidade),
-        data_prevista_disponibilidade: firstNonEmptyString(r.data_prevista_disponibilidade),
-        return_due_at: firstNonEmptyString(r.return_due_at),
-        due_at: firstNonEmptyString(r.due_at),
-        devolucao_prevista: firstNonEmptyString(r.devolucao_prevista),
-        devolucao_prevista_em: firstNonEmptyString(r.devolucao_prevista_em),
-        expected_return_at: firstNonEmptyString(r.expected_return_at),
-        loan_due_at: firstNonEmptyString(r.loan_due_at),
-        pickup_scheduled_for: firstNonEmptyString(r.pickup_scheduled_for),
-        scheduled_for: firstNonEmptyString(r.scheduled_for),
-        retirada_agendada_para: firstNonEmptyString(r.retirada_agendada_para),
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
@@ -3160,7 +2960,7 @@ function buildReservationMarkup(r) {
     return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
   }
   if (status.key === 'unavailable') {
-    return `<div class="reserve-slot"><span class="reserve-note">${escapeHTML(status.label || 'Indisponível no momento')}</span></div>`;
+    return `<div class="reserve-slot"><span class="reserve-note">${escapeHTML(status.label || 'Indisponível')}</span></div>`;
   }
   if (!r.bib_ref) {
     return '<div class="reserve-slot"><span class="reserve-note">Referência indisponível</span></div>';
@@ -3403,13 +3203,6 @@ function mergeAuthorChipEntriesForGroup(items) {
 function mergeHoldingLibraryInfoForGroup(items) {
   const mergedMap = new Map();
   const hintPriority = { no_acervo_da_sua_biblioteca: 3, consultavel_no_local: 2, indisponivel_para_voce: 1, '': 0 };
-  const dateKeys = [
-    'session_next_available_on','next_available_at','next_available_on','available_from','available_on',
-    'expected_available_at','expected_available_on','estimated_available_at','estimated_available_on',
-    'proxima_disponibilidade','proxima_disponibilidade_em','data_disponivel','data_disponibilidade',
-    'data_prevista_disponibilidade','return_due_at','due_at','devolucao_prevista','devolucao_prevista_em',
-    'expected_return_at','loan_due_at','pickup_scheduled_for','scheduled_for','retirada_agendada_para'
-  ];
   for (const item of (items || [])) {
     const candidates = Array.isArray(item?._holdingLibrariesInfo) && item._holdingLibrariesInfo.length
       ? item._holdingLibrariesInfo
@@ -3429,30 +3222,23 @@ function mergeHoldingLibraryInfoForGroup(items) {
         available_count: 0,
         loanable: true,
         session_has_holding: false,
-        session_exemplares_total: null,
-        session_available_count: null,
+        session_exemplares_total: 0,
+        session_available_count: 0,
         session_status_hint: ''
       };
       const exemplares_total = Number(candidate.exemplares_total ?? ((candidate.library_id || candidate.library_slug || candidate.library_name || candidate.biblioteca) ? 1 : 0)) || 0;
       const available_count = Number(candidate.available_count ?? 0) || 0;
-      const session_exemplares_total = candidate.session_exemplares_total != null ? (Number(candidate.session_exemplares_total ?? 0) || 0) : null;
-      const session_available_count = candidate.session_available_count != null ? (Number(candidate.session_available_count ?? 0) || 0) : null;
+      const session_exemplares_total = Number(candidate.session_exemplares_total ?? 0) || 0;
+      const session_available_count = Number(candidate.session_available_count ?? 0) || 0;
       const session_status_hint = firstNonEmptyString(candidate.session_status_hint);
       current.exemplares_total += exemplares_total;
       current.available_count += available_count;
       current.loanable = current.loanable && (candidate.loanable === false ? false : true);
       current.session_has_holding = current.session_has_holding || !!candidate.session_has_holding;
-      if (session_exemplares_total != null) {
-        current.session_exemplares_total = Math.max(Number(current.session_exemplares_total ?? 0) || 0, session_exemplares_total);
-      }
-      if (session_available_count != null) {
-        current.session_available_count = Math.max(Number(current.session_available_count ?? 0) || 0, session_available_count);
-      }
+      current.session_exemplares_total = Math.max(current.session_exemplares_total, session_exemplares_total);
+      current.session_available_count = Math.max(current.session_available_count, session_available_count);
       if ((hintPriority[session_status_hint] || 0) > (hintPriority[current.session_status_hint] || 0)) {
         current.session_status_hint = session_status_hint;
-      }
-      for (const dateKey of dateKeys) {
-        if (!current[dateKey] && candidate?.[dateKey]) current[dateKey] = candidate[dateKey];
       }
       mergedMap.set(key, current);
     }
