@@ -1307,6 +1307,61 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return candidateRow;
     }
 
+    async function tryResolveBookViaPublicViewScanPublic(bib_ref = "", libraryContext = {}, v2Select = "") {
+      const ref = String(bib_ref || "").trim();
+      if (!ref) return null;
+
+      try {
+        const holdingProbe = {};
+        if (ref) holdingProbe.local_bib_ref = ref;
+        if (libraryContext?.libraryId) holdingProbe.library_id = libraryContext.libraryId;
+
+        let result = await supabase
+          .from("v_book_detail_public_v2")
+          .select(v2Select)
+          .contains("holding_libraries_json", [holdingProbe])
+          .limit(50);
+
+        if ((result.error || !Array.isArray(result.data) || !result.data.length) && !libraryContext?.libraryId) {
+          result = await supabase
+            .from("v_book_detail_public_v2")
+            .select(v2Select)
+            .contains("holding_libraries_json", [{ local_bib_ref: ref }])
+            .limit(50);
+        }
+
+        if (result.error || !Array.isArray(result.data) || !result.data.length) return null;
+
+        const chosenRow = (() => {
+          if (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName) {
+            return result.data.find((row) => findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || result.data[0] || null;
+          }
+          return result.data[0] || null;
+        })();
+
+        if (!chosenRow) return null;
+
+        const candidateRow = { ...chosenRow };
+        const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+        if (matchedHolding) {
+          if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+          if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+          if (matchedHolding?.library_name) {
+            candidateRow.library_name = matchedHolding.library_name;
+            candidateRow.biblioteca = matchedHolding.library_name;
+          }
+        }
+
+        return {
+          booksTable: "v_book_detail_public_v2",
+          data: candidateRow
+        };
+      } catch (err) {
+        console.warn("AnarBib livro: falha na resolução pública por holding_libraries_json", err);
+        return null;
+      }
+    }
+
     async function tryLoadBookByHoldingContext(bib_ref = "", libraryContext = {}, v2Select = "", fallbackSelect = "") {
 
     async function tryResolveBookViaPublicViewScan(bib_ref = "", libraryContext = {}, v2Select = "") {
@@ -2962,7 +3017,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
 
       if (!booksTable && bib_ref) {
-        const scannedPublicBook = await tryResolveBookViaPublicViewScan(bib_ref, libraryContext, v2Select);
+        const scannedPublicBook = await tryResolveBookViaPublicViewScanPublic(bib_ref, libraryContext, v2Select);
         if (scannedPublicBook?.booksTable && scannedPublicBook?.data) {
           booksTable = scannedPublicBook.booksTable;
           data = scannedPublicBook.data;
