@@ -1781,8 +1781,119 @@
       min-width: 260px;
     }
 
+    .catalog-layer-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .catalog-layer-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(179,0,24,.08));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+      min-width: 0;
+    }
+
+    .catalog-layer-card-title {
+      color: #ffe3e7;
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .catalog-layer-card-value {
+      color: #fff;
+      font-size: 1.28rem;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .catalog-layer-card-note {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-surface-summary {
+      margin: 0 0 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(179,0,24,.06));
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    .catalog-surface-summary strong {
+      color: #fff;
+      font-size: .94rem;
+    }
+
+    .catalog-layer-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .catalog-layer-eyebrow {
+      color: #ffe3e7;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .catalog-layer-title {
+      color: #fff;
+      font-size: .98rem;
+      font-weight: 800;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-layer-line {
+      color: #f0f0f0;
+      font-size: .9rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .catalog-layer-line.is-muted {
+      color: var(--muted);
+    }
+
+    .catalog-layer-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
     @media (max-width: 1400px) {
       .catalog-published-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .catalog-layer-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .catalog-layer-summary {
         grid-template-columns: 1fr;
       }
     }
@@ -2782,7 +2893,7 @@
       <div class="panel-header">
         <div>
           <h3>Exemplares</h3>
-          <p>Crie ou edite rascunhos de exemplar com tombo, localização e observações físicas. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
+          <p>Crie ou edite exemplares locais ligados a uma ficha comum, com tombo, localização, leitura do holding local e observações materiais. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
         </div>
         <div class="inline">
           <span id="exemplarDraftModePill" class="pill info">Novo rascunho</span>
@@ -2794,10 +2905,10 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de livros para exemplares</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas de livros ativas. Cada exemplar previsto gera uma linha própria. Aqui você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Cada holding local previsto gera aqui uma linha própria de exemplar local. Nesta etapa, você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="exemplarLotImportId">Livros a carregar</label>
+              <label for="exemplarLotImportId">Fichas comuns a carregar</label>
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -2843,8 +2954,9 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência do livro</label>
+            <label for="exemplarBibRef">Compatibilidade local / ficha comum</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
+            <small>Use aqui a referência local que ancora este exemplar à ficha comum já existente ou em preparação.</small>
           </div>
 
           <div class="field">
@@ -2890,6 +3002,25 @@
             <small>Os campos do rótulo são preenchidos e validados na aba Rótulos.</small>
           </div>
 
+          <div class="field" style="grid-column: span 3;">
+            <div class="book-derived-summary">
+              <div class="book-derived-summary-top">
+                <div>
+                  <h4 class="autofill-panel-title">Leitura do vínculo local</h4>
+                  <div class="hint">Prévia curta do que este formulário já consegue reler como ficha comum em foco, holding local e exemplar local em preparação.</div>
+                </div>
+                <span id="exemplarContextStatusPill" class="pill info">Exemplar local</span>
+              </div>
+              <div class="book-derived-summary-card">
+                <div id="exemplarContextKind" class="book-derived-summary-kind">Ficha comum ainda não localizada</div>
+                <div id="exemplarContextTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
+                <div id="exemplarContextHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
+                <div id="exemplarContextCopy" class="book-derived-summary-line">Exemplar local: —</div>
+                <div id="exemplarContextLabel" class="book-derived-summary-line is-muted">Rótulo e revisão local: —</div>
+              </div>
+            </div>
+          </div>
+
           <div class="actions with-danger-far" style="grid-column: span 3;">
             <button id="saveExemplarDraftBtn" type="submit" class="button primary">Salvar rascunho</button>
             <button id="exemplarReadyBtn" type="button" class="button secondary">Marcar como pronto</button>
@@ -2917,7 +3048,7 @@
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de exemplares para rótulos</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto.</p>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares locais ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto, sem perder de vista a ficha comum e o holding local ao qual ele está ligado.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
               <label for="labelLotImportId">Exemplares a carregar</label>
@@ -2931,7 +3062,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo, CDD ou nota" />
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, compatibilidade local, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -2955,11 +3086,11 @@
         </div>
 
         <div class="card">
-          <h4>Rótulo do exemplar selecionado</h4>
-          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente.</p>
+          <h4>Rótulo do exemplar local selecionado</h4>
+          <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente, sem perder de vista a ficha comum e a leitura do holding local.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Referência: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -3013,10 +3144,55 @@
         </div>
 
         <div class="card" style="margin-top:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura ficha comum → holding local → exemplar local → rótulo local</h4>
+                <div class="hint">Esta prévia relê, numa única superfície, o vínculo entre a ficha comum em foco, o holding local, o exemplar local aberto e o estado atual do rótulo local que vai para a plancha.</div>
+              </div>
+              <span id="labelFlowStatusPill" class="pill info">Rótulo local</span>
+            </div>
+            <div class="book-derived-summary-card">
+              <div id="labelFlowKind" class="book-derived-summary-kind">Ficha comum ainda não relida</div>
+              <div id="labelFlowTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
+              <div id="labelFlowHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
+              <div id="labelFlowCopy" class="book-derived-summary-line">Exemplar local: —</div>
+              <div id="labelFlowLabel" class="book-derived-summary-line is-muted">Rótulo local: —</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="book-public-preview">
+            <div class="book-public-preview-top">
+              <div>
+                <h4 class="autofill-panel-title">Saída local do rótulo</h4>
+                <div class="hint">Prévia do que o rótulo já produz materialmente agora e do que ele habilita depois na plancha A4 e na validação local.</div>
+              </div>
+              <span id="labelOutputStatusPill" class="pill info">Prévia local</span>
+            </div>
+            <div class="book-public-preview-grid">
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Leitura impressa agora</div>
+                <div id="labelOutputPrintTitle" class="book-public-preview-title">Título do rótulo</div>
+                <div id="labelOutputPrintMeta" class="book-public-preview-line is-muted">Autor, CDD e código ainda não consolidados.</div>
+                <div id="labelOutputPrintBody" class="book-public-preview-line">Nota curta e leitura de estante ainda não consolidadas.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Plancha e validação</div>
+                <div id="labelOutputSheetTitle" class="book-public-preview-title">Folha A4 / validação local</div>
+                <div id="labelOutputSheetMeta" class="book-public-preview-line is-muted">Situação de validação ainda não definida.</div>
+                <div id="labelOutputSheetBody" class="book-public-preview-line">A leitura da plancha e do próximo gesto local aparecerá aqui.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Referência: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -3049,7 +3225,7 @@
       <div class="panel-header">
         <div>
           <h3>Fila editorial</h3>
-          <p>Consulte somente os rascunhos ativos de documentos, autores e exemplares. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados ficam na lixeira.</p>
+          <p>Consulte aqui somente os rascunhos ativos como camadas de trabalho: ficha comum, autoridade e exemplar local. Itens publicados saem desta fila e ficam no catálogo já publicado; itens descartados vão para a lixeira, sem perder a possibilidade de restauração.</p>
         </div>
         <div class="inline">
           <button id="refreshQueueBtn" class="button secondary">Atualizar fila</button>
@@ -3076,11 +3252,30 @@
           </div>
           <div class="field">
             <label for="queueSearch">Buscar</label>
-            <input id="queueSearch" type="text" placeholder="Título, autor, tombo, referência ou localização…" />
+            <input id="queueSearch" type="text" placeholder="Título, autoridade, compatibilidade local, tombo ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
             <select id="queueBatchAssign"></select>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura da fila ativa</h4>
+                <div class="hint">Esta superfície relê o recorte atual da fila editorial como camadas de trabalho: ficha comum, autoridade e exemplar local, com foco no próximo gesto local útil.</div>
+              </div>
+              <span id="queueFlowStatusPill" class="pill info">Fila editorial</span>
+            </div>
+            <div class="book-derived-summary-card">
+              <div id="queueFlowKind" class="book-derived-summary-kind">Recorte ainda não lido</div>
+              <div id="queueFlowTitle" class="book-derived-summary-title">Sem leitura ativa da fila</div>
+              <div id="queueFlowScope" class="book-derived-summary-line is-muted">Camadas visíveis: —</div>
+              <div id="queueFlowWork" class="book-derived-summary-line">Gestos de trabalho ainda não sintetizados.</div>
+              <div id="queueFlowNext" class="book-derived-summary-line is-muted">Próximo gesto local: —</div>
+            </div>
           </div>
         </div>
 
@@ -3109,13 +3304,32 @@
       <div class="panel-header">
         <div>
           <h3>Lotes de publicação</h3>
-          <p>Crie um lote, agrupe fichas e publique tudo de uma vez para o catálogo.</p>
+          <p>Releia aqui cada lote como composição de fichas comuns, autoridades e exemplares locais, e publique o conjunto só quando esta composição estiver madura.</p>
         </div>
       </div>
       <div class="panel-body">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
+                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+              </div>
+              <span id="batchFlowStatusPill" class="pill info">Passe 19 · batchesPanel</span>
+            </div>
+            <div class="book-derived-summary-card">
+              <div id="batchFlowKind" class="book-derived-summary-kind">Lotes ainda não relidos</div>
+              <div id="batchFlowTitle" class="book-derived-summary-title">Sem composição ativa deste recorte</div>
+              <div id="batchFlowScope" class="book-derived-summary-line is-muted">Composição do lote: —</div>
+              <div id="batchFlowWork" class="book-derived-summary-line">Gestos locais ainda não sintetizados.</div>
+              <div id="batchFlowNext" class="book-derived-summary-line is-muted">Próximo gesto local: —</div>
+            </div>
+          </div>
+        </div>
+
         <div class="split">
           <div class="card">
-            <h4>Novo lote</h4>
+            <h4>Novo lote de trabalho</h4>
             <div id="batchMessage" class="message"></div>
             <form id="batchForm" class="grid">
               <div class="field">
@@ -3124,7 +3338,7 @@
               </div>
               <div class="field">
                 <label for="batchNotes">Observações</label>
-                <textarea id="batchNotes" placeholder="Revisão de livros anarquistas, autores novos, tombo já etiquetado…"></textarea>
+                <textarea id="batchNotes" placeholder="Composição prevista do lote, recorte editorial, revisão local em curso, etiquetas já verificadas…"></textarea>
               </div>
               <div class="actions">
                 <button class="button primary" type="submit">Criar lote</button>
@@ -3133,7 +3347,7 @@
           </div>
 
           <div class="card">
-            <h4>Publicar lote</h4>
+            <h4>Publicação por lote</h4>
             <div class="field">
               <label for="publishBatchId">Escolher lote</label>
               <select id="publishBatchId"></select>
@@ -3142,10 +3356,12 @@
               <button id="publishBatchBtn" class="button success">Publicar lote selecionado</button>
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
-            <p class="hint">A publicação em lote chama a função <code>publish_catalog_batch</code> e envia para o catálogo todas as fichas em rascunho ou prontas dentro desse lote.</p>
+            <div id="publishBatchSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.</div>
+            <p class="hint">A publicação por lote chama <code>publish_catalog_batch</code> e empurra de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
           </div>
         </div>
 
+        <div id="batchListSummary" class="catalog-surface-summary" style="margin-top:16px;"><strong>Leitura da lista:</strong> ainda não atualizada.</div>
         <div style="margin-top:16px;" id="batchListWrap" class="table-wrap"></div>
       </div>
     </section>
@@ -3176,16 +3392,51 @@
 
         <div id="catalogMessage" class="message"></div>
 
-        
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Leitura do catálogo publicado neste recorte</h4>
+                <div class="hint">Nesta passe 18, a leitura do catálogo distingue melhor o que já está publicado, o que continua apenas como compatibilidade local, o que já existe como exemplar local e o que já entrou em retomada editorial local.</div>
+              </div>
+              <span class="pill info">Passe 18 · catalogPanel</span>
+            </div>
+            <div class="catalog-layer-summary">
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Fichas comuns publicadas visíveis</div>
+                <div id="catalogSummaryNoticeValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryNoticeNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Compatibilidades locais visíveis</div>
+                <div id="catalogSummaryCompatValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryCompatNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Exemplares locais visíveis</div>
+                <div id="catalogSummaryExemplarValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryExemplarNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Retomadas editoriais ativas</div>
+                <div id="catalogSummaryDraftValue" class="catalog-layer-card-value">0</div>
+                <div id="catalogSummaryDraftNote" class="catalog-layer-card-note">Sem leitura deste recorte ainda.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
             <h4>Livros, brochuras e publicações seriadas</h4>
+            <div id="catalogBooksSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Documentos não-livro e materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
+            <div id="catalogOtherDocsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
 
@@ -3219,11 +3470,13 @@
                 <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
               </div>
             </div>
+            <div id="catalogAuthorsSurfaceSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Exemplares publicados</h4>
+            <div id="catalogExemplarsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -3303,6 +3556,7 @@
               <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
               <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
               <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
+              <div id="partnerIncomingSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da recepção:</strong> ainda não atualizada.</div>
             </div>
           </div>
         </div>
@@ -3314,6 +3568,31 @@
           </p>
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
+
+          <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> ainda não atualizada.</div>
+
+          <div class="catalog-layer-summary" id="partnerGovernanceSummary" style="margin-bottom:12px;">
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Situação relacional</div>
+              <div id="partnerGovernanceStageValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerGovernanceStageNote" class="catalog-layer-card-note">Sem parceira em foco ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Microfluxo ativo</div>
+              <div id="partnerGovernanceFlowValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerGovernanceFlowNote" class="catalog-layer-card-note">Nenhum microfluxo aberto ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Escrita local agora</div>
+              <div id="partnerGovernanceWriteValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerGovernanceWriteNote" class="catalog-layer-card-note">Sem decisão documental ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Camada protegida</div>
+              <div id="partnerGovernanceBoundaryValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerGovernanceBoundaryNote" class="catalog-layer-card-note">A leitura política e documental ainda não foi resumida.</div>
+            </div>
+          </div>
 
           <div class="grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
@@ -3503,6 +3782,29 @@
             </div>
           </div>
 
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
+            <div class="field">
+              <label for="partnerWorkflowScopeOutput">Quadro do gesto ativo</label>
+              <textarea id="partnerWorkflowScopeOutput" rows="5" readonly placeholder="O quadro do gesto ativo aparecerá aqui."></textarea>
+              <small>Este quadro resume a parceira em foco, o nível de autorização ativo e qual microfluxo está realmente aberto agora.</small>
+            </div>
+            <div class="field">
+              <label for="partnerWriteNowOutput">Escrita local que pode sair agora</label>
+              <textarea id="partnerWriteNowOutput" rows="6" readonly placeholder="O que pode sair agora para a ficha aparecerá aqui."></textarea>
+              <small>Quando houver comparação ou preparação suficientemente descritas, este quadro antecipa o gesto local realmente possível antes do clique.</small>
+            </div>
+            <div class="field">
+              <label for="partnerProtectedNowOutput">O que esta etapa não tocará</label>
+              <textarea id="partnerProtectedNowOutput" rows="6" readonly placeholder="Os limites materiais desta etapa aparecerão aqui."></textarea>
+              <small>Serve para reler, de forma seca, o que continua protegido: notice publicada, registro da parceira, camada compartilhada e publicação pública.</small>
+            </div>
+            <div class="field">
+              <label for="partnerBlockersNowOutput">Bloqueios e faltas atuais</label>
+              <textarea id="partnerBlockersNowOutput" rows="6" readonly placeholder="Os bloqueios e faltas atuais aparecerão aqui."></textarea>
+              <small>Este quadro junta o que ainda bloqueia o gesto local: acordo ausente, política travada ou elementos ainda não preenchidos no microfluxo aberto.</small>
+            </div>
+          </div>
+
           <div id="partnerRightsDecisionNote" class="hint" style="margin-top:8px;">
             A matriz acima manda nesta etapa: ela separa leitura política, comparação local, retomada local, enriquecimento da camada local, camada compartilhada e publicação na tua biblioteca.
           </div>
@@ -3520,6 +3822,7 @@
                 </div>
               </div>
               <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
+              <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
@@ -3592,6 +3895,7 @@
                 </div>
               </div>
               <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
+              <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
@@ -3652,6 +3956,16 @@
                 <label for="partnerImportOperationalState">Estado operacional da preparação</label>
                 <textarea id="partnerImportOperationalState" rows="4" readonly placeholder="O estado operacional desta preparação aparecerá aqui."></textarea>
               </div>
+              <div class="field">
+                <label for="partnerImportChecklist">Checklist mínima antes de levar à ficha</label>
+                <textarea id="partnerImportChecklist" rows="5" readonly placeholder="A checklist mínima desta preparação aparecerá aqui."></textarea>
+                <small>Este quadro ajuda a verificar se formato, modo, decisão local e proveniência já estão suficientemente estabilizados para escrita assistida.</small>
+              </div>
+              <div class="field">
+                <label for="partnerImportPrudenceSignal">Sinal de prudência da preparação</label>
+                <textarea id="partnerImportPrudenceSignal" rows="4" readonly placeholder="O sinal de prudência desta preparação aparecerá aqui."></textarea>
+                <small>Mesmo quando tudo estiver pronto, este sinal continua lembrando que a operação permanece local, assistida e sem importação automática real.</small>
+              </div>
               <div id="partnerImportBoundaryNote" class="hint">Esta área continua local, assistida e sem importação automática real. Mesmo quando a mutualização estiver autorizada, isso não vale como modificação livre do registro da parceira.</div>
             </div>
           </div>
@@ -3702,6 +4016,7 @@
       url.searchParams.set('next', nextUrl);
       return url.toString();
     }
+
     const DIGITAL_PUBLIC_BUCKET = 'anarbib-pdf-public';
     const DIGITAL_RESTRICTED_BUCKET = 'pdf-restrito';
     const DIGITAL_PUBLIC_BUCKET_LEGACY = 'pdf-publico';
@@ -3741,6 +4056,8 @@
       trashSelection: new Set(),
       catalogacaoMode: 'simple',
       authorDraftLinks: [],
+      bookDraftLinks: [],
+      exemplarDraftLinks: [],
       bookDigitalDraftResources: [],
     };
 
@@ -3967,6 +4284,20 @@
       queueMessage: el('queueMessage'),
       batchMessage: el('batchMessage'),
       catalogMessage: el('catalogMessage'),
+      batchFlowStatusPill: el('batchFlowStatusPill'),
+      batchFlowKind: el('batchFlowKind'),
+      batchFlowTitle: el('batchFlowTitle'),
+      batchFlowScope: el('batchFlowScope'),
+      batchFlowWork: el('batchFlowWork'),
+      batchFlowNext: el('batchFlowNext'),
+      batchListSummary: el('batchListSummary'),
+      publishBatchSummary: el('publishBatchSummary'),
+      queueFlowStatusPill: el('queueFlowStatusPill'),
+      queueFlowKind: el('queueFlowKind'),
+      queueFlowTitle: el('queueFlowTitle'),
+      queueFlowScope: el('queueFlowScope'),
+      queueFlowWork: el('queueFlowWork'),
+      queueFlowNext: el('queueFlowNext'),
       statOpenBatches: el('statOpenBatches'),
       statDrafts: el('statDrafts'),
       statBooks: el('statBooks'),
@@ -3989,6 +4320,18 @@
       catalogAuthorsWrap: el('catalogAuthorsWrap'),
       catalogExemplarsWrap: el('catalogExemplarsWrap'),
       catalogOtherDocsWrap: el('catalogOtherDocsWrap'),
+      catalogSummaryNoticeValue: el('catalogSummaryNoticeValue'),
+      catalogSummaryNoticeNote: el('catalogSummaryNoticeNote'),
+      catalogSummaryCompatValue: el('catalogSummaryCompatValue'),
+      catalogSummaryCompatNote: el('catalogSummaryCompatNote'),
+      catalogSummaryExemplarValue: el('catalogSummaryExemplarValue'),
+      catalogSummaryExemplarNote: el('catalogSummaryExemplarNote'),
+      catalogSummaryDraftValue: el('catalogSummaryDraftValue'),
+      catalogSummaryDraftNote: el('catalogSummaryDraftNote'),
+      catalogBooksSummary: el('catalogBooksSummary'),
+      catalogOtherDocsSummary: el('catalogOtherDocsSummary'),
+      catalogAuthorsSurfaceSummary: el('catalogAuthorsSurfaceSummary'),
+      catalogExemplarsSummary: el('catalogExemplarsSummary'),
       periodicalFields: el('periodicalFields'),
       bookISBNField: el('bookISBNField'),
       bookISSNField: el('bookISSNField'),
@@ -4042,12 +4385,31 @@
       labelCurrentBibRef: el('labelCurrentBibRef'),
       labelCurrentTombo: el('labelCurrentTombo'),
       labelCurrentShelf: el('labelCurrentShelf'),
+      labelFlowStatusPill: el('labelFlowStatusPill'),
+      labelFlowKind: el('labelFlowKind'),
+      labelFlowTitle: el('labelFlowTitle'),
+      labelFlowHolding: el('labelFlowHolding'),
+      labelFlowCopy: el('labelFlowCopy'),
+      labelFlowLabel: el('labelFlowLabel'),
+      labelOutputStatusPill: el('labelOutputStatusPill'),
+      labelOutputPrintTitle: el('labelOutputPrintTitle'),
+      labelOutputPrintMeta: el('labelOutputPrintMeta'),
+      labelOutputPrintBody: el('labelOutputPrintBody'),
+      labelOutputSheetTitle: el('labelOutputSheetTitle'),
+      labelOutputSheetMeta: el('labelOutputSheetMeta'),
+      labelOutputSheetBody: el('labelOutputSheetBody'),
       exemplarLocationLibrary: el('exemplarLocationLibrary'),
       exemplarLocationSector: el('exemplarLocationSector'),
       exemplarLocationShelfUnit: el('exemplarLocationShelfUnit'),
       exemplarLocationLevel: el('exemplarLocationLevel'),
       exemplarLocationNote: el('exemplarLocationNote'),
       exemplarShelfLegacyRaw: el('exemplarShelfLegacyRaw'),
+      exemplarContextStatusPill: el('exemplarContextStatusPill'),
+      exemplarContextKind: el('exemplarContextKind'),
+      exemplarContextTitle: el('exemplarContextTitle'),
+      exemplarContextHolding: el('exemplarContextHolding'),
+      exemplarContextCopy: el('exemplarContextCopy'),
+      exemplarContextLabel: el('exemplarContextLabel'),
       bookPublishedPopupBtn: el('bookPublishedPopupBtn'),
       authorPublishedPopupBtn: el('authorPublishedPopupBtn'),
       exemplarPublishedPopupBtn: el('exemplarPublishedPopupBtn'),
@@ -6886,6 +7248,8 @@
         }
       }
       applyStoredCatalogacaoFilters();
+      renderPublishBatchSummary();
+      renderBatchesPanelSummary();
     }
 
     function parseJsonSafe(value, fallback = {}) {
@@ -8238,6 +8602,133 @@
       if (refs.labelCurrentShelf) refs.labelCurrentShelf.textContent = shelfDisplay || '—';
     }
 
+    function getLabelLifecycleStateLabel() {
+      const stableState = String(labelDraftStableState || '').trim();
+      if (stableState === 'published') return 'Rótulo publicado';
+      if (stableState === 'ready') return 'Rótulo validado';
+      if (stableState === 'saved') return 'Rótulo salvo';
+      if (stableState === 'dirty') return 'Rótulo com alterações locais';
+      const labelStatus = String(el('exemplarLabelStatus')?.value || '').trim();
+      if (labelStatus === 'ready') return 'Rótulo validado';
+      return 'Rótulo local';
+    }
+
+    function getLabelLinkedNoticeContext() {
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      if (!bibRef) {
+        return {
+          kind: 'Ficha comum ainda não relida',
+          title: 'Preencha a compatibilidade local para reler a ficha comum',
+          notice: null,
+        };
+      }
+      const matchValue = normalizeForSearch(bibRef);
+      const publishedNotice = [...(state.books || [])].find(item => normalizeForSearch(item?.bib_ref || item?.target_bib_ref || '') === matchValue);
+      if (publishedNotice) {
+        return {
+          kind: 'Ficha comum publicada localizada',
+          title: getBookDisplayTitle(publishedNotice) || `Compatibilidade local ${bibRef}`,
+          notice: publishedNotice,
+        };
+      }
+      const queueDraft = [...(state.queueItems || [])].find(item => String(item?.item_type || '') === 'book' && normalizeForSearch(item?.target_bib_ref || item?.bib_ref || '') === matchValue);
+      if (queueDraft) {
+        return {
+          kind: 'Ficha comum ativa localizada na fila editorial',
+          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || `Compatibilidade local ${bibRef}`,
+          notice: queueDraft,
+        };
+      }
+      return {
+        kind: 'Ficha comum ainda não localizada nesta superfície',
+        title: `Compatibilidade local ${bibRef}`,
+        notice: null,
+      };
+    }
+
+    function updateLabelFlowPreview() {
+      if (!refs.labelFlowTitle) return;
+      const linked = getLabelLinkedNoticeContext();
+      const notice = linked.notice || {};
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const batchLabel = getBatchLabel(el('exemplarBatchId').value || '');
+      const shelfDisplay = syncExemplarStructuredLocation();
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const labelAuthor = compactSpaces(el('labelAuthorInput')?.value || '');
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+      const labelCDD = compactSpaces(el('labelCDDInput')?.value || '');
+      const labelNote = compactSpaces(el('labelNoteInput')?.value || '');
+      const exemplarStatus = String(el('exemplarCurrentStatus')?.value || 'draft').trim();
+      const labelStatus = String(el('exemplarLabelStatus')?.value || 'pending').trim();
+      const exemplarStatusLabel = exemplarStatus === 'published'
+        ? 'Exemplar publicado'
+        : (exemplarStatus === 'ready' ? 'Exemplar pronto para publicação' : 'Exemplar em rascunho');
+      const labelStatusLabel = labelStatus === 'ready' ? 'rótulo validado' : 'rótulo ainda pendente';
+      const circulationRaw = notice?.loanable;
+      const circulationLabel = circulationRaw === false || String(circulationRaw) === 'false'
+        ? 'consulta local'
+        : (circulationRaw === true || String(circulationRaw) === 'true' ? 'empréstimo possível' : 'circulação local ainda não relida');
+      const localLibrary = compactSpaces(refs.exemplarLocationLibrary?.value || '') || compactSpaces(notice?.holder_library || notice?.owner_library || '');
+      const noticeAuthor = compactSpaces(notice?.autor || notice?.author || labelAuthor || '');
+      const noticeYear = compactSpaces(notice?.ano || notice?.year || '');
+      const printCode = getAuthorTrigram(labelAuthor || noticeAuthor || '---');
+      const noteLabel = labelNote ? `Nota curta: ${labelNote}` : 'Sem nota curta no rótulo.';
+      const sheetReadout = labelStatus === 'ready'
+        ? 'Este rótulo já pode entrar na plancha A4 do lote ou no recorte “Sem lote”, conforme a filtragem escolhida.'
+        : 'Este rótulo ainda não entra na plancha validada: falta validar o rótulo nesta aba.';
+
+      if (refs.labelFlowStatusPill) {
+        refs.labelFlowStatusPill.textContent = getLabelLifecycleStateLabel();
+        refs.labelFlowStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : (labelDraftStableState === 'dirty' ? 'warn' : 'info')}`;
+      }
+      refs.labelFlowKind.textContent = linked.kind;
+      refs.labelFlowTitle.textContent = linked.title || 'Compatibilidade local ainda não informada';
+      refs.labelFlowHolding.textContent = `Holding local: ${joinSummaryParts([
+        bibRef ? `Compat. local ${bibRef}` : '',
+        localLibrary ? `Biblioteca: ${localLibrary}` : '',
+        batchLabel ? `Lote: ${batchLabel}` : ''
+      ]) || '—'}`;
+      refs.labelFlowCopy.textContent = `Exemplar local: ${joinSummaryParts([
+        tombo ? `Tombo: ${tombo}` : '',
+        shelfDisplay ? `Localização: ${shelfDisplay}` : '',
+        exemplarStatusLabel
+      ]) || '—'}`;
+      refs.labelFlowLabel.textContent = `Rótulo local: ${joinSummaryParts([
+        labelTitle ? `Título do rótulo: ${truncatePreviewText(labelTitle, 88)}` : '',
+        labelAuthor ? `Autor: ${labelAuthor}` : (noticeAuthor ? `Autor relido: ${noticeAuthor}` : ''),
+        labelCDD ? `CDD: ${labelCDD}` : '',
+        labelStatusLabel
+      ]) || '—'}`;
+
+      if (refs.labelOutputStatusPill) {
+        refs.labelOutputStatusPill.textContent = labelStatus === 'ready' ? 'Plancha habilitada' : 'Prévia local';
+        refs.labelOutputStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : 'info'}`;
+      }
+      refs.labelOutputPrintTitle.textContent = labelTitle || linked.title || 'Título do rótulo';
+      refs.labelOutputPrintMeta.textContent = joinSummaryParts([
+        printCode ? `Código: ${printCode}` : '',
+        labelAuthor ? `Autor: ${labelAuthor}` : (noticeAuthor ? `Autor relido: ${noticeAuthor}` : ''),
+        labelCDD ? `CDD: ${labelCDD}` : '',
+        noticeYear ? `Ano relido: ${noticeYear}` : ''
+      ]) || 'Autor, CDD e código ainda não consolidados.';
+      refs.labelOutputPrintBody.textContent = joinSummaryParts([
+        noteLabel,
+        shelfDisplay ? `Leitura de estante: ${shelfDisplay}` : '',
+        circulationLabel ? `Circulação local relida: ${circulationLabel}` : ''
+      ]) || 'Nota curta e leitura de estante ainda não consolidadas.';
+      refs.labelOutputSheetTitle.textContent = labelStatus === 'ready' ? 'Plancha A4 já habilitada' : 'Validação local ainda pendente';
+      refs.labelOutputSheetMeta.textContent = joinSummaryParts([
+        batchLabel ? `Lote: ${batchLabel}` : '',
+        exemplarStatusLabel,
+        labelStatus === 'ready' ? 'Rótulo validado' : 'Rótulo ainda não validado'
+      ]) || 'Situação de validação ainda não definida.';
+      refs.labelOutputSheetBody.textContent = joinSummaryParts([
+        sheetReadout,
+        labelStatus === 'ready' ? 'Próximo gesto possível: revisar a plancha ou publicar o rótulo.' : 'Próximo gesto possível: salvar e validar o rótulo local.',
+        tombo ? `Tombo que seguirá para a etiqueta: ${tombo}` : ''
+      ]) || 'A leitura da plancha e do próximo gesto local aparecerá aqui.';
+    }
+
     function truncatePreviewText(value = '', maxLength = 80) {
       const clean = String(value || '').trim();
       if (!clean) return '';
@@ -8647,6 +9138,120 @@
       resetLabelForm();
     }
 
+    function getExemplarStatusLabel(status = '') {
+      const map = {
+        draft: 'Em rascunho',
+        ready: 'Pronto para publicação',
+        published: 'Publicado',
+        cancelled: 'Descartado',
+      };
+      return map[String(status || '').toLowerCase()] || 'Em preparação';
+    }
+
+    function getExemplarLabelStatusLabel(status = '') {
+      const map = {
+        pending: 'Pendente de revisão em Rótulos',
+        ready: 'Rótulo validado',
+        published: 'Rótulo publicado',
+      };
+      return map[String(status || '').toLowerCase()] || 'Rótulo ainda não lido';
+    }
+
+    function getExemplarLinkedNoticeContext(bibRef = '') {
+      const key = compactSpaces(String(bibRef || ''));
+      if (!key) return null;
+
+      const published = getPublishedBookForBibRef(key);
+      if (published) {
+        return {
+          source: 'published',
+          kindLabel: 'Ficha comum publicada localizada',
+          title: getBookDisplayTitle(published),
+          subtitle: getBookDisplaySubtitle(published),
+          author: published.autor || published.author || '',
+          materialType: published.tipo_documento || published.type || '',
+          circulation: published.emprestavel,
+          library: published.library_name || published.biblioteca || '',
+        };
+      }
+
+      const queued = (state.batchExemplarItems || []).find(item => String(item?.bibRef || '').trim() === key);
+      if (queued) {
+        return {
+          source: 'draft',
+          kindLabel: 'Ficha comum em preparação localizada',
+          title: queued.title || '—',
+          subtitle: queued.subtitle || '',
+          author: queued.author || '',
+          materialType: '',
+          circulation: null,
+          library: '',
+        };
+      }
+
+      const queueBook = (state.queueItems || []).find(item => String(item?.item_type || '') === 'book' && String(item?.reference_code || '').trim() === key);
+      if (queueBook) {
+        return {
+          source: 'draft',
+          kindLabel: 'Ficha comum em rascunho localizada',
+          title: queueBook.display_title || '—',
+          subtitle: '',
+          author: queueBook.display_subtitle || '',
+          materialType: '',
+          circulation: null,
+          library: '',
+        };
+      }
+
+      return null;
+    }
+
+    function updateExemplarContextPreview() {
+      if (!refs.exemplarContextTitle) return;
+
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const location = compactSpaces(syncExemplarStructuredLocation());
+      const notes = compactSpaces(el('exemplarNotes')?.value || '');
+      const library = compactSpaces(refs.exemplarLocationLibrary?.value || '');
+      const statusLabel = getExemplarStatusLabel(getCurrentExemplarStatus());
+      const labelStatusLabel = getExemplarLabelStatusLabel(getCurrentLabelStatus());
+      const linked = getExemplarLinkedNoticeContext(bibRef);
+      const batchLabel = el('exemplarBatchId')?.value ? `Lote #${el('exemplarBatchId').value}` : 'Sem lote';
+
+      refs.exemplarContextStatusPill.textContent = linked?.source === 'published'
+        ? 'Ficha comum publicada'
+        : linked?.source === 'draft'
+          ? 'Ficha comum em preparação'
+          : 'Exemplar local';
+      refs.exemplarContextStatusPill.className = `pill ${linked?.source === 'published' ? 'ok' : linked?.source === 'draft' ? 'warn' : 'info'}`;
+
+      refs.exemplarContextKind.textContent = linked?.kindLabel || 'Ficha comum ainda não localizada';
+      refs.exemplarContextTitle.textContent = linked
+        ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
+        : (bibRef ? `Compatibilidade local ${bibRef} ainda sem ficha comum relida` : 'Compatibilidade local ainda não informada');
+
+      const holdingParts = [];
+      holdingParts.push(`Compatibilidade local: ${bibRef || '—'}`);
+      holdingParts.push(`Biblioteca: ${library || linked?.library || '—'}`);
+      holdingParts.push(batchLabel);
+      refs.exemplarContextHolding.textContent = `Holding local: ${holdingParts.join(' · ')}`;
+
+      const copyParts = [];
+      copyParts.push(`Tombo: ${tombo || '—'}`);
+      copyParts.push(`Situação do exemplar: ${statusLabel}`);
+      copyParts.push(`Localização: ${location || 'ainda não informada'}`);
+      if (notes) copyParts.push(`Observação material: ${notes}`);
+      refs.exemplarContextCopy.textContent = `Exemplar local: ${copyParts.join(' · ')}`;
+
+      const labelParts = [];
+      labelParts.push(`Rótulo: ${labelStatusLabel}`);
+      labelParts.push(linked?.circulation === false ? 'Circulação prevista: consulta local' : linked?.circulation === true ? 'Circulação prevista: emprestável' : 'Circulação prevista: ainda não relida da ficha comum');
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+      if (labelTitle) labelParts.push(`Título de rótulo em foco: ${labelTitle}`);
+      refs.exemplarContextLabel.textContent = `Rótulo e revisão local: ${labelParts.join(' · ')}`;
+    }
+
     function updateLabelPreview() {
       syncLabelSummaryFromExemplar();
       refs.labelPrevTombo.textContent = el('exemplarTombo').value || '—';
@@ -8656,6 +9261,7 @@
       refs.labelPrevTitle.textContent = el('labelTitleInput')?.value || 'Título';
       refs.labelPrevNote.textContent = el('labelNoteInput')?.value || 'Sem nota de rótulo.';
       renderLabelSuggestion();
+      updateExemplarContextPreview();
     }
 
     ['exemplarTombo','exemplarBibRef','exemplarShelf','exemplarBatchId'].forEach(id => {
@@ -9296,6 +9902,8 @@
       state.batches = data || [];
       refreshBatchSelects();
       renderBatchList();
+      renderBatchesPanelSummary();
+      renderPublishBatchSummary();
       if (refs.labelBatchPreviewId?.value) {
         try {
           await loadLabelSheetPreview();
@@ -9402,6 +10010,8 @@
         { count: booksTotal, error: booksTotalError },
         { count: authorsTotal, error: authorsTotalError },
         { data: authorDraftLinks, error: authorDraftLinksError },
+        { data: bookDraftLinks, error: bookDraftLinksError },
+        { data: exemplarDraftLinks, error: exemplarDraftLinksError },
       ] = await Promise.all([
         fetchAllCatalogBooks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
         fetchAllCatalogAuthors().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
@@ -9409,6 +10019,8 @@
         supabase.from('v_catalog_books_editable').select('*', { count: 'exact', head: true }),
         supabase.from('authors').select('*', { count: 'exact', head: true }),
         fetchActiveAuthorDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
+        fetchActiveBookDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
+        fetchActiveExemplarDraftLinks().then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
       ]);
 
       const errors = [];
@@ -9458,6 +10070,23 @@
         state.authorDraftLinks = authorDraftLinks || [];
       }
 
+      if (bookDraftLinksError) {
+        console.warn('loadCatalog book draft links failed:', bookDraftLinksError);
+        state.bookDraftLinks = [];
+        errors.push({ source: 'bookDraftLinks', error: bookDraftLinksError });
+      } else {
+        state.bookDraftLinks = bookDraftLinks || [];
+      }
+
+      if (exemplarDraftLinksError) {
+        console.warn('loadCatalog exemplar draft links failed:', exemplarDraftLinksError);
+        state.exemplarDraftLinks = [];
+        errors.push({ source: 'exemplarDraftLinks', error: exemplarDraftLinksError });
+      } else {
+        state.exemplarDraftLinks = exemplarDraftLinks || [];
+      }
+
+      renderCatalogPanelLayerSummary();
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogExemplars();
@@ -9953,14 +10582,69 @@
       return compactSpaces(exemplar?.shelf_location || '');
     }
 
+    function getQueueLayerKindLabel(type = '') {
+      const map = {
+        book: 'Ficha comum',
+        author: 'Autoridade',
+        exemplar: 'Exemplar local',
+      };
+      return map[type] || 'Camada de trabalho';
+    }
+
+    function getQueueWorkHintText(item = {}) {
+      if (item.item_type === 'book') {
+        return item.status === 'ready'
+          ? 'Ficha comum pronta: revisar a saída pública mínima, confirmar lote e publicar quando a camada local estiver madura.'
+          : 'Ficha comum ainda em rascunho: revisar núcleo comum, holding local e saída pública mínima antes de marcar como pronta.';
+      }
+      if (item.item_type === 'author') {
+        return item.status === 'ready'
+          ? 'Autoridade pronta: confirmar forma retida, variantes e lote antes de publicar.'
+          : 'Autoridade ainda em rascunho: revisar nome retido, fonte e leitura pública curta antes de marcar como pronta.';
+      }
+      if (item.item_type === 'exemplar') {
+        return item.status === 'ready'
+          ? 'Exemplar local pronto: conferir tombo, localização, vínculo com a ficha comum e seguir para a revisão do rótulo.'
+          : 'Exemplar local ainda em rascunho: revisar tombo, localização e vínculo com a ficha comum antes de marcar como pronto.';
+      }
+      return 'Rascunho ativo: revisar e escolher o próximo gesto local.';
+    }
+
     function renderQueueComplementHtml(item = {}) {
-      if (item.item_type === 'book') return '—';
+      const type = String(item.item_type || '');
+      const reference = sanitize(item.reference_code || '—');
+      const batch = item.batch_id ? ` · <strong>Lote:</strong> #${sanitize(item.batch_id)}` : '';
+      if (type === 'book') {
+        const subtitle = sanitize(getQueueSecondaryDisplay(item));
+        const parts = [
+          `<div><strong>Ficha comum:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
+          `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+        ];
+        if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
+        parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
+        return parts.join('');
+      }
+      if (type === 'author') {
+        const subtitle = sanitize(getQueueSecondaryDisplay(item));
+        const parts = [
+          `<div><strong>Autoridade:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
+          `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+        ];
+        if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
+        parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
+        return parts.join('');
+      }
       const secondary = sanitize(getQueueSecondaryDisplay(item));
       const location = sanitize(getQueueExemplarLocationDisplay(item));
-      if (item.item_type !== 'exemplar' || !location || location === '—') return secondary || '—';
-      const parts = [];
-      if (secondary && secondary !== '—') parts.push(`<div>${secondary}</div>`);
-      parts.push(`<div><strong>Localização:</strong> ${location}</div>`);
+      const exemplar = getQueueExemplarRecord(item);
+      const parts = [
+        `<div><strong>Exemplar local:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
+        `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+      ];
+      if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo:</strong> ${secondary}</div>`);
+      if (exemplar?.tombo) parts.push(`<div><strong>Tombo:</strong> ${sanitize(exemplar.tombo)}</div>`);
+      if (location && location !== '—') parts.push(`<div><strong>Localização:</strong> ${location}</div>`);
+      parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
       return parts.join('');
     }
 
@@ -9972,12 +10656,53 @@
         item.display_subtitle,
         getQueuePrimaryDisplay(item),
         getQueueSecondaryDisplay(item),
+        getQueueLayerKindLabel(item.item_type),
+        getQueueWorkHintText(item),
         exemplar?.tombo,
         exemplar?.bib_ref,
         exemplar?.titulo_etiqueta,
         exemplar?.autor_etiqueta,
         exemplar?.shelf_location,
       ].filter(Boolean).join(' ').toLowerCase();
+    }
+
+    function updateQueueFlowSummary(items = []) {
+      if (!refs.queueFlowStatusPill) return;
+      const typeFilter = el('queueTypeFilter')?.value || '';
+      const statusFilter = el('queueStatusFilter')?.value || '';
+      const search = normalizeInlineWhitespace(el('queueSearch')?.value || '');
+      const books = items.filter(item => item.item_type === 'book').length;
+      const authors = items.filter(item => item.item_type === 'author').length;
+      const exemplars = items.filter(item => item.item_type === 'exemplar').length;
+      const ready = items.filter(item => item.status === 'ready').length;
+      const drafts = items.filter(item => item.status === 'draft').length;
+      const withBatch = items.filter(item => item.batch_id).length;
+      const kindText = typeFilter ? `${getQueueLayerKindLabel(typeFilter)} em foco` : 'Camadas ativas da fila';
+      const scopeParts = [];
+      if (books) scopeParts.push(`${books} ficha${books > 1 ? 's' : ''} comum(ns)`);
+      if (authors) scopeParts.push(`${authors} autoridade${authors > 1 ? 's' : ''}`);
+      if (exemplars) scopeParts.push(`${exemplars} exemplar${exemplars > 1 ? 'es locais' : ' local'}`);
+      const statusText = statusFilter === 'ready'
+        ? 'somente prontos'
+        : statusFilter === 'draft'
+          ? 'somente em rascunho'
+          : 'rascunhos ativos e prontos';
+      const nextText = ready
+        ? 'Próximo gesto local: revisar os itens prontos deste recorte, conferir lote e publicar apenas o que já estiver maduro.'
+        : items.length
+          ? 'Próximo gesto local: abrir os rascunhos em trabalho, completar a camada local faltante e só depois marcar como pronto.'
+          : 'Próximo gesto local: mudar o recorte ou limpar a busca para reencontrar camadas de trabalho ativas.';
+      refs.queueFlowStatusPill.textContent = items.length ? `${items.length} rascunho${items.length > 1 ? 's' : ''}` : 'Fila vazia';
+      refs.queueFlowStatusPill.className = `pill ${items.length ? (ready ? 'ok' : 'info') : 'warn'}`;
+      refs.queueFlowKind.textContent = kindText;
+      refs.queueFlowTitle.textContent = items.length
+        ? `${items.length} camada${items.length > 1 ? 's' : ''} de trabalho neste recorte editorial`
+        : 'Nenhuma camada ativa neste recorte da fila';
+      refs.queueFlowScope.textContent = `Camadas visíveis: ${scopeParts.length ? scopeParts.join(' · ') : '—'}. Situação filtrada: ${statusText}.${search ? ` Busca ativa: ${search}.` : ''}`;
+      refs.queueFlowWork.textContent = items.length
+        ? `Em rascunho: ${drafts} · Prontos: ${ready} · Com lote atribuído: ${withBatch}. A fila continua separando ficha comum, autoridade e exemplar local sem misturar publicação, lixeira e catálogo publicado.`
+        : 'Nenhum item ativo permanece neste recorte. A fila segue separando publicação, lixeira e catálogo já publicado.';
+      refs.queueFlowNext.textContent = nextText;
     }
 
     async function restoreQueueDraft(type, id) {
@@ -10061,10 +10786,10 @@
           <thead>
             <tr>
               <th style="width:52px; text-align:center;"><input id="trashSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis da lixeira" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
-              <th>Tipo</th>
-              <th>Referência</th>
-              <th>Título / nome</th>
-              <th>Complemento</th>
+              <th>Tipo de camada</th>
+              <th>Compatibilidade / referência</th>
+              <th>Ficha / nome / exemplar</th>
+              <th>Leitura local</th>
               <th>Lote</th>
               <th>Descartado / atualizado em</th>
               <th>Operações</th>
@@ -10970,7 +11695,9 @@
       }
 
       if (!items.length) {
+        updateQueueFlowSummary([]);
         refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo encontrado com os filtros atuais.</div>';
+        renderTrash();
         return;
       }
 
@@ -10991,12 +11718,12 @@
           <thead>
             <tr>
               <th style="width:52px; text-align:center;"><input id="queueSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
-              <th>Tipo</th>
+              <th>Tipo de camada</th>
               <th>Situação</th>
-              <th>Ação</th>
-              <th>Referência</th>
-              <th>Título / nome</th>
-              <th>Complemento</th>
+              <th>Gesto</th>
+              <th>Compatibilidade / referência</th>
+              <th>Ficha / nome / exemplar</th>
+              <th>Leitura local</th>
               <th>Lote</th>
               <th>Atualizado em</th>
               <th>Operações</th>
@@ -11117,11 +11844,137 @@
         });
       });
 
+      updateQueueFlowSummary(items);
       renderTrash();
+      renderBatchesPanelSummary();
+      renderPublishBatchSummary();
+    }
+
+    function getBatchCompositionMap() {
+      const openBatchIds = new Set(state.batches.filter(batch => batch.status === 'open').map(batch => Number(batch.id)).filter(Number.isFinite));
+      const map = new Map();
+      for (const item of state.queueItems) {
+        if (!isActiveQueueItem(item)) continue;
+        const batchId = Number(item?.batch_id);
+        if (!Number.isFinite(batchId) || !openBatchIds.has(batchId)) continue;
+        const entry = map.get(batchId) || { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+        entry.total += 1;
+        if (item.item_type === 'book') entry.book += 1;
+        else if (item.item_type === 'author') entry.author += 1;
+        else if (item.item_type === 'exemplar') entry.exemplar += 1;
+        if (item.status === 'ready') entry.ready += 1;
+        else entry.draft += 1;
+        if (item.action === 'update') entry.update += 1;
+        else entry.create += 1;
+        map.set(batchId, entry);
+      }
+      return map;
+    }
+
+    function getBatchComposition(batchId, compositionMap = null) {
+      const map = compositionMap || getBatchCompositionMap();
+      return map.get(Number(batchId)) || { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+    }
+
+    function formatBatchCompositionSummary(composition = {}) {
+      return `${composition.book || 0} fichas comuns · ${composition.author || 0} autoridades · ${composition.exemplar || 0} exemplares locais`;
+    }
+
+    function formatBatchWorkSummary(composition = {}) {
+      return `Em rascunho: ${composition.draft || 0} · Prontos: ${composition.ready || 0} · Novos: ${composition.create || 0} · Retomadas: ${composition.update || 0}`;
+    }
+
+    function renderBatchCompositionCell(batch, composition) {
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Composição do lote</div>
+          <div class="catalog-layer-title">${sanitize(formatBatchCompositionSummary(composition))}</div>
+          <div class="catalog-layer-line is-muted">Lote #${sanitize(batch.id)} · ${composition.total || 0} item(ns) ativo(s) neste recorte.</div>
+        </div>`;
+    }
+
+    function renderBatchWorkCell(composition) {
+      const nextAction = composition.ready > 0
+        ? 'Há material pronto neste lote: revisar a composição e publicar só o que já estiver maduro.'
+        : composition.total > 0
+          ? 'Ainda é um lote de trabalho: falta amadurecer fichas, autoridades ou exemplares locais antes da publicação.'
+          : 'Este lote ainda não recebeu fichas ativas neste recorte.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Estado de trabalho</div>
+          <div class="catalog-layer-line">${sanitize(formatBatchWorkSummary(composition))}</div>
+          <div class="catalog-layer-line is-muted">${sanitize(nextAction)}</div>
+        </div>`;
+    }
+
+    function renderBatchPublishCell(composition) {
+      const publishable = composition.total > 0
+        ? `Se publicado agora: ${composition.book || 0} ficha(s) comum(ns), ${composition.author || 0} autoridade(s) e ${composition.exemplar || 0} exemplar(es) local(is) saem deste lote de uma vez.`
+        : 'Sem composição ativa para publicar neste recorte.';
+      const caution = composition.ready > 0
+        ? 'Há itens prontos visíveis; confirme antes se a composição do lote está coerente.'
+        : 'Sem itens prontos visíveis agora; publicar este lote tende a ser prematuro.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Publicação por lote</div>
+          <div class="catalog-layer-line">${sanitize(publishable)}</div>
+          <div class="catalog-layer-line is-muted">${sanitize(caution)}</div>
+        </div>`;
+    }
+
+    function renderBatchesPanelSummary() {
+      if (!refs.batchFlowKind || !refs.batchListSummary) return;
+      const openBatches = state.batches.filter(batch => batch.status === 'open');
+      const compositionMap = getBatchCompositionMap();
+      let totals = { total: 0, book: 0, author: 0, exemplar: 0, draft: 0, ready: 0, create: 0, update: 0 };
+      for (const batch of openBatches) {
+        const composition = getBatchComposition(batch.id, compositionMap);
+        totals.total += composition.total;
+        totals.book += composition.book;
+        totals.author += composition.author;
+        totals.exemplar += composition.exemplar;
+        totals.draft += composition.draft;
+        totals.ready += composition.ready;
+        totals.create += composition.create;
+        totals.update += composition.update;
+      }
+      if (!openBatches.length) {
+        refs.batchFlowKind.textContent = 'Sem lotes abertos';
+        refs.batchFlowTitle.textContent = 'Nenhum lote aberto neste recorte';
+        refs.batchFlowScope.textContent = 'Composição do lote: —';
+        refs.batchFlowWork.textContent = 'Não há composição ativa de fichas comuns, autoridades ou exemplares locais em lotes abertos.';
+        refs.batchFlowNext.textContent = 'Próximo gesto local: criar um lote apenas quando houver um recorte real de trabalho a agrupar.';
+        refs.batchListSummary.innerHTML = '<strong>Leitura da lista:</strong> não há lotes abertos neste recorte.';
+        return;
+      }
+      refs.batchFlowKind.textContent = 'Lotes de trabalho abertos';
+      refs.batchFlowTitle.textContent = `${openBatches.length} lote(s) aberto(s) neste recorte`;
+      refs.batchFlowScope.textContent = `Composição do lote: ${formatBatchCompositionSummary(totals)}.`;
+      refs.batchFlowWork.textContent = `${formatBatchWorkSummary(totals)}.`;
+      refs.batchFlowNext.textContent = totals.ready > 0
+        ? 'Próximo gesto local: reler a composição dos lotes com itens prontos e publicar só o que já estiver editorialmente maduro.'
+        : 'Próximo gesto local: continuar a compor o lote com fichas comuns, autoridades e exemplares locais antes de publicar.';
+      refs.batchListSummary.innerHTML = `<strong>Leitura da lista:</strong> ${sanitize(formatBatchCompositionSummary(totals))}. ${sanitize(formatBatchWorkSummary(totals))}.`;
+    }
+
+    function renderPublishBatchSummary() {
+      if (!refs.publishBatchSummary) return;
+      const selectedBatchId = Number(el('publishBatchId')?.value || 0);
+      const selectedBatch = state.batches.find(batch => Number(batch.id) === selectedBatchId && batch.status === 'open');
+      if (!selectedBatch) {
+        refs.publishBatchSummary.innerHTML = '<strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.';
+        return;
+      }
+      const composition = getBatchComposition(selectedBatch.id);
+      const statusLine = composition.ready > 0
+        ? `Há ${composition.ready} item(ns) pronto(s) neste lote.`
+        : 'Ainda não há itens prontos visíveis neste lote.';
+      refs.publishBatchSummary.innerHTML = `<strong>Publicação por lote:</strong> ${sanitize(selectedBatch.name)} (#${selectedBatch.id}). ${sanitize(formatBatchCompositionSummary(composition))}. ${sanitize(statusLine)}`;
     }
 
     function renderBatchList() {
       const openBatches = state.batches.filter(batch => batch.status === 'open');
+      const compositionMap = getBatchCompositionMap();
       if (!openBatches.length) {
         refs.batchListWrap.innerHTML = '<div class="empty">Nenhum lote aberto no momento.</div>';
         return;
@@ -11131,27 +11984,55 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Nome</th>
-              <th>Situação</th>
+              <th>Lote</th>
+              <th>Composição do lote</th>
+              <th>Estado de trabalho</th>
+              <th>Publicação por lote</th>
               <th>Observações</th>
               <th>Criado em</th>
-              <th>Publicado em</th>
-              <th>Ação</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            ${openBatches.map(batch => `
+            ${openBatches.map(batch => {
+              const composition = getBatchComposition(batch.id, compositionMap);
+              return `
               <tr>
                 <td>#${batch.id}</td>
-                <td>${sanitize(batch.name)}</td>
-                <td>${sanitize(batch.status)}</td>
+                <td>
+                  <div class="catalog-layer-stack">
+                    <div class="catalog-layer-eyebrow">Lote de trabalho</div>
+                    <div class="catalog-layer-title">${sanitize(batch.name)}</div>
+                    <div class="catalog-layer-line is-muted">${composition.total > 0 ? sanitize(`${composition.total} item(ns) ativo(s) neste lote.`) : 'Ainda sem itens ativos visíveis neste recorte.'}</div>
+                  </div>
+                </td>
+                <td>${renderBatchCompositionCell(batch, composition)}</td>
+                <td>${renderBatchWorkCell(composition)}</td>
+                <td>${renderBatchPublishCell(composition)}</td>
                 <td>${sanitize(batch.notes || '—')}</td>
                 <td>${sanitize(formatDate(batch.created_at))}</td>
-                <td>${sanitize(formatDate(batch.published_at))}</td>
-                <td><button class="btn-inline small warning" data-action="discard-batch" data-batch-id="${batch.id}">Descartar lote</button></td>
-              </tr>`).join('')}
+                <td>
+                  <div class="row-actions">
+                    <button class="btn-inline small secondary" data-action="select-publish-batch" data-batch-id="${batch.id}">Selecionar para publicar</button>
+                    <button class="btn-inline small warning" data-action="discard-batch" data-batch-id="${batch.id}">Descartar lote</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`;
+
+      refs.batchListWrap.querySelectorAll('[data-action="select-publish-batch"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const batchId = String(btn.dataset.batchId || '');
+          const publishSelect = el('publishBatchId');
+          if (publishSelect && Array.from(publishSelect.options).some(option => option.value === batchId)) {
+            publishSelect.value = batchId;
+            renderPublishBatchSummary();
+            showMessage(refs.batchMessage, 'Lote carregado na zona de publicação por lote.', 'info');
+          }
+        });
+      });
 
       refs.batchListWrap.querySelectorAll('[data-action="discard-batch"]').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -11169,120 +12050,118 @@
       });
     }
 
-    function renderCatalogBooks() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      let items = [...state.books].filter(isCatalogBookLikeItem);
-      if (search) {
-        items = items.filter(book => getBookSearchIndex(book).includes(search));
+
+function renderCatalogBooks() {
+  const items = getVisibleCatalogBookLikeItems();
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  renderCatalogPanelLayerSummary();
+  renderCatalogBooksSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro, brochura ou publicação seriada encontrada.</div>';
+    return;
+  }
+  refs.catalogBooksWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'books', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'books', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local', 'books', 'total_exemplares')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(book => {
+          const draftLink = draftLinkMap.get(String(book.id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogBookNoticeCell(book)}</td>
+            <td>${renderCatalogBookCompatCell(book)}</td>
+            <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'livro')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogBooksWrap, renderCatalogBooks);
+
+  refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('book', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de livro já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      items = sortCatalogItems('books', items);
-      if (!items.length) {
-        refs.catalogBooksWrap.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
-        return;
+    });
+  });
+}
+
+function renderCatalogOtherDocuments() {
+function renderCatalogOtherDocuments() {
+  const items = getVisibleCatalogOtherDocumentItems();
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  renderCatalogOtherDocsSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
+    return;
+  }
+  refs.catalogOtherDocsWrap.innerHTML = `
+    <table class="catalog-other-docs-table">
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada', 'otherDocs', 'title')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'otherDocs', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local', 'otherDocs', 'total_exemplares')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(book => {
+          const draftLink = draftLinkMap.get(String(book.id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogOtherDocumentNoticeCell(book)}</td>
+            <td>${renderCatalogBookCompatCell(book)}</td>
+            <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'documento')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogOtherDocsWrap, renderCatalogOtherDocuments);
+
+  refs.catalogOtherDocsWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('book', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de documento já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      refs.catalogBooksWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'books', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'books', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'books', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Autor(a)', 'books', 'author')}</th>
-              <th class="sortable">${renderSortableHeader('Editora', 'books', 'publisher')}</th>
-              <th class="sortable">${renderSortableHeader('Ano', 'books', 'year')}</th>
-              <th class="sortable">${renderSortableHeader('Exemplares', 'books', 'total_exemplares')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(book => `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
-                <td>${book.id}</td>
-                <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td>${sanitize(book.editora || book.publisher || '—')}</td>
-                <td>${sanitize(book.ano || '—')}</td>
-                <td>${sanitize(book.total_exemplares || 0)}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+    });
+  });
+}
 
-      bindCatalogSortButtons(refs.catalogBooksWrap, renderCatalogBooks);
-
-      refs.catalogBooksWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    function renderCatalogOtherDocuments() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      let items = [...state.books].filter(isCatalogOtherDocumentItem);
-      if (search) {
-        items = items.filter(book => getBookSearchIndex(book).includes(search));
-      }
-      items = sortCatalogItems('otherDocs', items);
-      if (!items.length) {
-        refs.catalogOtherDocsWrap.innerHTML = '<div class="empty">Nenhum documento não-livro ou material especial encontrado.</div>';
-        return;
-      }
-      refs.catalogOtherDocsWrap.innerHTML = `
-        <table class="catalog-other-docs-table">
-          <colgroup>
-            <col style="width:150px;">
-            <col style="width:72px;">
-            <col style="width:112px;">
-            <col style="width:190px;">
-            <col style="width:24%;">
-            <col style="width:16%;">
-            <col style="width:36%;">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'otherDocs', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'otherDocs', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Tipo documental', 'otherDocs', 'material_type')}</th>
-              <th class="sortable">${renderSortableHeader('Título / identificação', 'otherDocs', 'title')}</th>
-              <th class="sortable">${renderSortableHeader('Responsável / autoria', 'otherDocs', 'author')}</th>
-              <th>Leitura rápida</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(book => `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-book" data-book-id="${book.id}">Criar rascunho de edição</button></div></td>
-                <td>${book.id}</td>
-                <td>${sanitize(book.bib_ref || '—')}</td>
-                <td>${sanitize(getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || ''))}</td>
-                <td>${renderBookDisplayTitleHtml(book)}</td>
-                <td>${sanitize(book.autor || book.author || '—')}</td>
-                <td><div class="catalog-context-line">${sanitize(getCatalogOtherDocumentContextLine(book))}</div></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
-
-      bindCatalogSortButtons(refs.catalogOtherDocsWrap, renderCatalogOtherDocuments);
-
-      refs.catalogOtherDocsWrap.querySelectorAll('[data-action="draft-book"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            await loadOrCreateBookDraftFromCatalog(btn.dataset.bookId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    async function loadOrCreateBookDraftFromCatalog(bookId) {
+async function loadOrCreateBookDraftFromCatalog(bookId) {
       const publishedBookId = Number(bookId);
       if (!publishedBookId) throw new Error('Livro inválido para edição.');
 
@@ -11430,6 +12309,434 @@
       });
       return map;
     }
+
+    async function fetchActiveBookDraftLinks() {
+      const { data, error } = await supabase
+        .from('book_drafts')
+        .select('id, published_book_id, status, action, updated_at')
+        .in('status', ['draft', 'ready'])
+        .not('published_book_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchActiveExemplarDraftLinks() {
+      const { data, error } = await supabase
+        .from('exemplar_drafts')
+        .select('id, published_exemplar_id, status, action, updated_at')
+        .in('status', ['draft', 'ready'])
+        .not('published_exemplar_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    function getCatalogBookDraftLinkMap() {
+      const map = new Map();
+      (state.bookDraftLinks || []).forEach((row) => {
+        const key = String(row?.published_book_id || '').trim();
+        if (!key || map.has(key)) return;
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function getCatalogExemplarDraftLinkMap() {
+      const map = new Map();
+      (state.exemplarDraftLinks || []).forEach((row) => {
+        const key = String(row?.published_exemplar_id || '').trim();
+        if (!key || map.has(key)) return;
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function getCatalogDraftStateMeta(draftLink = null) {
+      if (!draftLink?.id) {
+        return {
+          actionLabel: '',
+          statusLabel: '',
+          buttonLabel: 'Criar rascunho de edição',
+        };
+      }
+      const normalizedAction = String(draftLink.action || '').trim().toLowerCase();
+      const normalizedStatus = String(draftLink.status || '').trim().toLowerCase();
+      const actionLabel = normalizedAction === 'edit' ? 'Rascunho de edição' : 'Novo rascunho';
+      const statusLabel = normalizedStatus === 'ready' ? 'Pronto para publicação' : 'Em rascunho';
+      const buttonLabel = normalizedStatus === 'ready'
+        ? 'Abrir rascunho pronto'
+        : (normalizedAction === 'edit' ? 'Abrir rascunho de edição' : 'Abrir novo rascunho');
+      return { actionLabel, statusLabel, buttonLabel };
+    }
+
+    function buildCatalogLayerStack(title = '—', lines = [], chips = [], eyebrow = '') {
+      const safeTitle = sanitize(title || '—');
+      const safeLines = (lines || [])
+        .map((line) => {
+          const value = typeof line === 'string' ? { text: line, muted: false } : line;
+          if (!value?.text) return '';
+          return `<div class="catalog-layer-line${value.muted ? ' is-muted' : ''}">${sanitize(value.text)}</div>`;
+        })
+        .filter(Boolean)
+        .join('');
+      const safeChips = (chips || [])
+        .filter(Boolean)
+        .map((chip) => `<span class="book-public-preview-chip">${sanitize(chip)}</span>`)
+        .join('');
+      return `
+        <div class="catalog-layer-stack">
+          ${eyebrow ? `<div class="catalog-layer-eyebrow">${sanitize(eyebrow)}</div>` : ''}
+          <div class="catalog-layer-title">${safeTitle}</div>
+          ${safeChips ? `<div class="catalog-layer-inline">${safeChips}</div>` : ''}
+          ${safeLines}
+        </div>`;
+    }
+
+    function renderCatalogDraftCell(draftLink = null, kindLabel = 'item') {
+      const draftMeta = getCatalogDraftStateMeta(draftLink);
+      if (!draftLink?.id) {
+        return buildCatalogLayerStack(
+          'Sem rascunho ativo',
+          [
+            { text: `Nenhuma retomada local aberta para este ${kindLabel}.`, muted: false },
+            { text: 'A ficha comum publicada continua intacta até a criação do rascunho de edição.', muted: true },
+          ],
+          [],
+          'Rascunho local'
+        );
+      }
+      const chips = [`#${draftLink.id}`];
+      if (draftMeta.actionLabel) chips.push(draftMeta.actionLabel);
+      if (draftMeta.statusLabel) chips.push(draftMeta.statusLabel);
+      return buildCatalogLayerStack(
+        `Rascunho ativo #${draftLink.id}`,
+        [
+          { text: `Retomada local já aberta para este ${kindLabel}.`, muted: false },
+          { text: 'A edição segue em camada local até nova publicação.', muted: true },
+        ],
+        chips,
+        'Rascunho local'
+      );
+    }
+
+    function renderCatalogBookNoticeCell(book = {}) {
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Ficha comum publicada</div>
+          ${renderBookDisplayTitleHtml(book)}
+          <div class="catalog-layer-line">ID publicado: #${sanitize(book.id || '—')}</div>
+          <div class="catalog-layer-line">${sanitize(buildCatalogQuickLine([
+            book.autor || book.author ? `Responsabilidade: ${book.autor || book.author}` : '',
+            book.editora || book.publisher ? `Editora: ${book.editora || book.publisher}` : '',
+            book.ano ? `Ano: ${book.ano}` : '',
+          ]) || 'Sem leitura editorial resumida.')}</div>
+        </div>`;
+    }
+
+    function renderCatalogBookCompatCell(book = {}) {
+      const bibRef = compactSpaces(book.bib_ref || '');
+      return buildCatalogLayerStack(
+        bibRef || 'Sem referência local visível',
+        [
+          { text: bibRef ? `Compatibilidade local publicada: ${bibRef}` : 'Esta ficha comum publicada não mostra referência local / compatibilidade.', muted: false },
+          { text: 'Camada local de apoio, não pivô principal da ficha comum.', muted: true },
+        ],
+        bibRef ? ['Compat local'] : [],
+        'Compatibilidade local'
+      );
+    }
+
+    function renderCatalogBookExemplarCell(book = {}) {
+      const totalExemplares = Number(book.total_exemplares || 0);
+      const exemplarLabel = totalExemplares === 1 ? '1 exemplar publicado' : `${totalExemplares} exemplares publicados`;
+      return buildCatalogLayerStack(
+        exemplarLabel,
+        [
+          { text: totalExemplares ? 'Há holding local publicado ligado a esta ficha comum.' : 'Nenhum exemplar publicado visível para esta ficha comum neste recorte.', muted: false },
+          { text: 'A circulação local concreta depende desta camada de exemplares.', muted: true },
+        ],
+        totalExemplares ? ['Holding local visível'] : ['Sem exemplar visível'],
+        'Exemplar local'
+      );
+    }
+
+    function renderCatalogExemplarPublishedCell(ex = {}) {
+      const title = compactSpaces(ex.tombo || '') || 'Sem tombo informado';
+      return buildCatalogLayerStack(
+        title,
+        [
+          { text: `ID publicado: #${compactSpaces(ex.exemplar_id || '') || '—'}`, muted: false },
+          { text: compactSpaces(ex.shelf_location || '') ? `Localização: ${compactSpaces(ex.shelf_location || '')}` : 'Sem localização consolidada visível.', muted: false },
+        ],
+        ['Exemplar local'],
+        'Exemplar publicado'
+      );
+    }
+
+    function renderCatalogExemplarCompatCell(ex = {}) {
+      const bibRef = compactSpaces(ex.bib_ref || '');
+      return buildCatalogLayerStack(
+        bibRef || 'Sem compatibilidade visível',
+        [
+          { text: bibRef ? `Compatibilidade local atual: ${bibRef}` : 'Este exemplar não mostra referência local / compatibilidade.', muted: false },
+          { text: 'Serve de ancoragem local entre exemplar publicado e ficha comum.', muted: true },
+        ],
+        bibRef ? ['Compat local'] : [],
+        'Compatibilidade local'
+      );
+    }
+
+    function renderCatalogExemplarNoticeCell(ex = {}) {
+      const title = compactSpaces(ex.titulo_etiqueta || '') || 'Ficha comum relida ainda não disponível';
+      const author = compactSpaces(ex.autor_etiqueta || '');
+      return buildCatalogLayerStack(
+        title,
+        [
+          { text: author ? `Autor / responsabilidade: ${author}` : 'Sem responsabilidade relida neste exemplar.', muted: false },
+          { text: 'Leitura publicada relida a partir do exemplar local já validado.', muted: true },
+        ],
+        [],
+        'Ficha comum publicada relida'
+      );
+    }
+
+    function renderCatalogPanelLayerSummary() {
+      const documentSearch = normalizeForSearch(el('catalogSearch')?.value || '');
+      const exemplarSearch = normalizeForSearch(el('catalogExemplarSearch')?.value || '');
+
+      const visibleDocuments = [...(state.books || [])].filter((book) => !documentSearch || getBookSearchIndex(book).includes(documentSearch));
+      const visibleBookish = visibleDocuments.filter(isCatalogBookLikeItem);
+      const visibleOther = visibleDocuments.filter(isCatalogOtherDocumentItem);
+      const visibleCompat = visibleDocuments.filter((book) => compactSpaces(book.bib_ref || ''));
+      const visibleExemplars = [...(state.exemplars || [])].filter((ex) => {
+        if (!exemplarSearch) return true;
+        return normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(exemplarSearch);
+      });
+
+      const bookDraftMap = getCatalogBookDraftLinkMap();
+      const exemplarDraftMap = getCatalogExemplarDraftLinkMap();
+      const visibleBookDrafts = visibleDocuments.filter((book) => bookDraftMap.has(String(book.id))).length;
+      const visibleExemplarDrafts = visibleExemplars.filter((ex) => exemplarDraftMap.has(String(ex.exemplar_id))).length;
+      const totalVisibleDrafts = visibleBookDrafts + visibleExemplarDrafts;
+
+      if (refs.catalogSummaryNoticeValue) refs.catalogSummaryNoticeValue.textContent = String(visibleDocuments.length);
+      if (refs.catalogSummaryNoticeNote) refs.catalogSummaryNoticeNote.textContent = visibleDocuments.length
+        ? `${visibleBookish.length} livros/brochuras/periódicos e ${visibleOther.length} outros documentos publicados neste recorte.`
+        : 'Nenhuma ficha comum publicada visível para este recorte.';
+
+      if (refs.catalogSummaryCompatValue) refs.catalogSummaryCompatValue.textContent = String(visibleCompat.length);
+      if (refs.catalogSummaryCompatNote) refs.catalogSummaryCompatNote.textContent = visibleCompat.length
+        ? `${visibleCompat.length} fichas comuns ainda mostram referência local / compatibilidade na leitura publicada.`
+        : 'Nenhuma ficha comum visível mostra referência local / compatibilidade neste recorte.';
+
+      if (refs.catalogSummaryExemplarValue) refs.catalogSummaryExemplarValue.textContent = String(visibleExemplars.length);
+      if (refs.catalogSummaryExemplarNote) refs.catalogSummaryExemplarNote.textContent = visibleExemplars.length
+        ? `${visibleExemplars.length} exemplares locais publicados aparecem no recorte atual da busca de exemplares.`
+        : 'Nenhum exemplar local publicado visível para o recorte atual.';
+
+      if (refs.catalogSummaryDraftValue) refs.catalogSummaryDraftValue.textContent = String(totalVisibleDrafts);
+      if (refs.catalogSummaryDraftNote) refs.catalogSummaryDraftNote.textContent = totalVisibleDrafts
+        ? `${visibleBookDrafts} rascunhos de fichas comuns e ${visibleExemplarDrafts} rascunhos de exemplares já estão abertos localmente.`
+        : 'Nenhum rascunho de edição local visível neste recorte.';
+    }
+
+
+function getVisibleCatalogBookLikeItems() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  let items = [...(state.books || [])].filter(isCatalogBookLikeItem);
+  if (search) {
+    items = items.filter((book) => getBookSearchIndex(book).includes(search));
+  }
+  return sortCatalogItems('books', items);
+}
+
+function getVisibleCatalogOtherDocumentItems() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  let items = [...(state.books || [])].filter(isCatalogOtherDocumentItem);
+  if (search) {
+    items = items.filter((book) => getBookSearchIndex(book).includes(search));
+  }
+  return sortCatalogItems('otherDocs', items);
+}
+
+function getVisibleCatalogExemplarItems() {
+  const search = normalizeForSearch(el('catalogExemplarSearch')?.value || '');
+  let items = [...(state.exemplars || [])];
+  if (search) {
+    items = items.filter((ex) => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
+  }
+  return sortCatalogItems('exemplars', items);
+}
+
+function getVisibleCatalogAuthorRows() {
+  const search = normalizeForSearch(el('catalogSearch')?.value || '');
+  const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
+  const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
+  const draftLinkMap = getCatalogAuthorDraftLinkMap();
+  const currentSignals = getCurrentCatalogAuthorFormSignals();
+  let rows = [...(state.authors || [])].map((author) => {
+    const draftLink = draftLinkMap.get(String(author.id)) || null;
+    const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
+    const meta = getAuthorStructuredMetaForRecord(author);
+    return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
+  });
+  const totalCount = rows.length;
+  if (search) {
+    rows = rows.filter(({ author }) => getCatalogAuthorCatalogSearchIndexSafe(author).includes(search));
+  }
+  if (authorityFilter) {
+    rows = rows.filter(({ meta }) => normalizeAuthorAuthorityType(meta.authority_type || 'person') === authorityFilter);
+  }
+  if (signalFilter) {
+    rows = rows.filter((row) => row.signalType === signalFilter);
+  }
+  const sortedAuthors = sortCatalogItems('authors', rows.map((row) => row.author));
+  rows = sortedAuthors.map((author) => rows.find((row) => row.author === author)).filter(Boolean);
+  return { rows, totalCount };
+}
+
+function getCatalogAuthorCatalogSearchIndexSafe(author = {}) {
+  return getCatalogAuthorSearchIndex(author);
+}
+
+function setCatalogSurfaceSummary(node, html) {
+  if (!node) return;
+  node.innerHTML = html;
+}
+
+function renderCatalogBooksSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
+  const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogBooksSummary, '<strong>Leitura da superfície:</strong> nenhuma ficha comum livro/brochura/periódico visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogBooksSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} fichas comuns publicadas visíveis; ${compatCount} com compatibilidade local ainda legível; ${exemplarCount} com exemplar local publicado; ${draftCount} com retomada editorial ativa.`
+  );
+}
+
+function renderCatalogOtherDocsSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogBookDraftLinkMap();
+  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
+  const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogOtherDocsSummary, '<strong>Leitura da superfície:</strong> nenhum documento não-livro visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogOtherDocsSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} documentos não-livro visíveis; ${compatCount} ainda mostram compatibilidade local; ${exemplarCount} já exibem exemplar local publicado; ${draftCount} já têm retomada editorial ativa.`
+  );
+}
+
+function renderCatalogAuthorsSurfaceSummary(rows = [], totalCount = 0) {
+  const draftCount = rows.filter((row) => row?.draftLink?.id).length;
+  const currentCount = rows.filter((row) => row?.proximityMeta?.isCurrent).length;
+  const nearCount = rows.filter((row) => ['very_close', 'close'].includes(row?.proximityMeta?.level || '')).length;
+  if (!rows.length) {
+    setCatalogSurfaceSummary(refs.catalogAuthorsSurfaceSummary, '<strong>Leitura da superfície:</strong> nenhuma autoridade publicada visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogAuthorsSurfaceSummary,
+    `<strong>Leitura da superfície:</strong> ${rows.length} autoridades publicadas visíveis de ${totalCount}; ${draftCount} com retomada editorial ativa; ${currentCount} correspondem à ficha aberta; ${nearCount} mostram proximidade editorial com a ficha aberta.`
+  );
+}
+
+function renderCatalogExemplarsSurfaceSummary(items = []) {
+  const draftLinkMap = getCatalogExemplarDraftLinkMap();
+  const compatCount = items.filter((ex) => compactSpaces(ex.bib_ref || '')).length;
+  const locatedCount = items.filter((ex) => compactSpaces(ex.shelf_location || '')).length;
+  const draftCount = items.filter((ex) => draftLinkMap.has(String(ex.exemplar_id))).length;
+  if (!items.length) {
+    setCatalogSurfaceSummary(refs.catalogExemplarsSummary, '<strong>Leitura da superfície:</strong> nenhum exemplar local publicado visível neste recorte.');
+    return;
+  }
+  setCatalogSurfaceSummary(
+    refs.catalogExemplarsSummary,
+    `<strong>Leitura da superfície:</strong> ${items.length} exemplares locais visíveis; ${compatCount} com compatibilidade local legível; ${locatedCount} com localização consolidada visível; ${draftCount} com retomada editorial ativa.`
+  );
+}
+
+function renderCatalogOtherDocumentNoticeCell(book = {}) {
+  const materialLabel = getCatalogMaterialTypeLabel(book.tipo_material || book.material_type || '');
+  const title = getBookDisplayTitle(book);
+  const subtitle = getBookDisplaySubtitle(book);
+  const quickContext = getCatalogOtherDocumentContextLine(book);
+  return buildCatalogLayerStack(
+    title,
+    [
+      { text: subtitle ? `Subtítulo / chamada: ${subtitle}` : 'Sem subtítulo ou chamada relida.', muted: false },
+      { text: quickContext || 'Sem leitura documental rápida adicional.', muted: false },
+      { text: buildCatalogQuickLine([book.autor || book.author ? `Responsável: ${book.autor || book.author}` : '', book.ano ? `Data: ${book.ano}` : '']) || 'Sem responsabilidade ou data relidas.', muted: true },
+    ],
+    [materialLabel],
+    'Ficha comum publicada'
+  );
+}
+
+function getCatalogAuthorSignalLabel(proximityMeta = {}) {
+  if (proximityMeta?.isCurrent) return 'Esta é a ficha atualmente aberta no formulário.';
+  if (proximityMeta?.level === 'very_close') return 'Esta autoridade é muito próxima da ficha atualmente aberta.';
+  if (proximityMeta?.level === 'close') return 'Esta autoridade compartilha sinais de proximidade com a ficha atualmente aberta.';
+  return 'Sem sinal editorial específico nesta leitura.';
+}
+
+function renderCatalogAuthorPublishedCell(author = {}) {
+  return `
+    <div class="catalog-layer-stack">
+      <div class="catalog-layer-eyebrow">Autoridade publicada</div>
+      ${renderCatalogAuthorIdentityHtml(author)}
+      <div class="catalog-layer-line">ID publicado: #${sanitize(author.id || '—')}</div>
+    </div>`;
+}
+
+function renderCatalogAuthorPublicReadCell(author = {}, proximityMeta = {}) {
+  const biography = compactSpaces(author.biography || '');
+  return buildCatalogLayerStack(
+    biography ? 'Leitura pública disponível' : 'Leitura pública mínima',
+    [
+      { text: buildCatalogQuickLine([author.country ? `País: ${author.country}` : '', author.source_label || author.source_kind ? `Fonte: ${author.source_label || author.source_kind}` : '']) || 'Sem país ou fonte relidos nesta superfície.', muted: false },
+      { text: biography ? `${biography.slice(0, 220)}${biography.length > 220 ? '…' : ''}` : 'Sem biografia curta relida nesta superfície.', muted: false },
+      { text: getCatalogAuthorSignalLabel(proximityMeta), muted: true },
+    ],
+    [],
+    'Leitura pública / sinal editorial'
+  );
+}
+
+function renderCatalogAuthorDraftCell(draftLink = null) {
+  const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
+  if (!draftLink?.id) {
+    return buildCatalogLayerStack(
+      'Sem rascunho ativo',
+      [
+        { text: 'Nenhuma retomada editorial local aberta para esta autoridade.', muted: false },
+        { text: 'A autoridade publicada continua intacta até a abertura de um rascunho de edição.', muted: true },
+      ],
+      [],
+      'Retomada editorial local'
+    );
+  }
+  const chips = [`#${draftLink.id}`];
+  if (draftMeta.actionLabel) chips.push(draftMeta.actionLabel);
+  if (draftMeta.statusLabel) chips.push(draftMeta.statusLabel);
+  return buildCatalogLayerStack(
+    `Rascunho ativo #${draftLink.id}`,
+    [
+      { text: 'Já existe uma retomada editorial local para esta autoridade.', muted: false },
+      { text: `Última atualização conhecida: ${formatDate(draftLink.updated_at) || 'não lida'}.`, muted: true },
+    ],
+    chips,
+    'Retomada editorial local'
+  );
+}
 
     function buildCatalogAuthorTokenSet(values = []) {
       const tokens = new Set();
@@ -11590,88 +12897,63 @@
       summaryNode.textContent = `Autores exibidos: ${visibleCount} de ${totalCount} — ${parts.join(' · ')}.`;
     }
 
-    function renderCatalogAuthors() {
-      const search = normalizeForSearch(el('catalogSearch').value);
-      const authorityFilter = normalizeAuthorAuthorityType(el('catalogAuthorAuthorityFilter')?.value || '');
-      const signalFilter = el('catalogAuthorSignalFilter')?.value || '';
-      const draftLinkMap = getCatalogAuthorDraftLinkMap();
-      const currentSignals = getCurrentCatalogAuthorFormSignals();
-      let rows = [...state.authors].map((author) => {
-        const draftLink = draftLinkMap.get(String(author.id)) || null;
-        const proximityMeta = getCatalogAuthorProximityMeta(author, currentSignals);
-        const meta = getAuthorStructuredMetaForRecord(author);
-        return { author, draftLink, proximityMeta, meta, signalType: getCatalogAuthorSignalType({ draftLink, proximityMeta }) };
-      });
-      const totalCount = rows.length;
-      if (search) {
-        rows = rows.filter(({ author }) => getAuthorCatalogSearchIndex(author).includes(search));
-      }
-      if (authorityFilter) {
-        rows = rows.filter(({ meta }) => normalizeAuthorAuthorityType(meta.authority_type || 'person') === authorityFilter);
-      }
-      if (signalFilter) {
-        rows = rows.filter((row) => row.signalType === signalFilter);
-      }
-      const sortedAuthors = sortCatalogItems('authors', rows.map((row) => row.author));
-      rows = sortedAuthors
-        .map((author) => rows.find((row) => row.author === author))
-        .filter(Boolean);
-      renderCatalogAuthorsFilterSummary(rows.length, totalCount);
-      if (!rows.length) {
-        refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado para este recorte.</div>';
-        return;
-      }
-      refs.catalogAuthorsWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'authors', 'id')}</th>
-              <th class="sortable">${renderSortableHeader('Nome para ordenação', 'authors', 'sort_name')}</th>
-              <th class="sortable">${renderSortableHeader('País', 'authors', 'country')}</th>
-              <th class="sortable">${renderSortableHeader('Fonte', 'authors', 'source')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(({ author, draftLink, proximityMeta }) => {
-              const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
-              const buttonLabel = draftMeta.buttonLabel;
-              return `
-              <tr>
-                <td>
-                  <div class="row-actions">
-                    <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${buttonLabel}</button>
-                  </div>
-                </td>
-                <td>${author.id}</td>
-                <td>${renderCatalogAuthorIdentityStack(author, draftLink, proximityMeta)}</td>
-                <td>${sanitize(author.country || '—')}</td>
-                <td>${sanitize(author.source_label || author.source_kind || '—')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`;
 
-      bindCatalogSortButtons(refs.catalogAuthorsWrap, renderCatalogAuthors);
+function renderCatalogAuthors() {
+  const { rows, totalCount } = getVisibleCatalogAuthorRows();
+  renderCatalogAuthorsFilterSummary(rows.length, totalCount);
+  renderCatalogAuthorsSurfaceSummary(rows, totalCount);
+  if (!rows.length) {
+    refs.catalogAuthorsWrap.innerHTML = '<div class="empty">Nenhum autor encontrado para este recorte.</div>';
+    return;
+  }
+  refs.catalogAuthorsWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Autoridade publicada', 'authors', 'sort_name')}</th>
+          <th class="sortable">${renderSortableHeader('Leitura pública / sinal editorial', 'authors', 'country')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(({ author, draftLink, proximityMeta }) => {
+          const draftMeta = getCatalogAuthorDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td>
+              <div class="row-actions">
+                <button class="btn-inline small secondary" data-action="author-edit-draft" data-author-id="${author.id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button>
+              </div>
+            </td>
+            <td>${renderCatalogAuthorPublishedCell(author)}</td>
+            <td>${renderCatalogAuthorPublicReadCell(author, proximityMeta)}</td>
+            <td>${renderCatalogAuthorDraftCell(draftLink)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 
-      refs.catalogAuthorsWrap.querySelectorAll('[data-action="author-edit-draft"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            const activeDraftId = Number(btn.dataset.draftId || 0);
-            if (activeDraftId) {
-              await fetchDraftAndEdit('author', activeDraftId);
-              showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${activeDraftId}).`, 'ok');
-              return;
-            }
-            await loadOrCreateAuthorDraftFromCatalog(btn.dataset.authorId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
+  bindCatalogSortButtons(refs.catalogAuthorsWrap, renderCatalogAuthors);
 
-    async function loadOrCreateExemplarDraftFromCatalog(exemplarId) {
+  refs.catalogAuthorsWrap.querySelectorAll('[data-action="author-edit-draft"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('author', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de autor já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateAuthorDraftFromCatalog(btn.dataset.authorId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
+      }
+    });
+  });
+}
+
+async function loadOrCreateExemplarDraftFromCatalog(exemplarId) {
       const publishedExemplarId = Number(exemplarId);
       if (!publishedExemplarId) throw new Error('Exemplar inválido para edição.');
 
@@ -11695,59 +12977,63 @@
       return Number(data);
     }
 
-    function renderCatalogExemplars() {
 
-      const search = normalizeForSearch(el('catalogExemplarSearch').value);
-      let items = [...state.exemplars];
-      if (search) {
-        items = items.filter(ex => normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(search));
+function renderCatalogExemplars() {
+  const items = getVisibleCatalogExemplarItems();
+  const draftLinkMap = getCatalogExemplarDraftLinkMap();
+  renderCatalogPanelLayerSummary();
+  renderCatalogExemplarsSurfaceSummary(items);
+  if (!items.length) {
+    refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
+    return;
+  }
+  refs.catalogExemplarsWrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Operações</th>
+          <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Ficha comum publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
+          <th>Rascunho de edição local</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(ex => {
+          const draftLink = draftLinkMap.get(String(ex.exemplar_id)) || null;
+          const draftMeta = getCatalogDraftStateMeta(draftLink);
+          return `
+          <tr>
+            <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}" ${draftLink?.id ? `data-draft-id="${sanitize(draftLink.id)}"` : ''}>${draftMeta.buttonLabel}</button></div></td>
+            <td>${renderCatalogExemplarPublishedCell(ex)}</td>
+            <td>${renderCatalogExemplarCompatCell(ex)}</td>
+            <td>${renderCatalogExemplarNoticeCell(ex)}</td>
+            <td>${renderCatalogDraftCell(draftLink, 'exemplar')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  bindCatalogSortButtons(refs.catalogExemplarsWrap, renderCatalogExemplars);
+
+  refs.catalogExemplarsWrap.querySelectorAll('[data-action="draft-exemplar"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const activeDraftId = Number(btn.dataset.draftId || 0);
+        if (activeDraftId) {
+          await fetchDraftAndEdit('exemplar', activeDraftId);
+          showMessage(refs.catalogMessage, `Rascunho de exemplar já aberto (#${activeDraftId}).`, 'ok');
+          return;
+        }
+        await loadOrCreateExemplarDraftFromCatalog(btn.dataset.exemplarId);
+      } catch (error) {
+        showMessage(refs.catalogMessage, error.message, 'error');
       }
-      items = sortCatalogItems('exemplars', items);
-      if (!items.length) {
-        refs.catalogExemplarsWrap.innerHTML = '<div class="empty">Nenhum exemplar encontrado.</div>';
-        return;
-      }
-      refs.catalogExemplarsWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Operações</th>
-              <th class="sortable">${renderSortableHeader('ID', 'exemplars', 'exemplar_id')}</th>
-              <th class="sortable">${renderSortableHeader('Tombo', 'exemplars', 'tombo')}</th>
-              <th class="sortable">${renderSortableHeader('Referência', 'exemplars', 'bib_ref')}</th>
-              <th class="sortable">${renderSortableHeader('Localização', 'exemplars', 'shelf_location')}</th>
-              <th class="sortable">${renderSortableHeader('Autor', 'exemplars', 'autor_etiqueta')}</th>
-              <th class="sortable">${renderSortableHeader('Título', 'exemplars', 'titulo_etiqueta')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(ex => `
-              <tr>
-                <td><div class="row-actions"><button class="btn-inline small secondary" data-action="draft-exemplar" data-exemplar-id="${ex.exemplar_id}">Criar rascunho de edição</button></div></td>
-                <td>${ex.exemplar_id}</td>
-                <td>${sanitize(ex.tombo || '—')}</td>
-                <td>${sanitize(ex.bib_ref || '—')}</td>
-                <td>${sanitize(ex.shelf_location || '—')}</td>
-                <td>${sanitize(ex.autor_etiqueta || '—')}</td>
-                <td>${sanitize(ex.titulo_etiqueta || '—')}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+    });
+  });
+}
 
-      bindCatalogSortButtons(refs.catalogExemplarsWrap, renderCatalogExemplars);
-
-      refs.catalogExemplarsWrap.querySelectorAll('[data-action="draft-exemplar"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            await loadOrCreateExemplarDraftFromCatalog(btn.dataset.exemplarId);
-          } catch (error) {
-            showMessage(refs.catalogMessage, error.message, 'error');
-          }
-        });
-      });
-    }
-
-    function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
+function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       const bookDraftMap = new Map();
       bookDrafts.filter(item => item && item.status !== 'cancelled').forEach(item => {
         const key = String(item.bib_ref || '').trim();
@@ -12365,6 +13651,10 @@
       }
     });
 
+    el('publishBatchId').addEventListener('change', () => {
+      renderPublishBatchSummary();
+    });
+
     applyAuthorAuthorityUiProfile();
 
     if (refs.catalogModeSimpleBtn) {
@@ -12539,13 +13829,17 @@
       }
     });
     el('catalogSearch').addEventListener('input', () => {
+      renderCatalogPanelLayerSummary();
       renderCatalogBooks();
       renderCatalogAuthors();
       renderCatalogOtherDocuments();
     });
     el('catalogAuthorAuthorityFilter').addEventListener('change', renderCatalogAuthors);
     el('catalogAuthorSignalFilter').addEventListener('change', renderCatalogAuthors);
-    el('catalogExemplarSearch').addEventListener('input', renderCatalogExemplars);
+    el('catalogExemplarSearch').addEventListener('input', () => {
+      renderCatalogPanelLayerSummary();
+      renderCatalogExemplars();
+    });
     if (refs.refreshLabelSheetBtn) {
       refs.refreshLabelSheetBtn.addEventListener('click', async () => {
         try {
@@ -12797,10 +14091,28 @@ function initPartnerProbeUi() {
   const importFieldWritePreviewEl = document.getElementById('partnerImportFieldWritePreview');
   const importFieldWriteHintEl = document.getElementById('partnerImportFieldWriteHint');
   const importOperationalStateEl = document.getElementById('partnerImportOperationalState');
+  const importChecklistEl = document.getElementById('partnerImportChecklist');
+  const importPrudenceSignalEl = document.getElementById('partnerImportPrudenceSignal');
   const importBoundaryNoteEl = document.getElementById('partnerImportBoundaryNote');
   const importLiveHintEl = document.getElementById('partnerImportLiveHint');
   const applyImportPrepBtn = document.getElementById('partnerApplyImportPrepBtn');
   const clearImportPrepBtn = document.getElementById('partnerClearImportPrepBtn');
+  const workflowScopeEl = document.getElementById('partnerWorkflowScopeOutput');
+  const writeNowEl = document.getElementById('partnerWriteNowOutput');
+  const protectedNowEl = document.getElementById('partnerProtectedNowOutput');
+  const blockersNowEl = document.getElementById('partnerBlockersNowOutput');
+  const partnerGovernanceStageValueEl = document.getElementById('partnerGovernanceStageValue');
+  const partnerGovernanceStageNoteEl = document.getElementById('partnerGovernanceStageNote');
+  const partnerGovernanceFlowValueEl = document.getElementById('partnerGovernanceFlowValue');
+  const partnerGovernanceFlowNoteEl = document.getElementById('partnerGovernanceFlowNote');
+  const partnerGovernanceWriteValueEl = document.getElementById('partnerGovernanceWriteValue');
+  const partnerGovernanceWriteNoteEl = document.getElementById('partnerGovernanceWriteNote');
+  const partnerGovernanceBoundaryValueEl = document.getElementById('partnerGovernanceBoundaryValue');
+  const partnerGovernanceBoundaryNoteEl = document.getElementById('partnerGovernanceBoundaryNote');
+  const partnerCompareSurfaceSummaryEl = document.getElementById('partnerCompareSurfaceSummary');
+  const partnerImportSurfaceSummaryEl = document.getElementById('partnerImportSurfaceSummary');
+  const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
+  const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
 
   const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
   const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
@@ -12834,8 +14146,10 @@ function initPartnerProbeUi() {
     !importWorkspaceEl || !importWorkspaceStatusEl || !importSourceSummaryEl || !importLocalSummaryEl ||
     !importFormatSelectEl || !importMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl ||
     !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
-    !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importBoundaryNoteEl ||
-    !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn
+    !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
+    !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
+    !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl ||
+    !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl
   ) {
     return;
   }
@@ -13104,6 +14418,7 @@ function initPartnerProbeUi() {
     } else {
       incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
+    refreshPartnerPilotSummary();
   }
 
   function updateIncomingCatalogFileName() {
@@ -13277,6 +14592,7 @@ function initPartnerProbeUi() {
     if (confidenceEl && !String(confidenceEl.value || '').trim()) confidenceEl.value = 'generic';
     syncPresetSelectionFromCurrentPartnerFields();
     refreshPartnerKnownPartnerHint();
+    refreshPartnerPilotSummary();
     setPartnerProbeMessage('Identificação artesanal levada para a governança abaixo, sem alterar a política documental nem importar registros.', 'ok');
   }
 
@@ -13285,6 +14601,7 @@ function initPartnerProbeUi() {
     urlSuggestionOutputEl.value = '';
     urlSuggestionWritePreviewEl.value = '';
     urlSuggestionMatchHintEl.textContent = 'Sem análise ainda. Se houver match provável com uma parceira já conhecida, ele aparecerá aqui sem salvar nada automaticamente nem decidir qualquer estatuto relacional.';
+    refreshPartnerPilotSummary();
   }
 
   function inferPartnerCountryCodeFromHostname(hostname = '') {
@@ -13411,6 +14728,7 @@ function initPartnerProbeUi() {
       `Nota curta → ${suggestion.note || '—'}`
     ].join('\n');
     urlSuggestionMatchHintEl.textContent = matchLabel;
+    refreshPartnerPilotSummary();
   }
 
   function analyzePartnerDiscoveryUrl() {
@@ -13740,32 +15058,699 @@ ${decisionSummary}` : '',
     ].join('\n\n');
   }
 
+
+  /*
+   * Patch 13 — quadro de pilotagem local da parceira
+   * ------------------------------------------------
+   * Este bloco não abre nenhum fluxo novo de backend.
+   * Ele serve para tornar legível, na própria tela,
+   * o estado operacional da comparação e da preparação.
+   *
+   * Objetivos desta camada:
+   * 1. dizer o que ainda falta antes do clique;
+   * 2. dizer o que pode ser escrito agora na ficha;
+   * 3. lembrar o que permanece protegido nesta etapa;
+   * 4. evitar que os botões “Levar...” virem saltos cegos.
+   *
+   * Regras mantidas:
+   * - nada de importação automática;
+   * - nada de modificação livre do registro da parceira;
+   * - nada de publicação pública a partir desta aba;
+   * - escrita apenas em camada local e nota de proveniência.
+   */
+  function formatPartnerMissingItems(items = [], prefix = 'Pendências atuais:') {
+    const clean = Array.from(
+      new Set(
+        (items || [])
+          .map((item) => String(item || '').trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!clean.length) {
+      return [
+        prefix,
+        '- nada pendente',
+      ].join('\n');
+    }
+
+    return [
+      prefix,
+      ...clean.map((item) => `- ${item}`),
+    ].join('\n');
+  }
+
+  /*
+   * Comparação documental local
+   * ---------------------------
+   * A comparação só pode seguir para escrita assistida quando
+   * a política atual permitir a comparação e quando a pessoa
+   * bibliotecária já tiver preenchido os elementos mínimos
+   * que dão sentido a esse gesto.
+   */
+  function getComparisonReadinessState() {
+    const missing = [];
+
+    const partnerSummary = String(
+      partnerNoticeSummaryEl.value || ''
+    ).trim();
+
+    const differenceSummary = String(
+      differenceSummaryEl.value || ''
+    ).trim();
+
+    const decisionSummary = String(
+      comparisonDecisionEl.value || ''
+    ).trim();
+
+    const comparisonNote = getCurrentComparisonNote();
+
+    if (!partnerDocumentActionState.compareAllowed) {
+      missing.push(
+        'comparação não autorizada nesta etapa'
+      );
+    }
+
+    if (!partnerSummary) {
+      missing.push(
+        'resumir manualmente o registro da parceira'
+      );
+    }
+
+    if (!differenceSummary) {
+      missing.push(
+        'registrar diferenças e pontos de atenção'
+      );
+    }
+
+    if (!decisionSummary) {
+      missing.push(
+        'formular a decisão local / próximos passos'
+      );
+    }
+
+    return {
+      missing,
+      comparisonNote,
+      canWrite:
+        partnerDocumentActionState.compareAllowed &&
+        !missing.length &&
+        !!comparisonNote,
+    };
+  }
+
+  /*
+   * Preparação local de importação
+   * ------------------------------
+   * Mesmo quando a importação controlada aparece autorizada,
+   * esta área continua sendo apenas uma preparação local.
+   * Por isso exigimos um mínimo de estabilização antes do clique:
+   * formato, modo, decisão, proveniência e ao menos uma linha
+   * sobre retomada ou exclusão.
+   */
+  function getImportReadinessState() {
+    const missing = [];
+
+    const formatValue = String(
+      importFormatSelectEl?.value || ''
+    ).trim();
+
+    const methodValue = String(
+      importMethodSelectEl?.value || ''
+    ).trim();
+
+    const takeSummary = String(
+      importTakeSummaryEl.value || ''
+    ).trim();
+
+    const skipSummary = String(
+      importSkipSummaryEl.value || ''
+    ).trim();
+
+    const provenanceSummary = String(
+      importProvenanceSummaryEl.value || ''
+    ).trim();
+
+    const decisionSummary = String(
+      importDecisionSummaryEl.value || ''
+    ).trim();
+
+    const carryPreview = getImportCarryPreviewText();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      missing.push(
+        'importação controlada não autorizada nesta etapa'
+      );
+    }
+
+    if (!formatValue) {
+      missing.push(
+        'definir o formato de importação'
+      );
+    }
+
+    if (!methodValue) {
+      missing.push(
+        'definir o modo de importação'
+      );
+    }
+
+    if (!takeSummary && !skipSummary) {
+      missing.push(
+        'registrar ao menos o que retomar ou o que deixar de fora'
+      );
+    }
+
+    if (!provenanceSummary) {
+      missing.push(
+        'registrar a proveniência a conservar'
+      );
+    }
+
+    if (!decisionSummary) {
+      missing.push(
+        'formular a decisão local / preparação do rascunho'
+      );
+    }
+
+    return {
+      missing,
+      carryPreview,
+      canWrite:
+        partnerDocumentActionState.importAllowed &&
+        !missing.length &&
+        !!carryPreview,
+    };
+  }
+
+  /*
+   * Checklist mínima da preparação
+   * ------------------------------
+   * Este quadro não decide nada sozinho.
+   * Ele apenas traduz o estado do formulário
+   * em itens rapidamente relíveis pela pessoa usuária.
+   */
+  function getImportChecklistText() {
+    const readiness = getImportReadinessState();
+
+    const lines = [
+      String(importFormatSelectEl?.value || '').trim()
+        ? `• formato preparado: ${getSelectedOptionLabel(importFormatSelectEl)}`
+        : '• falta definir o formato de importação',
+
+      String(importMethodSelectEl?.value || '').trim()
+        ? `• modo preparado: ${getSelectedOptionLabel(importMethodSelectEl)}`
+        : '• falta definir o modo de importação',
+
+      String(importTakeSummaryEl.value || '').trim() ||
+      String(importSkipSummaryEl.value || '').trim()
+        ? '• retomadas e/ou exclusões já anotadas'
+        : '• falta anotar retomadas ou exclusões locais',
+
+      String(importProvenanceSummaryEl.value || '').trim()
+        ? '• proveniência a conservar já registrada'
+        : '• falta registrar a proveniência a conservar',
+
+      String(importDecisionSummaryEl.value || '').trim()
+        ? '• decisão local da preparação já registrada'
+        : '• falta decisão local da preparação',
+
+      partnerDocumentActionState.importAllowed
+        ? '• política atual autoriza preparação local de importação'
+        : '• política atual ainda não autoriza preparação local de importação',
+
+      partnerDocumentActionState.mutualizeAllowed
+        ? '• mutualização aparece autorizada politicamente, mas continua sem modificação livre'
+        : '• mutualização continua fora desta etapa',
+    ];
+
+    if (readiness.missing.length) {
+      lines.push('');
+      lines.push(
+        formatPartnerMissingItems(
+          readiness.missing,
+          'Faltas antes de levar à ficha:'
+        )
+      );
+    }
+
+    return lines.join('\n');
+  }
+
+  /*
+   * Sinal de prudência da preparação
+   * --------------------------------
+   * Mesmo quando tudo estiver pronto,
+   * este quadro continua lembrando que a operação
+   * é local, assistida e sem importação automática real.
+   */
+  function getImportPrudenceSignalText() {
+    const readiness = getImportReadinessState();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      return [
+        'Preparação bloqueada: sem autorização de importação controlada,',
+        'esta área continua apenas como leitura prudente.',
+      ].join(' ');
+    }
+
+    if (readiness.missing.length) {
+      return [
+        'Preparação aberta, mas ainda insuficiente para escrita assistida.',
+        '',
+        formatPartnerMissingItems(
+          readiness.missing,
+          'Ainda falta:'
+        ),
+      ].join('\n');
+    }
+
+    if (partnerDocumentActionState.mutualizeAllowed) {
+      return [
+        'Preparação suficientemente descrita para escrita local assistida.',
+        'Mesmo assim, nada aqui modifica livremente a camada compartilhada',
+        'nem dispara importação automática.',
+      ].join(' ');
+    }
+
+    return [
+      'Preparação suficientemente descrita para escrita local assistida,',
+      'ainda sem mutualização autorizada e sem importação automática real.',
+    ].join(' ');
+  }
+
+  /*
+   * Quadro do gesto ativo
+   * ---------------------
+   * Este conjunto de funções alimenta a nova grade visível
+   * no topo do painel parceiro. A ideia é concentrar, em um bloco,
+   * quatro perguntas práticas:
+   * - quem está em foco;
+   * - o que pode sair agora;
+   * - o que não será tocado;
+   * - o que ainda bloqueia.
+   */
+  function getPartnerWorkflowScopeText() {
+    const label = getCurrentPartnerLabel() || 'Parceira sem nome público';
+    const slug = getCurrentPartnerSlug() || 'sem slug';
+
+    const activeFlow = partnerDocumentActionState.importWorkspaceOpen
+      ? 'Preparação local de importação'
+      : partnerDocumentActionState.workspaceOpen
+        ? 'Comparação documental local'
+        : 'Nenhum microfluxo aberto';
+
+    return [
+      `Parceira em foco: ${label}`,
+      `Slug em foco: ${slug}`,
+      `Situação relacional lida: ${relationshipStatusEl.value || '—'}`,
+      `Acordo explícito: ${agreementStatusEl?.value || '—'}`,
+      `Microfluxo ativo agora: ${activeFlow}`,
+      `Comparação: ${partnerDocumentActionState.compareAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Preparação local: ${partnerDocumentActionState.importAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Mutualização: ${partnerDocumentActionState.mutualizeAllowed ? 'autorizada politicamente, sem modificação livre' : 'fora desta etapa'}`,
+    ].join('\n');
+  }
+
+  function getPartnerWriteNowText() {
+    const comparisonReadiness = getComparisonReadinessState();
+    const importReadiness = getImportReadinessState();
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      if (!importReadiness.canWrite) {
+        return [
+          'A preparação local ainda não pode ser levada para a ficha.',
+          '',
+          formatPartnerMissingItems(
+            importReadiness.missing,
+            'Ainda falta:'
+          ),
+        ].join('\n');
+      }
+
+      return [
+        'A preparação local já pode escrever na ficha, mas só em camada local.',
+        '',
+        getImportFieldWritePreviewText(),
+      ].join('\n');
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      if (!comparisonReadiness.canWrite) {
+        return [
+          'A comparação ainda não pode ser levada para a ficha.',
+          '',
+          formatPartnerMissingItems(
+            comparisonReadiness.missing,
+            'Ainda falta:'
+          ),
+        ].join('\n');
+      }
+
+      return [
+        'A comparação já pode escrever na ficha, mas só em camada local.',
+        '',
+        getComparisonFieldWritePreviewText(),
+      ].join('\n');
+    }
+
+    if (partnerDocumentActionState.importAllowed) {
+      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta.';
+    }
+
+    if (partnerDocumentActionState.compareAllowed) {
+      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta.';
+    }
+
+    return 'Nenhuma escrita local pode sair agora a partir desta aba.';
+  }
+
+  function getPartnerProtectedNowText() {
+    const lines = [
+      'Ficha comum publicada: não é reescrita automaticamente aqui.',
+      'Registro da parceira: não é alterado por esta aba.',
+      'Camada compartilhada: não sofre modificação livre nesta etapa.',
+      'Importação automática: não é disparada por nenhum destes cliques.',
+      'Publicação no catálogo: não acontece a partir deste painel.',
+    ];
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      lines.push(
+        'No microfluxo de comparação, formato e modo de importação não são gravados automaticamente.'
+      );
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      lines.push(
+        'No microfluxo de preparação, a escrita continua restrita a fonte, governança, ID, URL, formato, modo e nota de proveniência.'
+      );
+    }
+
+    return lines.join('\n');
+  }
+
+  function getPartnerBlockersNowText() {
+    const slug = getCurrentPartnerSlug();
+
+    if (!slug) {
+      return 'Falta selecionar, reconhecer ou formalizar a parceira em foco antes de abrir um microfluxo documental.';
+    }
+
+    if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      return [
+        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo.',
+        '',
+        'Enquanto isso, a leitura política continua visível, mas a escrita documental segue bloqueada.',
+      ].join('\n');
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      const readiness = getImportReadinessState();
+
+      return readiness.missing.length
+        ? formatPartnerMissingItems(
+            readiness.missing,
+            'Bloqueios atuais da preparação:'
+          )
+        : 'Nenhum bloqueio interno restante na preparação. O gesto agora é só reler a escrita prevista e decidir se leva ou não para a ficha.';
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      const readiness = getComparisonReadinessState();
+
+      return readiness.missing.length
+        ? formatPartnerMissingItems(
+            readiness.missing,
+            'Bloqueios atuais da comparação:'
+          )
+        : 'Nenhum bloqueio interno restante na comparação. O gesto agora é só reler a escrita prevista e decidir se leva ou não para a ficha.';
+    }
+
+    if (
+      partnerDocumentActionState.importAllowed ||
+      partnerDocumentActionState.compareAllowed
+    ) {
+      return 'Não há microfluxo aberto. O próximo bloqueio real é operacional: escolher entre comparação documental local ou preparação local de importação.';
+    }
+
+    return 'A política atual ainda não abriu comparação documental nem preparação local para esta parceira.';
+  }
+
+  function getPartnerFocusSourceLabel() {
+    const hasPreset = !!String(presetEl?.value || '').trim();
+    const hasCurrentFields = !!normalizeInlineWhitespace(`${displayEl?.value || ''} ${slugEl?.value || ''} ${baseUrlEl?.value || ''}`);
+    const incomingIdentity = buildIncomingCatalogIdentity();
+    const hasIncomingIdentity = !!normalizeInlineWhitespace(`${incomingIdentity.libraryName || ''} ${incomingIdentity.shortName || ''} ${incomingIdentity.slug || ''} ${incomingIdentity.acronym || ''}`);
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const currentBase = normalizePartnerBaseUrl(baseUrlEl?.value || '');
+    const urlSuggestionMatchesCurrent = !!(
+      partnerUrlSuggestionState
+      && ((currentSlug && normalizePartnerSlug(partnerUrlSuggestionState.slug || '') === currentSlug)
+        || (currentBase && normalizePartnerBaseUrl(partnerUrlSuggestionState.baseUrl || '') === currentBase))
+    );
+
+    if (hasPreset) return 'Parceira conhecida';
+    if (urlSuggestionMatchesCurrent) return 'Ajuda por URL';
+    if (hasIncomingIdentity) return 'Recepção artesanal';
+    if (hasCurrentFields) return 'Preenchimento local';
+    return 'Sem foco';
+  }
+
+  function renderPartnerIncomingSurfaceSummary() {
+    if (!partnerIncomingSurfaceSummaryEl) return;
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const identity = buildIncomingCatalogIdentity();
+    const identityReady = !!normalizeInlineWhitespace(`${identity.libraryName || ''} ${identity.shortName || ''} ${identity.slug || ''} ${identity.acronym || ''}`);
+
+    if (!file && !identityReady) {
+      partnerIncomingSurfaceSummaryEl.innerHTML = '<strong>Leitura da recepção:</strong> nenhuma recepção artesanal ativa ainda. Este bloco continua só como porta de entrada prudente para arquivo e identificação local.';
+      return;
+    }
+
+    if (file && !incomingCatalogFileAnalysis) {
+      partnerIncomingSurfaceSummaryEl.innerHTML = `<strong>Leitura da recepção:</strong> arquivo ${sanitize(file.name)} já selecionado, mas a leitura local ainda não foi executada. ${identityReady ? 'A identificação da biblioteca já está parcialmente pronta para seguir abaixo.' : 'A identificação da biblioteca ainda precisa ser consolidada.'}`;
+      return;
+    }
+
+    if (file && incomingCatalogFileAnalysis) {
+      const fileKind = getIncomingCatalogFileKind(file.name).toUpperCase();
+      partnerIncomingSurfaceSummaryEl.innerHTML = `<strong>Leitura da recepção:</strong> recepção artesanal lida localmente a partir de um arquivo ${sanitize(fileKind)}. ${identityReady ? 'A identificação local já pode ser levada para a governança abaixo sem importar registros.' : 'A leitura do arquivo já existe, mas ainda falta consolidar a identificação local da biblioteca.'}`;
+      return;
+    }
+
+    partnerIncomingSurfaceSummaryEl.innerHTML = '<strong>Leitura da recepção:</strong> a identificação local da biblioteca já foi preparada manualmente, mas ainda sem arquivo artesanal ativo nesta etapa.';
+  }
+
+  function renderPartnerFocusSurfaceSummary() {
+    if (!partnerFocusSurfaceSummaryEl) return;
+    const currentLabel = normalizeInlineWhitespace(getCurrentPartnerLabel());
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const sourceLabel = getPartnerFocusSourceLabel();
+    const relationship = normalizeInlineWhitespace(relationshipStatusEl?.value || '');
+    const agreement = normalizeInlineWhitespace(agreementStatusEl?.value || '');
+
+    if (!currentLabel && !currentSlug) {
+      partnerFocusSurfaceSummaryEl.innerHTML = '<strong>Leitura da parceira em foco:</strong> nenhuma parceira está em foco ainda. A recepção artesanal, a ajuda por URL e o preenchimento manual continuam separados até você consolidar uma identidade local abaixo.';
+      return;
+    }
+
+    if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(agreement || 'Sem acordo explícito ativo.')} A leitura política pode continuar, mas a escrita documental segue bloqueada.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.workspaceOpen) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local.`;
+      return;
+    }
+
+    if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} A política já abriu uso documental, mas ainda falta escolher e abrir um microfluxo.`;
+      return;
+    }
+
+    partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Sem situação relacional aplicável ainda.')} Esta aba continua em leitura política e técnica, sem microfluxo documental aberto.`;
+  }
+
+  function refreshPartnerPilotSummary() {
+    workflowScopeEl.value = getPartnerWorkflowScopeText();
+    writeNowEl.value = getPartnerWriteNowText();
+    protectedNowEl.value = getPartnerProtectedNowText();
+    blockersNowEl.value = getPartnerBlockersNowText();
+    renderPartnerIncomingSurfaceSummary();
+    renderPartnerFocusSurfaceSummary();
+    renderPartnerGovernanceSummary();
+    renderPartnerCompareSurfaceSummary();
+    renderPartnerImportSurfaceSummary();
+  }
+
+  function renderPartnerGovernanceSummary() {
+    if (
+      !partnerGovernanceStageValueEl ||
+      !partnerGovernanceStageNoteEl ||
+      !partnerGovernanceFlowValueEl ||
+      !partnerGovernanceFlowNoteEl ||
+      !partnerGovernanceWriteValueEl ||
+      !partnerGovernanceWriteNoteEl ||
+      !partnerGovernanceBoundaryValueEl ||
+      !partnerGovernanceBoundaryNoteEl
+    ) return;
+
+    const slug = getCurrentPartnerSlug();
+    const relationship = normalizeInlineWhitespace(relationshipStatusEl?.value || '');
+    const agreement = normalizeInlineWhitespace(agreementStatusEl?.value || '');
+    const comparisonReadiness = getComparisonReadinessState();
+    const importReadiness = getImportReadinessState();
+
+    if (!slug) {
+      partnerGovernanceStageValueEl.textContent = 'Sem parceira';
+      partnerGovernanceStageNoteEl.textContent = 'Selecione, reconheça ou formalize uma parceira para abrir um microfluxo documental.';
+      partnerGovernanceFlowValueEl.textContent = 'Fechado';
+      partnerGovernanceFlowNoteEl.textContent = 'Nenhuma comparação nem preparação local está aberta agora.';
+      partnerGovernanceWriteValueEl.textContent = 'Bloqueada';
+      partnerGovernanceWriteNoteEl.textContent = 'Sem parceira em foco, não há escrita local assistida disponível.';
+      partnerGovernanceBoundaryValueEl.textContent = 'Protegida';
+      partnerGovernanceBoundaryNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam fora desta etapa.';
+      return;
+    }
+
+    if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      partnerGovernanceStageValueEl.textContent = 'Leitura política';
+      partnerGovernanceStageNoteEl.textContent = agreement
+        ? `Acordo lido: ${agreement}. Ainda assim, a catalogação continua bloqueada para escrita documental nesta etapa.`
+        : 'Sem acordo explícito ativo para liberar escrita documental nesta etapa.';
+    } else if (partnerDocumentActionState.importAllowed) {
+      partnerGovernanceStageValueEl.textContent = 'Preparação local';
+      partnerGovernanceStageNoteEl.textContent = relationship
+        ? `Situação relacional lida: ${relationship}. A preparação local já pode ser usada com revisão humana.`
+        : 'Preparação local autorizada pela situação relacional atual.';
+    } else if (partnerDocumentActionState.compareAllowed) {
+      partnerGovernanceStageValueEl.textContent = 'Comparação local';
+      partnerGovernanceStageNoteEl.textContent = relationship
+        ? `Situação relacional lida: ${relationship}. A comparação documental local já pode ser usada.`
+        : 'Comparação documental local autorizada pela situação relacional atual.';
+    } else {
+      partnerGovernanceStageValueEl.textContent = relationship || 'Sem leitura';
+      partnerGovernanceStageNoteEl.textContent = 'A política atual ainda não abriu comparação documental nem preparação local.';
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      partnerGovernanceFlowValueEl.textContent = 'Preparação';
+      partnerGovernanceFlowNoteEl.textContent = importReadiness.canWrite
+        ? 'O microfluxo de preparação está aberto e suficientemente descrito para escrita local assistida.'
+        : `O microfluxo de preparação está aberto, mas ainda falta estabilizar a escrita local (${importReadiness.missing.length} falta(s)).`;
+    } else if (partnerDocumentActionState.workspaceOpen) {
+      partnerGovernanceFlowValueEl.textContent = 'Comparação';
+      partnerGovernanceFlowNoteEl.textContent = comparisonReadiness.canWrite
+        ? 'O microfluxo de comparação está aberto e suficientemente descrito para escrita local assistida.'
+        : `O microfluxo de comparação está aberto, mas ainda falta estabilizar a escrita local (${comparisonReadiness.missing.length} falta(s)).`;
+    } else if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
+      partnerGovernanceFlowValueEl.textContent = 'Sem microfluxo';
+      partnerGovernanceFlowNoteEl.textContent = 'Há autorização política suficiente, mas falta escolher entre comparação documental local e preparação local.';
+    } else {
+      partnerGovernanceFlowValueEl.textContent = 'Fechado';
+      partnerGovernanceFlowNoteEl.textContent = 'Nenhum microfluxo documental está aberto agora.';
+    }
+
+    if (partnerDocumentActionState.importWorkspaceOpen) {
+      partnerGovernanceWriteValueEl.textContent = importReadiness.canWrite ? 'Pode sair' : 'Ainda não';
+      partnerGovernanceWriteNoteEl.textContent = importReadiness.canWrite
+        ? 'A preparação já pode escrever somente em camada local: fonte, governança, identificadores, formato, modo e proveniência.'
+        : formatPartnerMissingItems(importReadiness.missing, 'Ainda falta para escrever em camada local:');
+    } else if (partnerDocumentActionState.workspaceOpen) {
+      partnerGovernanceWriteValueEl.textContent = comparisonReadiness.canWrite ? 'Pode sair' : 'Ainda não';
+      partnerGovernanceWriteNoteEl.textContent = comparisonReadiness.canWrite
+        ? 'A comparação já pode escrever somente em camada local e nota de proveniência.'
+        : formatPartnerMissingItems(comparisonReadiness.missing, 'Ainda falta para escrever em camada local:');
+    } else if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
+      partnerGovernanceWriteValueEl.textContent = 'Aguardando';
+      partnerGovernanceWriteNoteEl.textContent = 'A escrita local continua possível em princípio, mas ainda depende de abrir e descrever um microfluxo.';
+    } else {
+      partnerGovernanceWriteValueEl.textContent = 'Bloqueada';
+      partnerGovernanceWriteNoteEl.textContent = 'Sem autorização atual, esta aba continua apenas em leitura política e documental.';
+    }
+
+    partnerGovernanceBoundaryValueEl.textContent = 'Camada local';
+    partnerGovernanceBoundaryNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
+      ? 'Mesmo com mutualização autorizada politicamente, esta aba não modifica livremente o registro da parceira nem publica no catálogo.'
+      : 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam protegidos nesta etapa.';
+  }
+
+  function renderPartnerCompareSurfaceSummary() {
+    if (!partnerCompareSurfaceSummaryEl) return;
+    const readiness = getComparisonReadinessState();
+
+    if (!partnerDocumentActionState.compareAllowed) {
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação documental ainda bloqueada pela política atual desta parceira.';
+      return;
+    }
+
+    if (!partnerDocumentActionState.workspaceOpen) {
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação autorizada, mas nenhum microfluxo de comparação está aberto nesta tela.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha.';
+      return;
+    }
+
+    partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+  }
+
+  function renderPartnerImportSurfaceSummary() {
+    if (!partnerImportSurfaceSummaryEl) return;
+    const readiness = getImportReadinessState();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação local de importação ainda bloqueada pela política atual desta parceira.';
+      return;
+    }
+
+    if (!partnerDocumentActionState.importWorkspaceOpen) {
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação autorizada, mas nenhum microfluxo de preparação está aberto nesta tela.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha.';
+      return;
+    }
+
+    partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+  }
+
   function getComparisonOperationalStateText() {
+    const readiness = getComparisonReadinessState();
     const lines = [];
     lines.push(partnerDocumentActionState.workspaceOpen ? 'Espaço de comparação aberto nesta tela.' : 'Espaço de comparação fechado nesta tela.');
     lines.push(partnerDocumentActionState.compareAllowed ? 'Política atual: comparação autorizada.' : 'Política atual: comparação não autorizada.');
-    lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada, mas ainda não ativada aqui.' : 'Política atual: importação não autorizada aqui.');
+    lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada, mas continua fora deste microfluxo.' : 'Política atual: importação não autorizada aqui.');
     lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.' : 'Política atual: mutualização não autorizada nesta etapa.');
-    lines.push(String(partnerNoticeSummaryEl.value || '').trim() ? 'Resumo manual do registro da parceira já preenchido.' : 'Resumo manual do registro da parceira ainda vazio.');
-    lines.push(String(differenceSummaryEl.value || '').trim() ? 'Diferenças locais já registradas.' : 'Diferenças locais ainda não registradas.');
-    lines.push(String(comparisonDecisionEl.value || '').trim() ? 'Decisão local já registrada.' : 'Decisão local ainda não registrada.');
+    lines.push(readiness.canWrite ? 'Comparação suficientemente descrita para escrita local assistida.' : 'Comparação ainda insuficiente para escrita local assistida.');
+    if (readiness.missing.length) lines.push(formatPartnerMissingItems(readiness.missing, 'Faltas atuais desta comparação:'));
     return lines.join('\n');
   }
 
   function getComparisonPrudenceSignalText() {
+    const readiness = getComparisonReadinessState();
     if (!partnerDocumentActionState.compareAllowed) return 'Comparação não autorizada: manter só leitura política e técnica, sem uso documental ativo.';
-    if (partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed) return 'Importação e mutualização aparecem autorizadas no plano político, mas este microfluxo continua limitado à comparação local, à proveniência e à decisão humana.';
-    if (partnerDocumentActionState.importAllowed) return 'Importação autorizada no plano político, mas este microfluxo continua limitado à comparação local e à proveniência.';
-    if (!String(partnerNoticeSummaryEl.value || '').trim()) return 'Comparação autorizada, mas ainda falta resumir o registro da parceira antes de levar algo para a ficha.';
-    if (!String(differenceSummaryEl.value || '').trim()) return 'Comparação autorizada, porém ainda faltam diferenças e pontos de atenção registrados.';
-    return 'Comparação autorizada e suficientemente descrita para alimentar apenas a nota local de proveniência.';
+    if (readiness.missing.length) return `Comparação autorizada, mas ainda insuficiente para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+    if (partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed) return 'Comparação pronta para escrita local assistida. Mesmo assim, este microfluxo continua limitado à proveniência, à decisão humana e à camada local.';
+    if (partnerDocumentActionState.importAllowed) return 'Comparação pronta para escrita local assistida. A preparação local aparece autorizada, mas continua separada deste microfluxo.';
+    return 'Comparação pronta para escrita local assistida, sempre sem importação automática nem modificação livre do registro da parceira.';
   }
 
   function refreshComparisonWorkspaceDerivedTexts() {
-    const comparisonNote = getCurrentComparisonNote();
+    const readiness = getComparisonReadinessState();
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonCarryPreviewEl.value = comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
+    comparisonCarryPreviewEl.value = readiness.comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
       ? 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado na ficha no momento do clique.'
@@ -13777,9 +15762,10 @@ ${decisionSummary}` : '',
       : 'Sem comparação autorizada, esta área permanece apenas como lembrete de fronteira política e documental.';
     comparisonLiveHintEl.textContent = !partnerDocumentActionState.compareAllowed
       ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
-      : comparisonNote
-        ? 'O bloco de proveniência está pronto. Revê o resumo, a checklist e a escrita prevista antes de levar a comparação para a ficha.'
-        : 'Ainda faltam elementos para formar o bloco de proveniência. A ficha só receberá escrita quando a comparação estiver suficientemente descrita.';
+      : readiness.canWrite
+        ? 'A comparação está pronta para escrita local assistida. Revê a checklist, a prudência e a escrita prevista antes do clique.'
+        : `A comparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+    refreshPartnerPilotSummary();
   }
 
   function refreshLocalDraftComparisonSummary() {
@@ -13816,8 +15802,13 @@ ${decisionSummary}` : '',
   }
 
   function applyComparisonToBookForm() {
+    const readiness = getComparisonReadinessState();
     if (!partnerDocumentActionState.compareAllowed) {
       setPartnerProbeMessage('Comparação documental bloqueada para esta parceira nesta etapa.', 'warn');
+      return;
+    }
+    if (!readiness.canWrite) {
+      setPartnerProbeMessage(`A comparação ainda não pode ser levada para a ficha.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`, 'warn');
       return;
     }
 
@@ -14020,34 +16011,37 @@ ${decisionSummary}` : '',
   }
 
   function getImportOperationalStateText() {
+    const readiness = getImportReadinessState();
     const lines = [];
     lines.push(partnerDocumentActionState.importWorkspaceOpen ? 'Espaço de preparação de importação aberto nesta tela.' : 'Espaço de preparação de importação fechado nesta tela.');
     lines.push(partnerDocumentActionState.importAllowed ? 'Política atual: importação autorizada sob controle local.' : 'Política atual: importação não autorizada nesta etapa.');
     lines.push(partnerDocumentActionState.mutualizeAllowed ? 'Política atual: mutualização autorizada, sem modificação livre do registro da parceira.' : 'Política atual: mutualização não autorizada nesta etapa.');
     lines.push(partnerDocumentActionState.compareAllowed ? 'Comparação continua disponível como camada preparatória.' : 'Comparação não aparece disponível para esta parceira agora.');
-    lines.push(String(importFormatSelectEl?.value || '').trim() ? `Formato preparado: ${getSelectedOptionLabel(importFormatSelectEl)}.` : 'Formato preparado: ainda não escolhido.');
-    lines.push(String(importMethodSelectEl?.value || '').trim() ? `Modo preparado: ${getSelectedOptionLabel(importMethodSelectEl)}.` : 'Modo preparado: ainda não escolhido.');
-    lines.push(getImportCarryPreviewText() ? 'Há um bloco local preparado para a nota de proveniência.' : 'Ainda não há bloco local suficiente para levar à nota de proveniência.');
+    lines.push(readiness.canWrite ? 'Preparação suficientemente descrita para escrita local assistida.' : 'Preparação ainda insuficiente para escrita local assistida.');
+    if (readiness.missing.length) lines.push(formatPartnerMissingItems(readiness.missing, 'Faltas atuais desta preparação:'));
     return lines.join('\n');
   }
 
   function refreshImportWorkspaceDerivedTexts() {
-    const carryPreview = getImportCarryPreviewText();
+    const readiness = getImportReadinessState();
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importCarryPreviewEl.value = carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
+    importCarryPreviewEl.value = readiness.carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
+    importChecklistEl.value = getImportChecklistText();
+    importPrudenceSignalEl.value = getImportPrudenceSignalText();
     importFieldWriteHintEl.textContent = 'Este quadro mostra exatamente o que será escrito, mantido, limpo ou acrescentado em Fonte de parceira, governança, ID, URL, formato, modo e nota de proveniência.';
     importLiveHintEl.textContent = !partnerDocumentActionState.importAllowed
       ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
-      : carryPreview
-        ? 'O bloco de proveniência e os parâmetros locais estão prontos. Revê tudo antes de levar a preparação para a ficha.'
-        : 'Ainda faltam decisões e parâmetros locais para formar a preparação que será levada para a ficha.';
+      : readiness.canWrite
+        ? 'A preparação está pronta para escrita local assistida. Revê tudo antes de levar a preparação para a ficha.'
+        : `A preparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
       ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
+    refreshPartnerPilotSummary();
   }
 
   function setImportWorkspaceStatus(text = '') {
@@ -14082,8 +16076,13 @@ ${decisionSummary}` : '',
   }
 
   function applyImportPreparationToBookForm() {
+    const readiness = getImportReadinessState();
     if (!partnerDocumentActionState.importAllowed) {
       setPartnerProbeMessage('Importação controlada bloqueada para esta parceira nesta etapa.', 'warn');
+      return;
+    }
+    if (!readiness.canWrite) {
+      setPartnerProbeMessage(`A preparação ainda não pode ser levada para a ficha.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`, 'warn');
       return;
     }
 
@@ -14298,6 +16297,7 @@ ${decisionSummary}` : '',
     setPartnerRightsMatrixReadout();
     setPartnerNextStepReadout('empty');
     setPartnerBoundaryReadout('empty');
+    refreshPartnerPilotSummary();
   }
 
   async function fetchPartnerPolicyRowBySlug(slug) {
@@ -14338,18 +16338,21 @@ ${decisionSummary}` : '',
       actionHintEl.textContent = `${nextGateState.noAgreementMessage} Define primeiro os acordos no painel e volta aqui para aplicá-los.`;
       setPartnerNextStepReadout('agreement_blocked', row, nextGateState);
       setPartnerBoundaryReadout('agreement_blocked', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'registered_but_blocked') {
       actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
       setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
       setPartnerBoundaryReadout('registered_but_blocked', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'compare_only') {
       actionHintEl.textContent = 'Comparação documental autorizada pela situação relacional. Preparação local de importação e mutualização continuam bloqueadas nesta etapa.';
       setPartnerNextStepReadout('compare_only', row, nextGateState);
       setPartnerBoundaryReadout('compare_only', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'import_allowed') {
@@ -14358,17 +16361,20 @@ ${decisionSummary}` : '',
         : 'Comparação documental e preparação local de importação estão autorizadas pela política. Nada daqui dispara importação automática e isso não vale como mutualização.';
       setPartnerNextStepReadout('import_allowed', row, nextGateState);
       setPartnerBoundaryReadout('import_allowed', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     if (mode === 'not_registered') {
       actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
       setPartnerNextStepReadout('not_registered', row, nextGateState);
       setPartnerBoundaryReadout('not_registered', row, nextGateState);
+      refreshPartnerPilotSummary();
       return;
     }
     actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
     setPartnerNextStepReadout('empty', row, nextGateState);
     setPartnerBoundaryReadout('empty', row, nextGateState);
+    refreshPartnerPilotSummary();
   }
 
   function setPartnerPolicyReadout(row, gateState = null) {
