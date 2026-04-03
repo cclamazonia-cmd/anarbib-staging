@@ -17004,11 +17004,24 @@ ${decisionSummary}` : '',
 
     updateRefreshButton(false);
     updateLoginButton();
-    initPartnerProbeUi();
 
-    const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
-    catalogacaoAuthBootstrapping = false;
-    await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
+    let bootstrapCatalogacaoSession = null;
+    try {
+      bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
+      catalogacaoAuthBootstrapping = false;
+      await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
+    } catch (error) {
+      console.error('Falha fatal no bootstrap auth da catalogação.', error);
+      catalogacaoAuthBootstrapping = false;
+      resetCatalogacaoAuthChrome();
+      showMessage(refs.globalMessage, 'Não consegui iniciar a autenticação da catalogação. Tenta entrar de novo.', 'error');
+    }
+
+    try {
+      initPartnerProbeUi();
+    } catch (error) {
+      console.error('Falha ao iniciar a UI de parceiras na catalogação.', error);
+    }
 
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
 
