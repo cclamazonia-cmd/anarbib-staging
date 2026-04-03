@@ -1432,7 +1432,6 @@ function mapSessionStatusHintToStatus(hint) {
   if (normalized.includes('consultavel_no_local')) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
   return null;
 }
-const STANDARD_LOAN_DAYS = 21;
 function parseStatusDateValue(value) {
   if (value == null || value === '') return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
@@ -1451,13 +1450,6 @@ function formatStatusDateValue(value) {
     day: '2-digit'
   });
 }
-function addStatusDateDays(value, days = STANDARD_LOAN_DAYS) {
-  const parsed = parseStatusDateValue(value);
-  if (!parsed) return null;
-  const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
-  next.setUTCDate(next.getUTCDate() + Number(days || 0));
-  return Number.isNaN(next.getTime()) ? null : next;
-}
 function pickEarliestStatusDate(values = []) {
   return (Array.isArray(values) ? values : [])
     .map((value) => parseStatusDateValue(value))
@@ -1467,21 +1459,16 @@ function pickEarliestStatusDate(values = []) {
 function deriveAvailabilityInfoForRows(candidates = []) {
   const sources = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
   const availableNow = sources.some((source) => Number(source?.session_available_count ?? source?.available_count ?? 0) > 0);
-  const directDates = sources.flatMap((source) => [
+  const nextDate = pickEarliestStatusDate(sources.flatMap((source) => [
     source?.session_next_available_on,
     source?.next_available_on,
     source?.session_due_at,
     source?.due_at,
     source?.return_due_at,
-    source?.loan_due_at
-  ]);
-  const scheduledLoanDates = sources.flatMap((source) => [
+    source?.loan_due_at,
     source?.session_pickup_scheduled_for,
-    source?.pickup_scheduled_for,
-    source?.scheduled_for,
-    source?.retirada_agendada_para
-  ].map((value) => addStatusDateDays(value)).filter(Boolean));
-  const nextDate = pickEarliestStatusDate(directDates.length ? directDates : scheduledLoanDates);
+    source?.pickup_scheduled_for
+  ]));
   return {
     availableNow,
     nextDate,
@@ -1589,6 +1576,9 @@ function countSessionLibraryVisibleExemplares(row, userLibrary) {
 }
 function getSessionScopedLocalRows(row, userLibrary) {
   const candidates = getRowLibraryCandidates(row);
+  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
+  if (directMatches.length) return directMatches;
+
   const hintedMatches = candidates.filter((item) => {
     const hasSessionSignal = !!(
       item?.session_has_holding
@@ -1604,9 +1594,6 @@ function getSessionScopedLocalRows(row, userLibrary) {
     return !userLibrary.library_id && !userLibrary.library_slug && !userLibrary.library_name;
   });
   if (hintedMatches.length) return hintedMatches;
-
-  const directMatches = candidates.filter((item) => rowMatchesUserLibrary(item, userLibrary));
-  if (directMatches.length) return directMatches;
 
   const rowHasSessionSignal = !!(
     row?.session_has_holding
@@ -2477,7 +2464,8 @@ function buildAuthorHref(authorId, row = null) {
 function buildLivroHref(row) {
   const url = new URL(LIVRO_URL);
   if (row?.bib_ref) url.searchParams.set('ref', String(row.bib_ref));
-  if (row?.id != null && String(row.id).trim() !== '') url.searchParams.set('book_id', String(row.id));
+  const resolvedBookId = row?.book_id ?? row?.id;
+  if (resolvedBookId != null && String(resolvedBookId).trim()) url.searchParams.set('book_id', String(resolvedBookId));
   const explicitViewContext = resolveExplicitViewLibraryContext(row);
   if (explicitViewContext?.library_id) url.searchParams.set('library_id', String(explicitViewContext.library_id));
   if (explicitViewContext?.library_slug) url.searchParams.set('library_slug', String(explicitViewContext.library_slug));
