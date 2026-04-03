@@ -1124,6 +1124,7 @@ let selectedLibraryKeys = new Set();
 let selectedAvailabilityKeys = new Set();
 let availabilityAllExplicitlySelected = false;
 let activeReservedBibRefs = new Set();
+let sessionAvailabilityFactsByBookId = new Map();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
 let lastVisibleWindowKey = '';
@@ -1131,7 +1132,6 @@ let suppressVisibleLimitReset = false;
 let libraryAllExplicitlySelected = false;
 let authorAliasMap = new Map();
 let authorCanonicalMap = new Map();
-const STANDARD_LOAN_DAYS = 21;
 const DEFAULT_LIBRARY_LABELS = ['BLMF - Belém do Pará', 'BTL - São Paulo'];
 const LIBRARY_FILTER_ALL_VALUE = '__all__';
 const AVAILABILITY_FILTER_ALL_VALUE = '__all__';
@@ -1428,8 +1428,118 @@ function mapSessionStatusHintToStatus(hint) {
   const normalized = normalize(hint);
   if (!normalized) return null;
   if (normalized.includes('indisponivel_para_voce')) return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
+  if (normalized.includes('indisponivel_no_momento')) return { key: 'unavailable', filterKey: 'unavailable_now', label: 'Indisponível no momento', cls: 'status-unavailable' };
   if (normalized.includes('consultavel_no_local')) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
   return null;
+}
+const STANDARD_LOAN_DAYS = 21;
+function parseStatusDateValue(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00Z`) : new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+function formatStatusDateValue(value) {
+  const parsed = parseStatusDateValue(value);
+  if (!parsed) return '';
+  return parsed.toLocaleDateString('pt-BR', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+}
+function addStatusDateDays(value, days = STANDARD_LOAN_DAYS) {
+  const parsed = parseStatusDateValue(value);
+  if (!parsed) return null;
+  const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+  next.setUTCDate(next.getUTCDate() + Number(days || 0));
+  return Number.isNaN(next.getTime()) ? null : next;
+}
+function pickEarliestStatusDate(values = []) {
+  return (Array.isArray(values) ? values : [])
+    .map((value) => parseStatusDateValue(value))
+    .filter((date) => date instanceof Date && !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+}
+function deriveAvailabilityInfoForRows(candidates = []) {
+  const sources = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+  const availableNow = sources.some((source) => Number(source?.session_available_count ?? source?.available_count ?? 0) > 0);
+  const directDates = sources.flatMap((source) => [
+    source?.session_next_available_on,
+    source?.next_available_on,
+    source?.session_due_at,
+    source?.due_at,
+    source?.return_due_at,
+    source?.loan_due_at
+  ]);
+  const scheduledLoanDates = sources.flatMap((source) => [
+    source?.session_pickup_scheduled_for,
+    source?.pickup_scheduled_for,
+    source?.scheduled_for,
+    source?.retirada_agendada_para
+  ].map((value) => addStatusDateDays(value)).filter(Boolean));
+  const nextDate = pickEarliestStatusDate(directDates.length ? directDates : scheduledLoanDates);
+  return {
+    availableNow,
+    nextDate,
+    nextDateLabel: nextDate ? formatStatusDateValue(nextDate) : ''
+  };
+}
+async function loadSessionAvailabilityFactsByBookIds(bookIds = []) {
+  const normalizedIds = [...new Set((Array.isArray(bookIds) ? bookIds : []).map((value) => Number(value || 0)).filter((value) => value > 0))];
+  if (!authState?.user || !normalizedIds.length) return new Map();
+  try {
+    const { data, error } = await supabase.rpc('fn_v2_book_session_availability_for_current_user', {
+      p_book_ids: normalizedIds
+    });
+    if (error || !Array.isArray(data)) return new Map();
+    return new Map(data.map((row) => [String(row?.book_id ?? ''), row]).filter(([key]) => key));
+  } catch (_) {
+    return new Map();
+  }
+}
+function applySessionAvailabilityFactToRow(row, fact) {
+  if (!row || !fact || typeof fact !== 'object') return row;
+  row.session_library_id = fact.session_library_id ?? row.session_library_id ?? null;
+  row.session_library_slug = firstNonEmptyString(fact.session_library_slug, row.session_library_slug);
+  row.session_library_name = firstNonEmptyString(fact.session_library_name, row.session_library_name);
+  row.session_has_holding = fact.session_has_holding === true || row.session_has_holding === true;
+  row.session_exemplares_total = Number(fact.session_exemplares_total ?? row.session_exemplares_total ?? 0) || 0;
+  if (fact.session_available_count != null) row.session_available_count = Number(fact.session_available_count ?? 0) || 0;
+  row.session_status_hint = firstNonEmptyString(fact.session_status_hint, row.session_status_hint);
+  row.session_next_available_on = firstNonEmptyString(fact.session_next_available_on, row.session_next_available_on);
+  row.session_due_at = firstNonEmptyString(fact.session_due_at, row.session_due_at);
+  row.session_pickup_scheduled_for = firstNonEmptyString(fact.session_pickup_scheduled_for, row.session_pickup_scheduled_for);
+  if (fact.session_holding_id != null) row.session_holding_id = Number(fact.session_holding_id || 0) || row.session_holding_id || null;
+  if (fact.session_local_bib_ref) row.session_local_bib_ref = fact.session_local_bib_ref;
+  if (typeof fact.session_loanable === 'boolean') row.session_loanable = fact.session_loanable;
+
+  const holdings = Array.isArray(row._holdingLibrariesInfo) ? row._holdingLibrariesInfo : [];
+  for (const holding of holdings) {
+    const holdingId = Number(holding?.holding_id ?? holding?.id ?? 0) || 0;
+    const factHoldingId = Number(fact.session_holding_id || 0) || 0;
+    const matchesHolding = factHoldingId > 0 && holdingId > 0 && factHoldingId == holdingId;
+    const matchesLibrary = !matchesHolding && rowMatchesUserLibrary(holding, {
+      library_id: fact.session_library_id ?? null,
+      library_slug: firstNonEmptyString(fact.session_library_slug),
+      library_name: firstNonEmptyString(fact.session_library_name)
+    });
+    if (!matchesHolding && !matchesLibrary) continue;
+    holding.session_has_holding = fact.session_has_holding === true;
+    holding.session_exemplares_total = Number(fact.session_exemplares_total ?? holding.session_exemplares_total ?? 0) || 0;
+    if (fact.session_available_count != null) holding.session_available_count = Number(fact.session_available_count ?? 0) || 0;
+    holding.session_status_hint = firstNonEmptyString(fact.session_status_hint, holding.session_status_hint);
+    holding.session_next_available_on = firstNonEmptyString(fact.session_next_available_on, holding.session_next_available_on);
+    holding.session_due_at = firstNonEmptyString(fact.session_due_at, holding.session_due_at);
+    holding.session_pickup_scheduled_for = firstNonEmptyString(fact.session_pickup_scheduled_for, holding.session_pickup_scheduled_for);
+    if (typeof fact.session_loanable === 'boolean') holding.loanable = fact.session_loanable;
+    if (factHoldingId > 0) holding.holding_id = factHoldingId;
+    break;
+  }
+  return row;
 }
 function rowMatchesSelectedLibraries(row) {
   if (libraryAllExplicitlySelected || !selectedLibraryKeys.size) return true;
@@ -1508,124 +1618,6 @@ function getSessionScopedLocalRows(row, userLibrary) {
 
   return [];
 }
-/*
-  status/date helper zone kept localized for this patch.
-  line-padding safeguard 01
-  line-padding safeguard 02
-  line-padding safeguard 03
-  line-padding safeguard 04
-  line-padding safeguard 05
-  line-padding safeguard 06
-  line-padding safeguard 07
-  line-padding safeguard 08
-  line-padding safeguard 09
-  line-padding safeguard 10
-  line-padding safeguard 11
-  line-padding safeguard 12
-  line-padding safeguard 13
-  line-padding safeguard 14
-  line-padding safeguard 15
-  line-padding safeguard 16
-  line-padding safeguard 17
-  line-padding safeguard 18
-  line-padding safeguard 19
-  line-padding safeguard 20
-  line-padding safeguard 21
-  line-padding safeguard 22
-  line-padding safeguard 23
-  line-padding safeguard 24
-  line-padding safeguard 25
-  line-padding safeguard 26
-  line-padding safeguard 27
-  line-padding safeguard 28
-  line-padding safeguard 29
-  line-padding safeguard 30
-  line-padding safeguard 31
-  line-padding safeguard 32
-  line-padding safeguard 33
-  line-padding safeguard 34
-  line-padding safeguard 35
-  line-padding safeguard 36
-  line-padding safeguard 37
-  line-padding safeguard 38
-  line-padding safeguard 39
-  line-padding safeguard 40
-  line-padding safeguard 41
-  line-padding safeguard 42
-  line-padding safeguard 43
-  line-padding safeguard 44
-  line-padding safeguard 45
-*/
-function parseStatusDateValue(value) {
-  if (value == null || value === '') return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00Z`) : new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-function formatStatusDateValue(value) {
-  const parsed = parseStatusDateValue(value);
-  if (!parsed) return '';
-  return parsed.toLocaleDateString('pt-BR', {
-    timeZone: 'UTC',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-}
-function addStatusUtcDays(value, days) {
-  const parsed = parseStatusDateValue(value);
-  if (!parsed) return null;
-  const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
-  next.setUTCDate(next.getUTCDate() + Number(days || 0));
-  return Number.isNaN(next.getTime()) ? null : next;
-}
-function pickEarliestStatusDate(values = []) {
-  return (Array.isArray(values) ? values : [])
-    .map((value) => parseStatusDateValue(value))
-    .filter((date) => date instanceof Date && !Number.isNaN(date.getTime()))
-    .sort((a, b) => a.getTime() - b.getTime())[0] || null;
-}
-function deriveAvailabilityInfoForRows(candidates = []) {
-  const sources = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
-  const availableNow = sources.some((source) => Number(source?.session_available_count ?? source?.available_count ?? 0) > 0);
-  const directDates = sources.flatMap((source) => [
-    source?.session_next_available_on,
-    source?.next_available_on,
-    source?.next_available_at,
-    source?.available_from,
-    source?.available_on,
-    source?.expected_available_at,
-    source?.expected_available_on,
-    source?.estimated_available_at,
-    source?.estimated_available_on,
-    source?.proxima_disponibilidade,
-    source?.proxima_disponibilidade_em,
-    source?.data_disponivel,
-    source?.data_disponibilidade,
-    source?.data_prevista_disponibilidade,
-    source?.session_due_at,
-    source?.return_due_at,
-    source?.due_at,
-    source?.devolucao_prevista,
-    source?.devolucao_prevista_em,
-    source?.expected_return_at,
-    source?.loan_due_at
-  ]);
-  const scheduledLoanDates = sources.map((source) => {
-    return addStatusUtcDays(
-      source?.session_pickup_scheduled_for ?? source?.pickup_scheduled_for ?? source?.scheduled_for ?? source?.retirada_agendada_para,
-      STANDARD_LOAN_DAYS
-    );
-  });
-  const nextDate = pickEarliestStatusDate(directDates) || pickEarliestStatusDate(scheduledLoanDates);
-  return {
-    availableNow,
-    nextDate,
-    nextDateLabel: nextDate ? formatStatusDateValue(nextDate) : ''
-  };
-}
 function getStatusInfo(r) {
   const userLibrary = getUserLibraryContext();
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
@@ -1634,7 +1626,7 @@ function getStatusInfo(r) {
   if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
-      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_other_library', label: 'Presente em outra biblioteca', cls: 'status-unavailable', nextDateLabel: '' };
     }
 
     const localRows = canUsePersonalizedAvailability
@@ -1644,7 +1636,7 @@ function getStatusInfo(r) {
     const localHintedStatus = localRows
       .map((item) => mapSessionStatusHintToStatus(item?.session_status_hint))
       .find(Boolean);
-    if (localHintedStatus) return localHintedStatus;
+    if (localHintedStatus?.filterKey === 'unavailable_user') return { ...localHintedStatus, nextDateLabel: '' };
 
     const rowSessionLibraryLike = {
       library_id: r?.session_library_id ?? r?.library_id ?? null,
@@ -1655,34 +1647,32 @@ function getStatusInfo(r) {
     const rowHintedStatus = canUsePersonalizedAvailability && rowMatchesUserLibrary(rowSessionLibraryLike, userLibrary)
       ? mapSessionStatusHintToStatus(r?.session_status_hint)
       : null;
-    if (rowHintedStatus) return rowHintedStatus;
+    if (rowHintedStatus?.filterKey === 'unavailable_user') return { ...rowHintedStatus, nextDateLabel: '' };
 
     if (!localRows.length) {
-      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable' };
+      return { key: 'unavailable', filterKey: 'unavailable_user', label: 'Indisponível para você', cls: 'status-unavailable', nextDateLabel: '' };
     }
 
-    const localOnly = localRows.some((item) => item?.loanable === false) || (r.loanable === false && rowMatchesUserLibrary(r, userLibrary));
-    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
+    const localOnly = localRows.some((item) => (typeof item?.session_loanable === 'boolean' ? item.session_loanable : item?.loanable) === false)
+      || ((typeof r?.session_loanable === 'boolean' ? r.session_loanable : r.loanable) === false && rowMatchesUserLibrary(r, userLibrary));
+    if (localOnly) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
 
     const availabilityInfo = deriveAvailabilityInfoForRows(localRows.length ? localRows : [r]);
     if (availabilityInfo.availableNow) {
-      return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+      return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available', nextDateLabel: '' };
     }
 
-    if (canUsePersonalizedAvailability) {
-      return {
-        key: 'unavailable',
-        filterKey: 'unavailable_now',
-        label: availabilityInfo.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : 'Indisponível no momento',
-        cls: 'status-unavailable'
-      };
-    }
-
-    return { key: 'available', filterKey: 'available', label: 'Disponível', cls: 'status-available' };
+    return {
+      key: 'unavailable',
+      filterKey: 'unavailable_now',
+      label: availabilityInfo.nextDateLabel ? `Disponível dia ${availabilityInfo.nextDateLabel}` : 'Indisponível no momento',
+      cls: 'status-unavailable',
+      nextDateLabel: availabilityInfo.nextDateLabel || ''
+    };
   }
 
-  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local' };
-  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable' };
+  if (r.loanable === false) return { key: 'local', filterKey: 'local', label: 'Consultável no lugar', cls: 'status-local', nextDateLabel: '' };
+  return { key: 'check', filterKey: 'check', label: 'Disponibilidade a verificar', cls: 'status-unavailable', nextDateLabel: '' };
 }
 function parseQuery(raw) {
   const out = { tokens: [], phrases: [] };
@@ -2792,19 +2782,16 @@ function normalizeHoldingLibraries(value, row = null) {
       session_library_slug: firstNonEmptyString(row?.session_library_slug),
       session_library_name: firstNonEmptyString(row?.session_library_name),
       exemplares_total,
-      available_count: Number(item?.available_count ?? 0) || 0,
+      available_count: Number(item.available_count ?? 0) || 0,
       tombos_json,
-      loanable: row?.loanable === false ? false : true,
+      loanable: item?.loanable === false ? false : (row?.loanable === false ? false : true),
       session_has_holding: !!matchesSession,
-      session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : 0,
-      session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : 0,
+      session_exemplares_total: matchesSession ? (Number(row?.session_exemplares_total ?? 0) || 0) : null,
+      session_available_count: matchesSession ? (Number(row?.session_available_count ?? 0) || 0) : null,
       session_status_hint: matchesSession ? firstNonEmptyString(row?.session_status_hint) : '',
-      next_available_on: firstNonEmptyString(item?.next_available_on, row?.next_available_on),
-      due_at: firstNonEmptyString(item?.due_at, item?.return_due_at, item?.loan_due_at, row?.due_at, row?.return_due_at, row?.loan_due_at),
-      pickup_scheduled_for: firstNonEmptyString(item?.pickup_scheduled_for, item?.scheduled_for, item?.retirada_agendada_para, row?.pickup_scheduled_for, row?.scheduled_for, row?.retirada_agendada_para),
       session_next_available_on: matchesSession ? firstNonEmptyString(row?.session_next_available_on) : '',
-      session_due_at: matchesSession ? firstNonEmptyString(row?.session_due_at, row?.due_at, row?.return_due_at, row?.loan_due_at) : '',
-      session_pickup_scheduled_for: matchesSession ? firstNonEmptyString(row?.session_pickup_scheduled_for, row?.pickup_scheduled_for, row?.scheduled_for, row?.retirada_agendada_para) : ''
+      session_due_at: matchesSession ? firstNonEmptyString(row?.session_due_at) : '',
+      session_pickup_scheduled_for: matchesSession ? firstNonEmptyString(row?.session_pickup_scheduled_for) : ''
     });
   }
   return out;
@@ -2929,7 +2916,7 @@ async function loadRowsFromSupabase() {
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
-    return (data || []).map(r => {
+    const mappedRows = (data || []).map(r => {
       const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r);
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
@@ -2986,6 +2973,9 @@ async function loadRowsFromSupabase() {
         session_exemplares_total: Number(r.session_exemplares_total ?? 0) || 0,
         session_available_count: Number(r.session_available_count ?? 0) || 0,
         session_status_hint: firstNonEmptyString(r.session_status_hint),
+        session_next_available_on: firstNonEmptyString(r.session_next_available_on),
+        session_due_at: firstNonEmptyString(r.session_due_at),
+        session_pickup_scheduled_for: firstNonEmptyString(r.session_pickup_scheduled_for),
         author_id: authorId,
         author_ids: authorIdsList.length ? authorIdsList.join('; ') : (authorId ? String(authorId) : ''),
         author_ids_list: authorIdsList,
@@ -2999,6 +2989,13 @@ async function loadRowsFromSupabase() {
         _usingCanonicalAuthorView: true
       };
     });
+
+    sessionAvailabilityFactsByBookId = await loadSessionAvailabilityFactsByBookIds(mappedRows.map((row) => row?.book_id));
+    if (sessionAvailabilityFactsByBookId.size) {
+      mappedRows.forEach((row) => applySessionAvailabilityFactToRow(row, sessionAvailabilityFactsByBookId.get(String(row?.book_id ?? ''))));
+    }
+
+    return mappedRows;
   } catch (e) {
     alert('Erro ao carregar catálogo: ' + (e?.message || String(e)));
     return [];
@@ -3084,7 +3081,7 @@ function buildReservationMarkup(r) {
     return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
   }
   if (status.key === 'unavailable') {
-    return '<div class="reserve-slot"><span class="reserve-note">Indisponível</span></div>';
+    return `<div class="reserve-slot"><span class="reserve-note">${escapeHTML(status?.label || 'Indisponível no momento')}</span></div>`;
   }
   if (!r.bib_ref) {
     return '<div class="reserve-slot"><span class="reserve-note">Referência indisponível</span></div>';
@@ -3326,7 +3323,7 @@ function mergeAuthorChipEntriesForGroup(items) {
 }
 function mergeHoldingLibraryInfoForGroup(items) {
   const mergedMap = new Map();
-  const hintPriority = { no_acervo_da_sua_biblioteca: 3, consultavel_no_local: 2, indisponivel_para_voce: 1, '': 0 };
+  const hintPriority = { no_acervo_da_sua_biblioteca: 4, consultavel_no_local: 3, indisponivel_no_momento: 2, indisponivel_para_voce: 1, '': 0 };
   for (const item of (items || [])) {
     const candidates = Array.isArray(item?._holdingLibrariesInfo) && item._holdingLibrariesInfo.length
       ? item._holdingLibrariesInfo
@@ -3348,7 +3345,10 @@ function mergeHoldingLibraryInfoForGroup(items) {
         session_has_holding: false,
         session_exemplares_total: 0,
         session_available_count: 0,
-        session_status_hint: ''
+        session_status_hint: '',
+        session_next_available_on: '',
+        session_due_at: '',
+        session_pickup_scheduled_for: ''
       };
       const exemplares_total = Number(candidate.exemplares_total ?? ((candidate.library_id || candidate.library_slug || candidate.library_name || candidate.biblioteca) ? 1 : 0)) || 0;
       const available_count = Number(candidate.available_count ?? 0) || 0;
@@ -3364,6 +3364,15 @@ function mergeHoldingLibraryInfoForGroup(items) {
       if ((hintPriority[session_status_hint] || 0) > (hintPriority[current.session_status_hint] || 0)) {
         current.session_status_hint = session_status_hint;
       }
+      const candidateNextAvailable = firstNonEmptyString(candidate.session_next_available_on, candidate.next_available_on);
+      const candidateDueAt = firstNonEmptyString(candidate.session_due_at, candidate.due_at);
+      const candidatePickupScheduledFor = firstNonEmptyString(candidate.session_pickup_scheduled_for, candidate.pickup_scheduled_for);
+      const currentNextAvailable = pickEarliestStatusDate([current.session_next_available_on, candidateNextAvailable]);
+      current.session_next_available_on = currentNextAvailable ? currentNextAvailable.toISOString().slice(0, 10) : firstNonEmptyString(current.session_next_available_on, candidateNextAvailable);
+      const currentDueAt = pickEarliestStatusDate([current.session_due_at, candidateDueAt]);
+      current.session_due_at = currentDueAt ? currentDueAt.toISOString().slice(0, 10) : firstNonEmptyString(current.session_due_at, candidateDueAt);
+      const currentPickupAt = pickEarliestStatusDate([current.session_pickup_scheduled_for, candidatePickupScheduledFor]);
+      current.session_pickup_scheduled_for = currentPickupAt ? currentPickupAt.toISOString() : firstNonEmptyString(current.session_pickup_scheduled_for, candidatePickupScheduledFor);
       mergedMap.set(key, current);
     }
   }
