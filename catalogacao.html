@@ -3992,6 +3992,18 @@
     (function () {
       const LOGIN_URL = 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html';
 
+      function buildCatalogacaoLoginUrl() {
+        try {
+          const currentUrl = String(window.location.href || '').trim();
+          if (!currentUrl) return LOGIN_URL;
+          const loginUrl = new URL(LOGIN_URL, window.location.origin);
+          loginUrl.searchParams.set('next', currentUrl);
+          return loginUrl.toString();
+        } catch (_) {
+          return LOGIN_URL;
+        }
+      }
+
       function markBrokenAuthFallback() {
         const body = document.body;
         if (body) {
@@ -4023,7 +4035,7 @@
           const settled = body?.dataset?.catalogacaoAuthSettled === 'true';
           const authState = String(body?.dataset?.catalogacaoAuthState || '').trim().toLowerCase();
           if (!settled || authState === 'anonymous' || authState === 'broken') {
-            window.location.href = LOGIN_URL;
+            window.location.href = buildCatalogacaoLoginUrl();
           }
         }, true);
       }
@@ -4072,6 +4084,18 @@
       MANUAL: 'https://cclamazonia-cmd.github.io/anarbib-staging/Manual_do_AnarBib.pdf',
     };
     const LOGIN_URL = ROUTES.CADASTRO;
+
+    function buildCatalogacaoLoginUrl() {
+      try {
+        const currentUrl = String(window.location.href || '').trim();
+        if (!currentUrl) return LOGIN_URL;
+        const loginUrl = new URL(LOGIN_URL, window.location.origin);
+        loginUrl.searchParams.set('next', currentUrl);
+        return loginUrl.toString();
+      } catch (_) {
+        return LOGIN_URL;
+      }
+    }
     const DIGITAL_PUBLIC_BUCKET = 'anarbib-pdf-public';
     const DIGITAL_RESTRICTED_BUCKET = 'pdf-restrito';
     const DIGITAL_PUBLIC_BUCKET_LEGACY = 'pdf-publico';
@@ -13800,7 +13824,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     refs.loginBtn.addEventListener('click', async () => {
       const hasSession = !!state.session?.user?.id;
       if (!hasSession) {
-        window.location.href = LOGIN_URL;
+        window.location.href = buildCatalogacaoLoginUrl();
         return;
       }
       refs.loginBtn.disabled = true;
