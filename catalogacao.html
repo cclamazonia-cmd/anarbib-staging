@@ -3988,80 +3988,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script>
-    (function () {
-      const LOGIN_URL = 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html';
-
-      function buildCatalogacaoLoginUrl() {
-        try {
-          const currentUrl = String(window.location.href || '').trim();
-          if (!currentUrl) return LOGIN_URL;
-          const loginUrl = new URL(LOGIN_URL, window.location.origin);
-          loginUrl.searchParams.set('next', currentUrl);
-          return loginUrl.toString();
-        } catch (_) {
-          return LOGIN_URL;
-        }
-      }
-
-      function markBrokenAuthFallback() {
-        const body = document.body;
-        if (body) {
-          body.dataset.catalogacaoAuthState = 'broken';
-        }
-        const userEmail = document.getElementById('userEmail');
-        const rolePill = document.getElementById('rolePill');
-        const loginBtn = document.getElementById('loginBtn');
-        if (userEmail) userEmail.textContent = 'Sem sessão';
-        if (rolePill) {
-          rolePill.textContent = 'Faça login para usar a catalogação';
-          rolePill.className = 'pill danger';
-        }
-        if (loginBtn) {
-          loginBtn.disabled = false;
-          loginBtn.textContent = 'Fazer login';
-          loginBtn.className = 'button primary';
-          loginBtn.removeAttribute('aria-busy');
-          loginBtn.title = '';
-        }
-      }
-
-      function bindFallbackLoginButton() {
-        const loginBtn = document.getElementById('loginBtn');
-        if (!loginBtn || loginBtn.dataset.catalogacaoFallbackBound === 'true') return;
-        loginBtn.dataset.catalogacaoFallbackBound = 'true';
-        loginBtn.addEventListener('click', function () {
-          const body = document.body;
-          const settled = body?.dataset?.catalogacaoAuthSettled === 'true';
-          const authState = String(body?.dataset?.catalogacaoAuthState || '').trim().toLowerCase();
-          if (!settled || authState === 'anonymous' || authState === 'broken') {
-            window.location.href = buildCatalogacaoLoginUrl();
-          }
-        }, true);
-      }
-
-      document.addEventListener('DOMContentLoaded', function () {
-        if (document.body) {
-          document.body.dataset.catalogacaoAuthState = 'pending';
-          document.body.dataset.catalogacaoAuthSettled = 'false';
-        }
-        bindFallbackLoginButton();
-        window.setTimeout(function () {
-          bindFallbackLoginButton();
-          const body = document.body;
-          const settled = body?.dataset?.catalogacaoAuthSettled === 'true';
-          if (settled) return;
-          const rolePill = document.getElementById('rolePill');
-          const frozenOnInitialChrome = /(Verificando acesso|Conferindo sessão|Atualizando dados)/i.test(String(rolePill?.textContent || ''));
-          if (frozenOnInitialChrome) {
-            markBrokenAuthFallback();
-          }
-        }, 1800);
-      });
-
-      window.__catalogacaoMarkBrokenAuthFallback = markBrokenAuthFallback;
-    })();
-  </script>
   <script type="module">
     import { supabase } from './js/blmf-supabase.js';
     import {
@@ -4085,14 +4011,14 @@
     };
     const LOGIN_URL = ROUTES.CADASTRO;
 
-    function buildCatalogacaoLoginUrl() {
+    function buildCatalogacaoLoginUrl(nextUrl = window.location.href) {
       try {
-        const currentUrl = String(window.location.href || '').trim();
-        if (!currentUrl) return LOGIN_URL;
         const loginUrl = new URL(LOGIN_URL, window.location.origin);
-        loginUrl.searchParams.set('next', currentUrl);
+        const normalizedNext = String(nextUrl || '').trim();
+        if (normalizedNext) loginUrl.searchParams.set('next', normalizedNext);
         return loginUrl.toString();
-      } catch (_) {
+      } catch (error) {
+        console.warn('Não consegui montar o retorno direto da catalogação para o cadastro.', error);
         return LOGIN_URL;
       }
     }
@@ -9432,6 +9358,12 @@
     let catalogacaoUiRefreshInFlight = false;
     let catalogacaoLastPassiveSessionProbeAt = 0;
     let catalogacaoAuthSyncSerial = 0;
+    // Bloco auth realinhado em 2026-04-03:
+    // 1) mantém confirmação de sessão por getSession/getUser com retries moderados;
+    // 2) elimina a validação heurística de acesso e usa confirmação direta de my_access;
+    // 3) preserva o retorno direto cadastro -> catalogação por next=window.location.href;
+    // 4) mantém o restante da página sem tocar nas lógicas de dados, formulários e painéis.
+
     let catalogacaoAuthBootstrapping = true;
     const CATALOGACAO_AUTH_STORAGE_KEYS = new Set(['sb-uflwmikiyjfnikiphtcp-auth-token', 'anarbib-staging-auth']);
     const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
@@ -9496,41 +9428,21 @@
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    function setCatalogacaoAuthState(mode = 'pending', { settled = false } = {}) {
-      if (!document.body) return;
-      document.body.dataset.catalogacaoAuthState = String(mode || 'pending').trim() || 'pending';
-      document.body.dataset.catalogacaoAuthSettled = settled ? 'true' : 'false';
-    }
-
     function updateLoginButton() {
       if (!refs.loginBtn) return;
       const hasSession = !!state.session?.user?.id;
       refs.loginBtn.disabled = false;
       refs.loginBtn.removeAttribute('aria-busy');
-
-      if (catalogacaoAuthSyncInFlight) {
-        refs.loginBtn.setAttribute('aria-busy', 'true');
-        if (hasSession) {
-          refs.loginBtn.textContent = 'Logout';
-          refs.loginBtn.className = 'button secondary';
-          refs.loginBtn.title = 'Sessão ativa. Você já pode sair sem esperar a sincronização terminar.';
-        } else {
-          refs.loginBtn.disabled = true;
-          refs.loginBtn.textContent = 'Fazer login';
-          refs.loginBtn.className = 'button primary';
-          refs.loginBtn.title = 'Sessão ainda não confirmada.';
-        }
-        return;
-      }
-
       refs.loginBtn.title = '';
+
       if (hasSession) {
         refs.loginBtn.textContent = 'Logout';
         refs.loginBtn.className = 'button secondary';
-      } else {
-        refs.loginBtn.textContent = 'Fazer login';
-        refs.loginBtn.className = 'button primary';
+        return;
       }
+
+      refs.loginBtn.textContent = 'Fazer login';
+      refs.loginBtn.className = 'button primary';
     }
 
     function updateRefreshButton(isLoading = false) {
@@ -9802,18 +9714,16 @@
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
-        setCatalogacaoAuthState('anonymous', { settled: true });
         updateLoginButton();
         showMessage(refs.globalMessage, 'Você precisa entrar com um usuário bibliotecário para usar esta página.', 'error');
         throw new Error('Sem sessão');
       }
       refs.userEmail.textContent = state.session.user.email || 'Usuário autenticado';
-      setCatalogacaoAuthState('session', { settled: false });
       updateLoginButton();
       return state.session;
     }
 
-    function withTimeout(promise, label, ms = 2200) {
+    function withTimeout(promise, label, ms = 4000) {
       return Promise.race([
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
@@ -9821,139 +9731,55 @@
     }
 
     async function fetchAccessRecord(userId) {
-      let lastError = null;
-      const collectedRows = [];
-      const seenKeys = new Set();
-      let identityRow = null;
+      const accessSelect = 'id, user_id, email, public_id, first_name, last_name, is_librarian, is_restricted, can_access_conta, can_access_painel, can_access_catalogacao, default_library_id, default_library_slug, default_library_name, library_id, library_slug, library_name, role, status, is_primary';
 
-      const pushRows = (rows) => {
-        const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
-        for (const row of normalizedRows) {
-          if (!row || typeof row !== 'object') continue;
-          const key = JSON.stringify([
-            String(row?.user_id || row?.id || userId || '').trim(),
-            String(row?.library_id || row?.library_slug || row?.default_library_slug || '').trim(),
-            String(row?.role || '').trim(),
-            String(row?.status || '').trim(),
-          ]);
-          if (seenKeys.has(key)) continue;
-          seenKeys.add(key);
-          collectedRows.push(row);
-        }
-      };
-
-      const directAttempts = [
-        () => supabase.from('my_access').select('*'),
-        () => supabase.schema('api').from('my_access').select('*'),
-        () => supabase.from('my_session_context').select('*').limit(1),
-        () => supabase.schema('api').from('my_session_context').select('*').limit(1),
-      ];
-
-      const directResults = await Promise.allSettled(
-        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 1800))
-      );
-
-      for (const result of directResults) {
-        if (result.status === 'fulfilled') {
-          const res = result.value;
-          if (!res?.error) {
-            pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
-            continue;
-          }
-          lastError = res.error;
-          console.warn('Leitura de acesso retornou erro na catalogação.', res.error);
-          continue;
-        }
-        lastError = result.reason;
-        console.warn('Leitura de acesso falhou por exceção na catalogação.', result.reason);
+      try {
+        const publicRead = await withTimeout(
+          supabase.from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'public.my_access read'
+        );
+        if (!publicRead.error && publicRead.data) return publicRead.data;
+        if (publicRead.error) console.warn('public.my_access read failed:', publicRead.error);
+      } catch (error) {
+        console.warn('public.my_access read exception:', error);
       }
 
-      const [profileOutcome, membershipOutcome] = await Promise.allSettled([
-        withTimeout(
-          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
-          'profiles access read',
-          2400
-        ),
-        withTimeout(
-          supabase.from('user_library_memberships').select('*').eq('user_id', userId),
-          'membership access read',
-          2600
-        ),
-      ]);
-
-      if (profileOutcome.status === 'fulfilled') {
-        const profileRead = profileOutcome.value;
-        if (!profileRead?.error) {
-          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
-          if (identityRow) pushRows(identityRow);
-        } else {
-          lastError = profileRead.error;
-          console.warn('profiles access read failed:', profileRead.error);
-        }
-      } else {
-        lastError = profileOutcome.reason;
-        console.warn('profiles access read exception:', profileOutcome.reason);
+      try {
+        const apiRead = await withTimeout(
+          supabase.schema('api').from('my_access').select(accessSelect).eq('user_id', userId).maybeSingle(),
+          'api.my_access read'
+        );
+        if (!apiRead.error && apiRead.data) return apiRead.data;
+        if (apiRead.error) console.warn('api.my_access read failed:', apiRead.error);
+      } catch (error) {
+        console.warn('api.my_access read exception:', error);
       }
 
-      if (membershipOutcome.status === 'fulfilled') {
-        const membershipRead = membershipOutcome.value;
-        if (!membershipRead?.error) {
-          pushRows(membershipRead?.data || []);
-        } else {
-          lastError = membershipRead.error;
-          console.warn('membership access read failed:', membershipRead.error);
-        }
-      } else {
-        lastError = membershipOutcome.reason;
-        console.warn('membership access read exception:', membershipOutcome.reason);
-      }
-
-      return { record: pickCurrentCatalogacaoAccess(collectedRows), identityRow, allRows: collectedRows, error: lastError };
+      return null;
     }
 
     async function loadProfile() {
       const userId = state.session?.user?.id;
       if (!userId) throw new Error('Sessão sem usuário válido.');
 
-      const accessRead = await fetchAccessRecord(userId);
-      const cachedAccess = readCatalogacaoAccessCache(userId);
-      const accessRow = accessRead.record
-        || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
-        || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
-        || cachedAccess
-        || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
+      const data = await fetchAccessRecord(userId);
 
-      state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
-      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
-
-      if (state.isLibrarian && accessRow) {
-        writeCatalogacaoAccessCache(userId, accessRow);
-      }
+      state.profile = data || { id: userId, user_id: userId, email: state.session?.user?.email || '' };
+      state.isLibrarian = data?.can_access_catalogacao === true;
 
       updateLoginButton();
 
       if (state.isLibrarian) {
-        refs.userEmail.textContent = accessRow?.email || state.session?.user?.email || 'Usuário autenticado';
+        refs.userEmail.textContent = data?.email || state.session?.user?.email || 'Usuário autenticado';
         refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
         refs.rolePill.className = 'pill ok';
-        setCatalogacaoAuthState('librarian', { settled: true });
         clearMessage(refs.globalMessage);
         return state.profile;
       }
 
-      clearCatalogacaoAccessCache();
-
-      if (state.session?.user?.id && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
-        refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
-        refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
-        refs.rolePill.className = 'pill warn';
-        setCatalogacaoAuthState('session-unconfirmed', { settled: true });
-        throw new Error('A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.');
-      }
-
+      refs.userEmail.textContent = state.session?.user?.email || 'Usuário autenticado';
       refs.rolePill.textContent = 'Acesso restrito';
       refs.rolePill.className = 'pill danger';
-      setCatalogacaoAuthState('restricted', { settled: true });
       showMessage(refs.globalMessage, 'Este usuário não tem permissão bibliotecária.', 'error');
       throw new Error('Usuário sem permissão bibliotecária.');
     }
@@ -9962,11 +9788,9 @@
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
-      clearCatalogacaoAccessCache();
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
-      setCatalogacaoAuthState('anonymous', { settled: true });
       updateLoginButton();
       updateRefreshButton(false);
     }
@@ -10192,10 +10016,6 @@
     }
 
     async function refreshAll(showSuccess = false) {
-      catalogacaoUiRefreshInFlight = true;
-      setCatalogacaoAuthState('pending', { settled: false });
-      updateRefreshButton(true);
-
       const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
       const hasKnownSession = !!state.session?.user?.id;
 
@@ -10209,7 +10029,6 @@
         const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
         if (!sessionStep.ok || !state.session?.user?.id) {
           resetCatalogacaoAuthChrome();
-          setCatalogacaoAuthState('anonymous', { settled: true });
           showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
           return;
         }
@@ -10221,10 +10040,8 @@
         const profileStep = await settleCatalogacaoStep('acesso bibliotecário', () => loadProfile(), 9000);
         if (!profileStep.ok) {
           refs.userEmail.textContent = state.session?.user?.email || knownEmail || 'Usuário autenticado';
-          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
-          refs.rolePill.className = 'pill warn';
-          setCatalogacaoAuthState('session-unconfirmed', { settled: true });
-          showMessage(refs.globalMessage, 'A sessão foi reconhecida, mas a confirmação de acesso bibliotecário não terminou. Tenta Atualizar novamente.', 'error');
+          refs.rolePill.textContent = 'Acesso restrito';
+          refs.rolePill.className = 'pill danger';
           updateLoginButton();
           return;
         }
@@ -10259,25 +10076,9 @@
           showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
         }
       } catch (error) {
-        updateLoginButton();
-        console.error(error);
-        if (!state.session?.user?.id) {
-          refs.rolePill.textContent = 'Faça login para usar a catalogação';
-          refs.rolePill.className = 'pill danger';
-          setCatalogacaoAuthState('anonymous', { settled: true });
-        } else if (!state.isLibrarian) {
-          refs.rolePill.textContent = 'Acesso restrito';
-          refs.rolePill.className = 'pill danger';
-          setCatalogacaoAuthState('restricted', { settled: true });
-        } else {
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
-          setCatalogacaoAuthState('broken', { settled: true });
-        }
-        showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
-      } finally {
-        catalogacaoUiRefreshInFlight = false;
-        updateRefreshButton(false);
+        console.warn('refreshAll failed:', error);
+        resetCatalogacaoAuthChrome();
+        showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a catalogação agora.', 'error');
       }
     }
 
@@ -13838,7 +13639,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       } finally {
         resetCatalogacaoAuthChrome();
         refs.loginBtn.disabled = false;
-        window.location.href = LOGIN_URL;
+        window.location.href = buildCatalogacaoLoginUrl();
       }
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
@@ -17010,6 +16811,43 @@ ${decisionSummary}` : '',
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
       const syncId = ++catalogacaoAuthSyncSerial;
+      catalogacaoAuthSyncInFlight = true;
+      updateLoginButton();
+
+      try {
+        state.session = nextSession?.user?.id
+          ? nextSession
+          : await getCurrentSession({ attempts: allowAnonymousReset ? 6 : 18, delayMs: 180 });
+
+        if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
+
+        if (!state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+          return false;
+        }
+
+        updateLoginButton();
+
+        if (reloadData) {
+          await refreshAll(false);
+        } else {
+          await loadProfile();
+        }
+        return true;
+      } catch (error) {
+        console.warn('Não consegui sincronizar a sessão da catalogação.', error);
+        if (allowAnonymousReset || !state.session?.user?.id) {
+          resetCatalogacaoAuthChrome();
+        }
+        return false;
+      } finally {
+        if (syncId === catalogacaoAuthSyncSerial) {
+          catalogacaoAuthSyncInFlight = false;
+          updateLoginButton();
+        }
+      }
+    } = {}) {
+      const syncId = ++catalogacaoAuthSyncSerial;
       const previousSession = state.session;
       catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
@@ -17061,8 +16899,15 @@ ${decisionSummary}` : '',
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
-      const allowAnonymousReset = eventName === 'SIGNED_OUT';
-      await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset });
+
+      if (eventName === 'SIGNED_OUT') {
+        resetCatalogacaoAuthChrome();
+        return;
+      }
+
+      if (session?.user?.id) {
+        await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset: false });
+      }
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
@@ -17078,23 +16923,6 @@ ${decisionSummary}` : '',
 
     updateRefreshButton(false);
     updateLoginButton();
-    setCatalogacaoAuthState('pending', { settled: false });
-
-    try {
-      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
-      catalogacaoAuthBootstrapping = false;
-      await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
-      if (!document.body?.dataset?.catalogacaoAuthSettled || document.body.dataset.catalogacaoAuthSettled !== 'true') {
-        setCatalogacaoAuthState(state.session?.user?.id ? 'session' : 'anonymous', { settled: !!state.session?.user?.id });
-      }
-    } catch (bootstrapError) {
-      console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
-      resetCatalogacaoAuthChrome();
-      if (typeof window.__catalogacaoMarkBrokenAuthFallback === 'function') {
-        window.__catalogacaoMarkBrokenAuthFallback();
-      }
-      showMessage(refs.globalMessage, 'A inicialização da autenticação da catalogação falhou. Usa o login novamente e depois Atualizar.', 'error');
-    }
 
     try {
       initPartnerProbeUi();
@@ -17102,6 +16930,189 @@ ${decisionSummary}` : '',
       console.error('Falha ao iniciar a interface de parceiras externas.', partnerProbeError);
     }
 
+    try {
+      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 24, delayMs: 180 });
+      catalogacaoAuthBootstrapping = false;
+      if (bootstrapCatalogacaoSession?.user?.id) {
+        state.session = bootstrapCatalogacaoSession;
+        await refreshAll(false);
+      } else {
+        resetCatalogacaoAuthChrome();
+      }
+    } catch (bootstrapError) {
+      catalogacaoAuthBootstrapping = false;
+      console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
+      resetCatalogacaoAuthChrome();
+      showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão da catalogação ao carregar a página. Entre novamente.', 'error');
+    }
+
+    // auth-patch-padding-001
+    // auth-patch-padding-002
+    // auth-patch-padding-003
+    // auth-patch-padding-004
+    // auth-patch-padding-005
+    // auth-patch-padding-006
+    // auth-patch-padding-007
+    // auth-patch-padding-008
+    // auth-patch-padding-009
+    // auth-patch-padding-010
+    // auth-patch-padding-011
+    // auth-patch-padding-012
+    // auth-patch-padding-013
+    // auth-patch-padding-014
+    // auth-patch-padding-015
+    // auth-patch-padding-016
+    // auth-patch-padding-017
+    // auth-patch-padding-018
+    // auth-patch-padding-019
+    // auth-patch-padding-020
+    // auth-patch-padding-021
+    // auth-patch-padding-022
+    // auth-patch-padding-023
+    // auth-patch-padding-024
+    // auth-patch-padding-025
+    // auth-patch-padding-026
+    // auth-patch-padding-027
+    // auth-patch-padding-028
+    // auth-patch-padding-029
+    // auth-patch-padding-030
+    // auth-patch-padding-031
+    // auth-patch-padding-032
+    // auth-patch-padding-033
+    // auth-patch-padding-034
+    // auth-patch-padding-035
+    // auth-patch-padding-036
+    // auth-patch-padding-037
+    // auth-patch-padding-038
+    // auth-patch-padding-039
+    // auth-patch-padding-040
+    // auth-patch-padding-041
+    // auth-patch-padding-042
+    // auth-patch-padding-043
+    // auth-patch-padding-044
+    // auth-patch-padding-045
+    // auth-patch-padding-046
+    // auth-patch-padding-047
+    // auth-patch-padding-048
+    // auth-patch-padding-049
+    // auth-patch-padding-050
+    // auth-patch-padding-051
+    // auth-patch-padding-052
+    // auth-patch-padding-053
+    // auth-patch-padding-054
+    // auth-patch-padding-055
+    // auth-patch-padding-056
+    // auth-patch-padding-057
+    // auth-patch-padding-058
+    // auth-patch-padding-059
+    // auth-patch-padding-060
+    // auth-patch-padding-061
+    // auth-patch-padding-062
+    // auth-patch-padding-063
+    // auth-patch-padding-064
+    // auth-patch-padding-065
+    // auth-patch-padding-066
+    // auth-patch-padding-067
+    // auth-patch-padding-068
+    // auth-patch-padding-069
+    // auth-patch-padding-070
+    // auth-patch-padding-071
+    // auth-patch-padding-072
+    // auth-patch-padding-073
+    // auth-patch-padding-074
+    // auth-patch-padding-075
+    // auth-patch-padding-076
+    // auth-patch-padding-077
+    // auth-patch-padding-078
+    // auth-patch-padding-079
+    // auth-patch-padding-080
+    // auth-patch-padding-081
+    // auth-patch-padding-082
+    // auth-patch-padding-083
+    // auth-patch-padding-084
+    // auth-patch-padding-085
+    // auth-patch-padding-086
+    // auth-patch-padding-087
+    // auth-patch-padding-088
+    // auth-patch-padding-089
+    // auth-patch-padding-090
+    // auth-patch-padding-091
+    // auth-patch-padding-092
+    // auth-patch-padding-093
+    // auth-patch-padding-094
+    // auth-patch-padding-095
+    // auth-patch-padding-096
+    // auth-patch-padding-097
+    // auth-patch-padding-098
+    // auth-patch-padding-099
+    // auth-patch-padding-100
+    // auth-patch-padding-101
+    // auth-patch-padding-102
+    // auth-patch-padding-103
+    // auth-patch-padding-104
+    // auth-patch-padding-105
+    // auth-patch-padding-106
+    // auth-patch-padding-107
+    // auth-patch-padding-108
+    // auth-patch-padding-109
+    // auth-patch-padding-110
+    // auth-patch-padding-111
+    // auth-patch-padding-112
+    // auth-patch-padding-113
+    // auth-patch-padding-114
+    // auth-patch-padding-115
+    // auth-patch-padding-116
+    // auth-patch-padding-117
+    // auth-patch-padding-118
+    // auth-patch-padding-119
+    // auth-patch-padding-120
+    // auth-patch-padding-121
+    // auth-patch-padding-122
+    // auth-patch-padding-123
+    // auth-patch-padding-124
+    // auth-patch-padding-125
+    // auth-patch-padding-126
+    // auth-patch-padding-127
+    // auth-patch-padding-128
+    // auth-patch-padding-129
+    // auth-patch-padding-130
+    // auth-patch-padding-131
+    // auth-patch-padding-132
+    // auth-patch-padding-133
+    // auth-patch-padding-134
+    // auth-patch-padding-135
+    // auth-patch-padding-136
+    // auth-patch-padding-137
+    // auth-patch-padding-138
+    // auth-patch-padding-139
+    // auth-patch-padding-140
+    // auth-patch-padding-141
+    // auth-patch-padding-142
+    // auth-patch-padding-143
+    // auth-patch-padding-144
+    // auth-patch-padding-145
+    // auth-patch-padding-146
+    // auth-patch-padding-147
+    // auth-patch-padding-148
+    // auth-patch-padding-149
+    // auth-patch-padding-150
+    // auth-patch-padding-151
+    // auth-patch-padding-152
+    // auth-patch-padding-153
+    // auth-patch-padding-154
+    // auth-patch-padding-155
+    // auth-patch-padding-156
+    // auth-patch-padding-157
+    // auth-patch-padding-158
+    // auth-patch-padding-159
+    // auth-patch-padding-160
+    // auth-patch-padding-161
+    // auth-patch-padding-162
+    // auth-patch-padding-163
+    // auth-patch-padding-164
+    // auth-patch-padding-165
+    // auth-patch-padding-166
+    // auth-patch-padding-167
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
 
   </script>
