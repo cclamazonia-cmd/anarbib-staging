@@ -647,8 +647,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return Number.isFinite(n) && n > 0 ? n : 0;
     }
 
-    const STANDARD_LOAN_DAYS = 21;
-
     function parseAvailabilityDate(value) {
       if (value == null || value === "") return null;
       if (value instanceof Date) {
@@ -678,14 +676,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       });
     }
 
-    function addAvailabilityDateDays(value, days = STANDARD_LOAN_DAYS) {
-      const parsed = parseAvailabilityDate(value);
-      if (!parsed) return null;
-      const next = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
-      next.setUTCDate(next.getUTCDate() + Number(days || 0));
-      return Number.isNaN(next.getTime()) ? null : next;
-    }
-
     function collectAvailabilityDateCandidates(source, collector = []) {
       if (!source || typeof source !== "object") return collector;
 
@@ -709,30 +699,14 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         "devolucao_prevista",
         "devolucao_prevista_em",
         "expected_return_at",
-        "loan_due_at"
-      ];
-
-      for (const key of candidateKeys) {
-        const parsed = parseAvailabilityDate(source?.[key]);
-        if (!parsed) continue;
-        collector.push({ key, date: parsed, iso: parsed.toISOString() });
-      }
-
-      return collector;
-    }
-
-    function collectScheduledLoanAvailabilityDateCandidates(source, collector = []) {
-      if (!source || typeof source !== "object") return collector;
-
-      const candidateKeys = [
-        "session_pickup_scheduled_for",
+        "loan_due_at",
         "pickup_scheduled_for",
         "scheduled_for",
         "retirada_agendada_para"
       ];
 
       for (const key of candidateKeys) {
-        const parsed = addAvailabilityDateDays(source?.[key]);
+        const parsed = parseAvailabilityDate(source?.[key]);
         if (!parsed) continue;
         collector.push({ key, date: parsed, iso: parsed.toISOString() });
       }
@@ -782,15 +756,9 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         };
       }
 
-      const directDateCandidates = [];
-      const scheduledLoanDateCandidates = [];
-      candidateSources.forEach((source) => {
-        collectAvailabilityDateCandidates(source, directDateCandidates);
-        collectScheduledLoanAvailabilityDateCandidates(source, scheduledLoanDateCandidates);
-      });
-      const earliest = directDateCandidates.length
-        ? pickEarliestAvailabilityDate(directDateCandidates)
-        : pickEarliestAvailabilityDate(scheduledLoanDateCandidates);
+      const dateCandidates = [];
+      candidateSources.forEach((source) => collectAvailabilityDateCandidates(source, dateCandidates));
+      const earliest = pickEarliestAvailabilityDate(dateCandidates);
 
       return {
         isAvailableNow: false,
@@ -1334,14 +1302,13 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           .from("v_book_detail_public_v2")
           .select(v2Select)
           .eq("book_id", bookId)
-          .limit(50);
+          .maybeSingle();
 
-        if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
-          const chosenRow = v2.data.find((candidate) => findHoldingForLibraryContext(candidate?.holding_libraries_json, libraryContext)) || v2.data[0];
-          const matchedHolding = findHoldingForLibraryContext(chosenRow?.holding_libraries_json, libraryContext) || holdingRow;
+        if (!v2.error && v2.data) {
+          const matchedHolding = findHoldingForLibraryContext(v2.data?.holding_libraries_json, libraryContext) || holdingRow;
           return {
             booksTable: "v_book_detail_public_v2",
-            data: applyHoldingContextToBookRow(chosenRow, matchedHolding)
+            data: applyHoldingContextToBookRow(v2.data, matchedHolding)
           };
         }
 
@@ -2187,7 +2154,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         params.set("id", id);
         params.set("author_id", id);
       }
-      const libraryContext = await enrichLibraryScope(getLibraryContextFromUrl());
+      const libraryContext = getLibraryContextFromUrl();
       if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
       if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
       if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
@@ -2734,7 +2701,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       let data = null;
       let keys = [];
       let sample = {};
-      const localContextRequested = !!(libraryContext.libraryId || libraryContext.librarySlug || libraryContext.libraryName);
+      const localContextRequested = !!(libraryContext.libraryId || libraryContext.librarySlug);
       const v2Select = [
         "id","book_id","bib_ref","autor","author_display","author_chips","authors_json",
         "titulo","subtitulo","ano","editora","cdd","loanable","available_count","created_at",
@@ -2762,37 +2729,39 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) try {
-        let v2Query = supabase
-          .from("v_book_detail_public_v2")
-          .select(v2Select);
+        const v2Attempts = requestedBookId
+          ? [
+              { field: "book_id", value: requestedBookId },
+              { field: "id", value: requestedBookId }
+            ]
+          : [{ field: "bib_ref", value: bib_ref }];
 
-        if (requestedBookId) {
-          v2Query = v2Query.or(`id.eq.${requestedBookId},book_id.eq.${requestedBookId}`);
-        } else {
-          v2Query = v2Query.eq("bib_ref", bib_ref);
-        }
+        for (const attempt of v2Attempts) {
+          const v2 = await supabase
+            .from("v_book_detail_public_v2")
+            .select(v2Select)
+            .eq(attempt.field, attempt.value)
+            .maybeSingle();
 
-        const v2 = await v2Query.limit(50);
-
-        if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
-          const chosenRow = v2.data.find((candidate) => {
-            if (!localContextRequested) return true;
-            return !!findHoldingForLibraryContext(candidate?.holding_libraries_json, libraryContext);
-          }) || v2.data[0];
-          const candidateRow = { ...chosenRow };
-          const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-          if (matchedHolding) {
-            if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-            if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-            if (matchedHolding?.library_name) {
-              candidateRow.library_name = matchedHolding.library_name;
-              candidateRow.biblioteca = matchedHolding.library_name;
+          if (!v2.error && v2.data) {
+            const candidateRow = { ...v2.data };
+            const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
+            if (!localContextRequested || matchedHolding) {
+              if (matchedHolding) {
+                if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+                if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+                if (matchedHolding?.library_name) {
+                  candidateRow.library_name = matchedHolding.library_name;
+                  candidateRow.biblioteca = matchedHolding.library_name;
+                }
+              }
+              booksTable = "v_book_detail_public_v2";
+              data = candidateRow;
+              sample = candidateRow;
+              keys = Object.keys(candidateRow);
+              break;
             }
           }
-          booksTable = "v_book_detail_public_v2";
-          data = candidateRow;
-          sample = candidateRow;
-          keys = Object.keys(candidateRow);
         }
       } catch (err) {
         console.warn("AnarBib livro: falha ao consultar v_book_detail_public_v2", err);
