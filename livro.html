@@ -161,7 +161,7 @@
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn" id="btnCatalogo" href="#" rel="noopener">Voltar ao(s) catálogo(s)</a>
+        <a class="btn" id="btnCatalogo" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html" rel="noopener">Voltar ao(s) catálogo(s)</a>
         <button class="btn" id="btnConta" type="button" aria-disabled="true" title="Disponível apenas quando logado(a/e).">Painel / minha conta</button>
         <a class="btn primary" id="btnEntrar" href="#" rel="noopener">Entrar</a>
       </div>
@@ -237,12 +237,24 @@
   </div>
 
   <script type="module">
-    import { supabase } from "./js/blmf-supabase.js";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://asptfmokzykwzlshsncw.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0",
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
+    );
 
     const GH_BASE = location.origin;
     const ROUTES = {
       BLOG_HOME: "https://cclamazonia.noblogs.org/",
-      CATALOGO: `${GH_BASE}/anarbib-staging/index.html`,
+      CATALOGO: "https://cclamazonia-cmd.github.io/anarbib-staging/index.html",
       CADASTRO: `${GH_BASE}/anarbib-conta-staging/cadastro.html`,
       CONTA: `${GH_BASE}/anarbib-conta-staging/conta.html`,
       PAINEL: `${GH_BASE}/anarbib-conta-staging/painel.html`,
