@@ -578,6 +578,23 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return String(value || "").trim();
     }
 
+    function normalizeNumericRefForMatch(value) {
+      const raw = String(value || "").trim();
+      if (!/^\d+$/.test(raw)) return "";
+      const normalized = raw.replace(/^0+/, "");
+      return normalized || "0";
+    }
+
+    function refsMatchFlex(a, b) {
+      const left = String(a || "").trim();
+      const right = String(b || "").trim();
+      if (!left || !right) return false;
+      if (left === right) return true;
+      const leftNumeric = normalizeNumericRefForMatch(left);
+      const rightNumeric = normalizeNumericRefForMatch(right);
+      return !!(leftNumeric && rightNumeric && leftNumeric === rightNumeric);
+    }
+
     function hasActiveReservationForBibRef(bibRef) {
       const key = normalizeBibRefValue(bibRef);
       return !!(key && currentActiveReservationBibRefs.has(key));
@@ -2694,6 +2711,111 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       setStatus("Não foi possível reservar: " + String(reservaError?.message || reservaError || "erro desconhecido"), "warn");
     }
 
+    async function tryResolveBookByFlexiblePublicRef(refValue = "", libraryContext = {}, v2Select = "", fallbackSelect = "") {
+      const requestedRef = String(refValue || "").trim();
+      if (!requestedRef) return null;
+
+      const batchSize = 500;
+      let from = 0;
+      let best = null;
+
+      while (from < 20000) {
+        let page = null;
+        try {
+          page = await supabase
+            .from("v_book_detail_public_v2")
+            .select("id,book_id,bib_ref,holding_libraries_json")
+            .range(from, from + batchSize - 1);
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao varrer a vista pública para resolver ref flexível", err);
+          break;
+        }
+
+        if (page?.error) {
+          console.warn("AnarBib livro: erro ao varrer a vista pública para resolver ref flexível", page.error);
+          break;
+        }
+
+        const rows = Array.isArray(page?.data) ? page.data : [];
+        if (!rows.length) break;
+
+        for (const row of rows) {
+          const rowBibRef = firstNonEmptyString(row?.bib_ref);
+          const holdings = parseJsonArray(row?.holding_libraries_json);
+          const exactHolding = holdings.find((holding) => String(holding?.local_bib_ref || "").trim() === requestedRef) || null;
+          const numericHolding = exactHolding || holdings.find((holding) => refsMatchFlex(holding?.local_bib_ref, requestedRef)) || null;
+          const contextHolding = exactHolding || numericHolding;
+
+          let score = -1;
+          if (rowBibRef === requestedRef) score = 100;
+          else if (exactHolding) score = 90;
+          else if (refsMatchFlex(rowBibRef, requestedRef)) score = 80;
+          else if (numericHolding) score = 70;
+          else continue;
+
+          if (contextHolding && (libraryContext?.libraryId || libraryContext?.librarySlug || libraryContext?.libraryName)) {
+            const holdingScope = buildLibraryScopeFromHolding(contextHolding);
+            if (librariesMatch(libraryContext, holdingScope)) score += 20;
+          }
+
+          if (!best || score > best.score) {
+            best = {
+              score,
+              bookId: Number(row?.book_id || row?.id || 0) || null,
+              matchedHolding: contextHolding
+            };
+          }
+        }
+
+        if (rows.length < batchSize) break;
+        from += batchSize;
+      }
+
+      const resolvedBookId = Number(best?.bookId || 0);
+      if (!resolvedBookId) return null;
+
+      try {
+        const full = await supabase
+          .from("v_book_detail_public_v2")
+          .select(v2Select)
+          .or(`id.eq.${resolvedBookId},book_id.eq.${resolvedBookId}`)
+          .limit(50);
+
+        if (!full.error && Array.isArray(full.data) && full.data.length) {
+          const chosenRow = full.data.find((row) => !!findHoldingForLibraryContext(row?.holding_libraries_json, libraryContext)) || full.data[0];
+          const candidateRow = { ...chosenRow };
+          const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext) || best?.matchedHolding;
+          if (matchedHolding) {
+            if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+            if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+            if (matchedHolding?.library_name) {
+              candidateRow.library_name = matchedHolding.library_name;
+              candidateRow.biblioteca = matchedHolding.library_name;
+            }
+          }
+          return { booksTable: "v_book_detail_public_v2", data: candidateRow };
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao recarregar o livro resolvido por ref flexível", err);
+      }
+
+      try {
+        const fallbackBook = await supabase
+          .from("books")
+          .select(fallbackSelect)
+          .eq("id", resolvedBookId)
+          .maybeSingle();
+
+        if (!fallbackBook.error && fallbackBook.data) {
+          return { booksTable: "books", data: fallbackBook.data };
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao recarregar books por ref flexível", err);
+      }
+
+      return null;
+    }
+
     async function loadBook() {
       let bib_ref = getBibRefFromUrl();
       const requestedBookId = getBookIdFromUrl();
@@ -2855,6 +2977,20 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao resolver livro por local_bib_ref", err);
+        }
+      }
+
+      if (!booksTable && bib_ref) {
+        try {
+          const flexibleResolved = await tryResolveBookByFlexiblePublicRef(bib_ref, libraryContext, v2Select, fallbackSelect);
+          if (flexibleResolved?.booksTable && flexibleResolved?.data) {
+            booksTable = flexibleResolved.booksTable;
+            data = flexibleResolved.data;
+            sample = data;
+            keys = Object.keys(data);
+          }
+        } catch (err) {
+          console.warn("AnarBib livro: falha ao resolver livro por ref pública flexível", err);
         }
       }
 
