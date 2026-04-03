@@ -2715,7 +2715,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
     async function loadBook() {
       let bib_ref = getBibRefFromUrl();
       const requestedBookId = getBookIdFromUrl();
-      const libraryContext = getLibraryContextFromUrl();
+      const libraryContext = await enrichLibraryScope(getLibraryContextFromUrl());
 
       if (!bib_ref && !requestedBookId) {
         $("title").textContent = "Livro não encontrado";
