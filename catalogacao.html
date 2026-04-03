@@ -16962,15 +16962,45 @@ ${decisionSummary}` : '',
     });
 
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
-      void reason;
-      return false;
+      const probeReason = String(reason || '').trim().toLowerCase();
+      const visibleEvent = probeReason === 'visibilitychange';
+      if (visibleEvent && document.visibilityState !== 'visible') return false;
+      if (catalogacaoAuthSyncInFlight || catalogacaoUiRefreshInFlight) return false;
+      if (state.session?.user?.id && state.isLibrarian) return false;
+
+      const now = Date.now();
+      if ((now - catalogacaoLastPassiveSessionProbeAt) < 1400) return false;
+      catalogacaoLastPassiveSessionProbeAt = now;
+
+      try {
+        const recovered = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+        if (!recovered?.user?.id) return false;
+        await syncCatalogacaoAuthState(recovered, { reloadData: true, allowAnonymousReset: false });
+        return true;
+      } catch (error) {
+        console.warn('Revalidação passiva da sessão da catalogação falhou.', error);
+        return false;
+      }
     }
 
-    // Revalidação automática por storage desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('storage', (event) => {
+      const changedKey = String(event?.key || '').trim();
+      if (!changedKey || !CATALOGACAO_AUTH_STORAGE_KEYS.has(changedKey)) return;
+      void probeCatalogacaoSessionOnVisibility('storage');
+    });
 
-    // Revalidação automática no foco desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('focus', () => {
+      void probeCatalogacaoSessionOnVisibility('focus');
+    });
 
-    // Revalidação automática no retorno da página desativada para evitar refreshs intempestivos da catalogação.
+    window.addEventListener('pageshow', () => {
+      void probeCatalogacaoSessionOnVisibility('pageshow');
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      void probeCatalogacaoSessionOnVisibility('visibilitychange');
+    });
 
     updateRefreshButton(false);
     updateLoginButton();
@@ -16980,7 +17010,9 @@ ${decisionSummary}` : '',
     catalogacaoAuthBootstrapping = false;
     await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
 
-    // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
+    window.setTimeout(() => {
+      void probeCatalogacaoSessionOnVisibility('late-bootstrap');
+    }, 900);
 
   </script>
 </body>
