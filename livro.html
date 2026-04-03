@@ -2763,13 +2763,18 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) try {
-        const v2FilterField = requestedBookId ? "id" : "bib_ref";
-        const v2FilterValue = requestedBookId || bib_ref;
-        const v2 = await supabase
+        let v2Query = supabase
           .from("v_book_detail_public_v2")
           .select(v2Select)
-          .eq(v2FilterField, v2FilterValue)
           .limit(50);
+
+        if (requestedBookId) {
+          v2Query = v2Query.or(`id.eq.${requestedBookId},book_id.eq.${requestedBookId}`);
+        } else {
+          v2Query = v2Query.eq("bib_ref", bib_ref);
+        }
+
+        const v2 = await v2Query;
 
         if (!v2.error && Array.isArray(v2.data) && v2.data.length) {
           const chosenRow = (() => {
@@ -2782,20 +2787,18 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           if (chosenRow) {
             const candidateRow = { ...chosenRow };
             const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-            if (!localContextRequested || matchedHolding) {
-              if (matchedHolding) {
-                if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-                if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-                if (matchedHolding?.library_name) {
-                  candidateRow.library_name = matchedHolding.library_name;
-                  candidateRow.biblioteca = matchedHolding.library_name;
-                }
+            if (matchedHolding) {
+              if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+              if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+              if (matchedHolding?.library_name) {
+                candidateRow.library_name = matchedHolding.library_name;
+                candidateRow.biblioteca = matchedHolding.library_name;
               }
-              booksTable = "v_book_detail_public_v2";
-              data = candidateRow;
-              sample = candidateRow;
-              keys = Object.keys(candidateRow);
             }
+            booksTable = "v_book_detail_public_v2";
+            data = candidateRow;
+            sample = candidateRow;
+            keys = Object.keys(candidateRow);
           }
         }
       } catch (err) {
