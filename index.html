@@ -1683,10 +1683,11 @@ function parseQuery(raw) {
   return out;
 }
 
-function canonicalizeLibraryLabel(rawValue, bibRef = '') {
+function canonicalizeLibraryLabel(rawValue, bibRef = '', options = {}) {
   const raw = firstNonEmptyString(rawValue);
   const n = normalize(raw);
   const ref = normalize(bibRef);
+  const allowImplicitDefault = options?.allowImplicitDefault !== false;
 
   if (
     n.includes('btl')
@@ -1711,11 +1712,11 @@ function canonicalizeLibraryLabel(rawValue, bibRef = '') {
     return 'BLMF - Belém do Pará';
   }
 
-  if (!raw && /^\d+$/.test(String(bibRef || '').trim())) {
+  if (!raw && allowImplicitDefault && /^\d+$/.test(String(bibRef || '').trim())) {
     return 'BLMF - Belém do Pará';
   }
 
-  return raw || 'BLMF - Belém do Pará';
+  return raw || (allowImplicitDefault ? 'BLMF - Belém do Pará' : '');
 }
 function getLibraryKey(label) {
   return normalize(label);
@@ -2871,7 +2872,7 @@ function resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryName
     ...(Array.isArray(holdingLibraryNameLabels) ? holdingLibraryNameLabels : [])
   ], Number(row?.bibliotecas_count ?? 0) || labelsFromHoldings.length || (Array.isArray(holdingLibraries) ? holdingLibraries.length : 0));
   if (labels.length) return labels;
-  const fallbackLabel = canonicalizeLibraryLabel(firstNonEmptyString(row?.biblioteca, row?.library_name, row?.library_slug), row?.bib_ref || '');
+  const fallbackLabel = canonicalizeLibraryLabel(firstNonEmptyString(row?.biblioteca, row?.library_name, row?.library_slug), row?.bib_ref || '', { allowImplicitDefault: false });
   return fallbackLabel ? [fallbackLabel] : [];
 }
 function shouldLoadLibrarySupplement(sourceVariant, data) {
@@ -3008,7 +3009,7 @@ async function loadRowsFromSupabase() {
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       const holdingsCount = Number(r?.bibliotecas_count ?? displayHoldingLibraries.length ?? holdingLibraries.length ?? 0) || 0;
       const biblioteca = sourceVariant === 'catalog_v2'
-        ? (displayHoldingLibraries.join(' / ') || canonicalizeLibraryLabel(r?.biblioteca, r?.bib_ref || ''))
+        ? (displayHoldingLibraries.join(' / ') || canonicalizeLibraryLabel(r?.biblioteca, r?.bib_ref || '', { allowImplicitDefault: false }))
         : resolveLibraryLabel({
             ...r,
             library_id: singleLibraryContext.library_id || r?.library_id,
