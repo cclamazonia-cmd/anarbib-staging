@@ -2928,7 +2928,7 @@
         </div>
 
         <div class="card" style="margin-top:16px;">
-          <h4>Importação de livros para exemplares</h4>
+          <h4>Importação de fichas comuns para exemplares locais</h4>
           <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Cada holding local previsto gera aqui uma linha própria de exemplar local. Nesta etapa, você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
@@ -2936,14 +2936,14 @@
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
-              <button id="loadExemplarBatchBtn" type="button" class="button secondary">Carregar livros</button>
+              <button id="loadExemplarBatchBtn" type="button" class="button secondary">Carregar fichas comuns</button>
               <button id="clearExemplarBatchBtn" type="button" class="button ghost">Limpar fila de exemplares</button>
             </div>
           </div>
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, referência, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, ficha comum, compatibilidade local, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -3071,15 +3071,15 @@
         <div id="labelMessage" class="message"></div>
 
         <div class="card" style="margin-top:16px;">
-          <h4>Importação de exemplares para rótulos</h4>
+          <h4>Importação de exemplares locais para rótulos</h4>
           <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todos os rascunhos de exemplares locais ativos. Aqui você encontra cada exemplar já criado, abre no formulário e valida o rótulo quando ele estiver correto, sem perder de vista a ficha comum e o holding local ao qual ele está ligado.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="labelLotImportId">Exemplares a carregar</label>
+              <label for="labelLotImportId">Exemplares locais a carregar</label>
               <select id="labelLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
-              <button id="loadLabelBatchBtn" type="button" class="button secondary">Carregar exemplares</button>
+              <button id="loadLabelBatchBtn" type="button" class="button secondary">Carregar exemplares locais</button>
               <button id="clearLabelBatchBtn" type="button" class="button ghost">Limpar fila de rótulos</button>
             </div>
           </div>
@@ -3258,12 +3258,12 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="queueTypeFilter">Tipo</label>
+            <label for="queueTypeFilter">Camada de trabalho</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Documentos</option>
-              <option value="author">Autores</option>
-              <option value="exemplar">Exemplares</option>
+              <option value="book">Fichas comuns</option>
+              <option value="author">Autoridades</option>
+              <option value="exemplar">Exemplares locais</option>
             </select>
           </div>
           <div class="field">
@@ -3275,8 +3275,8 @@
             </select>
           </div>
           <div class="field">
-            <label for="queueSearch">Buscar</label>
-            <input id="queueSearch" type="text" placeholder="Título, autoridade, compatibilidade local, tombo ou localização…" />
+            <label for="queueSearch">Buscar na fila</label>
+            <input id="queueSearch" type="text" placeholder="Ficha comum, autoridade, compatibilidade local, tombo ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -10964,9 +10964,9 @@
 
     function getItemTypeLabel(type = '') {
       const map = {
-        book: 'Documento',
-        author: 'Autor',
-        exemplar: 'Exemplar',
+        book: 'Ficha comum',
+        author: 'Autoridade',
+        exemplar: 'Exemplar local',
       };
       return map[type] || (type || '—');
     }
@@ -11059,7 +11059,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Ficha comum:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11069,7 +11069,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Autoridade:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11080,9 +11080,9 @@
       const exemplar = getQueueExemplarRecord(item);
       const parts = [
         `<div><strong>Exemplar local:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-        `<div><strong>Compat. local:</strong> ${reference}${batch}</div>`
+        `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
       ];
-      if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo:</strong> ${secondary}</div>`);
+      if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo local:</strong> ${secondary}</div>`);
       if (exemplar?.tombo) parts.push(`<div><strong>Tombo:</strong> ${sanitize(exemplar.tombo)}</div>`);
       if (location && location !== '—') parts.push(`<div><strong>Localização:</strong> ${location}</div>`);
       parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11227,10 +11227,10 @@
           <thead>
             <tr>
               <th style="width:52px; text-align:center;"><input id="trashSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis da lixeira" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
-              <th>Tipo de camada</th>
+              <th>Camada de trabalho</th>
               <th>Compatibilidade / referência</th>
-              <th>Ficha / nome / exemplar</th>
-              <th>Leitura local</th>
+              <th>Ficha comum / autoridade / exemplar local</th>
+              <th>Leitura local da camada</th>
               <th>Lote</th>
               <th>Descartado / atualizado em</th>
               <th>Operações</th>
@@ -12065,7 +12065,7 @@
             <tr>
               <th>ID</th>
               <th>Tombo</th>
-              <th>Referência</th>
+              <th>Compatibilidade local</th>
               <th>Autor</th>
               <th>Título</th>
               <th>CDD</th>
@@ -12112,7 +12112,7 @@
         btn.addEventListener('click', async () => {
           try {
             await validateLabelDraftIds([Number(btn.dataset.id)]);
-            showMessage(refs.labelBatchMessage, 'Rótulo validado com sucesso.', 'ok');
+            showMessage(refs.labelBatchMessage, 'Rótulo local validado com sucesso.', 'ok');
           } catch (error) {
             showMessage(refs.labelBatchMessage, error.message, 'error');
           }
@@ -12246,12 +12246,12 @@
           <thead>
             <tr>
               <th style="width:52px; text-align:center;"><input id="queueSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
-              <th>Tipo de camada</th>
+              <th>Camada de trabalho</th>
               <th>Situação</th>
               <th>Gesto</th>
               <th>Compatibilidade / referência</th>
-              <th>Ficha / nome / exemplar</th>
-              <th>Leitura local</th>
+              <th>Ficha comum / autoridade / exemplar local</th>
+              <th>Leitura local da camada</th>
               <th>Lote</th>
               <th>Atualizado em</th>
               <th>Operações</th>
@@ -13915,7 +13915,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         if (!ensureLabelBasicData(null, refs.labelMessage, 'validar este rótulo')) return;
         const payload = getExemplarDraftPayload('', 'ready');
         await guardExemplarTomboBeforePersist(payload, refs.labelMessage);
-        const saved = await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo validado com sucesso.');
+        const saved = await saveDraft('exemplar_drafts', payload, refs.labelMessage, 'Rótulo local validado com sucesso.');
         fillExemplarForm(saved, { switchTab: false, syncLabel: false });
         fillLabelForm(saved, { switchTab: false });
         await Promise.all([loadQueue(), loadBatches()]);
