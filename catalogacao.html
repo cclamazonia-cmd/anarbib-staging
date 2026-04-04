@@ -1588,6 +1588,13 @@
       box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .18);
     }
 
+    .book-digital-list-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
 
     @media (max-width: 1520px) {
       .statusbar,
@@ -2502,10 +2509,11 @@
               <div class="section-block">
                 <div class="inline">
                   <div>
-                    <h4 class="section-title">Recurso digital principal em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha em modo leitura. Por enquanto, o formulário continua editando apenas o recurso digital principal.</div>
+                    <h4 class="section-title">Recurso digital em edição</h4>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Nesta passe, você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum.</div>
                   </div>
                   <div class="row-actions">
+                    <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
                     <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
                     <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
                     <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
@@ -2515,9 +2523,10 @@
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
-                    <div class="hint">Superfície provisória de leitura: aqui já aparecem todos os vínculos encontrados neste rascunho. O multi-CRUD virá depois.</div>
+                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Nesta passe, você já pode alternar o recurso em edição e preparar outro vínculo; o multi-CRUD fino virá depois.</div>
                   </div>
                   <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
+                  <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
@@ -2569,7 +2578,7 @@
                   </label>
                 </div>
 
-                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital principal carregado neste formulário.</div>
+                <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital carregado neste formulário.</div>
               </div>
             </div>
 
@@ -4384,7 +4393,9 @@
       bookResponsibilityExtraWrap: el('bookResponsibilityExtraWrap'),
       bookDigitalLinkedSummary: el('bookDigitalLinkedSummary'),
       bookDigitalListSummary: el('bookDigitalListSummary'),
+      bookDigitalWorkspaceSummary: el('bookDigitalWorkspaceSummary'),
       bookDigitalListWrap: el('bookDigitalListWrap'),
+      bookDigitalNewEntryBtn: el('bookDigitalNewEntryBtn'),
       bookCoverFileName: el('bookCoverFileName'),
       authorPhotoFileName: el('authorPhotoFileName'),
       labelBatchPreviewId: el('labelBatchPreviewId'),
@@ -6470,6 +6481,40 @@
       ].filter(Boolean).join(' · ');
     }
 
+    function findBookDigitalResourceById(resourceId = '') {
+      const normalizedId = String(resourceId || '');
+      if (!normalizedId) return null;
+      return state.bookDigitalDraftResources.find((record) => String(record?.id || '') === normalizedId) || null;
+    }
+
+    function updateBookDigitalWorkspaceSummary(records = [], currentRecord = null) {
+      const summaryNode = refs.bookDigitalWorkspaceSummary;
+      if (!summaryNode) return;
+      const safeRecords = Array.isArray(records) ? records : [];
+      if (!safeRecords.length) {
+        summaryNode.innerHTML = '<strong>Leitura da superfície:</strong> esta ficha comum ainda não tem recursos digitais vinculados.';
+        return;
+      }
+      const familyMap = new Map();
+      safeRecords.forEach((record) => {
+        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
+        const familyKey = familyMeta.key || 'recurso_digital';
+        if (!familyMap.has(familyKey)) familyMap.set(familyKey, { label: familyMeta.label, count: 0 });
+        familyMap.get(familyKey).count += 1;
+      });
+      const familySummary = Array.from(familyMap.values())
+        .map((entry) => `${entry.label} (${entry.count})`)
+        .join(' · ');
+      const primaryCount = safeRecords.filter((record) => !!record?.is_primary).length;
+      const validatedCount = safeRecords.filter((record) => !!record?.bibliographic_match_validated).length;
+      const publicCount = safeRecords.filter((record) => isBookDigitalResourcePublic(record)).length;
+      const restrictedCount = Math.max(safeRecords.length - publicCount, 0);
+      const currentLabel = currentRecord?.id
+        ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
+        : 'nenhum recurso específico aberto agora; o formulário está pronto para outro vínculo';
+      summaryNode.innerHTML = `<strong>Leitura da superfície:</strong> ${safeRecords.length} recurso(s) digital(is) já ligados a esta ficha comum · famílias visíveis: ${sanitize(familySummary)} · ${primaryCount} principal(is) · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${validatedCount} com correspondência validada · ${currentLabel}.`;
+    }
+
     function renderBookDigitalResourceList(records = []) {
       state.bookDigitalDraftResources = Array.isArray(records) ? [...records] : [];
       const summaryNode = refs.bookDigitalListSummary;
@@ -6478,9 +6523,11 @@
       if (!records.length) {
         summaryNode.textContent = 'Nenhum recurso digital vinculado a esta ficha ainda.';
         wrapNode.innerHTML = '';
+        updateBookDigitalWorkspaceSummary([], null);
         return;
       }
       const currentResourceId = String(el('bookDigitalDraftResourceId')?.value || '');
+      const currentRecord = findBookDigitalResourceById(currentResourceId);
       const primaryCount = records.filter(record => !!record?.is_primary).length;
       const publicCount = records.filter(record => isBookDigitalResourcePublic(record)).length;
       const restrictedCount = Math.max(records.length - publicCount, 0);
@@ -6504,11 +6551,13 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo continua operando só sobre o recurso digital principal.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). Nesta passe, o formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
+      updateBookDigitalWorkspaceSummary(records, currentRecord);
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
         const familyCount = group.items.length;
         const itemHtml = group.items.map((record) => {
+          const recordId = Number(record?.id || 0);
           const isCurrent = !!currentResourceId && String(record?.id || '') === currentResourceId;
           const title = sanitize(getBookDigitalResourceDisplayTitle(record));
           const typeLabel = sanitize(getBookDigitalResourceTypeLabel(record?.resource_type || ''));
@@ -6545,6 +6594,9 @@
               <div class="book-digital-list-meta">${metaLine || 'Sem metadados resumidos para esta linha.'}</div>
               <div class="book-digital-list-meta">vínculo: ${linkStatusLine}</div>
               ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
+              <div class="book-digital-list-actions">
+                <button type="button" class="btn-inline small secondary" data-book-digital-action="edit" data-book-digital-id="${recordId}" ${isCurrent ? 'disabled' : ''}>${isCurrent ? 'Recurso em edição' : 'Abrir este recurso no formulário'}</button>
+              </div>
             </div>
           `;
         }).join('');
@@ -6570,12 +6622,18 @@
       el('bookDigitalAttributionText').value = record?.attribution_text || '';
       el('bookDigitalRightsStatus').value = record?.rights_status || '';
       el('bookDigitalIsPublic').checked = String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico';
-      el('bookDigitalIsPrimary').checked = record ? !!record.is_primary : true;
+      el('bookDigitalIsPrimary').checked = record ? !!record.is_primary : !state.bookDigitalDraftResources.some((item) => !!item?.is_primary);
       el('bookDigitalBibliographicMatch').checked = !!record?.bibliographic_match_validated;
       if (state.bookDigitalDraftResources.length) {
         renderBookDigitalResourceList(state.bookDigitalDraftResources);
+      } else {
+        updateBookDigitalWorkspaceSummary([], null);
       }
       updateBookDigitalResourceSummary(record);
+    }
+
+    function prepareNewBookDigitalResourceEntry() {
+      fillBookDigitalResourceFields(null);
     }
 
     function resetBookDigitalResourceFields() {
@@ -6593,15 +6651,16 @@
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
       if (!bucket || !path) {
-        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital principal carregado neste formulário.';
+        refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
-      refs.bookDigitalLinkedSummary.textContent = `Recurso digital principal em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      refs.bookDigitalLinkedSummary.textContent = `Recurso digital em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
       updateBookDigitalActionButtons();
     }
 
-    async function loadBookDraftDigitalResource(draftId) {
+    async function loadBookDraftDigitalResource(draftId, preferredResourceId = '') {
+      const resolvedPreferredResourceId = String(preferredResourceId || el('bookDigitalDraftResourceId')?.value || '');
       resetBookDigitalResourceFields();
       if (!draftId) return null;
       const { data, error } = await supabase
@@ -6613,7 +6672,7 @@
       if (error) throw error;
       const records = Array.isArray(data) ? data : [];
       renderBookDigitalResourceList(records);
-      const record = records.length ? records[0] : null;
+      const record = findBookDigitalResourceById(resolvedPreferredResourceId) || (records.length ? records[0] : null);
       fillBookDigitalResourceFields(record);
       return record;
     }
@@ -6637,7 +6696,7 @@
       }
 
       if (!storageBucket || !storagePath) {
-        throw new Error('Para editar o recurso digital principal, informe a pasta no armazenamento e o caminho do arquivo.');
+        throw new Error('Para editar o recurso digital em foco, informe a pasta no armazenamento e o caminho do arquivo.');
       }
 
       return {
@@ -6666,7 +6725,7 @@
     }
 
     async function saveBookDraftDigitalResource(draftId) {
-      if (!draftId) throw new Error('Salve primeiro o rascunho da ficha comum antes de editar o recurso digital principal.');
+      if (!draftId) throw new Error('Salve primeiro o rascunho da ficha comum antes de editar o recurso digital em foco.');
       const normalized = buildBookDraftDigitalResourcePayload(draftId);
       if (normalized.mode === 'empty') {
         if (normalized.resourceId) {
@@ -6687,7 +6746,7 @@
           .select()
           .single();
         if (error) throw error;
-        await loadBookDraftDigitalResource(draftId);
+        await loadBookDraftDigitalResource(draftId, normalized.resourceId);
         return data;
       }
 
@@ -6697,14 +6756,14 @@
         .select()
         .single();
       if (error) throw error;
-      await loadBookDraftDigitalResource(draftId);
+      await loadBookDraftDigitalResource(draftId, data?.id || '');
       return data;
     }
 
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do recurso digital principal para abri-lo.');
+      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do recurso digital em foco para abri-lo.');
       const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
       let resolvedUrl = signedData?.signedUrl || '';
       if (!resolvedUrl) {
@@ -9610,6 +9669,16 @@
     ['bookDigitalLanguageCode','bookDigitalBucket','bookDigitalPath','bookDigitalSourceName','bookDigitalSourceUrl','bookDigitalAttributionText','bookDigitalRightsStatus','bookDigitalIsPublic','bookDigitalIsPrimary','bookDigitalBibliographicMatch'].forEach(id => {
       el(id).addEventListener('input', updateBookDigitalResourceSummary);
       el(id).addEventListener('change', updateBookDigitalResourceSummary);
+    });
+    refs.bookDigitalNewEntryBtn?.addEventListener('click', () => {
+      prepareNewBookDigitalResourceEntry();
+    });
+    refs.bookDigitalListWrap?.addEventListener('click', (event) => {
+      const trigger = event.target.closest('[data-book-digital-action="edit"]');
+      if (!trigger) return;
+      const record = findBookDigitalResourceById(trigger.dataset.bookDigitalId || '');
+      if (!record) return;
+      fillBookDigitalResourceFields(record);
     });
     el('bookDigitalBucket').addEventListener('input', syncBookDigitalPublicToggleFromBucket);
     el('bookDigitalBucket').addEventListener('change', syncBookDigitalPublicToggleFromBucket);
@@ -13862,7 +13931,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         try {
           await saveBookDraftDigitalResource(saved.id);
         } catch (digitalError) {
-          warnings.push(`não consegui gravar o PDF vinculado: ${digitalError.message}`);
+          warnings.push(`não consegui gravar o recurso digital em edição: ${digitalError.message}`);
         }
         await fillBookForm(saved);
         if (warnings.length) {
