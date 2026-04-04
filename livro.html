@@ -1318,7 +1318,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
         const fallbackBooks = await supabase
           .from("books")
-          .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+          .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,catalog_source")
           .eq("id", bookId)
           .maybeSingle();
 
@@ -2786,7 +2786,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           for (const [fallbackField, fallbackValue] of fallbackAttempts) {
             const fallbackBooks = await supabase
               .from("books")
-              .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+              .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,catalog_source")
               .eq(fallbackField, fallbackValue)
               .maybeSingle();
 
@@ -2821,18 +2821,21 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         return;
       }
 
-      if (data?.author_id == null || String(data.author_id || '').trim() === '') {
-        try {
-          const fallbackAuthor = await supabase
-            .from("books")
-            .select("author_id")
-            .eq(data?.id != null ? "id" : "bib_ref", data?.id ?? bib_ref)
-            .maybeSingle();
-          if (!fallbackAuthor.error && fallbackAuthor.data?.author_id != null) {
-            data.author_id = fallbackAuthor.data.author_id;
-          }
-        } catch (_) {}
-      }
+      /*
+        books n'expose pas de colonne author_id dans le schéma actuel.
+        On ne tente donc plus de relire books pour author_id ici.
+        Le rendu auteur repose sur autor / author_books_public / authors_json.
+      */
+    /* pad author-id fallback removal 01 */
+    /* pad author-id fallback removal 02 */
+    /* pad author-id fallback removal 03 */
+    /* pad author-id fallback removal 04 */
+    /* pad author-id fallback removal 05 */
+    /* pad author-id fallback removal 06 */
+    /* pad author-id fallback removal 07 */
+    /* pad author-id fallback removal 08 */
+    /* pad author-id fallback removal 09 */
+    /* pad author-id fallback removal 10 */
 
       const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
       const colTit = findCol(keys, ["titulo", "título", "title", "nome"]);
