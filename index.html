@@ -1504,7 +1504,18 @@ function applySessionAvailabilityFactToRow(row, fact) {
   if (fact.session_local_bib_ref) row.session_local_bib_ref = fact.session_local_bib_ref;
   if (typeof fact.session_loanable === 'boolean') row.session_loanable = fact.session_loanable;
 
+  const hasPositiveFactSignal = !!(
+    fact.session_has_holding === true
+    || Number(fact.session_exemplares_total ?? 0) > 0
+    || Number(fact.session_available_count ?? 0) > 0
+    || Number(fact.session_holding_id ?? 0) > 0
+  );
+  if (hasPositiveFactSignal && firstNonEmptyString(row.session_status_hint) === 'indisponivel_para_voce') {
+    row.session_status_hint = firstNonEmptyString(fact.session_status_hint);
+  }
+
   const holdings = Array.isArray(row._holdingLibrariesInfo) ? row._holdingLibrariesInfo : [];
+  let matchedHolding = null;
   for (const holding of holdings) {
     const holdingId = Number(holding?.holding_id ?? holding?.id ?? 0) || 0;
     const factHoldingId = Number(fact.session_holding_id || 0) || 0;
@@ -1519,13 +1530,44 @@ function applySessionAvailabilityFactToRow(row, fact) {
     holding.session_exemplares_total = Number(fact.session_exemplares_total ?? holding.session_exemplares_total ?? 0) || 0;
     if (fact.session_available_count != null) holding.session_available_count = Number(fact.session_available_count ?? 0) || 0;
     holding.session_status_hint = firstNonEmptyString(fact.session_status_hint, holding.session_status_hint);
+    if (hasPositiveFactSignal && firstNonEmptyString(holding.session_status_hint) === 'indisponivel_para_voce') {
+      holding.session_status_hint = firstNonEmptyString(fact.session_status_hint);
+    }
     holding.session_next_available_on = firstNonEmptyString(fact.session_next_available_on, holding.session_next_available_on);
     holding.session_due_at = firstNonEmptyString(fact.session_due_at, holding.session_due_at);
     holding.session_pickup_scheduled_for = firstNonEmptyString(fact.session_pickup_scheduled_for, holding.session_pickup_scheduled_for);
     if (typeof fact.session_loanable === 'boolean') holding.loanable = fact.session_loanable;
     if (factHoldingId > 0) holding.holding_id = factHoldingId;
+    matchedHolding = holding;
     break;
   }
+
+  if (!matchedHolding && hasPositiveFactSignal) {
+    holdings.push({
+      holding_id: Number(fact.session_holding_id || 0) || null,
+      local_bib_ref: firstNonEmptyString(fact.session_local_bib_ref, row?.bib_ref),
+      library_id: fact.session_library_id ?? null,
+      library_slug: firstNonEmptyString(fact.session_library_slug),
+      library_name: firstNonEmptyString(fact.session_library_name),
+      session_library_id: fact.session_library_id ?? null,
+      session_library_slug: firstNonEmptyString(fact.session_library_slug),
+      session_library_name: firstNonEmptyString(fact.session_library_name),
+      exemplares_total: Number(fact.session_exemplares_total ?? 0) || 0,
+      available_count: Number(fact.session_available_count ?? 0) || 0,
+      tombos_json: [],
+      loanable: typeof fact.session_loanable === 'boolean' ? fact.session_loanable : (row?.loanable === false ? false : true),
+      session_has_holding: fact.session_has_holding === true || Number(fact.session_available_count ?? 0) > 0 || Number(fact.session_exemplares_total ?? 0) > 0,
+      session_exemplares_total: Number(fact.session_exemplares_total ?? 0) || 0,
+      session_available_count: Number(fact.session_available_count ?? 0) || 0,
+      session_status_hint: firstNonEmptyString(fact.session_status_hint),
+      session_next_available_on: firstNonEmptyString(fact.session_next_available_on),
+      session_due_at: firstNonEmptyString(fact.session_due_at),
+      session_pickup_scheduled_for: firstNonEmptyString(fact.session_pickup_scheduled_for)
+    });
+  }
+
+  row._holdingLibrariesInfo = holdings;
+  row._holdingLibraries = uniqueSortedStrings(holdings.map((item) => canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref || '')));
   return row;
 }
 function rowMatchesSelectedLibraries(row) {
