@@ -1071,11 +1071,13 @@
       left: 50%;
       bottom: 18px;
       transform: translateX(-50%);
-      width: min(960px, calc(100vw - 28px));
+      width: min(560px, calc(100vw - 28px));
+      max-width: calc(100vw - 28px);
       margin: 0;
       z-index: 1400;
       box-shadow: var(--shadow);
       backdrop-filter: blur(6px);
+      pointer-events: none;
     }
 
     .message.show { display: block; }
@@ -4521,15 +4523,95 @@
       };
     }
 
+    const MESSAGE_ACTION_SELECTOR = 'button, .button, .btn-inline, .file-button, .tab-btn, a.btn, [role="button"]';
+    let lastMessageAnchor = null;
+
+    function isVisibleMessageAnchor(node) {
+      return !!(node && node instanceof Element && node.isConnected && node.getClientRects().length && window.getComputedStyle(node).visibility !== 'hidden');
+    }
+
+    function rememberMessageAnchorFromEvent(event) {
+      const anchor = event.target instanceof Element ? event.target.closest(MESSAGE_ACTION_SELECTOR) : null;
+      if (isVisibleMessageAnchor(anchor)) {
+        lastMessageAnchor = anchor;
+      }
+    }
+
+    function resolveMessageAnchor(target) {
+      const activeAnchor = document.activeElement instanceof Element ? document.activeElement.closest(MESSAGE_ACTION_SELECTOR) : null;
+      const targetScope = target?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
+      const activeScope = activeAnchor?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
+      if (isVisibleMessageAnchor(activeAnchor) && (!targetScope || !activeScope || targetScope === activeScope || targetScope.contains(activeAnchor))) {
+        return activeAnchor;
+      }
+      const lastScope = lastMessageAnchor?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
+      if (isVisibleMessageAnchor(lastMessageAnchor) && (!targetScope || !lastScope || targetScope === lastScope || targetScope.contains(lastMessageAnchor))) {
+        return lastMessageAnchor;
+      }
+      const localAnchor = targetScope?.querySelector(MESSAGE_ACTION_SELECTOR) || null;
+      return isVisibleMessageAnchor(localAnchor) ? localAnchor : null;
+    }
+
+    function positionMessage(target, anchor = null) {
+      if (!(target instanceof Element)) return;
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const pad = 14;
+      const width = Math.max(280, Math.min(560, viewportWidth - (pad * 2)));
+      target.style.width = `${width}px`;
+      target.style.maxWidth = `calc(100vw - ${pad * 2}px)`;
+      target.style.right = 'auto';
+      if (!isVisibleMessageAnchor(anchor)) {
+        target.style.left = '50%';
+        target.style.top = 'auto';
+        target.style.bottom = '18px';
+        target.style.transform = 'translateX(-50%)';
+        return;
+      }
+      const rect = anchor.getBoundingClientRect();
+      const height = Math.max(56, target.offsetHeight || 72);
+      let left = rect.left + (rect.width / 2) - (width / 2);
+      left = Math.max(pad, Math.min(left, viewportWidth - width - pad));
+      let top = rect.bottom + 12;
+      if ((top + height) > (viewportHeight - pad)) {
+        top = rect.top - height - 12;
+      }
+      if (top < pad) {
+        top = Math.max(pad, viewportHeight - height - pad);
+      }
+      target.style.left = `${Math.round(left)}px`;
+      target.style.top = `${Math.round(top)}px`;
+      target.style.bottom = 'auto';
+      target.style.transform = 'none';
+    }
+
+    function repositionVisibleMessages() {
+      document.querySelectorAll('.message.show').forEach((node) => {
+        positionMessage(node, resolveMessageAnchor(node));
+      });
+    }
+
     function showMessage(target, text, kind = 'info') {
       target.textContent = text;
       target.className = `message show ${kind}`;
+      const anchor = resolveMessageAnchor(target);
+      window.requestAnimationFrame(() => positionMessage(target, anchor));
     }
 
     function clearMessage(target) {
       target.textContent = '';
       target.className = 'message';
+      target.style.left = '';
+      target.style.right = '';
+      target.style.top = '';
+      target.style.bottom = '';
+      target.style.transform = '';
+      target.style.width = '';
+      target.style.maxWidth = '';
     }
+
+    document.addEventListener('click', rememberMessageAnchorFromEvent, true);
+    window.addEventListener('resize', repositionVisibleMessages);
 
     function getCurrentActorId() {
       return state.profile?.id || state.profile?.user_id || state.session?.user?.id || null;
