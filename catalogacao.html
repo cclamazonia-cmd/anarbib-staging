@@ -1065,9 +1065,17 @@
       display: none;
       padding: 12px 14px;
       border-radius: 14px;
-      margin-bottom: 16px;
       line-height: 1.45;
       border: 1px solid rgba(255,255,255,.10);
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(960px, calc(100vw - 28px));
+      margin: 0;
+      z-index: 1400;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
     }
 
     .message.show { display: block; }
@@ -2581,7 +2589,7 @@
                 <div class="book-derived-summary-top">
                   <div>
                     <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Prévia curta da ficha comum em trabalho, sem confundir ainda saída pública, holding local e exemplar local.</div>
+                    <div class="hint">Prévia curta do que esta ficha já comunica para futuras superfícies de consulta, difusão e revisão editorial.</div>
                   </div>
                   <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2601,7 +2609,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha comum em trabalho já pode sustentar depois no catálogo público, sem ainda publicar nem substituir a ficha comum publicada.</div>
+                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha comum publicada.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2644,7 +2652,7 @@
               <button id="saveBookDraftBtn" type="submit" class="button primary">Salvar rascunho</button>
               <button id="bookReadyBtn" type="button" class="button secondary">Marcar como pronto</button>
               <button id="publishBookDraftBtn" type="button" class="button success">Publicar este rascunho</button>
-              <button id="bookPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">rascunho publicado</button>
+              <button id="bookPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">Rascunho publicado</button>
               <button id="discardBookDraftBtn" type="button" class="button warning discard-edge">Descartar rascunho</button>
             </div>
           </form>
@@ -2882,7 +2890,7 @@
               <button id="saveAuthorDraftBtn" type="submit" class="button primary">Salvar rascunho</button>
               <button id="authorReadyBtn" type="button" class="button secondary">Marcar como pronto</button>
               <button id="publishAuthorDraftBtn" type="button" class="button success">Publicar este rascunho</button>
-              <button id="authorPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">rascunho publicado</button>
+              <button id="authorPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">Rascunho publicado</button>
               <button id="discardAuthorDraftBtn" type="button" class="button warning discard-edge">Descartar rascunho</button>
             </div>
           </form>
@@ -2902,6 +2910,20 @@
       </div>
       <div class="panel-body">
         <div id="exemplarMessage" class="message"></div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="book-derived-summary">
+            <div class="book-derived-summary-top">
+              <div>
+                <h4 class="autofill-panel-title">Rascunhos ativos de exemplares em curso</h4>
+                <div class="hint">Superfície local de retomada rápida dos exemplares ainda em rascunho ou prontos para publicação.</div>
+              </div>
+              <span id="exemplarActiveDraftsPill" class="pill info">Exemplares em curso</span>
+            </div>
+            <div id="exemplarActiveDraftsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="exemplarActiveDraftsWrap" class="table-wrap"></div>
+          </div>
+        </div>
 
         <div class="card" style="margin-top:16px;">
           <h4>Importação de livros para exemplares</h4>
@@ -3025,7 +3047,7 @@
             <button id="saveExemplarDraftBtn" type="submit" class="button primary">Salvar rascunho</button>
             <button id="exemplarReadyBtn" type="button" class="button secondary">Marcar como pronto</button>
             <button id="publishExemplarDraftBtn" type="button" class="button success">Publicar este rascunho</button>
-            <button id="exemplarPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">rascunho publicado</button>
+            <button id="exemplarPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">Rascunho publicado</button>
             <button id="discardExemplarDraftBtn" type="button" class="button warning discard-edge danger-far">Descartar rascunho</button>
           </div>
         </form>
@@ -3137,7 +3159,7 @@
               <button id="saveLabelDraftBtn" type="submit" class="button primary">Salvar rótulo</button>
               <button id="labelReadyBtn" type="button" class="button secondary">Validar rótulo</button>
               <button id="publishLabelDraftBtn" type="button" class="button success">Publicar este rótulo</button>
-              <button id="labelPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">rascunho publicado</button>
+              <button id="labelPublishedPopupBtn" type="button" class="button publish-popup-btn is-hidden" tabindex="-1" aria-hidden="true">Rascunho publicado</button>
               <button id="discardLabelDraftBtn" type="button" class="button warning discard-edge danger-far">Descartar rascunho</button>
             </div>
           </form>
@@ -3234,10 +3256,10 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="queueTypeFilter">Camada de trabalho</label>
+            <label for="queueTypeFilter">Tipo</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Fichas comuns</option>
+              <option value="book">Documentos</option>
               <option value="author">Autores</option>
               <option value="exemplar">Exemplares</option>
             </select>
@@ -3376,9 +3398,9 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar fichas comuns e autoridades</label>
+            <label for="catalogSearch">Buscar documentos e autores</label>
             <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo as fichas comuns publicadas e as autoridades publicadas. A busca de exemplares continua separada ao lado.</small>
+            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
@@ -3399,7 +3421,10 @@
                 <h4 class="autofill-panel-title">Leitura do catálogo publicado neste recorte</h4>
                 <div class="hint">Nesta passe 18, a leitura do catálogo distingue melhor o que já está publicado, o que continua apenas como compatibilidade local, o que já existe como exemplar local e o que já entrou em retomada editorial local.</div>
               </div>
-              <span class="pill info">Passe 18 · catalogPanel</span>
+              <div class="inline" style="gap:8px; flex-wrap:wrap;">
+                  <span id="catalogPass17Marker" class="pill info">Passe 17 · catalogPanel</span>
+                  <span id="catalogPass18Marker" class="pill info">Passe 18 · catalogPanel</span>
+                </div>
             </div>
             <div class="catalog-layer-summary">
               <div class="catalog-layer-card">
@@ -3556,7 +3581,7 @@
               <label for="partnerIncomingIdentityPreview">Prévia da identificação que pode seguir para a governança</label>
               <textarea id="partnerIncomingIdentityPreview" rows="7" readonly placeholder="A prévia da identificação local da biblioteca aparecerá aqui."></textarea>
               <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
-              <div id="partnerIncomingSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da recepção:</strong> arquivo ainda não lido; identidade local ainda não consolidada; nada segue para a governança sem teu gesto.</div>
+              <div id="partnerIncomingSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da recepção:</strong> ainda não atualizada.</div>
             </div>
           </div>
         </div>
@@ -3569,7 +3594,7 @@
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
 
-          <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> leitura política possível; microfluxo documental ainda não consolidado.</div>
+          <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> ainda não atualizada.</div>
 
           <div class="catalog-layer-summary" id="partnerGovernanceSummary" style="margin-bottom:12px;">
             <div class="catalog-layer-card">
@@ -3665,7 +3690,7 @@
             </div>
             <div class="field" style="grid-column: span 3;">
               <label for="partnerRightsSummaryOutput">Leitura operacional desta etapa</label>
-              <textarea id="partnerRightsSummaryOutput" rows="3" readonly placeholder="A leitura operacional vai separar: ler politicamente, comparar localmente, preparar retomada local, enriquecer a camada local, tocar ou não a camada compartilhada e publicar apenas na tua biblioteca."></textarea>
+              <textarea id="partnerRightsSummaryOutput" rows="3" readonly placeholder="Nenhuma leitura operacional ainda."></textarea>
             </div>
           </div>
         
@@ -3762,7 +3787,7 @@
               <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
-            <small id="partnerActionHint">Sem acordos aplicados ainda. Ler politicamente pode continuar; comparação local, retomada local e importação controlada continuam bloqueadas até acordo explícito e microfluxo aberto.</small>
+            <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
           </div>
 
           <div class="field" style="margin-top:12px;">
@@ -3822,21 +3847,7 @@
                 </div>
               </div>
               <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
-              <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> comparação local ainda não aberta; nenhuma escrita local prevista sem acordo e sem resumo manual.</div>
-              <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
-                <div class="field">
-                  <label for="partnerComparisonWriteNowOutput">O que pode ser escrito localmente agora</label>
-                  <textarea id="partnerComparisonWriteNowOutput" rows="4" readonly placeholder="A escrita local possível desta comparação aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonProtectedOutput">O que continua protegido nesta comparação</label>
-                  <textarea id="partnerComparisonProtectedOutput" rows="4" readonly placeholder="Os limites protegidos desta comparação aparecerão aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonBlockersOutput">O que ainda bloqueia esta comparação</label>
-                  <textarea id="partnerComparisonBlockersOutput" rows="4" readonly placeholder="Os bloqueios atuais desta comparação aparecerão aqui."></textarea>
-                </div>
-              </div>
+              <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
@@ -3909,21 +3920,7 @@
                 </div>
               </div>
               <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
-              <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> retomada local ainda não aberta; nada será escrito localmente sem acordo, escolha de formato e decisão de proveniência.</div>
-              <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
-                <div class="field">
-                  <label for="partnerImportWriteNowOutput">O que pode ser escrito localmente agora</label>
-                  <textarea id="partnerImportWriteNowOutput" rows="4" readonly placeholder="A escrita local possível desta preparação aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportProtectedOutput">O que continua protegido nesta preparação</label>
-                  <textarea id="partnerImportProtectedOutput" rows="4" readonly placeholder="Os limites protegidos desta preparação aparecerão aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportBlockersOutput">O que ainda bloqueia esta preparação</label>
-                  <textarea id="partnerImportBlockersOutput" rows="4" readonly placeholder="Os bloqueios atuais desta preparação aparecerão aqui."></textarea>
-                </div>
-              </div>
+              <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
@@ -4086,6 +4083,7 @@
       authorDraftLinks: [],
       bookDraftLinks: [],
       exemplarDraftLinks: [],
+      exemplarDraftRows: [],
       bookDigitalDraftResources: [],
     };
 
@@ -4393,6 +4391,9 @@
       validateVisibleExemplarRowsBtn: el('validateVisibleExemplarRowsBtn'),
       clearExemplarBatchFiltersBtn: el('clearExemplarBatchFiltersBtn'),
       exemplarBatchFilterSummary: el('exemplarBatchFilterSummary'),
+      exemplarActiveDraftsPill: el('exemplarActiveDraftsPill'),
+      exemplarActiveDraftsSummary: el('exemplarActiveDraftsSummary'),
+      exemplarActiveDraftsWrap: el('exemplarActiveDraftsWrap'),
       labelLotImportId: el('labelLotImportId'),
       labelBatchSearchInput: el('labelBatchSearchInput'),
       labelPendingScope: el('labelPendingScope'),
@@ -4528,6 +4529,10 @@
     function clearMessage(target) {
       target.textContent = '';
       target.className = 'message';
+    }
+
+    function getCurrentActorId() {
+      return state.profile?.id || state.profile?.user_id || state.session?.user?.id || null;
     }
 
     function sanitize(text) {
@@ -5476,12 +5481,12 @@
     }
 
     const publishPopupTimers = {};
-    const POPUP_DURATION = 2200;
+    const POPUP_DURATION = 1500;
 
     function hidePublishedPopup(kind) {
       const btn = refs[`${kind}PublishedPopupBtn`];
       if (!btn) return;
-      btn.textContent = 'rascunho publicado';
+      btn.textContent = 'ficha publicada';
       btn.classList.add('is-hidden');
       btn.classList.remove('show');
       btn.setAttribute('aria-hidden', 'true');
@@ -5491,10 +5496,10 @@
       }
     }
 
-    function showStatusPopup(kind, label = 'rascunho publicado') {
+    function showStatusPopup(kind, label = 'ficha publicada') {
       const btn = refs[`${kind}PublishedPopupBtn`];
       if (!btn) return;
-      btn.textContent = 'rascunho publicado';
+      btn.textContent = 'ficha publicada';
       if (publishPopupTimers[kind]) clearTimeout(publishPopupTimers[kind]);
       btn.textContent = label;
       btn.classList.remove('is-hidden');
@@ -5504,7 +5509,7 @@
     }
 
     function showPublishedPopup(kind) {
-      showStatusPopup(kind, 'rascunho publicado');
+      showStatusPopup(kind, 'ficha publicada');
     }
 
     function setPublishLock(kind, locked) {
@@ -5934,33 +5939,62 @@
       state.trashSelection.clear();
     }
 
+    function getActiveExemplarDraftRows() {
+      return [...(state.exemplarDraftRows || [])].filter((row) => {
+        const status = String(row?.status || '').trim();
+        if (status !== 'draft' && status !== 'ready') return false;
+        return String(row?.label_status || 'pending').trim() !== 'ready';
+      });
+    }
+
+    function buildSyntheticExemplarQueueItem(row = {}) {
+      return {
+        item_type: 'exemplar',
+        draft_id: Number(row.id),
+        status: row.status || 'draft',
+        label_status: row.label_status || 'pending',
+        action: row.action || (row.published_exemplar_id ? 'update' : 'create'),
+        reference_code: row.target_bib_ref || '',
+        display_title: row.tombo || `Exemplar #${row.id}`,
+        display_subtitle: row.label_author_override || '',
+        batch_id: row.batch_id || null,
+        updated_at: row.updated_at || null,
+      };
+    }
+
+    function mergeActiveExemplarDraftRowsIntoQueue(queueItems = [], exemplarRows = []) {
+      const merged = [...(queueItems || [])];
+      const seen = new Set(
+        merged
+          .filter((item) => String(item?.item_type || '') === 'exemplar' && Number.isFinite(Number(item?.draft_id)))
+          .map((item) => String(Number(item.draft_id)))
+      );
+      exemplarRows.forEach((row) => {
+        const id = Number(row?.id);
+        if (!Number.isFinite(id) || seen.has(String(id))) return;
+        merged.push(buildSyntheticExemplarQueueItem(row));
+        seen.add(String(id));
+      });
+      merged.sort((left, right) => new Date(right?.updated_at || 0).getTime() - new Date(left?.updated_at || 0).getTime());
+      return merged;
+    }
+
+    function getActiveDraftCount() {
+      const keys = new Set();
+      (state.queueItems || []).filter((item) => isActiveQueueItem(item)).forEach((item) => {
+        keys.add(getQueueSelectionKey(item.item_type, item.draft_id));
+      });
+      getActiveExemplarDraftRows().forEach((row) => {
+        keys.add(getQueueSelectionKey('exemplar', row.id));
+      });
+      return keys.size;
+    }
+
     function updateStats() {
       refs.statOpenBatches.textContent = state.batches.filter(b => b.status === 'open').length;
-      refs.statDrafts.textContent = state.queueItems.filter(item => isActiveQueueItem(item)).length;
+      refs.statDrafts.textContent = getActiveDraftCount();
       refs.statBooks.textContent = Number.isFinite(state.catalogTotals?.books) ? state.catalogTotals.books : state.books.length;
       refs.statAuthors.textContent = Number.isFinite(state.catalogTotals?.authors) ? state.catalogTotals.authors : state.authors.length;
-      syncDraftStatsInteractivity();
-    }
-
-    function syncDraftStatsInteractivity() {
-      if (!refs.statDrafts) return;
-      refs.statDrafts.setAttribute('role', 'button');
-      refs.statDrafts.setAttribute('tabindex', '0');
-      refs.statDrafts.setAttribute('title', 'Clique para ver os rascunhos ativos');
-      refs.statDrafts.setAttribute('aria-disabled', 'false');
-      refs.statDrafts.style.cursor = 'pointer';
-    }
-
-    async function refreshQueueSurfacesAfterDraftMutation() {
-      const results = await Promise.allSettled([loadQueue(), loadBatches(), loadCatalog()]);
-      updateStats();
-      syncDraftStatsInteractivity();
-      if (getActiveCatalogacaoTab() === 'queuePanel') renderQueue();
-      else renderTrash();
-      const rejected = results.filter(result => result.status === 'rejected');
-      if (rejected.length) {
-        console.warn('refreshQueueSurfacesAfterDraftMutation partial failure:', rejected.map(result => result.reason));
-      }
     }
 
     const DRAFT_VISUAL_STATE_MAP = {
@@ -8326,8 +8360,8 @@
           'anarbib_material_detail',
           materialDetailBridge
         ),
-        created_by: state.profile.id,
-        updated_by: state.profile.id,
+        created_by: getCurrentActorId(),
+        updated_by: getCurrentActorId(),
       };
     }
 
@@ -8354,8 +8388,8 @@
         wikidata_id: el('authorWikidata').value.trim() || null,
         photo_object_path: el('authorPhotoPath').value.trim() || null,
         notes: buildAuthorNotesWithStructuredMeta(el('authorNotes').value.trim()),
-        created_by: state.profile.id,
-        updated_by: state.profile.id,
+        created_by: getCurrentActorId(),
+        updated_by: getCurrentActorId(),
       };
     }
 
@@ -8484,8 +8518,8 @@
         label_cdd_override: el('labelCDDInput')?.value.trim() || null,
         label_note: el('labelNoteInput')?.value.trim() || null,
         notes: el('exemplarNotes').value.trim() || null,
-        created_by: state.profile.id,
-        updated_by: state.profile.id,
+        created_by: getCurrentActorId(),
+        updated_by: getCurrentActorId(),
       };
     }
 
@@ -9495,6 +9529,7 @@
     let catalogacaoLastPassiveSessionProbeAt = 0;
     let catalogacaoAuthSyncSerial = 0;
     let catalogacaoAuthBootstrapping = true;
+    let catalogacaoLateSessionRetryTimer = null;
     const CATALOGACAO_AUTH_STORAGE_KEYS = new Set(['sb-uflwmikiyjfnikiphtcp-auth-token', 'anarbib-staging-auth']);
     const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
     const CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 8;
@@ -10059,13 +10094,28 @@
       if (error) {
         console.warn('loadQueue failed:', error);
         state.queueItems = [];
+        state.exemplarDraftRows = [];
         clearQueueSelection();
         clearTrashSelection();
         renderQueue();
         renderTrash();
+        renderExemplarActiveDraftsSummary();
         return { ok: false, source: 'queue', error };
       }
       let queueItems = data || [];
+
+      const { data: exemplarDraftRows, error: exemplarDraftRowsError } = await supabase
+        .from('exemplar_drafts')
+        .select('id, published_exemplar_id, batch_id, status, action, target_bib_ref, tombo, shelf_location, notes, label_title_override, label_author_override, label_cdd_override, label_note, label_status, updated_at')
+        .in('status', ['draft', 'ready'])
+        .order('updated_at', { ascending: false });
+
+      if (exemplarDraftRowsError) {
+        console.warn('loadQueue exemplar draft rows failed:', exemplarDraftRowsError);
+        state.exemplarDraftRows = [];
+      } else {
+        state.exemplarDraftRows = exemplarDraftRows || [];
+      }
 
       // v_catalog_queue não expõe label_status; para exemplares, reconciliamos o estado real
       // diretamente com exemplar_drafts antes de renderizar a fila editorial.
@@ -10074,33 +10124,31 @@
         .map(item => Number(item.draft_id));
 
       if (exemplarDraftIds.length) {
-        const { data: exemplarStates, error: exemplarStatesError } = await supabase
-          .from('exemplar_drafts')
-          .select('id, batch_id, status, label_status, updated_at')
-          .in('id', exemplarDraftIds);
-
-        if (!exemplarStatesError && Array.isArray(exemplarStates)) {
-          const exemplarStateMap = new Map(exemplarStates.map(row => [Number(row.id), row]));
-          queueItems = queueItems.map(item => {
-            if (String(item?.item_type || '') !== 'exemplar') return item;
-            const fresh = exemplarStateMap.get(Number(item?.draft_id));
-            if (!fresh) return item;
-            return {
-              ...item,
-              batch_id: fresh.batch_id ?? item.batch_id,
-              status: fresh.status || item.status,
-              label_status: fresh.label_status || item.label_status || 'pending',
-              updated_at: fresh.updated_at || item.updated_at,
-            };
-          });
-        }
+        const exemplarStateMap = new Map((state.exemplarDraftRows || []).map(row => [Number(row.id), row]));
+        queueItems = queueItems.map(item => {
+          if (String(item?.item_type || '') !== 'exemplar') return item;
+          const fresh = exemplarStateMap.get(Number(item?.draft_id));
+          if (!fresh) return item;
+          return {
+            ...item,
+            batch_id: fresh.batch_id ?? item.batch_id,
+            status: fresh.status || item.status,
+            action: fresh.action || item.action,
+            label_status: fresh.label_status || item.label_status || 'pending',
+            reference_code: fresh.target_bib_ref || item.reference_code,
+            display_title: fresh.tombo || item.display_title,
+            updated_at: fresh.updated_at || item.updated_at,
+          };
+        });
       }
 
+      queueItems = mergeActiveExemplarDraftRowsIntoQueue(queueItems, getActiveExemplarDraftRows());
       state.queueItems = queueItems;
       clearQueueSelection();
       clearTrashSelection();
       renderQueue();
       renderTrash();
+      renderExemplarActiveDraftsSummary();
       return { ok: true, source: 'queue' };
     }
 
@@ -10556,7 +10604,7 @@
       const tableMap = { book: 'book_drafts', author: 'author_drafts', exemplar: 'exemplar_drafts' };
       const table = tableMap[type];
       if (!table) return;
-      const { error } = await supabase.from(table).update({ batch_id: batchId || null, updated_by: state.profile.id }).eq('id', id);
+      const { error } = await supabase.from(table).update({ batch_id: batchId || null, updated_by: getCurrentActorId() }).eq('id', id);
       if (error) throw error;
       await Promise.all([loadQueue(), loadBatches()]);
       setTab(currentTab);
@@ -10570,7 +10618,7 @@
       for (const table of tables) {
         const { error } = await supabase
           .from(table)
-          .update({ batch_id: null, updated_by: state.profile.id })
+          .update({ batch_id: null, updated_by: getCurrentActorId() })
           .eq('batch_id', targetBatchId)
           .neq('status', 'cancelled');
         if (error) throw error;
@@ -10606,13 +10654,13 @@
       const table = tableMap[type];
       if (!table) return;
       const numericId = Number(id);
-      const { error } = await supabase.from(table).update({ status: 'cancelled', updated_by: state.profile.id }).eq('id', numericId);
+      const { error } = await supabase.from(table).update({ status: 'cancelled', updated_by: getCurrentActorId() }).eq('id', numericId);
       if (error) throw error;
       markQueueDraftCancelledLocally(numericId);
       renderQueue();
       renderTrash();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      await refreshQueueSurfacesAfterDraftMutation();
     }
 
     async function discardSelectedQueueDrafts() {
@@ -10636,7 +10684,7 @@
       for (const [type, ids] of Object.entries(groupedIds)) {
         const { error } = await supabase
           .from(tableMap[type])
-          .update({ status: 'cancelled', updated_by: state.profile.id })
+          .update({ status: 'cancelled', updated_by: getCurrentActorId() })
           .in('id', ids);
         if (error) throw error;
       }
@@ -10645,8 +10693,8 @@
       clearQueueSelection();
       renderQueue();
       renderTrash();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      await refreshQueueSurfacesAfterDraftMutation();
       return selectedEntries.length;
     }
 
@@ -10693,10 +10741,14 @@
 
     function getQueueExemplarRecord(item = {}) {
       if (item.item_type !== 'exemplar') return null;
+      const draftId = Number(item?.draft_id);
       const referenceCode = String(item.reference_code || '').trim();
       const displayTitle = String(item.display_title || '').trim();
-      return state.exemplars.find(ex => String(ex.bib_ref || '').trim() === referenceCode)
+      return (state.exemplarDraftRows || []).find(ex => Number(ex?.id) === draftId)
+        || state.exemplars.find(ex => String(ex.bib_ref || '').trim() === referenceCode)
         || state.exemplars.find(ex => String(ex.tombo || '').trim() === displayTitle)
+        || (state.exemplarDraftRows || []).find(ex => String(ex?.target_bib_ref || '').trim() === referenceCode)
+        || (state.exemplarDraftRows || []).find(ex => String(ex?.tombo || '').trim() === displayTitle)
         || null;
     }
 
@@ -10848,9 +10900,10 @@
     async function restoreQueueDraft(type, id) {
       const table = getDraftTableName(type);
       if (!table) throw new Error('Tipo de rascunho inválido para restauração.');
-      const { error } = await supabase.from(table).update({ status: 'draft', updated_by: state.profile.id }).eq('id', Number(id));
+      const { error } = await supabase.from(table).update({ status: 'draft', updated_by: getCurrentActorId() }).eq('id', Number(id));
       if (error) throw error;
-      await refreshQueueSurfacesAfterDraftMutation();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
+      updateStats();
     }
 
     async function restoreSelectedTrashDrafts() {
@@ -10874,13 +10927,14 @@
       for (const [type, ids] of Object.entries(groupedIds)) {
         const { error } = await supabase
           .from(tableMap[type])
-          .update({ status: 'draft', updated_by: state.profile.id })
+          .update({ status: 'draft', updated_by: getCurrentActorId() })
           .in('id', ids);
         if (error) throw error;
       }
 
       clearTrashSelection();
-      await refreshQueueSurfacesAfterDraftMutation();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
+      updateStats();
       return selectedEntries.length;
     }
 
@@ -10890,7 +10944,9 @@
         const { error } = await supabase.from(table).delete().eq('status', 'cancelled');
         if (error) throw error;
       }
-      await refreshQueueSurfacesAfterDraftMutation();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
+      renderTrash();
+      updateStats();
     }
 
     function renderTrash() {
@@ -11268,8 +11324,8 @@
         label_cdd_override: copy.cdd || null,
         label_note: copy.note || null,
         notes: copy.notes || null,
-        created_by: state.profile.id,
-        updated_by: state.profile.id,
+        created_by: getCurrentActorId(),
+        updated_by: getCurrentActorId(),
       };
 
       if (!payload.target_bib_ref || !payload.tombo) {
@@ -11701,7 +11757,7 @@
       }
       const { error } = await supabase
         .from('exemplar_drafts')
-        .update({ label_status: 'ready', updated_by: state.profile.id })
+        .update({ label_status: 'ready', updated_by: getCurrentActorId() })
         .in('id', numericIds);
       if (error) throw error;
 
@@ -11810,6 +11866,93 @@
             showMessage(refs.labelBatchMessage, 'Rótulo validado com sucesso.', 'ok');
           } catch (error) {
             showMessage(refs.labelBatchMessage, error.message, 'error');
+          }
+        });
+      });
+    }
+
+
+    function renderExemplarActiveDraftsSummary() {
+      if (!refs.exemplarActiveDraftsWrap || !refs.exemplarActiveDraftsSummary) return;
+      const items = getActiveExemplarDraftRows()
+        .slice()
+        .sort((left, right) => new Date(right?.updated_at || 0).getTime() - new Date(left?.updated_at || 0).getTime());
+      const readyCount = items.filter((item) => String(item?.status || '') === 'ready').length;
+      const draftCount = items.filter((item) => String(item?.status || '') === 'draft').length;
+      refs.exemplarActiveDraftsPill.textContent = `${items.length} exemplar(es) em curso`;
+      refs.exemplarActiveDraftsSummary.innerHTML = items.length
+        ? `<strong>Leitura da superfície:</strong> ${draftCount} em rascunho · ${readyCount} prontos para publicação · retomada rápida local sem sair da aba Exemplares.`
+        : '<strong>Leitura da superfície:</strong> nenhum rascunho ativo de exemplar neste recorte.';
+      if (!items.length) {
+        refs.exemplarActiveDraftsWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo de exemplar encontrado agora.</div>';
+        return;
+      }
+      refs.exemplarActiveDraftsWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Rascunho</th>
+              <th>Situação</th>
+              <th>Compatibilidade local</th>
+              <th>Tombo</th>
+              <th>Localização</th>
+              <th>Atualizado em</th>
+              <th>Operações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item) => `
+              <tr>
+                <td>#${sanitize(item.id)}</td>
+                <td>${getQueueStatusBadge(item.status)}</td>
+                <td>${sanitize(item.target_bib_ref || '—')}</td>
+                <td>${sanitize(item.tombo || '—')}</td>
+                <td>${sanitize(compactSpaces(item.shelf_location || '') || '—')}</td>
+                <td>${sanitize(formatDate(item.updated_at))}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn-inline small secondary" data-action="edit-exemplar-active" data-id="${sanitize(item.id)}">Editar</button>
+                    <button class="btn-inline small success" data-action="publish-exemplar-active" data-id="${sanitize(item.id)}">Publicar</button>
+                    <button class="btn-inline small warning" data-action="discard-exemplar-active" data-id="${sanitize(item.id)}">Descartar</button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+
+      refs.exemplarActiveDraftsWrap.querySelectorAll('[data-action="edit-exemplar-active"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          try {
+            await fetchDraftAndEdit('exemplar', Number(btn.dataset.id));
+            setTab('exemplarsPanel');
+          } catch (error) {
+            showMessage(refs.exemplarMessage, error.message, 'error');
+          }
+        });
+      });
+
+      refs.exemplarActiveDraftsWrap.querySelectorAll('[data-action="publish-exemplar-active"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          try {
+            await publishSingleDraft('exemplar', Number(btn.dataset.id));
+            showMessage(refs.exemplarMessage, 'Rascunho de exemplar publicado com sucesso.', 'ok');
+            setTab('exemplarsPanel');
+          } catch (error) {
+            showMessage(refs.exemplarMessage, error.message, 'error');
+          }
+        });
+      });
+
+      refs.exemplarActiveDraftsWrap.querySelectorAll('[data-action="discard-exemplar-active"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirmDiscardAction('Este rascunho de exemplar será descartado e irá para a lixeira. Deseja continuar?')) return;
+          try {
+            await discardDraft('exemplar_drafts', Number(btn.dataset.id), refs.exemplarMessage, resetExemplarForm);
+            showMessage(refs.exemplarMessage, 'Rascunho de exemplar enviado para a lixeira.', 'ok');
+            setTab('exemplarsPanel');
+          } catch (error) {
+            showMessage(refs.exemplarMessage, error.message, 'error');
           }
         });
       });
@@ -12731,6 +12874,10 @@ function getVisibleCatalogAuthorRows() {
   return { rows, totalCount };
 }
 
+function getCatalogAuthorSearchIndex(author = {}) {
+  return getAuthorCatalogSearchIndex(author);
+}
+
 function getCatalogAuthorCatalogSearchIndexSafe(author = {}) {
   return getCatalogAuthorSearchIndex(author);
 }
@@ -13441,8 +13588,8 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       if (!id) throw new Error('Salve o rascunho antes de marcá-lo como pronto.');
       const currentTab = getActiveCatalogacaoTab();
       const updatePayload = table === 'exemplar_drafts'
-        ? { status: 'ready', label_status: 'pending', updated_by: state.profile.id }
-        : { status: 'ready', updated_by: state.profile.id };
+        ? { status: 'ready', label_status: 'pending', updated_by: getCurrentActorId() }
+        : { status: 'ready', updated_by: getCurrentActorId() };
       const { error } = await supabase.from(table).update(updatePayload).eq('id', Number(id));
       if (error) throw error;
       await Promise.all([loadQueue(), loadBatches()]);
@@ -13482,13 +13629,13 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       if (!confirmed) return;
       const currentTab = getActiveCatalogacaoTab();
       const numericId = Number(id);
-      const { error } = await supabase.from(table).update({ status: 'cancelled', updated_by: state.profile.id }).eq('id', numericId);
+      const { error } = await supabase.from(table).update({ status: 'cancelled', updated_by: getCurrentActorId() }).eq('id', numericId);
       if (error) throw error;
       markQueueDraftCancelledLocally(numericId);
       renderQueue();
       renderTrash();
+      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      await refreshQueueSurfacesAfterDraftMutation();
       resetFn();
       setTab(currentTab);
       showMessage(target, 'Rascunho descartado com sucesso.', 'ok');
@@ -13758,7 +13905,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       try {
         const name = el('batchName').value.trim();
         if (!name) throw new Error('Informe um nome para o lote.');
-        const { error } = await supabase.from('catalog_batches').insert({ name, notes: el('batchNotes').value.trim() || null, created_by: state.profile.id });
+        const { error } = await supabase.from('catalog_batches').insert({ name, notes: el('batchNotes').value.trim() || null, created_by: getCurrentActorId() });
         if (error) throw error;
         el('batchForm').reset();
         await loadBatches();
@@ -14202,9 +14349,6 @@ function initPartnerProbeUi() {
   const comparisonDecisionEl = document.getElementById('partnerComparisonDecision');
   const comparisonChecklistEl = document.getElementById('partnerComparisonChecklist');
   const comparisonPreviewEl = document.getElementById('partnerComparisonPreview');
-  const comparisonWriteNowEl = document.getElementById('partnerComparisonWriteNowOutput');
-  const comparisonProtectedEl = document.getElementById('partnerComparisonProtectedOutput');
-  const comparisonBlockersEl = document.getElementById('partnerComparisonBlockersOutput');
   const comparisonCarryPreviewEl = document.getElementById('partnerComparisonCarryPreview');
   const comparisonFieldWritePreviewEl = document.getElementById('partnerComparisonFieldWritePreview');
   const comparisonFieldWriteHintEl = document.getElementById('partnerComparisonFieldWriteHint');
@@ -14225,9 +14369,6 @@ function initPartnerProbeUi() {
   const importProvenanceSummaryEl = document.getElementById('partnerImportProvenanceSummary');
   const importDecisionSummaryEl = document.getElementById('partnerImportDecisionSummary');
   const importDraftPreviewEl = document.getElementById('partnerImportDraftPreview');
-  const importWriteNowEl = document.getElementById('partnerImportWriteNowOutput');
-  const importProtectedEl = document.getElementById('partnerImportProtectedOutput');
-  const importBlockersEl = document.getElementById('partnerImportBlockersOutput');
   const importCarryPreviewEl = document.getElementById('partnerImportCarryPreview');
   const importFieldWritePreviewEl = document.getElementById('partnerImportFieldWritePreview');
   const importFieldWriteHintEl = document.getElementById('partnerImportFieldWriteHint');
@@ -14281,12 +14422,12 @@ function initPartnerProbeUi() {
     !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !partnerBoundaryEl || !partnerUnlockConditionEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
-    !comparisonChecklistEl || !comparisonPreviewEl || !comparisonWriteNowEl || !comparisonProtectedEl || !comparisonBlockersEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
+    !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
     !comparisonOperationalStateEl || !comparisonPrudenceSignalEl || !comparisonBoundaryNoteEl ||
     !comparisonLiveHintEl || !applyComparisonBtn || !clearComparisonBtn ||
     !importWorkspaceEl || !importWorkspaceStatusEl || !importSourceSummaryEl || !importLocalSummaryEl ||
     !importFormatSelectEl || !importMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl ||
-    !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importWriteNowEl || !importProtectedEl || !importBlockersEl || !importCarryPreviewEl ||
+    !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
     !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
     !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
     !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl ||
@@ -15866,77 +16007,6 @@ ${decisionSummary}` : '',
     partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
-
-  function getComparisonWriteNowText() {
-    const readiness = getComparisonReadinessState();
-
-    if (!partnerDocumentActionState.compareAllowed) {
-      return 'Nenhuma escrita local pode sair desta comparação enquanto a política atual não autorizar comparação documental nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.workspaceOpen) {
-      return 'A comparação está autorizada em princípio, mas nenhum microfluxo de comparação está aberto nesta tela. Nada deve ser escrito localmente antes de abrir e descrever a comparação.';
-    }
-
-    if (!readiness.canWrite) {
-      return [
-        'Ainda não convém escrever nada na ficha a partir desta comparação.',
-        '',
-        formatPartnerMissingItems(readiness.missing, 'Antes disso, ainda falta:'),
-      ].join('\n');
-    }
-
-    return [
-      'Pode sair agora somente para a camada local da ficha:',
-      '- fonte de parceira e governança local, quando a leitura atual desta parceira exigir isso;',
-      '- ID e URL do registro de origem, quando ainda faltarem na ficha;',
-      '- nota local de proveniência com resumo do registro da parceira, diferenças e decisão humana.',
-      '',
-      'Nada daqui importa automaticamente o registro da parceira nem modifica a camada compartilhada.',
-    ].join('\n');
-  }
-
-  function getComparisonProtectedText() {
-    return [
-      'Ficha comum publicada: não é alterada diretamente por esta comparação.',
-      'Registro da parceira: não é modificado por esta aba.',
-      'Camada compartilhada: continua protegida nesta etapa.',
-      'Formato e modo de importação: permanecem fora deste microfluxo de comparação.',
-      'Publicação no catálogo: não sai desta comparação local.',
-    ].join('\n');
-  }
-
-  function getComparisonBlockersText() {
-    const readiness = getComparisonReadinessState();
-    const slug = getCurrentPartnerSlug();
-
-    if (!slug) {
-      return 'Falta consolidar a parceira em foco antes de abrir uma comparação documental local.';
-    }
-
-    if (partnerDocumentActionState.catalogacaoGateBlocked) {
-      return [
-        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo para esta parceira.',
-        '',
-        'Enquanto isso, a comparação continua bloqueada para escrita documental.',
-      ].join('\n');
-    }
-
-    if (!partnerDocumentActionState.compareAllowed) {
-      return 'A política atual ainda não autorizou comparação documental para esta parceira nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.workspaceOpen) {
-      return 'A comparação está autorizada, mas o microfluxo ainda não foi aberto nesta tela.';
-    }
-
-    if (readiness.missing.length) {
-      return formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais desta comparação:');
-    }
-
-    return 'Nenhum bloqueio interno restante nesta comparação. O gesto agora é só reler a escrita prevista e decidir se ela deve ou não seguir para a ficha.';
-  }
-
   function getComparisonOperationalStateText() {
     const readiness = getComparisonReadinessState();
     const lines = [];
@@ -15962,9 +16032,6 @@ ${decisionSummary}` : '',
     const readiness = getComparisonReadinessState();
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonWriteNowEl.value = getComparisonWriteNowText();
-    comparisonProtectedEl.value = getComparisonProtectedText();
-    comparisonBlockersEl.value = getComparisonBlockersText();
     comparisonCarryPreviewEl.value = readiness.comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
@@ -16225,77 +16292,6 @@ ${decisionSummary}` : '',
     return lines.join('\n');
   }
 
-
-  function getImportWriteNowText() {
-    const readiness = getImportReadinessState();
-
-    if (!partnerDocumentActionState.importAllowed) {
-      return 'Nenhuma escrita local pode sair desta preparação enquanto a política atual não autorizar importação controlada nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.importWorkspaceOpen) {
-      return 'A preparação local está autorizada em princípio, mas nenhum microfluxo de preparação está aberto nesta tela. Nada deve ser escrito localmente antes de abrir e descrever a preparação.';
-    }
-
-    if (!readiness.canWrite) {
-      return [
-        'Ainda não convém escrever nada na ficha a partir desta preparação.',
-        '',
-        formatPartnerMissingItems(readiness.missing, 'Antes disso, ainda falta:'),
-      ].join('\n');
-    }
-
-    return [
-      'Pode sair agora somente para a camada local da ficha:',
-      '- fonte de parceira, governança local, ID e URL do registro de origem;',
-      '- formato de importação e modo de importação preparados para esta retomada local;',
-      '- nota local de proveniência com o recorte do que retomar, do que não retomar e da decisão humana.',
-      '',
-      'Nada daqui dispara importação automática real nem publica no catálogo.',
-    ].join('\n');
-  }
-
-  function getImportProtectedText() {
-    return [
-      'Ficha comum publicada: não é alterada diretamente por esta preparação.',
-      'Registro da parceira: não é modificado livremente nesta aba.',
-      'Camada compartilhada: continua protegida, mesmo quando houver mutualização autorizada.',
-      'Importação automática real: não é disparada por este microfluxo.',
-      'Publicação no catálogo: não sai desta preparação local.',
-    ].join('\n');
-  }
-
-  function getImportBlockersText() {
-    const readiness = getImportReadinessState();
-    const slug = getCurrentPartnerSlug();
-
-    if (!slug) {
-      return 'Falta consolidar a parceira em foco antes de abrir uma preparação local de importação.';
-    }
-
-    if (partnerDocumentActionState.catalogacaoGateBlocked) {
-      return [
-        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo para esta parceira.',
-        '',
-        'Enquanto isso, a preparação continua bloqueada para escrita documental.',
-      ].join('\n');
-    }
-
-    if (!partnerDocumentActionState.importAllowed) {
-      return 'A política atual ainda não autorizou preparação local de importação para esta parceira nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.importWorkspaceOpen) {
-      return 'A preparação local está autorizada, mas o microfluxo ainda não foi aberto nesta tela.';
-    }
-
-    if (readiness.missing.length) {
-      return formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais desta preparação:');
-    }
-
-    return 'Nenhum bloqueio interno restante nesta preparação. O gesto agora é só reler a escrita prevista e decidir se ela deve ou não seguir para a ficha.';
-  }
-
   function getImportOperationalStateText() {
     const readiness = getImportReadinessState();
     const lines = [];
@@ -16313,9 +16309,6 @@ ${decisionSummary}` : '',
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importWriteNowEl.value = getImportWriteNowText();
-    importProtectedEl.value = getImportProtectedText();
-    importBlockersEl.value = getImportBlockersText();
     importCarryPreviewEl.value = readiness.carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
@@ -16446,7 +16439,7 @@ ${decisionSummary}` : '',
       partnerRightEnrichEl.value = '—';
       partnerRightSharedEl.value = '—';
       partnerRightPublishEl.value = '—';
-      partnerRightsSummaryEl.value = 'A leitura operacional vai separar: ler politicamente, comparar localmente, preparar retomada local, enriquecer a camada local, tocar ou não a camada compartilhada e publicar apenas na tua biblioteca.';
+      partnerRightsSummaryEl.value = 'Nenhuma leitura operacional ainda.';
       return;
     }
 
@@ -16660,7 +16653,7 @@ ${decisionSummary}` : '',
       refreshPartnerPilotSummary();
       return;
     }
-    actionHintEl.textContent = 'Sem acordos aplicados ainda. Ler politicamente pode continuar; comparação local, retomada local e importação controlada continuam bloqueadas até acordo explícito e microfluxo aberto.';
+    actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
     setPartnerNextStepReadout('empty', row, nextGateState);
     setPartnerBoundaryReadout('empty', row, nextGateState);
     refreshPartnerPilotSummary();
@@ -17209,7 +17202,7 @@ ${decisionSummary}` : '',
       try {
         state.session = nextSession || null;
         if (!state.session?.user?.id) {
-          state.session = await getConfirmedCurrentSession({ attempts: allowAnonymousReset ? 4 : 8, delayMs: 180 });
+          state.session = await resolveCatalogacaoSession(nextSession, { allowAnonymousReset });
         }
         if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
 
@@ -17221,6 +17214,7 @@ ${decisionSummary}` : '',
 
         if (!state.session?.user?.id) {
           resetCatalogacaoAuthChrome();
+          scheduleCatalogacaoLateSessionRetry();
           return false;
         }
 
@@ -17242,6 +17236,22 @@ ${decisionSummary}` : '',
           updateLoginButton();
         }
       }
+    }
+
+    function scheduleCatalogacaoLateSessionRetry() {
+      if (catalogacaoLateSessionRetryTimer || state.session?.user?.id) return;
+      catalogacaoLateSessionRetryTimer = window.setTimeout(async () => {
+        catalogacaoLateSessionRetryTimer = null;
+        if (state.session?.user?.id) return;
+        try {
+          const lateSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+          if (lateSession?.user?.id) {
+            await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
+          }
+        } catch (lateSessionError) {
+          console.warn('Nova tentativa tardia de sessão na catalogação falhou.', lateSessionError);
+        }
+      }, 1400);
     }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
@@ -17268,6 +17278,9 @@ ${decisionSummary}` : '',
       const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
       catalogacaoAuthBootstrapping = false;
       await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
+      if (!bootstrapCatalogacaoSession?.user?.id) {
+        scheduleCatalogacaoLateSessionRetry();
+      }
     } catch (bootstrapError) {
       catalogacaoAuthBootstrapping = false;
       console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
