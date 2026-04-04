@@ -231,7 +231,6 @@
           </div>
 
           <div class="status" id="status"></div>
-          <div class="muted" id="availabilityHelpLine" style="display:none;margin-top:8px"></div>
         </div>
       </div>
     </div>
@@ -851,19 +850,18 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const sessionHolding = getSessionHoldingForBook(bookRow);
       const hasSessionHolding = !!sessionHolding;
 
-      if (!currentUserContext?.isLoggedIn) {
-        return {
-          key: "check_public",
-          label: "Disponibilidade a verificar",
-          cls: "warn",
-          canReserve: false,
-          allowLoginReserve: false,
-          reserveTitle: "Reservar este livro",
-          actionType: loanable ? "reserva" : "consulta"
-        };
-      }
-
       if (!loanable) {
+        if (!currentUserContext?.isLoggedIn) {
+          return {
+            key: consultaPaused ? "consulta_paused_public" : "consulta_local_public",
+            label: consultaPaused ? "Consulta indisponível no momento" : consultaAvailableLabel,
+            cls: consultaPaused ? "warn" : "info",
+            canReserve: !consultaPaused,
+            allowLoginReserve: true,
+            reserveTitle: "Marcar consulta",
+            actionType: "consulta"
+          };
+        }
 
         if (!hasSessionHolding) {
           return {
@@ -929,6 +927,18 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           allowLoginReserve: true,
           reserveTitle: "Marcar consulta",
           actionType: "consulta"
+        };
+      }
+
+      if (!currentUserContext?.isLoggedIn) {
+        return {
+          key: availabilityInfo?.isAvailableNow ? "available_public" : (availabilityInfo?.nextDateLabel ? "available_later_public" : "check"),
+          label: availabilityInfo?.isAvailableNow ? availableNowLabel : (availabilityInfo?.nextDateLabel ? availableLaterLabel : "Disponibilidade a verificar"),
+          cls: availabilityInfo?.isAvailableNow ? "ok" : "warn",
+          canReserve: true,
+          allowLoginReserve: true,
+          reserveTitle: "Entre para reservar",
+          actionType: "reserva"
         };
       }
 
@@ -1308,7 +1318,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
         const fallbackBooks = await supabase
           .from("books")
-          .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+          .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,catalog_source")
           .eq("id", bookId)
           .maybeSingle();
 
@@ -2043,16 +2053,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const consultaAction = isConsultaActionState();
       const serviceMode = String(state?.service_mode || "").trim();
 
-      if (!currentUserContext?.isLoggedIn && currentBookAccessState?.canReserve === false) {
-        btnReservar.textContent = baseTitle;
-        btnReservar.classList.add("disabled");
-        btnReservar.setAttribute("aria-disabled", "true");
-        btnReservar.disabled = true;
-        btnReservar.style.display = "inline-flex";
-        btnReservar.title = "Conecte-se à sua conta para verificar disponibilidade";
-        return;
-      }
-
       if (consultaAction && serviceMode === "pausada") {
         btnReservar.textContent = baseTitle;
         btnReservar.classList.add("disabled");
@@ -2154,7 +2154,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         params.set("id", id);
         params.set("author_id", id);
       }
-      const libraryContext = getLibraryContextFromUrl();
+      const libraryContext = await enrichLibraryScope(getLibraryContextFromUrl());
       if (libraryContext?.libraryId) params.set("library_id", libraryContext.libraryId);
       if (libraryContext?.librarySlug) params.set("library_slug", libraryContext.librarySlug);
       if (libraryContext?.libraryName) params.set("library_name", libraryContext.libraryName);
@@ -2729,31 +2729,41 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) try {
-        const v2FilterField = requestedBookId ? "id" : "bib_ref";
-        const v2FilterValue = requestedBookId || bib_ref;
-        const v2 = await supabase
-          .from("v_book_detail_public_v2")
-          .select(v2Select)
-          .eq(v2FilterField, v2FilterValue)
-          .maybeSingle();
+        const v2Attempts = requestedBookId
+          ? [
+              ["book_id", requestedBookId],
+              ["id", requestedBookId],
+              ...(bib_ref ? [["bib_ref", bib_ref]] : [])
+            ]
+          : [["bib_ref", bib_ref]];
 
-        if (!v2.error && v2.data) {
+        for (const [v2FilterField, v2FilterValue] of v2Attempts) {
+          const v2 = await supabase
+            .from("v_book_detail_public_v2")
+            .select(v2Select)
+            .eq(v2FilterField, v2FilterValue)
+            .maybeSingle();
+
+          if (v2.error || !v2.data) continue;
+
           const candidateRow = { ...v2.data };
           const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
-          if (!localContextRequested || matchedHolding) {
-            if (matchedHolding) {
-              if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
-              if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
-              if (matchedHolding?.library_name) {
-                candidateRow.library_name = matchedHolding.library_name;
-                candidateRow.biblioteca = matchedHolding.library_name;
-              }
+          if (localContextRequested && !matchedHolding) continue;
+
+          if (matchedHolding) {
+            if (matchedHolding?.library_id != null) candidateRow.library_id = matchedHolding.library_id;
+            if (matchedHolding?.library_slug) candidateRow.library_slug = matchedHolding.library_slug;
+            if (matchedHolding?.library_name) {
+              candidateRow.library_name = matchedHolding.library_name;
+              candidateRow.biblioteca = matchedHolding.library_name;
             }
-            booksTable = "v_book_detail_public_v2";
-            data = candidateRow;
-            sample = candidateRow;
-            keys = Object.keys(candidateRow);
           }
+
+          booksTable = "v_book_detail_public_v2";
+          data = candidateRow;
+          sample = candidateRow;
+          keys = Object.keys(candidateRow);
+          break;
         }
       } catch (err) {
         console.warn("AnarBib livro: falha ao consultar v_book_detail_public_v2", err);
@@ -2762,17 +2772,27 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       if (!booksTable) {
         try {
-          const fallbackBooks = await supabase
-            .from("books")
-            .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
-            .eq(requestedBookId ? "id" : "bib_ref", requestedBookId || bib_ref)
-            .maybeSingle();
+          const fallbackAttempts = requestedBookId
+            ? [
+                ["id", requestedBookId],
+                ...(bib_ref ? [["bib_ref", bib_ref]] : [])
+              ]
+            : [["bib_ref", bib_ref]];
 
-          if (!fallbackBooks.error && fallbackBooks.data) {
+          for (const [fallbackField, fallbackValue] of fallbackAttempts) {
+            const fallbackBooks = await supabase
+              .from("books")
+              .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,catalog_source")
+              .eq(fallbackField, fallbackValue)
+              .maybeSingle();
+
+            if (fallbackBooks.error || !fallbackBooks.data) continue;
+
             booksTable = "books";
             data = fallbackBooks.data;
             sample = data;
             keys = Object.keys(data);
+            break;
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao consultar books em fallback", err);
@@ -2790,18 +2810,11 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         return;
       }
 
-      if (data?.author_id == null || String(data.author_id || '').trim() === '') {
-        try {
-          const fallbackAuthor = await supabase
-            .from("books")
-            .select("author_id")
-            .eq(data?.id != null ? "id" : "bib_ref", data?.id ?? bib_ref)
-            .maybeSingle();
-          if (!fallbackAuthor.error && fallbackAuthor.data?.author_id != null) {
-            data.author_id = fallbackAuthor.data.author_id;
-          }
-        } catch (_) {}
-      }
+      /*
+        books n'expose pas de colonne author_id dans le schéma actuel.
+        On ne tente donc plus de relire books pour author_id ici.
+        Le rendu auteur repose sur autor / author_books_public / authors_json.
+      */
 
       const colRef = findCol(keys, ["bib_ref", "bibref", "ref", "referencia", "referência"]) || "bib_ref";
       const colTit = findCol(keys, ["titulo", "título", "title", "nome"]);
@@ -3069,7 +3082,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       const accessState = computeBookAccessState(data, libraryContext);
       setStatus(accessState.label, accessState.cls);
-      setLine("availabilityHelpLine", !currentUserContext?.isLoggedIn ? "Conecte-se à sua conta para verificar disponibilidade" : "");
       setReserveButtonState(accessState);
 
       $("btnLer").addEventListener("click", async () => {
