@@ -5939,6 +5939,28 @@
       refs.statDrafts.textContent = state.queueItems.filter(item => isActiveQueueItem(item)).length;
       refs.statBooks.textContent = Number.isFinite(state.catalogTotals?.books) ? state.catalogTotals.books : state.books.length;
       refs.statAuthors.textContent = Number.isFinite(state.catalogTotals?.authors) ? state.catalogTotals.authors : state.authors.length;
+      syncDraftStatsInteractivity();
+    }
+
+    function syncDraftStatsInteractivity() {
+      if (!refs.statDrafts) return;
+      refs.statDrafts.setAttribute('role', 'button');
+      refs.statDrafts.setAttribute('tabindex', '0');
+      refs.statDrafts.setAttribute('title', 'Clique para ver os rascunhos ativos');
+      refs.statDrafts.setAttribute('aria-disabled', 'false');
+      refs.statDrafts.style.cursor = 'pointer';
+    }
+
+    async function refreshQueueSurfacesAfterDraftMutation() {
+      const results = await Promise.allSettled([loadQueue(), loadBatches(), loadCatalog()]);
+      updateStats();
+      syncDraftStatsInteractivity();
+      if (getActiveCatalogacaoTab() === 'queuePanel') renderQueue();
+      else renderTrash();
+      const rejected = results.filter(result => result.status === 'rejected');
+      if (rejected.length) {
+        console.warn('refreshQueueSurfacesAfterDraftMutation partial failure:', rejected.map(result => result.reason));
+      }
     }
 
     const DRAFT_VISUAL_STATE_MAP = {
@@ -10589,8 +10611,8 @@
       markQueueDraftCancelledLocally(numericId);
       renderQueue();
       renderTrash();
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
     }
 
     async function discardSelectedQueueDrafts() {
@@ -10623,8 +10645,8 @@
       clearQueueSelection();
       renderQueue();
       renderTrash();
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
       return selectedEntries.length;
     }
 
@@ -10828,8 +10850,7 @@
       if (!table) throw new Error('Tipo de rascunho inválido para restauração.');
       const { error } = await supabase.from(table).update({ status: 'draft', updated_by: state.profile.id }).eq('id', Number(id));
       if (error) throw error;
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
-      updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
     }
 
     async function restoreSelectedTrashDrafts() {
@@ -10859,8 +10880,7 @@
       }
 
       clearTrashSelection();
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
-      updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
       return selectedEntries.length;
     }
 
@@ -10870,9 +10890,7 @@
         const { error } = await supabase.from(table).delete().eq('status', 'cancelled');
         if (error) throw error;
       }
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
-      renderTrash();
-      updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
     }
 
     function renderTrash() {
@@ -13469,8 +13487,8 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       markQueueDraftCancelledLocally(numericId);
       renderQueue();
       renderTrash();
-      await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
+      await refreshQueueSurfacesAfterDraftMutation();
       resetFn();
       setTab(currentTab);
       showMessage(target, 'Rascunho descartado com sucesso.', 'ok');
