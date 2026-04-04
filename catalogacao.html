@@ -4537,6 +4537,19 @@
       }
     }
 
+    function rememberMessageAnchorFromSubmit(event) {
+      const submitter = event.submitter instanceof Element ? event.submitter.closest(MESSAGE_ACTION_SELECTOR) : null;
+      if (isVisibleMessageAnchor(submitter)) {
+        lastMessageAnchor = submitter;
+        return;
+      }
+      const form = event.target instanceof HTMLFormElement ? event.target : null;
+      const fallback = form?.querySelector('[type="submit"], button, .button, .btn-inline, [role="button"]') || null;
+      if (isVisibleMessageAnchor(fallback)) {
+        lastMessageAnchor = fallback;
+      }
+    }
+
     function resolveMessageAnchor(target) {
       const activeAnchor = document.activeElement instanceof Element ? document.activeElement.closest(MESSAGE_ACTION_SELECTOR) : null;
       const targetScope = target?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
@@ -4611,7 +4624,9 @@
     }
 
     document.addEventListener('click', rememberMessageAnchorFromEvent, true);
+    document.addEventListener('submit', rememberMessageAnchorFromSubmit, true);
     window.addEventListener('resize', repositionVisibleMessages);
+    window.addEventListener('scroll', repositionVisibleMessages, true);
 
     function getCurrentActorId() {
       return state.profile?.id || state.profile?.user_id || state.session?.user?.id || null;
