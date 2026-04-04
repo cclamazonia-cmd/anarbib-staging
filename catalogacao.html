@@ -4524,43 +4524,66 @@
     }
 
     const MESSAGE_ACTION_SELECTOR = 'button, .button, .btn-inline, .file-button, .tab-btn, a.btn, [role="button"]';
+    const MESSAGE_SCOPE_SELECTOR = '.panel, .card, .toolbar, .hero, .wrap';
     let lastMessageAnchor = null;
+    const lastMessageAnchorByScope = new WeakMap();
+
+    function getMessageScope(node) {
+      return node instanceof Element ? node.closest(MESSAGE_SCOPE_SELECTOR) : null;
+    }
 
     function isVisibleMessageAnchor(node) {
       return !!(node && node instanceof Element && node.isConnected && node.getClientRects().length && window.getComputedStyle(node).visibility !== 'hidden');
     }
 
+    function rememberScopedMessageAnchor(anchor) {
+      if (!isVisibleMessageAnchor(anchor)) return;
+      lastMessageAnchor = anchor;
+      const scope = getMessageScope(anchor);
+      if (scope) {
+        lastMessageAnchorByScope.set(scope, anchor);
+      }
+    }
+
     function rememberMessageAnchorFromEvent(event) {
       const anchor = event.target instanceof Element ? event.target.closest(MESSAGE_ACTION_SELECTOR) : null;
-      if (isVisibleMessageAnchor(anchor)) {
-        lastMessageAnchor = anchor;
-      }
+      rememberScopedMessageAnchor(anchor);
     }
 
     function rememberMessageAnchorFromSubmit(event) {
       const submitter = event.submitter instanceof Element ? event.submitter.closest(MESSAGE_ACTION_SELECTOR) : null;
       if (isVisibleMessageAnchor(submitter)) {
-        lastMessageAnchor = submitter;
+        rememberScopedMessageAnchor(submitter);
         return;
       }
       const form = event.target instanceof HTMLFormElement ? event.target : null;
       const fallback = form?.querySelector('[type="submit"], button, .button, .btn-inline, [role="button"]') || null;
-      if (isVisibleMessageAnchor(fallback)) {
-        lastMessageAnchor = fallback;
-      }
+      rememberScopedMessageAnchor(fallback);
     }
 
     function resolveMessageAnchor(target) {
+      const targetScope = getMessageScope(target);
+      const targetScopedAnchor = target?._messageAnchor || null;
+      if (isVisibleMessageAnchor(targetScopedAnchor)) {
+        return targetScopedAnchor;
+      }
+
       const activeAnchor = document.activeElement instanceof Element ? document.activeElement.closest(MESSAGE_ACTION_SELECTOR) : null;
-      const targetScope = target?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
-      const activeScope = activeAnchor?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
+      const activeScope = getMessageScope(activeAnchor);
       if (isVisibleMessageAnchor(activeAnchor) && (!targetScope || !activeScope || targetScope === activeScope || targetScope.contains(activeAnchor))) {
         return activeAnchor;
       }
-      const lastScope = lastMessageAnchor?.closest('.panel, .card, .toolbar, .hero, .wrap') || null;
+
+      const scopedAnchor = targetScope ? (lastMessageAnchorByScope.get(targetScope) || null) : null;
+      if (isVisibleMessageAnchor(scopedAnchor)) {
+        return scopedAnchor;
+      }
+
+      const lastScope = getMessageScope(lastMessageAnchor);
       if (isVisibleMessageAnchor(lastMessageAnchor) && (!targetScope || !lastScope || targetScope === lastScope || targetScope.contains(lastMessageAnchor))) {
         return lastMessageAnchor;
       }
+
       const localAnchor = targetScope?.querySelector(MESSAGE_ACTION_SELECTOR) || null;
       return isVisibleMessageAnchor(localAnchor) ? localAnchor : null;
     }
@@ -4608,12 +4631,14 @@
       target.textContent = text;
       target.className = `message show ${kind}`;
       const anchor = resolveMessageAnchor(target);
-      window.requestAnimationFrame(() => positionMessage(target, anchor));
+      target._messageAnchor = anchor || null;
+      window.requestAnimationFrame(() => positionMessage(target, target._messageAnchor));
     }
 
     function clearMessage(target) {
       target.textContent = '';
       target.className = 'message';
+      target._messageAnchor = null;
       target.style.left = '';
       target.style.right = '';
       target.style.top = '';
