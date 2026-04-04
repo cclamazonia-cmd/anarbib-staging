@@ -3162,10 +3162,10 @@ async function loadRowsFromSupabase() {
       const supplementalHoldingLibraries = supplementalHoldingMap.get(String(r?.id ?? r?.book_id ?? '')) || [];
       const holdingLibraries = mergeSupplementalHoldingLibraries(baseHoldingLibraries, supplementalHoldingLibraries, r);
       const holdingLibraryNameLabels = normalizeHoldingLibraryNameLabels(r?.holding_library_names_json, r?.bib_ref || '');
-      const holdingLibraryLabels = uniqueSortedStrings([
+      const holdingLibraryLabels = completeKnownLibraryLabels([
         ...holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')),
         ...holdingLibraryNameLabels
-      ]);
+      ], Number(r?.bibliotecas_count ?? holdingLibraries.length ?? 0) || 0);
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
@@ -3545,6 +3545,21 @@ function getCatalogGroupKey(row) {
 function uniqueSortedStrings(values) {
   return [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))]
     .sort((a, b) => compareNullableText(a, b));
+}
+function completeKnownLibraryLabels(labels = [], expectedCount = 0) {
+  const normalizedExpectedCount = Number(expectedCount || 0) || 0;
+  const uniqueLabels = uniqueSortedStrings(labels);
+  if (!normalizedExpectedCount || uniqueLabels.length >= normalizedExpectedCount) return uniqueLabels;
+  if (normalizedExpectedCount > DEFAULT_LIBRARY_LABELS.length) return uniqueLabels;
+  const seen = new Set(uniqueLabels.map((label) => getLibraryKey(label)));
+  for (const label of DEFAULT_LIBRARY_LABELS) {
+    const key = getLibraryKey(label);
+    if (seen.has(key)) continue;
+    uniqueLabels.push(label);
+    seen.add(key);
+    if (uniqueLabels.length >= normalizedExpectedCount) break;
+  }
+  return uniqueSortedStrings(uniqueLabels);
 }
 function mergeAuthorIdsForGroup(items) {
   return [...new Set((items || []).flatMap((item) => {
