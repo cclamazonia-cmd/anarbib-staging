@@ -2729,11 +2729,14 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) try {
-        const v2Filters = requestedBookId
-          ? [["book_id", requestedBookId], ["id", requestedBookId]]
+        const v2Attempts = requestedBookId
+          ? [
+              ["book_id", requestedBookId],
+              ["id", requestedBookId]
+            ]
           : [["bib_ref", bib_ref]];
 
-        for (const [v2FilterField, v2FilterValue] of v2Filters) {
+        for (const [v2FilterField, v2FilterValue] of v2Attempts) {
           const v2 = await supabase
             .from("v_book_detail_public_v2")
             .select(v2Select)
@@ -2842,8 +2845,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const colLibrarySlug = findCol(keys, ["library_slug"]);
       const colLibraryName = findCol(keys, ["library_name", "biblioteca"]);
 
-      if (data?.bib_ref != null) {
-        bib_ref = String(data.bib_ref || bib_ref || "").trim();
+      if (!bib_ref && data?.bib_ref != null) {
+        bib_ref = String(data.bib_ref || "").trim();
       }
 
       const titulo = colTit ? (data[colTit] || "") : "";
