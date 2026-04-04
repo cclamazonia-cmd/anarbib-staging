@@ -2581,7 +2581,7 @@
                 <div class="book-derived-summary-top">
                   <div>
                     <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Prévia curta do que esta ficha já comunica para futuras superfícies de consulta, difusão e revisão editorial.</div>
+                    <div class="hint">Prévia curta do que esta ficha comum já comunica, do que já existe como camada local descrita e de como o acesso local começa a ficar legível para consulta, difusão e revisão editorial.</div>
                   </div>
                   <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2601,7 +2601,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia mínima do que esta ficha já pode produzir para o catálogo público e para a abertura da ficha, sem ainda alterar o catálogo ou a ficha comum publicada.</div>
+                    <div class="hint">Prévia mínima do que esta ficha comum já pode produzir para o catálogo público e para a abertura da ficha, sem confundir ficha comum, camada local, exemplar local e acesso local.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -3234,10 +3234,10 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="queueTypeFilter">Tipo</label>
+            <label for="queueTypeFilter">Camada de trabalho</label>
             <select id="queueTypeFilter">
               <option value="">Todos</option>
-              <option value="book">Documentos</option>
+              <option value="book">Fichas comuns</option>
               <option value="author">Autores</option>
               <option value="exemplar">Exemplares</option>
             </select>
@@ -3376,9 +3376,9 @@
       <div class="panel-body">
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
-            <label for="catalogSearch">Buscar documentos e autores</label>
+            <label for="catalogSearch">Buscar fichas comuns e autoridades</label>
             <input id="catalogSearch" type="text" placeholder="Título, autor, editora, referência, país…" />
-            <small>Este campo único filtra ao mesmo tempo os documentos publicados e os autores publicados.</small>
+            <small>Este campo único filtra ao mesmo tempo as fichas comuns publicadas e as autoridades publicadas. Os exemplares locais publicados seguem no campo ao lado.</small>
           </div>
           <div class="field">
             <label for="catalogBatchId">Lote para o rascunho</label>
@@ -3823,20 +3823,6 @@
               </div>
               <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
-              <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
-                <div class="field">
-                  <label for="partnerComparisonWriteNowOutput">O que pode ser escrito localmente agora</label>
-                  <textarea id="partnerComparisonWriteNowOutput" rows="4" readonly placeholder="A escrita local possível desta comparação aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonProtectedOutput">O que continua protegido nesta comparação</label>
-                  <textarea id="partnerComparisonProtectedOutput" rows="4" readonly placeholder="Os limites protegidos desta comparação aparecerão aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerComparisonBlockersOutput">O que ainda bloqueia esta comparação</label>
-                  <textarea id="partnerComparisonBlockersOutput" rows="4" readonly placeholder="Os bloqueios atuais desta comparação aparecerão aqui."></textarea>
-                </div>
-              </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
@@ -3910,20 +3896,6 @@
               </div>
               <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
-              <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
-                <div class="field">
-                  <label for="partnerImportWriteNowOutput">O que pode ser escrito localmente agora</label>
-                  <textarea id="partnerImportWriteNowOutput" rows="4" readonly placeholder="A escrita local possível desta preparação aparecerá aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportProtectedOutput">O que continua protegido nesta preparação</label>
-                  <textarea id="partnerImportProtectedOutput" rows="4" readonly placeholder="Os limites protegidos desta preparação aparecerão aqui."></textarea>
-                </div>
-                <div class="field">
-                  <label for="partnerImportBlockersOutput">O que ainda bloqueia esta preparação</label>
-                  <textarea id="partnerImportBlockersOutput" rows="4" readonly placeholder="Os bloqueios atuais desta preparação aparecerão aqui."></textarea>
-                </div>
-              </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
@@ -5476,12 +5448,12 @@
     }
 
     const publishPopupTimers = {};
-    const POPUP_DURATION = 1500;
+    const POPUP_DURATION = 2200;
 
     function hidePublishedPopup(kind) {
       const btn = refs[`${kind}PublishedPopupBtn`];
       if (!btn) return;
-      btn.textContent = 'ficha publicada';
+      btn.textContent = 'rascunho publicado';
       btn.classList.add('is-hidden');
       btn.classList.remove('show');
       btn.setAttribute('aria-hidden', 'true');
@@ -5491,12 +5463,12 @@
       }
     }
 
-    function showStatusPopup(kind, label = 'ficha publicada') {
+    function showStatusPopup(kind, label = 'rascunho publicado') {
       const btn = refs[`${kind}PublishedPopupBtn`];
       if (!btn) return;
-      btn.textContent = 'ficha publicada';
+      btn.textContent = 'rascunho publicado';
       if (publishPopupTimers[kind]) clearTimeout(publishPopupTimers[kind]);
-      btn.textContent = label;
+      btn.textContent = label || 'rascunho publicado';
       btn.classList.remove('is-hidden');
       btn.classList.add('show');
       btn.setAttribute('aria-hidden', 'false');
@@ -5504,7 +5476,7 @@
     }
 
     function showPublishedPopup(kind) {
-      showStatusPopup(kind, 'ficha publicada');
+      showStatusPopup(kind, 'rascunho publicado');
     }
 
     function setPublishLock(kind, locked) {
@@ -14184,9 +14156,6 @@ function initPartnerProbeUi() {
   const comparisonDecisionEl = document.getElementById('partnerComparisonDecision');
   const comparisonChecklistEl = document.getElementById('partnerComparisonChecklist');
   const comparisonPreviewEl = document.getElementById('partnerComparisonPreview');
-  const comparisonWriteNowEl = document.getElementById('partnerComparisonWriteNowOutput');
-  const comparisonProtectedEl = document.getElementById('partnerComparisonProtectedOutput');
-  const comparisonBlockersEl = document.getElementById('partnerComparisonBlockersOutput');
   const comparisonCarryPreviewEl = document.getElementById('partnerComparisonCarryPreview');
   const comparisonFieldWritePreviewEl = document.getElementById('partnerComparisonFieldWritePreview');
   const comparisonFieldWriteHintEl = document.getElementById('partnerComparisonFieldWriteHint');
@@ -14207,9 +14176,6 @@ function initPartnerProbeUi() {
   const importProvenanceSummaryEl = document.getElementById('partnerImportProvenanceSummary');
   const importDecisionSummaryEl = document.getElementById('partnerImportDecisionSummary');
   const importDraftPreviewEl = document.getElementById('partnerImportDraftPreview');
-  const importWriteNowEl = document.getElementById('partnerImportWriteNowOutput');
-  const importProtectedEl = document.getElementById('partnerImportProtectedOutput');
-  const importBlockersEl = document.getElementById('partnerImportBlockersOutput');
   const importCarryPreviewEl = document.getElementById('partnerImportCarryPreview');
   const importFieldWritePreviewEl = document.getElementById('partnerImportFieldWritePreview');
   const importFieldWriteHintEl = document.getElementById('partnerImportFieldWriteHint');
@@ -14263,12 +14229,12 @@ function initPartnerProbeUi() {
     !partnerRightsSummaryEl || !partnerNextStepEl || !partnerNextStepHintEl || !partnerBoundaryEl || !partnerUnlockConditionEl || !compareActionBtn || !importActionBtn || !actionHintEl ||
     !compareWorkspaceEl || !compareWorkspaceStatusEl || !localDraftSummaryEl ||
     !partnerNoticeSummaryEl || !differenceSummaryEl || !comparisonDecisionEl ||
-    !comparisonChecklistEl || !comparisonPreviewEl || !comparisonWriteNowEl || !comparisonProtectedEl || !comparisonBlockersEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
+    !comparisonChecklistEl || !comparisonPreviewEl || !comparisonCarryPreviewEl || !comparisonFieldWritePreviewEl || !comparisonFieldWriteHintEl ||
     !comparisonOperationalStateEl || !comparisonPrudenceSignalEl || !comparisonBoundaryNoteEl ||
     !comparisonLiveHintEl || !applyComparisonBtn || !clearComparisonBtn ||
     !importWorkspaceEl || !importWorkspaceStatusEl || !importSourceSummaryEl || !importLocalSummaryEl ||
     !importFormatSelectEl || !importMethodSelectEl || !importTakeSummaryEl || !importSkipSummaryEl ||
-    !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importWriteNowEl || !importProtectedEl || !importBlockersEl || !importCarryPreviewEl ||
+    !importProvenanceSummaryEl || !importDecisionSummaryEl || !importDraftPreviewEl || !importCarryPreviewEl ||
     !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
     !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
     !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl ||
@@ -15848,77 +15814,6 @@ ${decisionSummary}` : '',
     partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
-
-  function getComparisonWriteNowText() {
-    const readiness = getComparisonReadinessState();
-
-    if (!partnerDocumentActionState.compareAllowed) {
-      return 'Nenhuma escrita local pode sair desta comparação enquanto a política atual não autorizar comparação documental nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.workspaceOpen) {
-      return 'A comparação está autorizada em princípio, mas nenhum microfluxo de comparação está aberto nesta tela. Nada deve ser escrito localmente antes de abrir e descrever a comparação.';
-    }
-
-    if (!readiness.canWrite) {
-      return [
-        'Ainda não convém escrever nada na ficha a partir desta comparação.',
-        '',
-        formatPartnerMissingItems(readiness.missing, 'Antes disso, ainda falta:'),
-      ].join('\n');
-    }
-
-    return [
-      'Pode sair agora somente para a camada local da ficha:',
-      '- fonte de parceira e governança local, quando a leitura atual desta parceira exigir isso;',
-      '- ID e URL do registro de origem, quando ainda faltarem na ficha;',
-      '- nota local de proveniência com resumo do registro da parceira, diferenças e decisão humana.',
-      '',
-      'Nada daqui importa automaticamente o registro da parceira nem modifica a camada compartilhada.',
-    ].join('\n');
-  }
-
-  function getComparisonProtectedText() {
-    return [
-      'Ficha comum publicada: não é alterada diretamente por esta comparação.',
-      'Registro da parceira: não é modificado por esta aba.',
-      'Camada compartilhada: continua protegida nesta etapa.',
-      'Formato e modo de importação: permanecem fora deste microfluxo de comparação.',
-      'Publicação no catálogo: não sai desta comparação local.',
-    ].join('\n');
-  }
-
-  function getComparisonBlockersText() {
-    const readiness = getComparisonReadinessState();
-    const slug = getCurrentPartnerSlug();
-
-    if (!slug) {
-      return 'Falta consolidar a parceira em foco antes de abrir uma comparação documental local.';
-    }
-
-    if (partnerDocumentActionState.catalogacaoGateBlocked) {
-      return [
-        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo para esta parceira.',
-        '',
-        'Enquanto isso, a comparação continua bloqueada para escrita documental.',
-      ].join('\n');
-    }
-
-    if (!partnerDocumentActionState.compareAllowed) {
-      return 'A política atual ainda não autorizou comparação documental para esta parceira nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.workspaceOpen) {
-      return 'A comparação está autorizada, mas o microfluxo ainda não foi aberto nesta tela.';
-    }
-
-    if (readiness.missing.length) {
-      return formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais desta comparação:');
-    }
-
-    return 'Nenhum bloqueio interno restante nesta comparação. O gesto agora é só reler a escrita prevista e decidir se ela deve ou não seguir para a ficha.';
-  }
-
   function getComparisonOperationalStateText() {
     const readiness = getComparisonReadinessState();
     const lines = [];
@@ -15944,9 +15839,6 @@ ${decisionSummary}` : '',
     const readiness = getComparisonReadinessState();
     comparisonChecklistEl.value = getComparisonChecklistText();
     comparisonPreviewEl.value = getComparisonPreviewText();
-    comparisonWriteNowEl.value = getComparisonWriteNowText();
-    comparisonProtectedEl.value = getComparisonProtectedText();
-    comparisonBlockersEl.value = getComparisonBlockersText();
     comparisonCarryPreviewEl.value = readiness.comparisonNote || 'O bloco de proveniência ainda não está pronto porque faltam elementos da comparação local.';
     comparisonFieldWritePreviewEl.value = getComparisonFieldWritePreviewText();
     comparisonFieldWriteHintEl.textContent = partnerDocumentActionState.compareAllowed
@@ -16207,77 +16099,6 @@ ${decisionSummary}` : '',
     return lines.join('\n');
   }
 
-
-  function getImportWriteNowText() {
-    const readiness = getImportReadinessState();
-
-    if (!partnerDocumentActionState.importAllowed) {
-      return 'Nenhuma escrita local pode sair desta preparação enquanto a política atual não autorizar importação controlada nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.importWorkspaceOpen) {
-      return 'A preparação local está autorizada em princípio, mas nenhum microfluxo de preparação está aberto nesta tela. Nada deve ser escrito localmente antes de abrir e descrever a preparação.';
-    }
-
-    if (!readiness.canWrite) {
-      return [
-        'Ainda não convém escrever nada na ficha a partir desta preparação.',
-        '',
-        formatPartnerMissingItems(readiness.missing, 'Antes disso, ainda falta:'),
-      ].join('\n');
-    }
-
-    return [
-      'Pode sair agora somente para a camada local da ficha:',
-      '- fonte de parceira, governança local, ID e URL do registro de origem;',
-      '- formato de importação e modo de importação preparados para esta retomada local;',
-      '- nota local de proveniência com o recorte do que retomar, do que não retomar e da decisão humana.',
-      '',
-      'Nada daqui dispara importação automática real nem publica no catálogo.',
-    ].join('\n');
-  }
-
-  function getImportProtectedText() {
-    return [
-      'Ficha comum publicada: não é alterada diretamente por esta preparação.',
-      'Registro da parceira: não é modificado livremente nesta aba.',
-      'Camada compartilhada: continua protegida, mesmo quando houver mutualização autorizada.',
-      'Importação automática real: não é disparada por este microfluxo.',
-      'Publicação no catálogo: não sai desta preparação local.',
-    ].join('\n');
-  }
-
-  function getImportBlockersText() {
-    const readiness = getImportReadinessState();
-    const slug = getCurrentPartnerSlug();
-
-    if (!slug) {
-      return 'Falta consolidar a parceira em foco antes de abrir uma preparação local de importação.';
-    }
-
-    if (partnerDocumentActionState.catalogacaoGateBlocked) {
-      return [
-        partnerDocumentActionState.noAgreementMessage || 'Sem acordo explícito ativo para esta parceira.',
-        '',
-        'Enquanto isso, a preparação continua bloqueada para escrita documental.',
-      ].join('\n');
-    }
-
-    if (!partnerDocumentActionState.importAllowed) {
-      return 'A política atual ainda não autorizou preparação local de importação para esta parceira nesta etapa.';
-    }
-
-    if (!partnerDocumentActionState.importWorkspaceOpen) {
-      return 'A preparação local está autorizada, mas o microfluxo ainda não foi aberto nesta tela.';
-    }
-
-    if (readiness.missing.length) {
-      return formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais desta preparação:');
-    }
-
-    return 'Nenhum bloqueio interno restante nesta preparação. O gesto agora é só reler a escrita prevista e decidir se ela deve ou não seguir para a ficha.';
-  }
-
   function getImportOperationalStateText() {
     const readiness = getImportReadinessState();
     const lines = [];
@@ -16295,9 +16116,6 @@ ${decisionSummary}` : '',
     importSourceSummaryEl.value = getImportSourceSummaryText();
     importLocalSummaryEl.value = getCurrentLocalDraftSummary();
     importDraftPreviewEl.value = getImportDraftPreviewText();
-    importWriteNowEl.value = getImportWriteNowText();
-    importProtectedEl.value = getImportProtectedText();
-    importBlockersEl.value = getImportBlockersText();
     importCarryPreviewEl.value = readiness.carryPreview || 'O bloco de proveniência ainda não está pronto porque faltam decisões e parâmetros locais desta preparação.';
     importFieldWritePreviewEl.value = getImportFieldWritePreviewText();
     importOperationalStateEl.value = getImportOperationalStateText();
