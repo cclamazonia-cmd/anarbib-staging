@@ -3303,6 +3303,7 @@
           </div>
         </div>
 
+        <div id="queueActionSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Ações nesta fila:</strong> ainda não atualizadas.</div>
         <div id="queueMessage" class="message"></div>
         <div id="queueTableWrap" class="table-wrap"></div>
 
@@ -3318,6 +3319,7 @@
               <button id="emptyTrashBtn" class="button danger-solid">Esvaziar lixeira</button>
             </div>
           </div>
+          <div id="trashActionSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Ações na lixeira:</strong> ainda não atualizadas.</div>
           <div id="trashMessage" class="message"></div>
           <div id="trashTableWrap" class="table-wrap"></div>
         </div>
@@ -4310,6 +4312,7 @@
       exemplarMessage: el('exemplarMessage'),
       labelMessage: el('labelMessage'),
       queueMessage: el('queueMessage'),
+      queueActionSummary: el('queueActionSummary'),
       batchMessage: el('batchMessage'),
       catalogMessage: el('catalogMessage'),
       batchFlowStatusPill: el('batchFlowStatusPill'),
@@ -4409,6 +4412,7 @@
       labelSheetSummary: el('labelSheetSummary'),
       labelSheetWrap: el('labelSheetWrap'),
       trashMessage: el('trashMessage'),
+      trashActionSummary: el('trashActionSummary'),
       trashTableWrap: el('trashTableWrap'),
       refreshTrashBtn: el('refreshTrashBtn'),
       emptyTrashBtn: el('emptyTrashBtn'),
@@ -11146,6 +11150,77 @@
       refs.queueFlowNext.textContent = nextText;
     }
 
+    function formatQueueCountByType(type = '', count = 0) {
+      if (!count) return '';
+      if (type === 'book') return `${count} ficha${count > 1 ? 's comuns' : ' comum'}`;
+      if (type === 'author') return `${count} autoridade${count > 1 ? 's' : ''}`;
+      if (type === 'exemplar') return `${count} exemplar${count > 1 ? 'es locais' : ' local'}`;
+      return `${count} rascunho${count > 1 ? 's' : ''}`;
+    }
+
+    function formatQueueTypeBreakdown(entries = []) {
+      const counts = entries.reduce((acc, entry) => {
+        const type = String(entry?.type || entry?.item_type || '');
+        if (!acc[type]) acc[type] = 0;
+        acc[type] += 1;
+        return acc;
+      }, {});
+      return ['book', 'author', 'exemplar']
+        .map((type) => formatQueueCountByType(type, counts[type] || 0))
+        .filter(Boolean)
+        .join(' · ');
+    }
+
+    function buildSelectionEntries(keys = []) {
+      return keys.map((key) => {
+        const [type, rawId] = String(key || '').split(':');
+        return { type, id: Number(rawId) };
+      }).filter((entry) => ['book', 'author', 'exemplar'].includes(entry.type) && Number.isFinite(entry.id));
+    }
+
+    function findQueueItem(type, id) {
+      return state.queueItems.find((item) => item.item_type === String(type || '') && Number(item.draft_id) === Number(id)) || null;
+    }
+
+    function getQueueItemContextLabel(item = {}) {
+      const typeLabel = (getItemTypeLabel(item.item_type) || 'Rascunho').toLowerCase();
+      const primary = normalizeInlineWhitespace(getQueuePrimaryDisplay(item) || '');
+      const reference = normalizeInlineWhitespace(item.reference_code || getQueueExemplarRecord(item)?.bib_ref || '');
+      const primaryText = primary && primary !== '—' ? ` “${primary}”` : '';
+      const referenceText = reference && reference !== '—' ? ` (${reference})` : '';
+      return `${typeLabel}${primaryText}${referenceText}`;
+    }
+
+    function getQueueActionFeedback(action = '', item = {}, batchId = null) {
+      const contextLabel = getQueueItemContextLabel(item);
+      if (action === 'publish') return `Publicação concluída para ${contextLabel}.`;
+      if (action === 'assign') return `Lote #${batchId} atribuído a ${contextLabel}.`;
+      if (action === 'discard') return `Envio para a lixeira concluído para ${contextLabel}.`;
+      if (action === 'restore') return `Restauração concluída para ${contextLabel}.`;
+      if (action === 'restore_open') return `Restauração concluída e edição reaberta para ${contextLabel}.`;
+      return `Operação concluída para ${contextLabel}.`;
+    }
+
+    function updateQueueActionSummary(items = []) {
+      if (!refs.queueActionSummary) return;
+      const targetBatchId = el('queueBatchAssign')?.value || '';
+      const breakdown = formatQueueTypeBreakdown(items);
+      const batchText = targetBatchId
+        ? `Lote em foco para atribuição rápida: #${targetBatchId}.`
+        : 'Nenhum lote aberto escolhido ainda para atribuição rápida.';
+      refs.queueActionSummary.innerHTML = items.length
+        ? `<strong>Ações nesta fila:</strong> Editar reabre a camada em trabalho; Publicar envia diretamente esta camada ao catálogo; Atribuir lote usa o lote aberto escolhido acima; Descartar envia para a lixeira sem apagar definitivamente. Recorte atual: ${breakdown || `${items.length} rascunhos`}. ${batchText}`
+        : '<strong>Ações nesta fila:</strong> sem camadas ativas neste recorte. Limpa os filtros ou muda o tipo para reabrir um gesto editorial.';
+    }
+
+    function updateTrashActionSummary(items = []) {
+      if (!refs.trashActionSummary) return;
+      const breakdown = formatQueueTypeBreakdown(items);
+      refs.trashActionSummary.innerHTML = items.length
+        ? `<strong>Ações na lixeira:</strong> Restaurar devolve o rascunho à fila ativa; Restaurar e abrir já reabre a edição; Esvaziar lixeira apaga definitivamente os descartados. Recorte atual: ${breakdown || `${items.length} rascunhos descartados`}.`
+        : '<strong>Ações na lixeira:</strong> não há rascunhos descartados neste momento.';
+    }
+
     async function restoreQueueDraft(type, id) {
       const table = getDraftTableName(type);
       if (!table) throw new Error('Tipo de rascunho inválido para restauração.');
@@ -11181,10 +11256,11 @@
         if (error) throw error;
       }
 
+      const result = { count: selectedEntries.length, breakdown: formatQueueTypeBreakdown(selectedEntries) };
       clearTrashSelection();
       await Promise.all([loadQueue(), loadBatches(), loadCatalog()]);
       updateStats();
-      return selectedEntries.length;
+      return result;
     }
 
     async function emptyTrash() {
@@ -11206,6 +11282,7 @@
 
       if (!items.length) {
         clearTrashSelection();
+        updateTrashActionSummary([]);
         refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira está vazia no momento.</div>';
         return;
       }
@@ -11217,7 +11294,7 @@
 
       refs.trashTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados na lixeira: ${state.trashSelection.size}</div>
+          <div class="small">Selecionados na lixeira: ${state.trashSelection.size}${hasAnySelection ? ` · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.trashSelection]))}` : ''}</div>
           <div class="row-actions">
             <button id="trashClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="trashRestoreSelectedBtn" class="button success" type="button" ${hasAnySelection ? '' : 'disabled'}>Restaurar selecionados</button>
@@ -11290,9 +11367,9 @@
       if (restoreSelectedBtn) {
         restoreSelectedBtn.addEventListener('click', async () => {
           try {
-            const restoredCount = await restoreSelectedTrashDrafts();
-            if (restoredCount) {
-              showMessage(refs.trashMessage, `${restoredCount} rascunhos foram restaurados da lixeira.`, 'ok');
+            const result = await restoreSelectedTrashDrafts();
+            if (result?.count) {
+              showMessage(refs.trashMessage, `${result.count} rascunhos foram restaurados da lixeira (${result.breakdown}).`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -11303,8 +11380,9 @@
       refs.trashTableWrap.querySelectorAll('[data-action="restore-trash"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado com sucesso.', 'ok');
+            showMessage(refs.trashMessage, getQueueActionFeedback('restore', item), 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
@@ -11314,14 +11392,17 @@
       refs.trashTableWrap.querySelectorAll('[data-action="restore-open-trash"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await restoreQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             await fetchDraftAndEdit(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.trashMessage, 'Rascunho restaurado e aberto para edição.', 'ok');
+            showMessage(refs.trashMessage, getQueueActionFeedback('restore_open', item), 'ok');
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
           }
         });
       });
+
+      updateTrashActionSummary(items);
     }
 
     function getLabelPages(labels = []) {
@@ -12224,6 +12305,7 @@
 
       if (!items.length) {
         updateQueueFlowSummary([]);
+        updateQueueActionSummary([]);
         refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo encontrado com os filtros atuais.</div>';
         renderTrash();
         return;
@@ -12236,7 +12318,7 @@
 
       refs.queueTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados: ${state.queueSelection.size}</div>
+          <div class="small">Selecionados: ${state.queueSelection.size}${hasAnySelection ? ` · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.queueSelection]))}` : ''}</div>
           <div class="row-actions">
             <button id="queueClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="queueDiscardSelectedBtn" class="button warning" type="button" ${hasAnySelection ? '' : 'disabled'}>Descartar selecionados para a lixeira</button>
@@ -12314,10 +12396,11 @@
       const discardSelectedBtn = refs.queueTableWrap.querySelector('#queueDiscardSelectedBtn');
       if (discardSelectedBtn) {
         discardSelectedBtn.addEventListener('click', async () => {
+          const selectedEntries = buildSelectionEntries([...state.queueSelection]);
           try {
             const discardedCount = await discardSelectedQueueDrafts();
             if (discardedCount) {
-              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira.`, 'ok');
+              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira (${formatQueueTypeBreakdown(selectedEntries)}).`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -12335,8 +12418,9 @@
       refs.queueTableWrap.querySelectorAll('[data-action="publish-queue"]').forEach(btn => {
         btn.addEventListener('click', async () => {
           try {
+            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await publishSingleDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho publicado com sucesso.', 'ok');
+            showMessage(refs.queueMessage, getQueueActionFeedback('publish', item), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -12351,8 +12435,9 @@
             return;
           }
           try {
+            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await assignDraftToBatch(btn.dataset.type, Number(btn.dataset.id), Number(batchId));
-            showMessage(refs.queueMessage, 'Lote atribuído ao rascunho.', 'ok');
+            showMessage(refs.queueMessage, getQueueActionFeedback('assign', item, Number(batchId)), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -12364,8 +12449,9 @@
           const confirmed = confirmDiscardAction('Este rascunho será descartado e irá para a lixeira. Deseja continuar?');
           if (!confirmed) return;
           try {
+            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
-            showMessage(refs.queueMessage, 'Rascunho descartado a partir da fila editorial.', 'ok');
+            showMessage(refs.queueMessage, getQueueActionFeedback('discard', item), 'ok');
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
           }
@@ -12373,6 +12459,7 @@
       });
 
       updateQueueFlowSummary(items);
+      updateQueueActionSummary(items);
       renderTrash();
       renderBatchesPanelSummary();
       renderPublishBatchSummary();
@@ -14388,7 +14475,8 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         clearMessage(refs.trashMessage);
         try {
           await loadQueue();
-          showMessage(refs.trashMessage, 'Lixeira atualizada.', 'ok');
+          const discardedCount = state.queueItems.filter(item => item.status === 'cancelled').length;
+          showMessage(refs.trashMessage, discardedCount ? `Lixeira atualizada com ${discardedCount} rascunho${discardedCount > 1 ? 's descartados' : ' descartado'}.` : 'Lixeira atualizada: nenhum rascunho descartado no momento.', 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message || 'Não foi possível atualizar a lixeira.', 'error');
         }
@@ -14404,8 +14492,9 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         const confirmed = window.confirm('Tem certeza? Esta ação vai apagar definitivamente todos os rascunhos descartados da lixeira. O processo é irreversível.');
         if (!confirmed) return;
         try {
+          const discardedCount = state.queueItems.filter(item => item.status === 'cancelled').length;
           await emptyTrash();
-          showMessage(refs.trashMessage, 'Lixeira esvaziada com sucesso. A operação é irreversível.', 'ok');
+          showMessage(refs.trashMessage, `${discardedCount} rascunho${discardedCount > 1 ? 's descartados foram apagados' : ' descartado foi apagado'} da lixeira. A operação é irreversível.`, 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message, 'error');
         }
