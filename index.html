@@ -3379,7 +3379,7 @@ function uniqueSortedStrings(values) {
     .sort((a, b) => compareNullableText(a, b));
 }
 function completeKnownLibraryLabels(labels = [], expectedCount = 0) {
-  const normalizedLabels = uniqueSortedStrings((labels || []).map((label) => canonicalizeLibraryLabel(label, '')));
+  const normalizedLabels = uniqueSortedStrings((labels || []).map((label) => canonicalizeLibraryLabel(label, '', { allowImplicitDefault: false })));
   if (!expectedCount || normalizedLabels.length >= expectedCount) return normalizedLabels;
   const normalizedKnownLabels = DEFAULT_LIBRARY_LABELS.map((label) => canonicalizeLibraryLabel(label, ''));
   const knownLabelKeys = new Set(normalizedKnownLabels.map((label) => getLibraryKey(label)));
