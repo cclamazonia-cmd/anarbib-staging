@@ -2732,7 +2732,8 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         const v2Attempts = requestedBookId
           ? [
               ["book_id", requestedBookId],
-              ["id", requestedBookId]
+              ["id", requestedBookId],
+              ...(bib_ref ? [["bib_ref", bib_ref]] : [])
             ]
           : [["bib_ref", bib_ref]];
 
@@ -2771,17 +2772,27 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       if (!booksTable) {
         try {
-          const fallbackBooks = await supabase
-            .from("books")
-            .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
-            .eq(requestedBookId ? "id" : "bib_ref", requestedBookId || bib_ref)
-            .maybeSingle();
+          const fallbackAttempts = requestedBookId
+            ? [
+                ["id", requestedBookId],
+                ...(bib_ref ? [["bib_ref", bib_ref]] : [])
+              ]
+            : [["bib_ref", bib_ref]];
 
-          if (!fallbackBooks.error && fallbackBooks.data) {
+          for (const [fallbackField, fallbackValue] of fallbackAttempts) {
+            const fallbackBooks = await supabase
+              .from("books")
+              .select("id,bib_ref,autor,titulo,subtitulo,ano,editora,cdd,loanable,available_count,created_at,cover_object_path,edicao,local_publicacao,isbn,issn,idioma,paginas,notas,tipo_material,autores_secundarios,colecao,volume,assuntos,tradutor,organizador,author_id,catalog_source")
+              .eq(fallbackField, fallbackValue)
+              .maybeSingle();
+
+            if (fallbackBooks.error || !fallbackBooks.data) continue;
+
             booksTable = "books";
             data = fallbackBooks.data;
             sample = data;
             keys = Object.keys(data);
+            break;
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao consultar books em fallback", err);
