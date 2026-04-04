@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Catálogo(s) AnarBib</title>
+<title>AnarBib - Catálogo(s)</title>
 <meta name="description" content="Catálogo(s) AnarBib. Consulte referências, autores, títulos, editoras, anos e disponibilidade.">
 <meta name="theme-color" content="#7a0b14">
 <link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">
@@ -1567,7 +1567,7 @@ function applySessionAvailabilityFactToRow(row, fact) {
   }
 
   row._holdingLibrariesInfo = holdings;
-  row._holdingLibraries = uniqueSortedStrings(holdings.map((item) => canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref || '')));
+  row._holdingLibraries = uniqueSortedStrings(holdings.map((item) => getHoldingLibraryDisplayLabel(item, row?.bib_ref || '')));
   return row;
 }
 function rowMatchesSelectedLibraries(row) {
@@ -1791,6 +1791,12 @@ function canonicalizeLibraryLabel(rawValue, bibRef = '') {
 
   return raw || 'BLMF - Belém do Pará';
 }
+function getHoldingLibraryDisplayLabel(item, fallbackBibRef = '') {
+  return canonicalizeLibraryLabel(
+    firstNonEmptyString(item?.library_name, item?.library_slug, item?.biblioteca),
+    firstNonEmptyString(item?.local_bib_ref, item?.bib_ref, fallbackBibRef)
+  );
+}
 function getLibraryKey(label) {
   return normalize(label);
 }
@@ -1802,7 +1808,7 @@ function getLibraryLabelsFromRows() {
   for (const row of rows) {
     if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
       for (const item of row._holdingLibrariesInfo) {
-        const label = canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref);
+        const label = getHoldingLibraryDisplayLabel(item, row?.bib_ref);
         if (label) labels.set(getLibraryKey(label), label);
       }
       continue;
@@ -1840,7 +1846,7 @@ function resolveExplicitViewLibraryContext(row) {
     const selectedKey = getLibraryKey(selectedLabel);
     if (Array.isArray(row?._holdingLibrariesInfo) && row._holdingLibrariesInfo.length) {
       const match = row._holdingLibrariesInfo.find((item) => {
-        const label = canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref);
+        const label = getHoldingLibraryDisplayLabel(item, row?.bib_ref);
         return label && getLibraryKey(label) === selectedKey;
       });
       if (match) {
@@ -3046,7 +3052,7 @@ async function loadRowsFromSupabase() {
         ? `${holdingsCount} bibliotecas`
         : (sourceVariant === 'catalog_v2'
             ? canonicalizeLibraryLabel(
-                holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
+                holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')).filter(Boolean).join(' / ') || r?.biblioteca,
                 r?.bib_ref || ''
               )
             : resolveLibraryLabel({
@@ -3099,7 +3105,7 @@ async function loadRowsFromSupabase() {
         global_available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+        _holdingLibraries: holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: true
@@ -3518,7 +3524,7 @@ function groupCatalogRows(items) {
     const mergedAuthorChips = mergeAuthorChipEntriesForGroup(groupItems);
     const mergedHoldingLibraryInfo = mergeHoldingLibraryInfoForGroup(groupItems);
     const holdingLibraries = mergedHoldingLibraryInfo.length
-      ? uniqueSortedStrings(mergedHoldingLibraryInfo.map((item) => item?.library_name || item?.biblioteca))
+      ? uniqueSortedStrings(mergedHoldingLibraryInfo.map((item) => getHoldingLibraryDisplayLabel(item, item?.local_bib_ref || primary?.bib_ref || groupItems.find((entry) => String(entry?.bib_ref || '').trim())?.bib_ref || '')))
       : uniqueSortedStrings(groupItems.map((item) => item?.biblioteca));
     const availableCountTotal = groupItems.reduce((sum, item) => sum + (Number(item?.available_count || 0) || 0), 0);
     const allLocalOnly = groupItems.every((item) => item?.loanable === false);
