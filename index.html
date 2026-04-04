@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AnarBib - Catálogo(s)</title>
+<title>Catálogo(s) AnarBib</title>
 <meta name="description" content="Catálogo(s) AnarBib. Consulte referências, autores, títulos, editoras, anos e disponibilidade.">
 <meta name="theme-color" content="#7a0b14">
 <link rel="canonical" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">
@@ -2971,6 +2971,90 @@ function shouldLoadAuthorCanonicalData(sourceVariant, data) {
     return !!authorId && !firstNonEmptyString(row?.author_display);
   });
 }
+
+function buildRestNumericInFilter(values) {
+  const nums = [...new Set((Array.isArray(values) ? values : []).map((value) => Number(value || 0)).filter((value) => Number.isInteger(value) && value > 0))];
+  return nums.length ? `(${nums.join(',')})` : '';
+}
+async function fetchPublicHoldingLibraryMapByBookIds(bookIds = []) {
+  const filter = buildRestNumericInFilter(bookIds);
+  if (!filter) return new Map();
+
+  const holdingDatasets = [];
+  for (const select of ['book_id,library_id,local_bib_ref', 'book_id,library_id']) {
+    holdingDatasets.push(await fetchRestRows(`book_holdings?select=${encodeURIComponent(select)}&book_id=in.${filter}&order=book_id.asc`, 'public'));
+  }
+  const holdingRows = chooseLargestDataset(...holdingDatasets);
+  if (!Array.isArray(holdingRows) || !holdingRows.length) return new Map();
+
+  const libraryIds = [...new Set(holdingRows.map((row) => Number(row?.library_id || 0)).filter((value) => Number.isInteger(value) && value > 0))];
+  const libraryFilter = buildRestNumericInFilter(libraryIds);
+  const libraryMap = new Map();
+
+  if (libraryFilter) {
+    const libraryDatasets = [];
+    for (const select of ['id,slug,name,display_name,short_name', 'id,slug,name', 'id,name']) {
+      libraryDatasets.push(await fetchRestRows(`libraries?select=${encodeURIComponent(select)}&id=in.${libraryFilter}`, 'public'));
+    }
+    const libraryRows = chooseLargestDataset(...libraryDatasets);
+    for (const libraryRow of (libraryRows || [])) {
+      const libraryId = Number(libraryRow?.id || 0);
+      if (!Number.isInteger(libraryId) || libraryId <= 0) continue;
+      libraryMap.set(libraryId, {
+        library_id: libraryId,
+        library_slug: firstNonEmptyString(libraryRow?.slug),
+        library_name: firstNonEmptyString(libraryRow?.display_name, libraryRow?.short_name, libraryRow?.name)
+      });
+    }
+  }
+
+  const byBookId = new Map();
+  for (const holdingRow of holdingRows) {
+    const bookId = Number(holdingRow?.book_id || 0);
+    if (!Number.isInteger(bookId) || bookId <= 0) continue;
+    const libraryId = Number(holdingRow?.library_id || 0);
+    const libraryInfo = libraryMap.get(libraryId) || {};
+    const entry = {
+      holding_id: null,
+      local_bib_ref: firstNonEmptyString(holdingRow?.local_bib_ref),
+      library_id: libraryId || null,
+      library_slug: firstNonEmptyString(libraryInfo?.library_slug),
+      library_name: firstNonEmptyString(libraryInfo?.library_name),
+      exemplares_total: 1,
+      available_count: 0,
+      tombos_json: [],
+      loanable: true,
+      session_has_holding: false,
+      session_exemplares_total: 0,
+      session_available_count: 0,
+      session_status_hint: '',
+      session_next_available_on: '',
+      session_due_at: '',
+      session_pickup_scheduled_for: ''
+    };
+    if (!byBookId.has(String(bookId))) byBookId.set(String(bookId), []);
+    byBookId.get(String(bookId)).push(entry);
+  }
+
+  return byBookId;
+}
+function mergeSupplementalHoldingLibraries(baseHoldings, supplementalHoldings, row = null) {
+  const merged = Array.isArray(baseHoldings) ? [...baseHoldings] : [];
+  const extras = Array.isArray(supplementalHoldings) ? supplementalHoldings : [];
+  for (const item of extras) {
+    if (!item) continue;
+    const alreadyPresent = merged.some((existing) => {
+      if (!existing) return false;
+      if (item.library_id && existing.library_id && String(item.library_id) === String(existing.library_id)) return true;
+      if (item.library_slug && existing.library_slug && normalize(item.library_slug) === normalize(existing.library_slug)) return true;
+      const itemLabel = getHoldingLibraryDisplayLabel(item, row?.bib_ref || '');
+      const existingLabel = getHoldingLibraryDisplayLabel(existing, row?.bib_ref || '');
+      return !!(itemLabel && existingLabel && getLibraryKey(itemLabel) === getLibraryKey(existingLabel));
+    });
+    if (!alreadyPresent) merged.push(item);
+  }
+  return merged;
+}
 async function loadRowsFromSupabase() {
   try {
     const attempts = [];
@@ -3034,12 +3118,23 @@ async function loadRowsFromSupabase() {
       needsAuthorAliases ? loadAuthorAliasMap() : Promise.resolve(new Map()),
       needsAuthorCanonical ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
+    const needsHoldingSupplement = sourceVariant === 'catalog_v2'
+      && (data || []).some((row) => {
+        const baseHoldings = normalizeHoldingLibraries(row?.holding_libraries_json, row);
+        const holdingsCount = Number(row?.bibliotecas_count ?? 0) || 0;
+        return holdingsCount > 1 && holdingsCount > baseHoldings.length;
+      });
+    const supplementalHoldingMap = needsHoldingSupplement
+      ? await fetchPublicHoldingLibraryMapByBookIds((data || []).map((row) => row?.id ?? row?.book_id))
+      : new Map();
 
     authorAliasMap = loadedAuthorAliasMap instanceof Map ? loadedAuthorAliasMap : new Map();
     authorCanonicalMap = loadedAuthorCanonicalMap instanceof Map ? loadedAuthorCanonicalMap : new Map();
 
     const mappedRows = (data || []).map(r => {
-      const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r);
+      const baseHoldingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r);
+      const supplementalHoldingLibraries = supplementalHoldingMap.get(String(r?.id ?? r?.book_id ?? '')) || [];
+      const holdingLibraries = mergeSupplementalHoldingLibraries(baseHoldingLibraries, supplementalHoldingLibraries, r);
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
@@ -3048,11 +3143,12 @@ async function loadRowsFromSupabase() {
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
       const holdingsCount = Number(r?.bibliotecas_count ?? holdingLibraries.length ?? 0) || 0;
+      const holdingLibraryLabels = uniqueSortedStrings(holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')));
       const biblioteca = holdingsCount > 1
-        ? `${holdingsCount} bibliotecas`
+        ? (holdingLibraryLabels.length > 1 ? holdingLibraryLabels.join(' / ') : `${holdingsCount} bibliotecas`)
         : (sourceVariant === 'catalog_v2'
             ? canonicalizeLibraryLabel(
-                holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')).filter(Boolean).join(' / ') || r?.biblioteca,
+                holdingLibraryLabels.join(' / ') || r?.biblioteca,
                 r?.bib_ref || ''
               )
             : resolveLibraryLabel({
@@ -3105,7 +3201,7 @@ async function loadRowsFromSupabase() {
         global_available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _holdingLibraries: holdingLibraries.map((item) => getHoldingLibraryDisplayLabel(item, r?.bib_ref || '')),
+        _holdingLibraries: holdingLibraryLabels,
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: true
