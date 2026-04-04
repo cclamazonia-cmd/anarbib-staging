@@ -1382,9 +1382,9 @@ function diceCoefficient(a, b) {
 }
 function getUserLibraryContext() {
   return {
-    library_id: authState?.default_library_id || authState?.library_id || null,
-    library_slug: firstNonEmptyString(authState?.default_library_slug, authState?.library_slug),
-    library_name: firstNonEmptyString(authState?.default_library_name, authState?.library_name)
+    library_id: authState?.library_id || authState?.default_library_id || null,
+    library_slug: firstNonEmptyString(authState?.library_slug, authState?.default_library_slug),
+    library_name: firstNonEmptyString(authState?.library_name, authState?.default_library_name)
   };
 }
 function rowMatchesUserLibrary(rowLike, userLibrary) {
@@ -1548,6 +1548,12 @@ function rowMatchesSelectedLibraries(row) {
   } else {
     const fallback = canonicalizeLibraryLabel(row?.biblioteca, row?.bib_ref || '');
     if (fallback) labels.add(getLibraryKey(fallback));
+  }
+  if (row?.session_has_holding === true || firstNonEmptyString(row?.session_status_hint) || Number(row?.session_exemplares_total ?? 0) > 0 || Number(row?.session_available_count ?? 0) > 0) {
+    addLabel({
+      library_name: firstNonEmptyString(row?.session_library_name, authState?.library_name, authState?.default_library_name),
+      library_slug: firstNonEmptyString(row?.session_library_slug, authState?.library_slug, authState?.default_library_slug)
+    });
   }
   for (const key of selectedLibraryKeys) {
     if (labels.has(key)) return true;
@@ -2507,9 +2513,9 @@ function buildLivroHref(row) {
     }
     if (row?.session_has_holding === true || firstNonEmptyString(row?.session_status_hint) || Number(row?.session_exemplares_total ?? 0) > 0 || Number(row?.session_available_count ?? 0) > 0) {
       return {
-        library_id: row?.session_library_id ?? authState?.default_library_id ?? authState?.library_id ?? '',
-        library_slug: firstNonEmptyString(row?.session_library_slug, authState?.default_library_slug, authState?.library_slug),
-        library_name: firstNonEmptyString(row?.session_library_name, authState?.default_library_name, authState?.library_name)
+        library_id: row?.session_library_id ?? authState?.library_id ?? authState?.default_library_id ?? '',
+        library_slug: firstNonEmptyString(row?.session_library_slug, authState?.library_slug, authState?.default_library_slug),
+        library_name: firstNonEmptyString(row?.session_library_name, authState?.library_name, authState?.default_library_name)
       };
     }
     return null;
@@ -2794,6 +2800,12 @@ function normalizeHoldingLibraries(value, row = null) {
     library_slug: firstNonEmptyString(row?.session_library_slug, row?.library_slug),
     library_name: firstNonEmptyString(row?.session_library_name, row?.library_name)
   };
+  const hasTopLevelSessionSignal = !!(
+    row?.session_has_holding
+    || firstNonEmptyString(row?.session_status_hint)
+    || Number(row?.session_exemplares_total ?? 0) > 0
+    || Number(row?.session_available_count ?? 0) > 0
+  );
   for (const item of source) {
     if (!item || typeof item !== 'object') continue;
     const library_id = item.library_id ?? null;
@@ -2802,12 +2814,6 @@ function normalizeHoldingLibraries(value, row = null) {
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
-    const hasTopLevelSessionSignal = !!(
-      row?.session_has_holding
-      || firstNonEmptyString(row?.session_status_hint)
-      || Number(row?.session_exemplares_total ?? 0) > 0
-      || Number(row?.session_available_count ?? 0) > 0
-    );
     const matchesSessionLibrary = rowMatchesUserLibrary({ library_id, library_slug, library_name }, sessionLibrary);
     const isSingleHoldingFallback = source.length === 1 && hasTopLevelSessionSignal;
     const matchesSession = !!(hasTopLevelSessionSignal && (matchesSessionLibrary || isSingleHoldingFallback));
@@ -2833,6 +2839,35 @@ function normalizeHoldingLibraries(value, row = null) {
       session_pickup_scheduled_for: matchesSession ? firstNonEmptyString(row?.session_pickup_scheduled_for) : ''
     });
   }
+
+  const sessionLibraryMissingFromHoldings = hasTopLevelSessionSignal
+    && (sessionLibrary.library_id || sessionLibrary.library_slug || sessionLibrary.library_name)
+    && !out.some((item) => rowMatchesUserLibrary(item, sessionLibrary));
+
+  if (sessionLibraryMissingFromHoldings) {
+    out.push({
+      holding_id: row?.session_holding_id ?? null,
+      local_bib_ref: firstNonEmptyString(row?.session_local_bib_ref, row?.bib_ref),
+      library_id: sessionLibrary.library_id ?? null,
+      library_slug: firstNonEmptyString(sessionLibrary.library_slug),
+      library_name: firstNonEmptyString(sessionLibrary.library_name),
+      session_library_id: row?.session_library_id ?? null,
+      session_library_slug: firstNonEmptyString(row?.session_library_slug),
+      session_library_name: firstNonEmptyString(row?.session_library_name),
+      exemplares_total: Number(row?.session_exemplares_total ?? row?.exemplares_total ?? 0) || 0,
+      available_count: Number(row?.session_available_count ?? row?.available_count ?? 0) || 0,
+      tombos_json: [],
+      loanable: typeof row?.session_loanable === 'boolean' ? row.session_loanable : (row?.loanable === false ? false : true),
+      session_has_holding: row?.session_has_holding === true || Number(row?.session_exemplares_total ?? 0) > 0 || Number(row?.session_available_count ?? 0) > 0,
+      session_exemplares_total: Number(row?.session_exemplares_total ?? 0) || 0,
+      session_available_count: Number(row?.session_available_count ?? 0) || 0,
+      session_status_hint: firstNonEmptyString(row?.session_status_hint),
+      session_next_available_on: firstNonEmptyString(row?.session_next_available_on),
+      session_due_at: firstNonEmptyString(row?.session_due_at),
+      session_pickup_scheduled_for: firstNonEmptyString(row?.session_pickup_scheduled_for)
+    });
+  }
+
   return out;
 }
 function deriveSingleLibraryContext(holdingLibraries) {
@@ -3437,10 +3472,12 @@ function groupCatalogRows(items) {
 
   return [...groups.values()].map((groupItems) => {
     const primary = pickPrimaryRowForGroup(groupItems) || {};
-    const holdingLibraries = uniqueSortedStrings(groupItems.map((item) => item?.biblioteca));
     const mergedAuthorIds = mergeAuthorIdsForGroup(groupItems);
     const mergedAuthorChips = mergeAuthorChipEntriesForGroup(groupItems);
     const mergedHoldingLibraryInfo = mergeHoldingLibraryInfoForGroup(groupItems);
+    const holdingLibraries = mergedHoldingLibraryInfo.length
+      ? uniqueSortedStrings(mergedHoldingLibraryInfo.map((item) => item?.library_name || item?.biblioteca))
+      : uniqueSortedStrings(groupItems.map((item) => item?.biblioteca));
     const availableCountTotal = groupItems.reduce((sum, item) => sum + (Number(item?.available_count || 0) || 0), 0);
     const allLocalOnly = groupItems.every((item) => item?.loanable === false);
     const merged = {
