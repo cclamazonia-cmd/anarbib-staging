@@ -2791,7 +2791,7 @@ function normalizeHoldingLibraries(value, row = null) {
     if (!item || typeof item !== 'object') continue;
     const library_id = item.library_id ?? null;
     const library_slug = firstNonEmptyString(item.library_slug);
-    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
+    const library_name = firstNonEmptyString(item.library_name, item.display_name, item.library_label, item.label, item.biblioteca, item.name);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
@@ -2806,7 +2806,7 @@ function normalizeHoldingLibraries(value, row = null) {
     const matchesSession = !!(hasTopLevelSessionSignal && (matchesSessionLibrary || isSingleHoldingFallback));
     out.push({
       holding_id: item.holding_id ?? item.id ?? null,
-      local_bib_ref: firstNonEmptyString(item.local_bib_ref, row?.bib_ref),
+      local_bib_ref: firstNonEmptyString(item.local_bib_ref, item.bib_ref, row?.bib_ref),
       library_id,
       library_slug,
       library_name,
@@ -2845,7 +2845,7 @@ function normalizeHoldingLibraryNameLabels(value, row = null) {
   return uniqueSortedStrings(source.map((item) => {
     const rawLabel = typeof item === 'string'
       ? item
-      : firstNonEmptyString(item?.library_name, item?.biblioteca, item?.name, item?.label);
+      : firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.biblioteca, item?.name, item?.label);
     return canonicalizeLibraryLabel(rawLabel, row?.bib_ref || '');
   }));
 }
@@ -2861,12 +2861,15 @@ function deriveSingleLibraryContext(holdingLibraries) {
 }
 function resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryNameLabels, row = null) {
   const labelsFromHoldings = (Array.isArray(holdingLibraries) ? holdingLibraries : []).map((item) => (
-    canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.library_slug), row?.bib_ref || '')
+    canonicalizeLibraryLabel(
+      firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.label, item?.library_slug),
+      firstNonEmptyString(item?.local_bib_ref, row?.bib_ref || '')
+    )
   ));
-  const labels = uniqueSortedStrings([
+  const labels = completeKnownLibraryLabels([
     ...labelsFromHoldings,
     ...(Array.isArray(holdingLibraryNameLabels) ? holdingLibraryNameLabels : [])
-  ]);
+  ], Number(row?.bibliotecas_count ?? 0) || labelsFromHoldings.length || (Array.isArray(holdingLibraries) ? holdingLibraries.length : 0));
   if (labels.length) return labels;
   const fallbackLabel = canonicalizeLibraryLabel(firstNonEmptyString(row?.biblioteca, row?.library_name, row?.library_slug), row?.bib_ref || '');
   return fallbackLabel ? [fallbackLabel] : [];
@@ -3058,7 +3061,7 @@ async function loadRowsFromSupabase() {
         created_at: r.created_at ?? null,
         _holdingLibraries: displayHoldingLibraries.length
           ? displayHoldingLibraries
-          : holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
+          : completeKnownLibraryLabels(holdingLibraries.map((item) => canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.label), firstNonEmptyString(item?.local_bib_ref, r?.bib_ref || ''))), holdingsCount),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: true
@@ -3374,6 +3377,17 @@ function uniqueSortedStrings(values) {
   return [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))]
     .sort((a, b) => compareNullableText(a, b));
 }
+function completeKnownLibraryLabels(labels = [], expectedCount = 0) {
+  const normalizedLabels = uniqueSortedStrings((labels || []).map((label) => canonicalizeLibraryLabel(label, '')));
+  if (!expectedCount || normalizedLabels.length >= expectedCount) return normalizedLabels;
+  const normalizedKnownLabels = DEFAULT_LIBRARY_LABELS.map((label) => canonicalizeLibraryLabel(label, ''));
+  const knownLabelKeys = new Set(normalizedKnownLabels.map((label) => getLibraryKey(label)));
+  if (!normalizedLabels.length || normalizedLabels.some((label) => !knownLabelKeys.has(getLibraryKey(label)))) {
+    return normalizedLabels;
+  }
+  const missingKnownLabels = normalizedKnownLabels.filter((label) => !normalizedLabels.some((current) => getLibraryKey(current) === getLibraryKey(label)));
+  return uniqueSortedStrings([...normalizedLabels, ...missingKnownLabels.slice(0, Math.max(0, expectedCount - normalizedLabels.length))]);
+}
 function mergeAuthorIdsForGroup(items) {
   return [...new Set((items || []).flatMap((item) => {
     if (Array.isArray(item?.author_ids_list) && item.author_ids_list.length) {
@@ -3474,11 +3488,12 @@ function groupCatalogRows(items) {
 
   return [...groups.values()].map((groupItems) => {
     const primary = pickPrimaryRowForGroup(groupItems) || {};
-    const holdingLibraries = uniqueSortedStrings(groupItems.flatMap((item) => (
+    const mergedExpectedLibraryCount = Math.max(...groupItems.map((item) => Number(item?.bibliotecas_count ?? item?._holdingLibrariesInfo?.length ?? 0) || 0), 0);
+    const holdingLibraries = completeKnownLibraryLabels(groupItems.flatMap((item) => (
       Array.isArray(item?._holdingLibraries) && item._holdingLibraries.length
         ? item._holdingLibraries
         : [item?.biblioteca]
-    )));
+    )), mergedExpectedLibraryCount);
     const mergedAuthorIds = mergeAuthorIdsForGroup(groupItems);
     const mergedAuthorChips = mergeAuthorChipEntriesForGroup(groupItems);
     const mergedHoldingLibraryInfo = mergeHoldingLibraryInfoForGroup(groupItems);
