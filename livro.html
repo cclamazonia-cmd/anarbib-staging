@@ -253,6 +253,7 @@
     document.getElementById("btnCatalogo").href = getCatalogReturnUrlFromUrl();
 
     const $ = (id) => document.getElementById(id);
+    const PUBLIC_BOOK_DETAIL_RELATION = ["api", "catalog_book_detail_public_v2"];
 
     function apiFrom(schema, relation) {
       if (typeof supabase?.schema === "function") {
@@ -1298,8 +1299,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         const bookId = Number(holdingRow?.book_id || 0);
         if (!Number.isFinite(bookId) || bookId <= 0) return null;
 
-        const v2 = await supabase
-          .from("v_book_detail_public_v2")
+        const v2 = await apiFrom(...PUBLIC_BOOK_DETAIL_RELATION)
           .select(v2Select)
           .eq("book_id", bookId)
           .maybeSingle();
@@ -1654,8 +1654,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
   }
 
   try {
-    const { data, error } = await supabase
-      .from("v_book_detail_public_v2")
+    const { data, error } = await apiFrom(...PUBLIC_BOOK_DETAIL_RELATION)
       .select("book_id,holding_libraries_json,biblioteca,library_id,library_slug,library_name")
       .eq("bib_ref", bib_ref)
       .maybeSingle();
@@ -2701,6 +2700,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       let data = null;
       let keys = [];
       let sample = {};
+      const loadErrors = [];
       const localContextRequested = !!(libraryContext.libraryId || libraryContext.librarySlug);
       const v2Select = [
         "id","book_id","bib_ref","autor","author_display","author_chips","authors_json",
@@ -2738,13 +2738,16 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           : [["bib_ref", bib_ref]];
 
         for (const [v2FilterField, v2FilterValue] of v2Attempts) {
-          const v2 = await supabase
-            .from("v_book_detail_public_v2")
+          const v2 = await apiFrom(...PUBLIC_BOOK_DETAIL_RELATION)
             .select(v2Select)
             .eq(v2FilterField, v2FilterValue)
             .maybeSingle();
 
-          if (v2.error || !v2.data) continue;
+          if (v2.error) {
+            loadErrors.push(`catálogo detalhe público (${v2FilterField}): ${String(v2.error.message || v2.error)}`);
+            continue;
+          }
+          if (!v2.data) continue;
 
           const candidateRow = { ...v2.data };
           const matchedHolding = findHoldingForLibraryContext(candidateRow?.holding_libraries_json, libraryContext);
@@ -2767,6 +2770,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         }
       } catch (err) {
         console.warn("AnarBib livro: falha ao consultar v_book_detail_public_v2", err);
+        loadErrors.push(`catálogo detalhe público: ${String(err?.message || err || "erro desconhecido")}`);
       }
 
 
@@ -2786,7 +2790,11 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
               .eq(fallbackField, fallbackValue)
               .maybeSingle();
 
-            if (fallbackBooks.error || !fallbackBooks.data) continue;
+            if (fallbackBooks.error) {
+              loadErrors.push(`books (${fallbackField}): ${String(fallbackBooks.error.message || fallbackBooks.error)}`);
+              continue;
+            }
+            if (!fallbackBooks.data) continue;
 
             booksTable = "books";
             data = fallbackBooks.data;
@@ -2796,17 +2804,20 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
           }
         } catch (err) {
           console.warn("AnarBib livro: falha ao consultar books em fallback", err);
+          loadErrors.push(`books: ${String(err?.message || err || "erro desconhecido")}`);
         }
       }
 
       if (!booksTable) {
         $("title").textContent = "Livro não encontrado";
-        $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
+        $("heroIntro").textContent = loadErrors.length
+          ? "Não foi possível carregar a ficha pública deste livro."
+          : "Não encontrei esse livro no catálogo público.";
         setLine("subtitleLine", "");
         $("authorLine").textContent = "—";
         setCover("");
         document.title = "AnarBib - Livro não encontrado";
-        setStatus("Não encontrei esse livro no catálogo.", "warn");
+        setStatus(loadErrors.length ? loadErrors[loadErrors.length - 1] : "Não encontrei esse livro no catálogo.", "warn");
         return;
       }
 
