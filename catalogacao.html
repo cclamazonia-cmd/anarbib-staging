@@ -2496,6 +2496,7 @@
               <textarea id="bookProvenanceNote" placeholder="Ex.: registro retomado do CSL Milano, corrigido localmente a partir do exemplar em mãos; lote de doação; importação semi-automática validada pela biblioteca."></textarea>
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
               <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
+              <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
             </div>
 
             <div class="form-flow-break">
@@ -3467,6 +3468,8 @@
             </div>
           </div>
         </div>
+
+        <div id="catalogRightsSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:16px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos neste recorte.</div>
 
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
@@ -4514,6 +4517,8 @@
       bookPublicFichaResource: el('bookPublicFichaResource'),
       bookPublicFichaAccess: el('bookPublicFichaAccess'),
       bookPublicFichaSubjects: el('bookPublicFichaSubjects'),
+      bookInterlibraryRightsSummary: el('bookInterlibraryRightsSummary'),
+      catalogRightsSurfaceSummary: el('catalogRightsSurfaceSummary'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
       labelSuggestCode: el('labelSuggestCode'),
@@ -9562,6 +9567,7 @@
       if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital tornável público: ${preview.fichaResource}`;
       refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
+      updateBookInterlibraryRightsSummary();
     }
 
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
@@ -12849,6 +12855,7 @@ function renderCatalogBooks() {
           <th class="sortable">${renderSortableHeader('Linha pública da ficha comum', 'books', 'title')}</th>
           <th class="sortable">${renderSortableHeader('Compatibilidade local publicada', 'books', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Holding / exemplar local publicado', 'books', 'total_exemplares')}</th>
+          <th>Direitos interbibliotecas</th>
           <th>Recurso digital publicado</th>
           <th>Retomada editorial local</th>
         </tr>
@@ -12863,6 +12870,7 @@ function renderCatalogBooks() {
             <td>${renderCatalogBookNoticeCell(book)}</td>
             <td>${renderCatalogBookCompatCell(book)}</td>
             <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogBookRightsCell(book)}</td>
             <td>${renderCatalogBookDigitalCell(book)}</td>
             <td>${renderCatalogDraftCell(draftLink, 'livro')}</td>
           </tr>`;
@@ -12905,6 +12913,7 @@ function renderCatalogOtherDocuments() {
           <th class="sortable">${renderSortableHeader('Linha pública da ficha comum', 'otherDocs', 'title')}</th>
           <th class="sortable">${renderSortableHeader('Compatibilidade local publicada', 'otherDocs', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Holding / exemplar local publicado', 'otherDocs', 'total_exemplares')}</th>
+          <th>Direitos interbibliotecas</th>
           <th>Recurso digital publicado</th>
           <th>Retomada editorial local</th>
         </tr>
@@ -12919,6 +12928,7 @@ function renderCatalogOtherDocuments() {
             <td>${renderCatalogOtherDocumentNoticeCell(book)}</td>
             <td>${renderCatalogBookCompatCell(book)}</td>
             <td>${renderCatalogBookExemplarCell(book)}</td>
+            <td>${renderCatalogBookRightsCell(book)}</td>
             <td>${renderCatalogBookDigitalCell(book)}</td>
             <td>${renderCatalogDraftCell(draftLink, 'documento')}</td>
           </tr>`;
@@ -13292,6 +13302,73 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       };
     }
 
+    function getCatalogBookInterlibraryRightsMeta(book = {}) {
+      const statusValue = compactSpaces(
+        book.mutualization_status
+        || book.holding_mutualization_status
+        || book.network_status
+        || book.holding_network_status
+        || ''
+      );
+      const statusLabel = getOptionLabelFromOptions(statusValue, BOOK_MUTUALIZATION_STATUS_OPTIONS) || (statusValue ? statusValue : 'Sem situação explícita');
+      const sourceLabel = compactSpaces(
+        book.partner_source_label
+        || book.partner_source
+        || book.source_partner
+        || book.source_catalog_partner
+        || ''
+      );
+      const sourceRecordId = compactSpaces(book.source_record_id || book.external_record_id || '');
+      const sourceRecordUrl = compactSpaces(book.source_record_url || book.external_record_url || '');
+      const importMethodLabel = getOptionLabelFromOptions(book.import_method || book.source_import_method || '', BOOK_IMPORT_METHOD_OPTIONS);
+
+      let title = 'Situação interbibliotecas ainda não relida';
+      if (statusValue === 'mutualizable') title = 'Mutualização local sinalizada';
+      else if (statusValue === 'network_visible') title = 'Holding visível na rede';
+      else if (statusValue === 'consultation_only') title = 'Consulta local mais restrita';
+      else if (statusValue === 'local_only') title = 'Local somente';
+      else if (statusLabel && statusLabel !== 'Sem situação explícita') title = statusLabel;
+
+      const lines = [
+        { text: `Situação do holding publicada: ${statusLabel}.`, muted: false },
+        { text: sourceLabel ? `Fonte parceira relida: ${sourceLabel}.` : 'Sem fonte parceira explícita nesta linha publicada.', muted: true },
+      ];
+      if (sourceRecordId) {
+        lines.push({ text: `ID de origem publicado: ${sourceRecordId}.`, muted: true });
+      } else if (sourceRecordUrl) {
+        lines.push({ text: 'URL de origem publicada já relida nesta linha.', muted: true });
+      }
+      if (importMethodLabel) {
+        lines.push({ text: `Preparação local publicada: ${importMethodLabel}.`, muted: true });
+      }
+
+      const chips = [];
+      if (statusValue === 'mutualizable') chips.push('Mutualizável');
+      else if (statusValue === 'network_visible') chips.push('Rede');
+      else if (statusValue === 'consultation_only') chips.push('Consulta local');
+      else if (statusValue === 'local_only') chips.push('Local somente');
+      if (sourceLabel) chips.push('Fonte parceira');
+
+      return {
+        statusValue,
+        statusLabel,
+        title,
+        lines,
+        chips,
+        hasPartnerSource: !!sourceLabel,
+      };
+    }
+
+    function renderCatalogBookRightsCell(book = {}) {
+      const rightsMeta = getCatalogBookInterlibraryRightsMeta(book);
+      return buildCatalogLayerStack(
+        rightsMeta.title,
+        rightsMeta.lines,
+        rightsMeta.chips,
+        'Direitos interbibliotecas'
+      );
+    }
+
     function renderCatalogBookDigitalCell(book = {}) {
       const digitalMeta = getCatalogBookDigitalSignalMeta(book);
       if (!digitalMeta.hasSignal) {
@@ -13380,6 +13457,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       const visibleOther = visibleDocuments.filter(isCatalogOtherDocumentItem);
       const visibleCompat = visibleDocuments.filter((book) => compactSpaces(book.bib_ref || ''));
       const visibleDigital = visibleDocuments.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal);
+      const visibleRights = visibleDocuments.map((book) => getCatalogBookInterlibraryRightsMeta(book));
       const visibleExemplars = [...(state.exemplars || [])].filter((ex) => {
         if (!exemplarSearch) return true;
         return normalizeForSearch([ex.tombo, ex.bib_ref, ex.autor_etiqueta, ex.titulo_etiqueta, ex.shelf_location].filter(Boolean).join(' ')).includes(exemplarSearch);
@@ -13410,6 +13488,17 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       if (refs.catalogSummaryDraftNote) refs.catalogSummaryDraftNote.textContent = totalVisibleDrafts
         ? `${visibleBookDrafts} rascunhos de fichas comuns e ${visibleExemplarDrafts} rascunhos de exemplares já estão abertos localmente.`
         : 'Nenhum rascunho de edição local visível neste recorte.';
+
+      if (refs.catalogRightsSurfaceSummary) {
+        const mutualizableCount = visibleRights.filter((meta) => meta.statusValue === 'mutualizable').length;
+        const networkVisibleCount = visibleRights.filter((meta) => meta.statusValue === 'network_visible').length;
+        const consultationOnlyCount = visibleRights.filter((meta) => meta.statusValue === 'consultation_only').length;
+        const localOnlyCount = visibleRights.filter((meta) => meta.statusValue === 'local_only').length;
+        const partnerLinkedCount = visibleRights.filter((meta) => meta.hasPartnerSource).length;
+        refs.catalogRightsSurfaceSummary.innerHTML = visibleDocuments.length
+          ? `<strong>Direitos interbibliotecas:</strong> ${visibleDocuments.length} linhas públicas relidas; ${localOnlyCount} local somente; ${networkVisibleCount} visíveis na rede; ${mutualizableCount} mutualizáveis; ${consultationOnlyCount} de consulta local; ${partnerLinkedCount} com fonte parceira explicitamente relida.`
+          : '<strong>Direitos interbibliotecas:</strong> nenhuma linha pública relida neste recorte.';
+      }
     }
 
 
@@ -15676,6 +15765,61 @@ function initPartnerProbeUi() {
     return String(option?.textContent || '').trim();
   }
 
+  function getOptionLabelFromOptions(value = '', options = []) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return '';
+    const hit = (Array.isArray(options) ? options : []).find(([optionValue]) => String(optionValue || '').trim() === normalized);
+    return String(hit?.[1] || normalized).trim();
+  }
+
+  function getBookCurrentInterlibraryRightsMeta() {
+    const statusValue = String(el('bookMutualizationStatus')?.value || '').trim();
+    const statusLabel = getSelectedOptionLabel(el('bookMutualizationStatus')) || 'situação de rede ainda não definida';
+    const sourceLabel = getSelectedOptionLabel(el('bookPartnerSource'));
+    const sourceRecordId = compactSpaces(el('bookSourceRecordId')?.value || '');
+    const sourceRecordUrl = compactSpaces(el('bookSourceRecordUrl')?.value || '');
+    const importFormatLabel = getSelectedOptionLabel(el('bookImportFormat'));
+    const importMethodLabel = getSelectedOptionLabel(el('bookImportMethod'));
+    const policyHint = compactSpaces(bookPartnerPolicyHintEl?.textContent || '');
+
+    let heading = 'situação interbibliotecas ainda não definida nesta ficha.';
+    if (statusValue === 'mutualizable') {
+      heading = `holding local marcado como ${statusLabel.toLowerCase()} nesta rede.`;
+    } else if (statusValue === 'network_visible') {
+      heading = `holding local marcado como ${statusLabel.toLowerCase()}, sem mutualização explícita nesta leitura.`;
+    } else if (statusValue === 'consultation_only') {
+      heading = `holding local marcado como ${statusLabel.toLowerCase()}, com circulação interbibliotecas mais restrita.`;
+    } else if (statusValue === 'local_only') {
+      heading = `holding local marcado como ${statusLabel.toLowerCase()}, sem circulação interbibliotecas explícita nesta ficha.`;
+    } else if (statusLabel) {
+      heading = `holding local relido como ${statusLabel.toLowerCase()}.`;
+    }
+
+    const sourceParts = [];
+    if (sourceLabel) sourceParts.push(`Fonte parceira em foco: ${sourceLabel}.`);
+    else sourceParts.push('Sem fonte parceira ativa nesta ficha.');
+    if (sourceRecordId) sourceParts.push(`ID de origem: ${sourceRecordId}.`);
+    if (sourceRecordUrl) sourceParts.push('URL de origem já indicada.');
+    if (importFormatLabel || importMethodLabel) {
+      sourceParts.push(`Preparação local: ${joinSummaryParts([
+        importFormatLabel ? `formato ${importFormatLabel}` : '',
+        importMethodLabel ? `modo ${importMethodLabel}` : '',
+      ])}.`);
+    }
+
+    return {
+      heading,
+      sourceLine: sourceParts.join(' '),
+      policyLine: policyHint || 'Sem leitura documental específica desta parceira nesta ficha.',
+    };
+  }
+
+  function updateBookInterlibraryRightsSummary() {
+    if (!refs.bookInterlibraryRightsSummary) return;
+    const meta = getBookCurrentInterlibraryRightsMeta();
+    refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
+  }
+
   function getCurrentPartnerLabel() {
     return String(displayEl.value || presetEl.options[presetEl.selectedIndex]?.textContent || slugEl.value || '').trim();
   }
@@ -17358,6 +17502,7 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = false; });
       importNodes.forEach((node) => { node.disabled = false; });
       bookPartnerPolicyHintEl.textContent = 'Sem fonte de parceira selecionada para governança documental específica.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
@@ -17365,6 +17510,7 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = false; });
       importNodes.forEach((node) => { node.disabled = false; });
       bookPartnerPolicyHintEl.textContent = 'Esta fonte usa a camada de proveniência, mas não depende da governança de catálogos parceiros nesta etapa.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
@@ -17372,6 +17518,7 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiras externas” para liberar comparação documental aqui.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
@@ -17379,6 +17526,7 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = 'Esta parceira ainda não foi formalizada na base de governança. Comparação e importação ficam bloqueadas.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
@@ -17386,6 +17534,7 @@ ${decisionSummary}` : '',
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = `${nextGateState.noAgreementMessage} Os campos documentários desta ficha ficaram bloqueados até os acordos serem definidos no painel.`;
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
@@ -17396,15 +17545,18 @@ ${decisionSummary}` : '',
       bookPartnerPolicyHintEl.textContent = row?.mutualize_allowed
         ? 'Comparação, importação e mutualização autorizadas para esta parceira. A revisão bibliográfica local continua obrigatória e não há modificação livre do registro da parceira.'
         : 'Comparação e importação autorizadas para esta parceira. A revisão bibliográfica local continua obrigatória e isso não vale como mutualização.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
     if (compareAllowed) {
       bookPartnerPolicyHintEl.textContent = 'Comparação autorizada para esta parceira. Importação e mutualização continuam bloqueadas nesta etapa.';
+      updateBookInterlibraryRightsSummary();
       return;
     }
 
     bookPartnerPolicyHintEl.textContent = 'Sem autorização para comparação ativa nem importação desta parceira nesta etapa.';
+    updateBookInterlibraryRightsSummary();
   }
 
   refreshBookPartnerGovernanceUi = async function refreshBookPartnerGovernanceUiImpl(options = {}) {
