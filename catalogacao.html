@@ -4588,32 +4588,60 @@
       return isVisibleMessageAnchor(localAnchor) ? localAnchor : null;
     }
 
+    function getMessageScopeFrame(scope, viewportWidth, viewportHeight, viewportPad) {
+      if (!(scope instanceof Element)) return null;
+      const rect = scope.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      const rawLeft = Math.max(viewportPad, rect.left);
+      const rawRight = Math.min(viewportWidth - viewportPad, rect.right);
+      const rawTop = Math.max(viewportPad, rect.top);
+      const rawBottom = Math.min(viewportHeight - viewportPad, rect.bottom);
+      const rawWidth = rawRight - rawLeft;
+      const rawHeight = rawBottom - rawTop;
+      if (rawWidth < 260 || rawHeight < 80) return null;
+      const innerPad = Math.max(10, Math.min(18, Math.round(rawWidth * 0.03)));
+      return {
+        left: rawLeft + innerPad,
+        right: rawRight - innerPad,
+        top: rawTop + 8,
+        bottom: rawBottom - 8,
+      };
+    }
+
     function positionMessage(target, anchor = null) {
       if (!(target instanceof Element)) return;
       const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-      const pad = 14;
-      const width = Math.max(280, Math.min(560, viewportWidth - (pad * 2)));
+      const viewportPad = 14;
+      const scope = getMessageScope(anchor || target);
+      const scopeFrame = getMessageScopeFrame(scope, viewportWidth, viewportHeight, viewportPad);
+      const frameLeft = scopeFrame?.left ?? viewportPad;
+      const frameRight = scopeFrame?.right ?? (viewportWidth - viewportPad);
+      const frameWidth = Math.max(280, frameRight - frameLeft);
+      const width = Math.max(280, Math.min(560, frameWidth));
       target.style.width = `${width}px`;
-      target.style.maxWidth = `calc(100vw - ${pad * 2}px)`;
+      target.style.maxWidth = `${Math.max(280, frameWidth)}px`;
       target.style.right = 'auto';
       if (!isVisibleMessageAnchor(anchor)) {
-        target.style.left = '50%';
+        const centeredLeft = frameLeft + ((frameRight - frameLeft - width) / 2);
+        target.style.left = `${Math.round(Math.max(viewportPad, centeredLeft))}px`;
         target.style.top = 'auto';
         target.style.bottom = '18px';
-        target.style.transform = 'translateX(-50%)';
+        target.style.transform = 'none';
         return;
       }
       const rect = anchor.getBoundingClientRect();
       const height = Math.max(56, target.offsetHeight || 72);
       let left = rect.left + (rect.width / 2) - (width / 2);
-      left = Math.max(pad, Math.min(left, viewportWidth - width - pad));
+      left = Math.max(frameLeft, Math.min(left, frameRight - width));
+      const minTop = scopeFrame ? Math.max(viewportPad, scopeFrame.top) : viewportPad;
+      const maxTop = scopeFrame ? Math.min(viewportHeight - height - viewportPad, scopeFrame.bottom - height) : (viewportHeight - height - viewportPad);
       let top = rect.bottom + 12;
-      if ((top + height) > (viewportHeight - pad)) {
+      if (top > maxTop) {
         top = rect.top - height - 12;
       }
-      if (top < pad) {
-        top = Math.max(pad, viewportHeight - height - pad);
+      if (top < minTop) {
+        top = Math.max(minTop, maxTop);
       }
       target.style.left = `${Math.round(left)}px`;
       target.style.top = `${Math.round(top)}px`;
