@@ -4589,7 +4589,15 @@
       rememberScopedMessageAnchor(fallback);
     }
 
+    function isCenteredViewportMessageTarget(target) {
+      return target === refs.globalMessage;
+    }
+
     function resolveMessageAnchor(target) {
+      if (isCenteredViewportMessageTarget(target)) {
+        return null;
+      }
+
       const targetScope = getMessageScope(target);
       const targetScopedAnchor = target?._messageAnchor || null;
       if (isVisibleMessageAnchor(targetScopedAnchor)) {
@@ -4650,6 +4658,15 @@
       target.style.width = `${width}px`;
       target.style.maxWidth = `${Math.max(280, frameWidth)}px`;
       target.style.right = 'auto';
+      if (isCenteredViewportMessageTarget(target)) {
+        const centeredLeft = Math.max(viewportPad, (viewportWidth - width) / 2);
+        const centeredTop = Math.max(viewportPad, Math.min((viewportHeight - Math.max(72, target.offsetHeight || 96)) / 2, viewportHeight - Math.max(72, target.offsetHeight || 96) - viewportPad));
+        target.style.left = `${Math.round(centeredLeft)}px`;
+        target.style.top = `${Math.round(centeredTop)}px`;
+        target.style.bottom = 'auto';
+        target.style.transform = 'none';
+        return;
+      }
       if (!isVisibleMessageAnchor(anchor)) {
         const centeredLeft = frameLeft + ((frameRight - frameLeft - width) / 2);
         target.style.left = `${Math.round(Math.max(viewportPad, centeredLeft))}px`;
@@ -10754,7 +10771,7 @@
         const [batchesResult, queueResult, catalogResult] = await Promise.all([
           settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
           settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 9000),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
         ]);
         setTab(currentTab);
         if (refs.labelBatchPreviewId?.value) {
