@@ -1056,8 +1056,8 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
 <script type="module">
 import { supabase } from "./js/blmf-supabase.js";
 
-const SUPABASE_URL = "https://asptfmokzykwzlshsncw.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzcHRmbW9renlrd3psc2hzbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzcxNzcsImV4cCI6MjA4ODExMzE3N30.JkMLHPCV2AH5ELZV_1RfcoW250QEofLGvnDKSDpkcn0";
+const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
@@ -3098,11 +3098,12 @@ async function loadRowsFromSupabase() {
     }
     attempts.push({
       sourceVariant: 'catalog_v2',
-      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
+      url: `${SUPABASE_URL}/rest/v1/catalog_books_public_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json'
+        Accept: 'application/json',
+        'Accept-Profile': 'api'
       }
     });
     let data = null;
