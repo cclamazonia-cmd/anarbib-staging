@@ -1958,6 +1958,49 @@ async function loadBookLibrarySupplementMap() {
   }
   return map;
 }
+
+async function loadHoldingLibraryLabelSupplementMap(rowsLike = []) {
+  const targetBookIds = [...new Set((Array.isArray(rowsLike) ? rowsLike : [])
+    .filter((row) => (Number(row?.bibliotecas_count ?? 0) || 0) > 1)
+    .map((row) => Number(row?.id ?? row?.book_id ?? 0) || 0)
+    .filter((value) => value > 0))];
+  const result = new Map();
+  if (!targetBookIds.length) return result;
+
+  const librarySelectCandidates = [
+    'id,display_name,name,slug',
+    'id,library_name,name,slug',
+    'id,name,slug',
+    'id,name'
+  ];
+  let librariesData = [];
+  for (const select of librarySelectCandidates) {
+    librariesData = await fetchRestRows(`libraries?select=${encodeURIComponent(select)}&order=id.asc`, 'public');
+    if (Array.isArray(librariesData) && librariesData.length) break;
+  }
+  const librariesMap = new Map((librariesData || []).map((row) => [String(row?.id ?? ''), row]));
+
+  const chunkSize = 100;
+  for (let i = 0; i < targetBookIds.length; i += chunkSize) {
+    const chunk = targetBookIds.slice(i, i + chunkSize);
+    const holdingsRows = await fetchRestRows(`book_holdings?select=${encodeURIComponent('book_id,library_id,local_bib_ref')}&book_id=in.(${chunk.join(',')})&order=book_id.asc`, 'public');
+    for (const holding of (holdingsRows || [])) {
+      const bookId = Number(holding?.book_id ?? 0) || 0;
+      if (bookId <= 0) continue;
+      const library = librariesMap.get(String(holding?.library_id ?? '')) || null;
+      const label = canonicalizeLibraryLabel(
+        firstNonEmptyString(library?.display_name, library?.library_name, library?.name, library?.slug),
+        firstNonEmptyString(holding?.local_bib_ref)
+      );
+      if (!label) continue;
+      const key = String(bookId);
+      if (!result.has(key)) result.set(key, new Set());
+      result.get(key).add(label);
+    }
+  }
+
+  return new Map([...result.entries()].map(([key, labels]) => [key, uniqueSortedStrings([...labels])]));
+}
 function resolveLibraryLabel(row, librarySupplementMap) {
   const supplement = librarySupplementMap.get(`id:${row?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
   return canonicalizeLibraryLabel(firstNonEmptyString(
@@ -2925,13 +2968,22 @@ async function loadRowsFromSupabase() {
     window.personalizedAvailabilityReady = personalizedAvailabilityReady;
 
     const needsLibrarySupplement = shouldLoadLibrarySupplement(sourceVariant, data);
+    const needsHoldingLibraryLabelSupplement = sourceVariant === 'catalog_v2' && (data || []).some((row) => {
+      const holdingsCount = Number(row?.bibliotecas_count ?? 0) || 0;
+      if (holdingsCount <= 1) return false;
+      const holdingLibraries = normalizeHoldingLibraries(row?.holding_libraries_json, row);
+      const holdingLibraryNameLabels = normalizeHoldingLibraryNameLabels(row?.holding_library_names_json, row);
+      const displayHoldingLibraries = resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryNameLabels, row);
+      return displayHoldingLibraries.length < holdingsCount;
+    });
     const needsAuthorRelations = shouldLoadAuthorRelationData(sourceVariant, data);
     const needsAuthorAliases = shouldLoadAuthorAliasData(sourceVariant, data);
     const needsAuthorCanonical = shouldLoadAuthorCanonicalData(sourceVariant, data);
 
-    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
+    const [authorRelations, librarySupplementMap, holdingLibraryLabelSupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
       needsAuthorRelations ? loadAuthorRelationsFromSupabase() : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() }),
       needsLibrarySupplement ? loadBookLibrarySupplementMap() : Promise.resolve(new Map()),
+      needsHoldingLibraryLabelSupplement ? loadHoldingLibraryLabelSupplementMap(data) : Promise.resolve(new Map()),
       needsAuthorAliases ? loadAuthorAliasMap() : Promise.resolve(new Map()),
       needsAuthorCanonical ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
@@ -2942,7 +2994,8 @@ async function loadRowsFromSupabase() {
     const mappedRows = (data || []).map(r => {
       const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r);
       const holdingLibraryNameLabels = normalizeHoldingLibraryNameLabels(r?.holding_library_names_json, r);
-      const displayHoldingLibraries = resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryNameLabels, r);
+      const supplementHoldingLibraryLabels = holdingLibraryLabelSupplementMap.get(String(r?.id ?? r?.book_id ?? '')) || [];
+      const displayHoldingLibraries = resolveHoldingLibraryDisplayLabels(holdingLibraries, [...holdingLibraryNameLabels, ...supplementHoldingLibraryLabels], r);
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
