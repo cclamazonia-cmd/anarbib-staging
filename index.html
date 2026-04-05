@@ -1065,12 +1065,12 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
 import { supabase } from "./js/blmf-supabase.js";
 
 const SUPABASE_URL = "https://uflwmikiyjfnikiphtcp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o";
+const SUPABASE_ANON_KEY = "sb_publishable_KJBytsICkVClr8iG26b0CQ_BxsVQooZ";
 const GH_BASE = "https://cclamazonia-cmd.github.io";
 const LIVRO_URL = new URL("livro.html", location.href).toString();
 const AUTOR_URL = new URL("autor.html", location.href).toString();
 const AUTHOR_PAGE_VERSION = '20260312-3';
-const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,global_available_count,loanable,created_at,holding_libraries_json,holding_library_names_json';
+const CATALOG_V2_SELECT = 'id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,available_count,global_available_count,loanable,created_at,holding_libraries_json';
 const CATALOG_SESSION_SELECT = 'id,book_id,bib_ref,autor,author_display,author_chips,author_id,titulo,subtitulo,ano,editora,cdd,biblioteca,bibliotecas_count,exemplares_total,loanable,created_at,holding_libraries_json,global_available_count,library_id,library_slug,library_name,session_library_id,session_library_slug,session_library_name,session_exemplares_total,session_has_holding,session_status_hint,session_available_count';
 const CONTA_URL = `${GH_BASE}/anarbib-conta-staging/conta.html`;
 const CADASTRO_URL = `${GH_BASE}/anarbib-conta-staging/cadastro.html`;
@@ -1128,12 +1128,11 @@ let authState = { user: null, isLibrarian: false, accessToken: null, library_id:
 let catalogSourceVariant = '';
 let personalizedAvailabilityReady = false;
 let serviceState = null;
+let serviceStates = [];
 let selectedLibraryKeys = new Set();
 let selectedAvailabilityKeys = new Set();
 let availabilityAllExplicitlySelected = false;
 let activeReservedBibRefs = new Set();
-let activeLoanBibRefs = new Set();
-let activeReservationDebugRows = [];
 let sessionAvailabilityFactsByBookId = new Map();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
@@ -1624,14 +1623,6 @@ function getStatusInfo(r) {
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
   const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
 
-  if (authState?.user && hasActiveReservationBibRef(r?.bib_ref)) {
-    return { key: 'already_reserved', filterKey: 'unavailable_now', label: 'Já reservado na sua conta', cls: 'status-local', nextDateLabel: '' };
-  }
-
-  if (authState?.user && hasActiveLoanBibRef(r?.bib_ref)) {
-    return { key: 'already_loaned', filterKey: 'unavailable_now', label: 'Já emprestado na sua conta', cls: 'status-local', nextDateLabel: '' };
-  }
-
   if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
@@ -1705,11 +1696,10 @@ function parseQuery(raw) {
   return out;
 }
 
-function canonicalizeLibraryLabel(rawValue, bibRef = '', options = {}) {
+function canonicalizeLibraryLabel(rawValue, bibRef = '') {
   const raw = firstNonEmptyString(rawValue);
   const n = normalize(raw);
   const ref = normalize(bibRef);
-  const allowImplicitDefault = options?.allowImplicitDefault !== false;
 
   if (
     n.includes('btl')
@@ -1734,11 +1724,11 @@ function canonicalizeLibraryLabel(rawValue, bibRef = '', options = {}) {
     return 'BLMF - Belém do Pará';
   }
 
-  if (!raw && allowImplicitDefault && /^\d+$/.test(String(bibRef || '').trim())) {
+  if (!raw && /^\d+$/.test(String(bibRef || '').trim())) {
     return 'BLMF - Belém do Pará';
   }
 
-  return raw || (allowImplicitDefault ? 'BLMF - Belém do Pará' : '');
+  return raw || 'BLMF - Belém do Pará';
 }
 function getLibraryKey(label) {
   return normalize(label);
@@ -1756,7 +1746,7 @@ function getLibraryLabelsFromRows() {
       }
       continue;
     }
-    const label = canonicalizeLibraryLabel(row?.biblioteca, row?.bib_ref, { allowImplicitDefault: false });
+    const label = canonicalizeLibraryLabel(row?.biblioteca, row?.bib_ref);
     if (!label) continue;
     labels.set(getLibraryKey(label), label);
   }
@@ -1770,48 +1760,9 @@ function getSelectedLibraryLabels() {
 function normalizeBibRefValue(value) {
   return String(value || '').trim();
 }
-function extractReservationRefCandidates(row = {}) {
-  const candidates = [
-    row?.bib_ref,
-    row?.local_bib_ref,
-    row?.session_local_bib_ref,
-    row?.holding_local_bib_ref,
-    row?.ref_trimmed,
-    row?.input_ref
-  ].map((value) => normalizeBibRefValue(value)).filter(Boolean);
-  return [...new Set(candidates)];
-}
-function buildReservationDebugRow(row = {}) {
-  return {
-    bib_ref: normalizeBibRefValue(row?.bib_ref),
-    local_bib_ref: normalizeBibRefValue(row?.local_bib_ref),
-    session_local_bib_ref: normalizeBibRefValue(row?.session_local_bib_ref),
-    holding_local_bib_ref: normalizeBibRefValue(row?.holding_local_bib_ref),
-    ref_trimmed: normalizeBibRefValue(row?.ref_trimmed),
-    input_ref: normalizeBibRefValue(row?.input_ref),
-    status: firstNonEmptyString(row?.status, row?.workflow_stage, row?.reserva_status),
-    line_status: firstNonEmptyString(row?.line_status, row?.item_status)
-  };
-}
-function publishIndexReservationDebug(extra = {}) {
-  window.__ANARBIB_INDEX_C1_DEBUG__ = {
-    activeReservedBibRefs: [...activeReservedBibRefs],
-    activeLoanBibRefs: [...activeLoanBibRefs],
-    rows: activeReservationDebugRows,
-    ...extra
-  };
-}
 function hasActiveReservationBibRef(bibRef) {
   const key = normalizeBibRefValue(bibRef);
-  const matched = !!(key && activeReservedBibRefs.has(key));
-  publishIndexReservationDebug({ lastCheck: { bibRef: key, matched } });
-  return matched;
-}
-function hasActiveLoanBibRef(bibRef) {
-  const key = normalizeBibRefValue(bibRef);
-  const matched = !!(key && activeLoanBibRefs.has(key));
-  publishIndexReservationDebug({ lastLoanCheck: { bibRef: key, matched } });
-  return matched;
+  return !!(key && activeReservedBibRefs.has(key));
 }
 function getSingleSelectedLibraryLabel() {
   if (libraryAllExplicitlySelected || selectedLibraryKeys.size !== 1) return '';
@@ -2019,49 +1970,6 @@ async function loadBookLibrarySupplementMap() {
     if (bibKey) map.set(bibKey, row);
   }
   return map;
-}
-
-async function loadHoldingLibraryLabelSupplementMap(rowsLike = []) {
-  const targetBookIds = [...new Set((Array.isArray(rowsLike) ? rowsLike : [])
-    .filter((row) => (Number(row?.bibliotecas_count ?? 0) || 0) > 1)
-    .map((row) => Number(row?.id ?? row?.book_id ?? 0) || 0)
-    .filter((value) => value > 0))];
-  const result = new Map();
-  if (!targetBookIds.length) return result;
-
-  const librarySelectCandidates = [
-    'id,display_name,name,slug',
-    'id,library_name,name,slug',
-    'id,name,slug',
-    'id,name'
-  ];
-  let librariesData = [];
-  for (const select of librarySelectCandidates) {
-    librariesData = await fetchRestRows(`libraries?select=${encodeURIComponent(select)}&order=id.asc`, 'public');
-    if (Array.isArray(librariesData) && librariesData.length) break;
-  }
-  const librariesMap = new Map((librariesData || []).map((row) => [String(row?.id ?? ''), row]));
-
-  const chunkSize = 100;
-  for (let i = 0; i < targetBookIds.length; i += chunkSize) {
-    const chunk = targetBookIds.slice(i, i + chunkSize);
-    const holdingsRows = await fetchRestRows(`book_holdings?select=${encodeURIComponent('book_id,library_id,local_bib_ref')}&book_id=in.(${chunk.join(',')})&order=book_id.asc`, 'public');
-    for (const holding of (holdingsRows || [])) {
-      const bookId = Number(holding?.book_id ?? 0) || 0;
-      if (bookId <= 0) continue;
-      const library = librariesMap.get(String(holding?.library_id ?? '')) || null;
-      const label = canonicalizeLibraryLabel(
-        firstNonEmptyString(library?.display_name, library?.library_name, library?.name, library?.slug),
-        firstNonEmptyString(holding?.local_bib_ref)
-      );
-      if (!label) continue;
-      const key = String(bookId);
-      if (!result.has(key)) result.set(key, new Set());
-      result.get(key).add(label);
-    }
-  }
-
-  return new Map([...result.entries()].map(([key, labels]) => [key, uniqueSortedStrings([...labels])]));
 }
 function resolveLibraryLabel(row, librarySupplementMap) {
   const supplement = librarySupplementMap.get(`id:${row?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${row?.bib_ref ?? ''}`) || null;
@@ -2853,7 +2761,7 @@ function normalizeHoldingLibraries(value, row = null) {
     if (!item || typeof item !== 'object') continue;
     const library_id = item.library_id ?? null;
     const library_slug = firstNonEmptyString(item.library_slug);
-    const library_name = firstNonEmptyString(item.library_name, item.display_name, item.library_label, item.label, item.biblioteca, item.name);
+    const library_name = firstNonEmptyString(item.library_name, item.biblioteca, item.name);
     const exemplares_total = Number(item.exemplares_total ?? 0) || 0;
     const tombos_json = Array.isArray(item.tombos_json) ? item.tombos_json : [];
     if (!library_id && !library_slug && !library_name) continue;
@@ -2868,7 +2776,7 @@ function normalizeHoldingLibraries(value, row = null) {
     const matchesSession = !!(hasTopLevelSessionSignal && (matchesSessionLibrary || isSingleHoldingFallback));
     out.push({
       holding_id: item.holding_id ?? item.id ?? null,
-      local_bib_ref: firstNonEmptyString(item.local_bib_ref, item.bib_ref, row?.bib_ref),
+      local_bib_ref: firstNonEmptyString(item.local_bib_ref, row?.bib_ref),
       library_id,
       library_slug,
       library_name,
@@ -2890,27 +2798,6 @@ function normalizeHoldingLibraries(value, row = null) {
   }
   return out;
 }
-function normalizeHoldingLibraryNameLabels(value, row = null) {
-  const source = (() => {
-    if (Array.isArray(value)) return value;
-    if (!value) return [];
-    if (typeof value === 'string') {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  })();
-  return uniqueSortedStrings(source.map((item) => {
-    const rawLabel = typeof item === 'string'
-      ? item
-      : firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.biblioteca, item?.name, item?.label);
-    return canonicalizeLibraryLabel(rawLabel, row?.bib_ref || '');
-  }));
-}
 function deriveSingleLibraryContext(holdingLibraries) {
   const holdings = Array.isArray(holdingLibraries) ? holdingLibraries : [];
   if (holdings.length !== 1) return { library_id: null, library_slug: '', library_name: '' };
@@ -2920,21 +2807,6 @@ function deriveSingleLibraryContext(holdingLibraries) {
     library_slug: firstNonEmptyString(holding.library_slug),
     library_name: firstNonEmptyString(holding.library_name)
   };
-}
-function resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryNameLabels, row = null) {
-  const labelsFromHoldings = (Array.isArray(holdingLibraries) ? holdingLibraries : []).map((item) => (
-    canonicalizeLibraryLabel(
-      firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.label, item?.library_slug),
-      firstNonEmptyString(item?.local_bib_ref, row?.bib_ref || '')
-    )
-  ));
-  const labels = completeKnownLibraryLabels([
-    ...labelsFromHoldings,
-    ...(Array.isArray(holdingLibraryNameLabels) ? holdingLibraryNameLabels : [])
-  ], Number(row?.bibliotecas_count ?? 0) || labelsFromHoldings.length || (Array.isArray(holdingLibraries) ? holdingLibraries.length : 0));
-  if (labels.length) return labels;
-  const fallbackLabel = canonicalizeLibraryLabel(firstNonEmptyString(row?.biblioteca, row?.library_name, row?.library_slug), row?.bib_ref || '', { allowImplicitDefault: false });
-  return fallbackLabel ? [fallbackLabel] : [];
 }
 function shouldLoadLibrarySupplement(sourceVariant, data) {
   if (sourceVariant === 'catalog_v2') return false;
@@ -2996,12 +2868,11 @@ async function loadRowsFromSupabase() {
     }
     attempts.push({
       sourceVariant: 'catalog_v2',
-      url: `${SUPABASE_URL}/rest/v1/catalog_books_public_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
+      url: `${SUPABASE_URL}/rest/v1/v_books_public_catalog_v2?select=${encodeURIComponent(CATALOG_V2_SELECT)}&order=titulo.asc`,
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json',
-        'Accept-Profile': 'api'
+        Accept: 'application/json'
       }
     });
     let data = null;
@@ -3033,22 +2904,13 @@ async function loadRowsFromSupabase() {
     window.personalizedAvailabilityReady = personalizedAvailabilityReady;
 
     const needsLibrarySupplement = shouldLoadLibrarySupplement(sourceVariant, data);
-    const needsHoldingLibraryLabelSupplement = sourceVariant === 'catalog_v2' && (data || []).some((row) => {
-      const holdingsCount = Number(row?.bibliotecas_count ?? 0) || 0;
-      if (holdingsCount <= 1) return false;
-      const holdingLibraries = normalizeHoldingLibraries(row?.holding_libraries_json, row);
-      const holdingLibraryNameLabels = normalizeHoldingLibraryNameLabels(row?.holding_library_names_json, row);
-      const displayHoldingLibraries = resolveHoldingLibraryDisplayLabels(holdingLibraries, holdingLibraryNameLabels, row);
-      return displayHoldingLibraries.length < holdingsCount;
-    });
     const needsAuthorRelations = shouldLoadAuthorRelationData(sourceVariant, data);
     const needsAuthorAliases = shouldLoadAuthorAliasData(sourceVariant, data);
     const needsAuthorCanonical = shouldLoadAuthorCanonicalData(sourceVariant, data);
 
-    const [authorRelations, librarySupplementMap, holdingLibraryLabelSupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
+    const [authorRelations, librarySupplementMap, loadedAuthorAliasMap, loadedAuthorCanonicalMap] = await Promise.all([
       needsAuthorRelations ? loadAuthorRelationsFromSupabase() : Promise.resolve({ byBookId: new Map(), byBibRef: new Map() }),
       needsLibrarySupplement ? loadBookLibrarySupplementMap() : Promise.resolve(new Map()),
-      needsHoldingLibraryLabelSupplement ? loadHoldingLibraryLabelSupplementMap(data) : Promise.resolve(new Map()),
       needsAuthorAliases ? loadAuthorAliasMap() : Promise.resolve(new Map()),
       needsAuthorCanonical ? loadAuthorCanonicalMap() : Promise.resolve(new Map())
     ]);
@@ -3058,9 +2920,6 @@ async function loadRowsFromSupabase() {
 
     const mappedRows = (data || []).map(r => {
       const holdingLibraries = normalizeHoldingLibraries(r?.holding_libraries_json, r);
-      const holdingLibraryNameLabels = normalizeHoldingLibraryNameLabels(r?.holding_library_names_json, r);
-      const supplementHoldingLibraryLabels = holdingLibraryLabelSupplementMap.get(String(r?.id ?? r?.book_id ?? '')) || [];
-      const displayHoldingLibraries = resolveHoldingLibraryDisplayLabels(holdingLibraries, [...holdingLibraryNameLabels, ...supplementHoldingLibraryLabels], r);
       const singleLibraryContext = deriveSingleLibraryContext(holdingLibraries);
       const supplement = librarySupplementMap.get(`id:${r?.id ?? ''}`) || librarySupplementMap.get(`bib_ref:${r?.bib_ref ?? ''}`) || null;
       const authorId = normalizeAuthorIdValue(r.author_id ?? supplement?.author_id);
@@ -3068,15 +2927,20 @@ async function loadRowsFromSupabase() {
       const authorIdsList = resolveAuthorIdsForRow(r.author_display ?? r.autor ?? '', relationIds, authorId);
       const authorChipEntries = normalizeAuthorChipEntries(r.author_chips);
       const canonicalAuthorDisplay = firstNonEmptyString(r.author_display);
-      const holdingsCount = Number(r?.bibliotecas_count ?? displayHoldingLibraries.length ?? holdingLibraries.length ?? 0) || 0;
-      const biblioteca = sourceVariant === 'catalog_v2'
-        ? (displayHoldingLibraries.join(' / ') || canonicalizeLibraryLabel(r?.biblioteca, r?.bib_ref || '', { allowImplicitDefault: false }))
-        : resolveLibraryLabel({
-            ...r,
-            library_id: singleLibraryContext.library_id || r?.library_id,
-            library_slug: singleLibraryContext.library_slug || r?.library_slug,
-            library_name: singleLibraryContext.library_name || r?.library_name
-          }, librarySupplementMap);
+      const holdingsCount = Number(r?.bibliotecas_count ?? holdingLibraries.length ?? 0) || 0;
+      const biblioteca = holdingsCount > 1
+        ? `${holdingsCount} bibliotecas`
+        : (sourceVariant === 'catalog_v2'
+            ? canonicalizeLibraryLabel(
+                holdingLibraries.map((item) => item.library_name).filter(Boolean).join(' / ') || r?.biblioteca,
+                r?.bib_ref || ''
+              )
+            : resolveLibraryLabel({
+                ...r,
+                library_id: singleLibraryContext.library_id || r?.library_id,
+                library_slug: singleLibraryContext.library_slug || r?.library_slug,
+                library_name: singleLibraryContext.library_name || r?.library_name
+              }, librarySupplementMap));
 
       return {
         id: r.id ?? r.book_id ?? null,
@@ -3121,9 +2985,7 @@ async function loadRowsFromSupabase() {
         global_available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         available_count: Number(r.global_available_count ?? r.available_count ?? 0) || 0,
         created_at: r.created_at ?? null,
-        _holdingLibraries: displayHoldingLibraries.length
-          ? displayHoldingLibraries
-          : completeKnownLibraryLabels(holdingLibraries.map((item) => canonicalizeLibraryLabel(firstNonEmptyString(item?.library_name, item?.display_name, item?.library_label, item?.label), firstNonEmptyString(item?.local_bib_ref, r?.bib_ref || ''))), holdingsCount),
+        _holdingLibraries: holdingLibraries.map((item) => canonicalizeLibraryLabel(item.library_name, r?.bib_ref || '')),
         _holdingLibrariesInfo: holdingLibraries,
         _usingCatalogViewV2: sourceVariant === 'catalog_v2',
         _usingCanonicalAuthorView: true
@@ -3172,35 +3034,6 @@ function getServiceModeMessage(state) {
   if (publicMessage && !isGenericUnavailableServiceMessage(publicMessage)) return publicMessage;
   return SERVICE_MODE_MESSAGES[state.service_mode] || 'Informação de funcionamento indisponível no momento.';
 }
-function renderPublicServiceBanner() {
-  if (!serviceBanner || !serviceBannerMode || !serviceBannerText || !serviceBannerRequests) return;
-  if (!serviceState) {
-    serviceBanner.hidden = true;
-    serviceBannerMode.textContent = 'Funcionamento';
-    serviceBannerText.textContent = '';
-    serviceBannerRequests.textContent = '';
-    return;
-  }
-  const mode = String(serviceState.service_mode || '').trim();
-  const modeLabel = SERVICE_MODE_LABELS[mode] || 'Funcionamento não informado';
-  const message = getServiceModeMessage(serviceState);
-  const consultationsClosed = arePublicConsultationsClosed(serviceState);
-  const reservationsClosed = arePublicReservationsClosed(serviceState);
-  let requestsLabel = 'Novas reservas e consultas públicas possíveis';
-  let requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de reserva e de consulta local.';
-  if (consultationsClosed) {
-    requestsLabel = 'Novas reservas e consultas públicas temporariamente interrompidas';
-    requestsMessage = 'A biblioteca não está recebendo novos pedidos públicos de reserva nem de consulta local no momento.';
-  } else if (reservationsClosed) {
-    requestsLabel = 'Novas reservas públicas interrompidas; consultas locais possíveis';
-    requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de consulta local, mas não está abrindo novas reservas de empréstimo.';
-  }
-  serviceBanner.hidden = false;
-  serviceBannerMode.textContent = `Funcionamento: ${modeLabel}`;
-  serviceBannerText.textContent = message;
-  serviceBannerRequests.innerHTML = `<strong>${escapeHTML(requestsLabel)}</strong> — ${escapeHTML(requestsMessage)}`;
-}
-
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -3229,15 +3062,109 @@ function normalizeServiceStateRow(row) {
     ?? '';
 
   return {
+    library_id: row.library_id ?? row.default_library_id ?? row.id_library ?? row.id_biblioteca ?? row.biblioteca_id ?? null,
+    library_slug: firstNonEmptyString(row.library_slug, row.default_library_slug, row.slug, row.biblioteca_slug),
+    library_name: firstNonEmptyString(row.library_name, row.default_library_name, row.display_name, row.name, row.biblioteca, row.biblioteca_name, row.library),
     service_mode: mode,
     allow_reservations: allowReservations,
     public_message: String(publicMessage || '').trim(),
     updated_at: row.updated_at ?? null
   };
 }
-async function fetchPublicServiceStateRow() {
+function normalizeServiceStateContext(context) {
+  if (!context || typeof context !== 'object') return null;
+  const library_id = context.library_id ?? null;
+  const library_slug = firstNonEmptyString(context.library_slug);
+  const rawLibraryName = firstNonEmptyString(context.library_name);
+  const canonicalLibraryName = canonicalizeLibraryLabel(rawLibraryName || library_slug, '', { allowImplicitDefault: false }) || rawLibraryName || '';
+  if (!library_id && !library_slug && !canonicalLibraryName) return null;
+  return {
+    library_id,
+    library_slug,
+    library_name: rawLibraryName,
+    canonical_library_name: canonicalLibraryName
+  };
+}
+function getServiceStateMatchScore(state, context) {
+  const normalizedState = normalizeServiceStateContext(state);
+  const normalizedContext = normalizeServiceStateContext(context);
+  if (!normalizedState || !normalizedContext) return 0;
+  if (normalizedState.library_id && normalizedContext.library_id && String(normalizedState.library_id) === String(normalizedContext.library_id)) return 100;
+  if (normalizedState.library_slug && normalizedContext.library_slug && normalize(normalizedState.library_slug) === normalize(normalizedContext.library_slug)) return 80;
+  if (normalizedState.canonical_library_name && normalizedContext.canonical_library_name && getLibraryKey(normalizedState.canonical_library_name) === getLibraryKey(normalizedContext.canonical_library_name)) return 60;
+  if (normalizedState.library_name && normalizedContext.library_name && normalize(normalizedState.library_name) === normalize(normalizedContext.library_name)) return 40;
+  return 0;
+}
+function resolveServiceStateForContext(context) {
+  if (!Array.isArray(serviceStates) || !serviceStates.length) return null;
+  const normalizedContext = normalizeServiceStateContext(context);
+  if (!normalizedContext) return null;
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const candidate of serviceStates) {
+    const score = getServiceStateMatchScore(candidate, normalizedContext);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = candidate;
+    }
+  }
+  return bestMatch;
+}
+function getCatalogBannerServiceContext() {
+  const selectedLabel = getSingleSelectedLibraryLabel();
+  if (selectedLabel) return { library_id: null, library_slug: '', library_name: selectedLabel };
+  const userLibrary = getUserLibraryContext();
+  if (authState?.user && isSessionLibraryIncludedInActiveFilter(userLibrary) && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name)) {
+    return userLibrary;
+  }
+  return null;
+}
+function resolveCatalogBannerServiceState() {
+  if (!Array.isArray(serviceStates) || !serviceStates.length) return null;
+  if (serviceStates.length === 1) return serviceStates[0];
+  return resolveServiceStateForContext(getCatalogBannerServiceContext());
+}
+function getResolvedServiceStateForRow(row = null) {
+  if (!Array.isArray(serviceStates) || !serviceStates.length) return null;
+  if (!row) return resolveCatalogBannerServiceState();
+  return resolveServiceStateForContext(buildEffectiveCatalogReservationScope(row)) || (serviceStates.length === 1 ? serviceStates[0] : null);
+}
+function refreshResolvedServiceState() {
+  serviceState = resolveCatalogBannerServiceState();
+  return serviceState;
+}
+function renderPublicServiceBanner() {
+  if (!serviceBanner || !serviceBannerMode || !serviceBannerText || !serviceBannerRequests) return;
+  if (!serviceState) {
+    serviceBanner.hidden = true;
+    serviceBannerMode.textContent = 'Funcionamento';
+    serviceBannerText.textContent = '';
+    serviceBannerRequests.textContent = '';
+    return;
+  }
+  const mode = String(serviceState.service_mode || '').trim();
+  const modeLabel = SERVICE_MODE_LABELS[mode] || 'Funcionamento não informado';
+  const message = getServiceModeMessage(serviceState);
+  const consultationsClosed = arePublicConsultationsClosed(serviceState);
+  const reservationsClosed = arePublicReservationsClosed(serviceState);
+  let requestsLabel = 'Novas reservas e consultas públicas possíveis';
+  let requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de reserva e de consulta local.';
+  if (consultationsClosed) {
+    requestsLabel = 'Novas reservas e consultas públicas temporariamente interrompidas';
+    requestsMessage = 'A biblioteca não está recebendo novos pedidos públicos de reserva nem de consulta local no momento.';
+  } else if (reservationsClosed) {
+    requestsLabel = 'Novas reservas públicas interrompidas; consultas locais possíveis';
+    requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de consulta local, mas não está abrindo novas reservas de empréstimo.';
+  }
+  serviceBanner.hidden = false;
+  serviceBannerMode.textContent = `Funcionamento: ${modeLabel}`;
+  serviceBannerText.textContent = message;
+  serviceBannerRequests.innerHTML = `<strong>${escapeHTML(requestsLabel)}</strong> — ${escapeHTML(requestsMessage)}`;
+}
+async function fetchPublicServiceStateRows() {
   const paths = [
     'v_library_service_public?select=*',
+    `v_library_service_public?select=${encodeURIComponent('library_id,library_slug,library_name,service_mode,allow_reservations,public_message')}`,
     `v_library_service_public?select=${encodeURIComponent('service_mode,allow_reservations,public_message')}`
   ];
 
@@ -3256,40 +3183,38 @@ async function fetchPublicServiceStateRow() {
         continue;
       }
       const arr = text ? JSON.parse(text) : [];
-      if (Array.isArray(arr) && arr[0]) return arr[0];
+      if (!Array.isArray(arr) || !arr.length) continue;
+      const normalizedRows = arr.map(normalizeServiceStateRow).filter(Boolean);
+      if (normalizedRows.length) return normalizedRows;
     } catch (e) {
       console.warn('Erro ao consultar v_library_service_public:', e);
     }
   }
-  return null;
+  return [];
 }
 async function loadPublicServiceState() {
   try {
-    const row = await fetchPublicServiceStateRow();
-    serviceState = normalizeServiceStateRow(row);
+    serviceStates = await fetchPublicServiceStateRows();
+    refreshResolvedServiceState();
   } catch (e) {
+    serviceStates = [];
     serviceState = null;
   }
   renderPublicServiceBanner();
 }
 function buildReservationMarkup(r) {
   const status = r._status;
-  const consultationsClosed = arePublicConsultationsClosed(serviceState) && !authState.isLibrarian;
-  const reservationsClosed = arePublicReservationsClosed(serviceState) && !authState.isLibrarian;
+  const rowServiceState = getResolvedServiceStateForRow(r);
+  const consultationsClosed = arePublicConsultationsClosed(rowServiceState) && !authState.isLibrarian;
+  const reservationsClosed = arePublicReservationsClosed(rowServiceState) && !authState.isLibrarian;
   if (r._reserveDone || hasActiveReservationBibRef(r.bib_ref)) {
-    return '<div class="reserve-slot"><span class="status-badge status-local">Já reservado</span></div>';
-  }
-  if (hasActiveLoanBibRef(r.bib_ref)) {
-    return '<div class="reserve-slot"><span class="reserve-note">Já emprestado na sua conta</span></div>';
+    return '<div class="reserve-slot"><span class="status-badge status-available">Reservado</span></div>';
   }
   if (status.key === 'local') {
     if (consultationsClosed) {
       return '<div class="reserve-slot"><span class="reserve-note reserve-note-closed">Consultas locais<br>temporariamente fechadas</span></div>';
     }
-    if (!authState.user) {
-      return '<div class="reserve-slot"><span class="reserve-note">Entre para pedir consulta local</span></div>';
-    }
-    return '<div class="reserve-slot"><span class="reserve-note">Consulta local possível</span></div>';
+    return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
   }
   if (status.key === 'unavailable') {
     return `<div class="reserve-slot"><span class="reserve-note">${escapeHTML(status?.label || 'Indisponível no momento')}</span></div>`;
@@ -3316,8 +3241,7 @@ function isDuplicateReservaMessage(msg) {
 function mapReservaError(msg) {
   const s = normalize(msg || '');
   if (!s) return 'Não foi possível registrar a reserva agora.';
-  if ((s.includes('consulta') && s.includes('fechad')) || (s.includes('reserva') && s.includes('consulta') && s.includes('fechad'))) return 'As novas reservas e consultas públicas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.';
-  if (s.includes('temporariamente fechadas') || (s.includes('reserva') && s.includes('fechad'))) return 'As novas reservas públicas estão temporariamente fechadas no momento. A biblioteca segue aceitando pedidos públicos de consulta local.';
+  if (s.includes('temporariamente fechadas') || (s.includes('reserva') && s.includes('fechad'))) return 'As novas reservas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.';
   if (isDuplicateReservaMessage(s)) return 'Este livro já está reservado na sua conta.';
   if (s.includes('permission denied') || s.includes('row-level security') || s.includes('42501')) return 'Sua sessão não tem permissão para reservar agora. Entre novamente e tente outra vez.';
   if (s.includes('jwt') || s.includes('token') || s.includes('auth') || s.includes('session')) return 'Sua sessão expirou. Entre novamente para reservar.';
@@ -3326,8 +3250,9 @@ function mapReservaError(msg) {
 }
 
 async function createReservaFromCatalog(bibRef, row = null) {
-  const consultationsClosed = arePublicConsultationsClosed(serviceState) && !authState.isLibrarian;
-  const reservationsClosed = arePublicReservationsClosed(serviceState) && !authState.isLibrarian;
+  const rowServiceState = getResolvedServiceStateForRow(row);
+  const consultationsClosed = arePublicConsultationsClosed(rowServiceState) && !authState.isLibrarian;
+  const reservationsClosed = arePublicReservationsClosed(rowServiceState) && !authState.isLibrarian;
   if (consultationsClosed) {
     return { ok: false, message: 'As novas reservas e consultas públicas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.' };
   }
@@ -3415,8 +3340,7 @@ function buildRowMarkup(r) {
   const tituloCell = ref ? `<a href="${livroUrl}" style="text-decoration:none; font-weight:700; display:inline-block;">${tituloInner}</a>` : tituloInner;
   const anoHtml = r.ano ? highlightHTML(r.ano, terms) : '<span class="muted">—</span>';
   const editoraHtml = r.editora ? highlightHTML(r.editora, terms) : '<span class="muted">—</span>';
-  const bibliotecaLabel = Array.isArray(r._holdingLibraries) && r._holdingLibraries.length ? r._holdingLibraries.join(' / ') : r.biblioteca;
-  const bibliotecaHtml = bibliotecaLabel ? highlightHTML(bibliotecaLabel, terms) : '<span class="muted">—</span>';
+  const bibliotecaHtml = r.biblioteca ? highlightHTML(r.biblioteca, terms) : '<span class="muted">—</span>';
   const status = r._status;
   const reservaHtml = buildReservationMarkup(r);
   return {
@@ -3519,17 +3443,6 @@ function uniqueSortedStrings(values) {
   return [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))]
     .sort((a, b) => compareNullableText(a, b));
 }
-function completeKnownLibraryLabels(labels = [], expectedCount = 0) {
-  const normalizedLabels = uniqueSortedStrings((labels || []).map((label) => canonicalizeLibraryLabel(label, '', { allowImplicitDefault: false })));
-  if (!expectedCount || normalizedLabels.length >= expectedCount) return normalizedLabels;
-  const normalizedKnownLabels = DEFAULT_LIBRARY_LABELS.map((label) => canonicalizeLibraryLabel(label, ''));
-  const knownLabelKeys = new Set(normalizedKnownLabels.map((label) => getLibraryKey(label)));
-  if (!normalizedLabels.length || normalizedLabels.some((label) => !knownLabelKeys.has(getLibraryKey(label)))) {
-    return normalizedLabels;
-  }
-  const missingKnownLabels = normalizedKnownLabels.filter((label) => !normalizedLabels.some((current) => getLibraryKey(current) === getLibraryKey(label)));
-  return uniqueSortedStrings([...normalizedLabels, ...missingKnownLabels.slice(0, Math.max(0, expectedCount - normalizedLabels.length))]);
-}
 function mergeAuthorIdsForGroup(items) {
   return [...new Set((items || []).flatMap((item) => {
     if (Array.isArray(item?.author_ids_list) && item.author_ids_list.length) {
@@ -3630,12 +3543,7 @@ function groupCatalogRows(items) {
 
   return [...groups.values()].map((groupItems) => {
     const primary = pickPrimaryRowForGroup(groupItems) || {};
-    const mergedExpectedLibraryCount = Math.max(...groupItems.map((item) => Number(item?.bibliotecas_count ?? item?._holdingLibrariesInfo?.length ?? 0) || 0), 0);
-    const holdingLibraries = completeKnownLibraryLabels(groupItems.flatMap((item) => (
-      Array.isArray(item?._holdingLibraries) && item._holdingLibraries.length
-        ? item._holdingLibraries
-        : [item?.biblioteca]
-    )), mergedExpectedLibraryCount);
+    const holdingLibraries = uniqueSortedStrings(groupItems.map((item) => item?.biblioteca));
     const mergedAuthorIds = mergeAuthorIdsForGroup(groupItems);
     const mergedAuthorChips = mergeAuthorChipEntriesForGroup(groupItems);
     const mergedHoldingLibraryInfo = mergeHoldingLibraryInfoForGroup(groupItems);
@@ -3738,6 +3646,8 @@ function paintHeaderSort() {
 
 function render() {
   maybeResetVisibleRowLimit();
+  refreshResolvedServiceState();
+  renderPublicServiceBanner();
   const filtered = currentRows();
   const visibleRows = filtered.slice(0, visibleRowLimit);
   tbody.innerHTML = '';
@@ -3963,14 +3873,10 @@ function pickPrimaryAccessContext(rows) {
   });
   return normalized[0];
 }
-async function fetchAuthenticatedRestRows(path, accessToken, schemaName = 'public') {
-  const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${accessToken}`,
-    Accept: 'application/json'
-  };
-  if (schemaName && schemaName !== 'public') headers['Accept-Profile'] = schemaName;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers });
+async function fetchAuthenticatedRestRows(path, accessToken) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+  });
   if (!res.ok) return [];
   const text = await res.text();
   return text ? JSON.parse(text) : [];
@@ -3978,61 +3884,27 @@ async function fetchAuthenticatedRestRows(path, accessToken, schemaName = 'publi
 
 async function loadActiveReservedBibRefs() {
   activeReservedBibRefs = new Set();
-  activeLoanBibRefs = new Set();
-  activeReservationDebugRows = [];
-  if (!authState?.user || !authState?.accessToken) {
-    publishIndexReservationDebug({ skipped: true, reason: 'not_logged_in' });
-    return;
-  }
-  const viewNames = ['my_reservations_active', 'my_reservations_active_v2'];
-  const loanViewPath = `emprestimo_itens_ui?select=${encodeURIComponent('bib_ref,emprestimo_status,item_status,due_at')}&emprestimo_status=eq.aberto&item_status=eq.aberto`;
+  if (!authState?.user || !authState?.accessToken) return;
   try {
-    for (const viewName of viewNames) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${viewName}?select=*`, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${authState.accessToken}`,
-          Accept: 'application/json',
-          'Accept-Profile': 'api',
-          'Content-Profile': 'api'
-        }
-      });
-      if (!res.ok) {
-        activeReservationDebugRows.push({ viewName, ok: false, status: res.status });
-        continue;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/my_reservations_active?select=${encodeURIComponent('bib_ref')}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${authState.accessToken}`,
+        Accept: 'application/json',
+        'Accept-Profile': 'api',
+        'Content-Profile': 'api'
       }
-      const body = await res.text();
-      const data = body ? JSON.parse(body) : [];
-      if (!Array.isArray(data)) {
-        activeReservationDebugRows.push({ viewName, ok: true, rows: [], note: 'non_array_response' });
-        continue;
-      }
-      for (const row of data) {
-        const refs = extractReservationRefCandidates(row);
-        refs.forEach((bibRef) => activeReservedBibRefs.add(bibRef));
-        activeReservationDebugRows.push({ viewName, ok: true, refs, row: buildReservationDebugRow(row) });
-      }
-      if (!data.length) activeReservationDebugRows.push({ viewName, ok: true, rows: [] });
-    }
-  } catch (e) {
-    activeReservationDebugRows.push({ ok: false, error: String(e?.message || e || 'unknown_error') });
-  }
-
-  try {
-    const loanRows = await fetchAuthenticatedRestRows(loanViewPath, authState.accessToken, 'api');
-    if (Array.isArray(loanRows)) {
-      for (const row of loanRows) {
-        const refs = extractReservationRefCandidates(row);
-        refs.forEach((bibRef) => activeLoanBibRefs.add(bibRef));
-        activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, refs, row: { bib_ref: normalizeBibRefValue(row?.bib_ref), status: firstNonEmptyString(row?.emprestimo_status), line_status: firstNonEmptyString(row?.item_status), due_at: firstNonEmptyString(row?.due_at) } });
-      }
-      if (!loanRows.length) activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, rows: [] });
-    }
-  } catch (e) {
-    activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: false, error: String(e?.message || e || 'unknown_error') });
-  }
-
-  publishIndexReservationDebug();
+    });
+    if (!res.ok) return;
+    const body = await res.text();
+    const data = body ? JSON.parse(body) : [];
+    if (!Array.isArray(data)) return;
+    activeReservedBibRefs = new Set(
+      data
+        .map((row) => normalizeBibRefValue(row?.bib_ref))
+        .filter(Boolean)
+    );
+  } catch (e) {}
 }
 async function loadAuthenticatedLibraryContext(accessToken) {
   if (!accessToken) return null;
