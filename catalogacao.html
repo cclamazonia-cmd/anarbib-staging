@@ -2037,9 +2037,9 @@
             <input type="hidden" id="bookAction" value="create" />
 
             <div class="field mode-complete-only">
-              <label for="bookBibRef">Compatibilidade legada do holding local</label>
-              <input id="bookBibRef" type="text" placeholder="Ref. local legada / compat" />
-              <small>Identificador local de apoio do holding. Mantido aqui como ponte de compatibilidade legada, não como pivô principal da ficha comum.</small>
+              <label for="bookBibRef">Compatibilidade local legada do holding</label>
+              <input id="bookBibRef" type="text" placeholder="Ref. local legada do holding" />
+              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_holdings.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
             </div>
 
             <div class="field">
@@ -2497,7 +2497,6 @@
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
               <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
               <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
-              <div id="bookHoldingPivotSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Holding local em foco:</strong> ainda não relido nesta ficha.</div>
               <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida nesta ficha.</div>
               <div class="catalog-layer-summary" style="margin-top:12px; margin-bottom:0;">
                 <div class="catalog-layer-card">
@@ -3016,9 +3015,9 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Holding local / compatibilidade legada</label>
+            <label for="exemplarBibRef">Compatibilidade local / ficha comum</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
-            <small>Use aqui a compatibilidade legada que ancora este holding local à ficha comum já existente ou em preparação, sem tratá-la como pivô principal da notice.</small>
+            <small>Use aqui a referência local que ancora este exemplar à ficha comum já existente ou em preparação.</small>
           </div>
 
           <div class="field">
@@ -3075,7 +3074,7 @@
               </div>
               <div class="book-derived-summary-card">
                 <div id="exemplarContextKind" class="book-derived-summary-kind">Ficha comum ainda não localizada</div>
-                <div id="exemplarContextTitle" class="book-derived-summary-title">Holding local ainda não informado</div>
+                <div id="exemplarContextTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
                 <div id="exemplarContextHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
                 <div id="exemplarContextCopy" class="book-derived-summary-line">Exemplar local: —</div>
                 <div id="exemplarContextLabel" class="book-derived-summary-line is-muted">Rótulo e revisão local: —</div>
@@ -3152,7 +3151,7 @@
           <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente, sem perder de vista a ficha comum e a leitura do holding local.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Holding local: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -3216,7 +3215,7 @@
             </div>
             <div class="book-derived-summary-card">
               <div id="labelFlowKind" class="book-derived-summary-kind">Ficha comum ainda não relida</div>
-              <div id="labelFlowTitle" class="book-derived-summary-title">Holding local ainda não informado</div>
+              <div id="labelFlowTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
               <div id="labelFlowHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
               <div id="labelFlowCopy" class="book-derived-summary-line">Exemplar local: —</div>
               <div id="labelFlowLabel" class="book-derived-summary-line is-muted">Rótulo local: —</div>
@@ -3254,7 +3253,7 @@
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Holding local: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -3441,7 +3440,7 @@
         <div class="grid cols-4" style="margin-bottom:16px;">
           <div class="field">
             <label for="catalogSearch">Buscar fichas comuns e autoridades</label>
-            <input id="catalogSearch" type="text" placeholder="Ficha comum, autoridade, editora, país, tipo de material ou compatibilidade local…" />
+            <input id="catalogSearch" type="text" placeholder="Ficha comum, autoridade, editora, país, tipo de material, holding local ou compatibilidade legada…" />
             <small>Este campo único filtra fichas comuns publicadas e autoridades publicadas. A busca de exemplares locais fica separada ao lado.</small>
           </div>
           <div class="field">
@@ -3450,7 +3449,7 @@
           </div>
           <div class="field">
             <label for="catalogExemplarSearch">Buscar exemplares locais</label>
-            <input id="catalogExemplarSearch" type="text" placeholder="Tombo, compatibilidade local, autor no rótulo ou localização" />
+            <input id="catalogExemplarSearch" type="text" placeholder="Tombo, compatibilidade legada, autor no rótulo ou localização" />
           </div>
         </div>
 
@@ -3461,7 +3460,7 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do catálogo publicado neste recorte</h4>
-                <div class="hint">Nesta leitura, o catálogo distingue melhor o que já está publicado, o que continua apenas como holding local / compatibilidade legada, o que já existe como exemplar local e o que já entrou em retomada editorial local.</div>
+                <div class="hint">Nesta passe 42, a leitura do catálogo distingue melhor a ficha comum, o holding local já publicado e a compatibilidade legada que o backend ainda carrega em parte das superfícies.</div>
               </div>
               <div class="inline" style="gap:8px; flex-wrap:wrap;">
                   <span id="catalogPass17Marker" class="pill info">Passe 17 · catalogPanel</span>
@@ -4611,7 +4610,6 @@
       bookPublicFichaAccess: el('bookPublicFichaAccess'),
       bookPublicFichaSubjects: el('bookPublicFichaSubjects'),
       bookInterlibraryRightsSummary: el('bookInterlibraryRightsSummary'),
-      bookHoldingPivotSummary: el('bookHoldingPivotSummary'),
       bookMetadataTraceSummary: el('bookMetadataTraceSummary'),
       bookTraceImportedValue: el('bookTraceImportedValue'),
       bookTraceImportedNote: el('bookTraceImportedNote'),
@@ -9024,38 +9022,10 @@
       return batch ? `${batch.name} (#${batch.id})` : `Lote #${batchId}`;
     }
 
-    function getHoldingLocalDescriptor({ bibRef = '', library = '', holderLibrary = '', ownerLibrary = '' } = {}) {
-      const legacyRef = compactSpaces(bibRef || '');
-      const resolvedLibrary = compactSpaces(library || holderLibrary || ownerLibrary || '');
-      const shortLabel = joinSummaryParts([
-        resolvedLibrary || '',
-        legacyRef ? `compat. legada ${legacyRef}` : '',
-      ]) || 'holding local ainda não identificado';
-      const summaryLine = joinSummaryParts([
-        resolvedLibrary ? `biblioteca: ${resolvedLibrary}` : 'biblioteca ainda não informada',
-        legacyRef ? `compatibilidade legada: ${legacyRef}` : 'sem compatibilidade legada',
-      ]);
-      return {
-        legacyRef,
-        library: resolvedLibrary,
-        shortLabel,
-        summaryLine: summaryLine || 'holding local ainda não identificado',
-        title: resolvedLibrary || legacyRef ? `Holding local ${shortLabel}` : 'Holding local ainda não informado',
-      };
-    }
-
-    function formatHoldingLocalTableValue(bibRef = '', library = '') {
-      const meta = getHoldingLocalDescriptor({ bibRef, library });
-      if (meta.library && meta.legacyRef) return `${meta.library} · ref. legada ${meta.legacyRef}`;
-      if (meta.library) return `${meta.library} · sem ref. legada`;
-      if (meta.legacyRef) return `Ref. legada ${meta.legacyRef}`;
-      return '—';
-    }
-
     function syncLabelSummaryFromExemplar() {
       const shelfDisplay = syncExemplarStructuredLocation();
       if (refs.labelCurrentBatch) refs.labelCurrentBatch.textContent = getBatchLabel(el('exemplarBatchId').value || '');
-      if (refs.labelCurrentBibRef) refs.labelCurrentBibRef.textContent = formatHoldingLocalTableValue(el('exemplarBibRef').value || '', refs.exemplarLocationLibrary?.value || '');
+      if (refs.labelCurrentBibRef) refs.labelCurrentBibRef.textContent = el('exemplarBibRef').value || '—';
       if (refs.labelCurrentTombo) refs.labelCurrentTombo.textContent = el('exemplarTombo').value || '—';
       if (refs.labelCurrentShelf) refs.labelCurrentShelf.textContent = shelfDisplay || '—';
     }
@@ -9076,7 +9046,7 @@
       if (!bibRef) {
         return {
           kind: 'Ficha comum ainda não relida',
-          title: 'Preencha a compatibilidade legada do holding para reler a ficha comum',
+          title: 'Preencha a compatibilidade local para reler a ficha comum',
           notice: null,
         };
       }
@@ -9085,7 +9055,7 @@
       if (publishedNotice) {
         return {
           kind: 'Ficha comum publicada localizada',
-          title: getBookDisplayTitle(publishedNotice) || getHoldingLocalDescriptor({ bibRef, holderLibrary: publishedNotice?.holder_library, ownerLibrary: publishedNotice?.owner_library }).title,
+          title: getBookDisplayTitle(publishedNotice) || `Compatibilidade local ${bibRef}`,
           notice: publishedNotice,
         };
       }
@@ -9093,13 +9063,13 @@
       if (queueDraft) {
         return {
           kind: 'Ficha comum ativa localizada na fila editorial',
-          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || getHoldingLocalDescriptor({ bibRef }).title,
+          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || `Compatibilidade local ${bibRef}`,
           notice: queueDraft,
         };
       }
       return {
         kind: 'Ficha comum ainda não localizada nesta superfície',
-        title: getHoldingLocalDescriptor({ bibRef }).title,
+        title: `Compatibilidade local ${bibRef}`,
         notice: null,
       };
     }
@@ -9140,11 +9110,10 @@
         refs.labelFlowStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : (labelDraftStableState === 'dirty' ? 'warn' : 'info')}`;
       }
       refs.labelFlowKind.textContent = linked.kind;
-      refs.labelFlowTitle.textContent = linked.title || 'Holding local ainda não informado';
-      const labelHoldingMeta = getHoldingLocalDescriptor({ bibRef, library: localLibrary, holderLibrary: notice?.holder_library, ownerLibrary: notice?.owner_library });
+      refs.labelFlowTitle.textContent = linked.title || 'Compatibilidade local ainda não informada';
       refs.labelFlowHolding.textContent = `Holding local: ${joinSummaryParts([
-        labelHoldingMeta.library ? `Biblioteca: ${labelHoldingMeta.library}` : '',
-        labelHoldingMeta.legacyRef ? `Compat. legada: ${labelHoldingMeta.legacyRef}` : '',
+        bibRef ? `Compat. local ${bibRef}` : '',
+        localLibrary ? `Biblioteca: ${localLibrary}` : '',
         batchLabel ? `Lote: ${batchLabel}` : ''
       ]) || '—'}`;
       refs.labelFlowCopy.textContent = `Exemplar local: ${joinSummaryParts([
@@ -9303,12 +9272,14 @@
 
       const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
       const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
+      const legacyBibRef = compactSpaces(el('bookBibRef')?.value || '');
       if (holderLibrary) localLayerParts.push(`detida em ${holderLibrary}`);
       if (ownerLibrary && ownerLibrary !== holderLibrary) localLayerParts.push(`propriedade: ${ownerLibrary}`);
       if (acquisitionModeLabel) localLayerParts.push(`entrada: ${acquisitionModeLabel}`);
       if (acquisitionDate) localLayerParts.push(`data: ${acquisitionDate}`);
       if (acquisitionSourceLabel) localLayerParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) localLayerParts.push(`rede: ${mutualizationStatusLabel}`);
+      if (legacyBibRef) localLayerParts.push(`compat. legada do holding: ${legacyBibRef}`);
       if (provenanceNote) localLayerParts.push(`proveniência: ${truncatePreviewText(provenanceNote, 120)}`);
 
       const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
@@ -9717,7 +9688,6 @@
       refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
-      updateBookHoldingPivotSummary();
       renderBookMetadataTraceSummary();
     }
 
@@ -9840,12 +9810,11 @@
       refs.exemplarContextKind.textContent = linked?.kindLabel || 'Ficha comum ainda não localizada';
       refs.exemplarContextTitle.textContent = linked
         ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
-        : (bibRef ? `${getHoldingLocalDescriptor({ bibRef, library, holderLibrary: linked?.library }).title} ainda sem ficha comum relida` : 'Holding local ainda não informado');
+        : (bibRef ? `Compatibilidade local ${bibRef} ainda sem ficha comum relida` : 'Compatibilidade local ainda não informada');
 
-      const holdingMeta = getHoldingLocalDescriptor({ bibRef, library, holderLibrary: linked?.library });
       const holdingParts = [];
-      holdingParts.push(holdingMeta.library ? `Biblioteca: ${holdingMeta.library}` : 'Biblioteca: —');
-      holdingParts.push(holdingMeta.legacyRef ? `Compat. legada: ${holdingMeta.legacyRef}` : 'Compat. legada: —');
+      holdingParts.push(`Compatibilidade local: ${bibRef || '—'}`);
+      holdingParts.push(`Biblioteca: ${library || linked?.library || '—'}`);
       holdingParts.push(batchLabel);
       refs.exemplarContextHolding.textContent = `Holding local: ${holdingParts.join(' · ')}`;
 
@@ -9867,7 +9836,7 @@
     function updateLabelPreview() {
       syncLabelSummaryFromExemplar();
       refs.labelPrevTombo.textContent = el('exemplarTombo').value || '—';
-      refs.labelPrevBibRef.textContent = formatHoldingLocalTableValue(el('exemplarBibRef').value || '', refs.exemplarLocationLibrary?.value || '');
+      refs.labelPrevBibRef.textContent = el('exemplarBibRef').value || '—';
       refs.labelPrevAuthor.textContent = el('labelAuthorInput')?.value || '—';
       refs.labelPrevCDD.textContent = el('labelCDDInput')?.value || '—';
       refs.labelPrevTitle.textContent = el('labelTitleInput')?.value || 'Título';
@@ -11387,7 +11356,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Ficha comum:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Holding local / compatibilidade legada:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11397,7 +11366,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Autoridade:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Holding local / compatibilidade legada:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11408,7 +11377,7 @@
       const exemplar = getQueueExemplarRecord(item);
       const parts = [
         `<div><strong>Exemplar local:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-        `<div><strong>Holding local / compatibilidade legada:</strong> ${reference}${batch}</div>`
+        `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
       ];
       if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo local:</strong> ${secondary}</div>`);
       if (exemplar?.tombo) parts.push(`<div><strong>Tombo:</strong> ${sanitize(exemplar.tombo)}</div>`);
@@ -12470,7 +12439,7 @@
             <tr>
               <th>ID</th>
               <th>Tombo</th>
-              <th>Holding local / compat. legada</th>
+              <th>Compatibilidade local</th>
               <th>Autor</th>
               <th>Título</th>
               <th>CDD</th>
@@ -12483,7 +12452,7 @@
               <tr>
                 <td>${sanitize(item.id)}</td>
                 <td>${sanitize(item.tombo || '—')}</td>
-                <td>${sanitize(formatHoldingLocalTableValue(item.target_bib_ref || '', item.location_library || ''))}</td>
+                <td>${sanitize(item.target_bib_ref || '—')}</td>
                 <td>${sanitize(item.displayAuthor || '—')}</td>
                 <td>${sanitize(item.displayTitle || '—')}</td>
                 <td>${sanitize(item.displayCDD || '—')}</td>
@@ -12547,7 +12516,7 @@
             <tr>
               <th>Rascunho</th>
               <th>Situação</th>
-              <th>Holding local / compat. legada</th>
+              <th>Compatibilidade local</th>
               <th>Tombo</th>
               <th>Localização</th>
               <th>Atualizado em</th>
@@ -12559,7 +12528,7 @@
               <tr>
                 <td>#${sanitize(item.id)}</td>
                 <td>${getQueueStatusBadge(item.status)}</td>
-                <td>${sanitize(formatHoldingLocalTableValue(item.target_bib_ref || '', item.location_library || ''))}</td>
+                <td>${sanitize(item.target_bib_ref || '—')}</td>
                 <td>${sanitize(item.tombo || '—')}</td>
                 <td>${sanitize(compactSpaces(item.shelf_location || '') || '—')}</td>
                 <td>${sanitize(formatDate(item.updated_at))}</td>
@@ -13005,7 +12974,7 @@ function renderCatalogBooks() {
         <tr>
           <th>Operações</th>
           <th class="sortable">${renderSortableHeader('Linha pública da ficha comum', 'books', 'title')}</th>
-          <th class="sortable">${renderSortableHeader('Holding local / compat. legada publicada', 'books', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Holding local / compat. legada', 'books', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Holding / exemplar local publicado', 'books', 'total_exemplares')}</th>
           <th>Direitos interbibliotecas</th>
           <th>Recurso digital publicado</th>
@@ -13063,7 +13032,7 @@ function renderCatalogOtherDocuments() {
         <tr>
           <th>Operações</th>
           <th class="sortable">${renderSortableHeader('Linha pública da ficha comum', 'otherDocs', 'title')}</th>
-          <th class="sortable">${renderSortableHeader('Holding local / compat. legada publicada', 'otherDocs', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Holding local / compat. legada', 'otherDocs', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Holding / exemplar local publicado', 'otherDocs', 'total_exemplares')}</th>
           <th>Direitos interbibliotecas</th>
           <th>Recurso digital publicado</th>
@@ -13381,15 +13350,26 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
     }
 
     function renderCatalogBookCompatCell(book = {}) {
-      const bibRef = compactSpaces(book.bib_ref || '');
+      const compatMeta = getCatalogHoldingCompatMeta(book);
+      if (compatMeta.comesFromHoldings) {
+        return buildCatalogLayerStack(
+          compatMeta.compatLabel || 'Holding local sem compatibilidade legível',
+          [
+            { text: `Compatibilidade legada relida desde o holding local${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
+            { text: 'Nesta célula, a leitura privilegia o holding publicado (holding_libraries_json / local_bib_ref), e não book.bib_ref como pivô principal.', muted: true },
+          ],
+          [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding'],
+          'Holding local / compat. legada'
+        );
+      }
       return buildCatalogLayerStack(
-        formatHoldingLocalTableValue(bibRef, book.holder_library || book.owner_library || book.library_name || ''),
+        compatMeta.fallbackBibRef || 'Sem compatibilidade legada visível',
         [
-          { text: bibRef ? `Holding local / compatibilidade legada publicada: ${formatHoldingLocalTableValue(bibRef, book.holder_library || book.owner_library || book.library_name || '')}` : 'Esta ficha comum publicada ainda não mostra holding local / compatibilidade legada legível neste recorte.', muted: false },
-          { text: 'A compatibilidade legada continua só como ponte local publicada, sem virar pivô principal da ficha comum.', muted: true },
+          { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas a referência comum/legada: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra compatibilidade legada neste recorte.', muted: false },
+          { text: 'O SQL já prevê holdings locais com local_bib_ref, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
         ],
-        bibRef ? ['Holding local'] : [],
-        'Holding local / compatibilidade legada publicada'
+        compatMeta.fallbackBibRef ? ['Legado comum'] : [],
+        'Compatibilidade legada'
       );
     }
 
@@ -13460,6 +13440,52 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       const optionList = Array.isArray(options) ? options : [];
       const hit = optionList.find(([optionValue]) => String(optionValue || '').trim() === normalized);
       return String(hit?.[1] || normalized).trim();
+    }
+
+    function parseCatalogHoldingEntries(rawValue) {
+      if (Array.isArray(rawValue)) {
+        return rawValue.filter((entry) => entry && typeof entry === 'object');
+      }
+      if (typeof rawValue === 'string') {
+        const trimmed = rawValue.trim();
+        if (!trimmed) return [];
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed.filter((entry) => entry && typeof entry === 'object') : [];
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    function getCatalogHoldingCompatMeta(book = {}) {
+      const holdings = parseCatalogHoldingEntries(book.holding_libraries_json);
+      const firstHolding = holdings[0] || null;
+      const firstCompatHolding = holdings.find((entry) => compactSpaces(entry?.local_bib_ref || '')) || null;
+      const compatLabel = compactSpaces(firstCompatHolding?.local_bib_ref || firstHolding?.local_bib_ref || '');
+      const compatLibrary = compactSpaces(
+        firstCompatHolding?.library_name
+        || firstCompatHolding?.short_name
+        || firstCompatHolding?.library_slug
+        || firstHolding?.library_name
+        || firstHolding?.short_name
+        || firstHolding?.library_slug
+        || ''
+      );
+      const fallbackBibRef = compactSpaces(book.bib_ref || '');
+      const librariesCount = parseOptionalInt(book.bibliotecas_count);
+      return {
+        holdings,
+        holdingsCount: holdings.length,
+        librariesCount: Math.max(librariesCount || 0, holdings.length),
+        firstHolding,
+        compatLabel,
+        compatLibrary,
+        fallbackBibRef,
+        comesFromHoldings: !!compatLabel,
+        hasCompat: !!(compatLabel || fallbackBibRef),
+      };
     }
 
     function getCatalogBookInterlibraryRightsMeta(book = {}) {
@@ -13556,14 +13582,16 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
 
     function renderCatalogBookExemplarCell(book = {}) {
       const totalExemplares = Number(book.total_exemplares || 0);
+      const compatMeta = getCatalogHoldingCompatMeta(book);
+      const holdingsLabel = compatMeta.librariesCount === 1 ? '1 holding local publicado' : `${compatMeta.librariesCount} holdings locais publicados`;
       const exemplarLabel = totalExemplares === 1 ? '1 exemplar local publicado' : `${totalExemplares} exemplares locais publicados`;
       return buildCatalogLayerStack(
-        exemplarLabel,
+        totalExemplares ? exemplarLabel : 'Sem exemplar local publicado',
         [
-          { text: totalExemplares ? 'Há holding local publicado ligado a esta ficha comum.' : 'Nenhum holding ou exemplar local publicado visível para esta ficha comum neste recorte.', muted: false },
-          { text: 'É esta camada local publicada que sustenta a circulação concreta e a leitura material do catálogo.', muted: true },
+          { text: totalExemplares ? `${holdingsLabel}${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}` : 'Nenhum holding ou exemplar local publicado visível para esta ficha comum neste recorte.', muted: false },
+          { text: compatMeta.compatLabel ? `Compatibilidade legada hoje carregada por este holding: ${compatMeta.compatLabel}.` : 'A camada local publicada já passa pelos holdings, mesmo quando a compatibilidade legada não aparece aqui.', muted: true },
         ],
-        totalExemplares ? ['Holding local visível'] : ['Sem exemplar visível'],
+        totalExemplares ? [compatMeta.librariesCount ? `${compatMeta.librariesCount} holding(s)` : 'Holding local visível'] : ['Sem exemplar visível'],
         'Holding / exemplar local publicado'
       );
     }
@@ -13584,13 +13612,13 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
     function renderCatalogExemplarCompatCell(ex = {}) {
       const bibRef = compactSpaces(ex.bib_ref || '');
       return buildCatalogLayerStack(
-        formatHoldingLocalTableValue(bibRef, ex.holder_library || ex.owner_library || ex.library_name || ''),
+        bibRef || 'Sem compatibilidade legada visível',
         [
-          { text: bibRef ? `Holding local / compatibilidade legada atual: ${formatHoldingLocalTableValue(bibRef, ex.holder_library || ex.owner_library || ex.library_name || '')}` : 'Este exemplar não mostra holding local / compatibilidade legada legível.', muted: false },
-          { text: 'Serve de ponte local entre exemplar publicado, holding local e ficha comum.', muted: true },
+          { text: bibRef ? `Compatibilidade legada atual: ${bibRef}` : 'Este exemplar não mostra compatibilidade legada neste recorte.', muted: false },
+          { text: 'No SQL atual, o exemplar já carrega holding_id, mas esta superfície publicada ainda expõe bib_ref como ponte legada de leitura e de rótulo.', muted: true },
         ],
-        bibRef ? ['Holding local'] : [],
-        'Holding local / compatibilidade legada'
+        bibRef ? ['Legado local'] : [],
+        'Compatibilidade legada'
       );
     }
 
@@ -13615,7 +13643,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       const visibleDocuments = [...(state.books || [])].filter((book) => !documentSearch || getBookSearchIndex(book).includes(documentSearch));
       const visibleBookish = visibleDocuments.filter(isCatalogBookLikeItem);
       const visibleOther = visibleDocuments.filter(isCatalogOtherDocumentItem);
-      const visibleCompat = visibleDocuments.filter((book) => compactSpaces(book.bib_ref || ''));
+      const visibleCompat = visibleDocuments.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat);
       const visibleDigital = visibleDocuments.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal);
       const visibleRights = visibleDocuments.map((book) => getCatalogBookInterlibraryRightsMeta(book));
       const visibleExemplars = [...(state.exemplars || [])].filter((ex) => {
@@ -13636,8 +13664,8 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
 
       if (refs.catalogSummaryCompatValue) refs.catalogSummaryCompatValue.textContent = String(visibleCompat.length);
       if (refs.catalogSummaryCompatNote) refs.catalogSummaryCompatNote.textContent = visibleCompat.length
-        ? `${visibleCompat.length} fichas comuns ainda mostram holding local / compatibilidade legada na leitura publicada.`
-        : 'Nenhuma ficha comum visível mostra holding local / compatibilidade legada neste recorte.';
+        ? `${visibleCompat.length} fichas comuns já mostram compatibilidade legada relida desde holdings locais ou, na falta deles, desde o legado comum ainda exposto.`
+        : 'Nenhuma ficha comum visível mostra compatibilidade legada neste recorte.';
 
       if (refs.catalogSummaryExemplarValue) refs.catalogSummaryExemplarValue.textContent = String(visibleExemplars.length);
       if (refs.catalogSummaryExemplarNote) refs.catalogSummaryExemplarNote.textContent = visibleExemplars.length
@@ -13731,7 +13759,7 @@ function setCatalogSurfaceSummary(node, html) {
 
 function renderCatalogBooksSurfaceSummary(items = []) {
   const draftLinkMap = getCatalogBookDraftLinkMap();
-  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const compatCount = items.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat).length;
   const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
   const digitalCount = items.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal).length;
   const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
@@ -13741,13 +13769,13 @@ function renderCatalogBooksSurfaceSummary(items = []) {
   }
   setCatalogSurfaceSummary(
     refs.catalogBooksSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de fichas comuns visíveis; ${compatCount} ainda mostram holding local / compatibilidade legada publicada; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
+    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de fichas comuns visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
   );
 }
 
 function renderCatalogOtherDocsSurfaceSummary(items = []) {
   const draftLinkMap = getCatalogBookDraftLinkMap();
-  const compatCount = items.filter((book) => compactSpaces(book.bib_ref || '')).length;
+  const compatCount = items.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat).length;
   const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
   const digitalCount = items.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal).length;
   const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
@@ -13757,7 +13785,7 @@ function renderCatalogOtherDocsSurfaceSummary(items = []) {
   }
   setCatalogSurfaceSummary(
     refs.catalogOtherDocsSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de materiais especiais visíveis; ${compatCount} ainda mostram holding local / compatibilidade legada publicada; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
+    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de materiais especiais visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
   );
 }
 
@@ -13786,7 +13814,7 @@ function renderCatalogExemplarsSurfaceSummary(items = []) {
   }
   setCatalogSurfaceSummary(
     refs.catalogExemplarsSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} exemplares locais visíveis; ${compatCount} com holding local / compatibilidade legada legível; ${locatedCount} com localização consolidada visível; ${draftCount} com retomada editorial ativa.`
+    `<strong>Leitura da superfície:</strong> ${items.length} exemplares locais visíveis; ${compatCount} com compatibilidade legada legível; ${locatedCount} com localização consolidada visível; ${draftCount} com retomada editorial ativa.`
   );
 }
 
@@ -14119,7 +14147,7 @@ function renderCatalogExemplars() {
         <tr>
           <th>Operações</th>
           <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
-          <th class="sortable">${renderSortableHeader('Holding local / compat. legada', 'exemplars', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Ficha comum publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
           <th>Rascunho de edição local</th>
         </tr>
@@ -16014,16 +16042,6 @@ function initPartnerProbeUi() {
     renderBookMetadataTraceSummary();
   }
 
-  function updateBookHoldingPivotSummary() {
-    if (!refs.bookHoldingPivotSummary) return;
-    const meta = getHoldingLocalDescriptor({
-      bibRef: el('bookBibRef')?.value || '',
-      holderLibrary: el('bookHolderLibrary')?.value || '',
-      ownerLibrary: el('bookOwnerLibrary')?.value || '',
-    });
-    refs.bookHoldingPivotSummary.innerHTML = `<strong>Holding local em foco:</strong> ${sanitize(meta.summaryLine)}. Nesta etapa, a compatibilidade legada permanece apenas como ponte local do holding e não como pivô principal da ficha comum.`;
-  }
-
   function buildTraceabilityItems(...values) {
     return values
       .flatMap((value) => String(value || '').split(/\n+/))
@@ -16219,7 +16237,7 @@ function initPartnerProbeUi() {
       `Editora: ${publisher}`,
       `Local / ano: ${place} · ${year}`,
       `Idioma: ${language}`,
-      bibRef ? `Referência local: ${bibRef}` : '',
+      bibRef ? `Compatibilidade legada do holding: ${bibRef}` : '',
       `Assuntos: ${subjects}`,
     ].filter(Boolean).join('\n');
   }
