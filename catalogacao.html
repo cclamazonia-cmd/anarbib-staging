@@ -2497,6 +2497,29 @@
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
               <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
               <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
+              <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida nesta ficha.</div>
+              <div class="catalog-layer-summary" style="margin-top:12px; margin-bottom:0;">
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Importado / retomado</div>
+                  <div id="bookTraceImportedValue" class="catalog-layer-card-value">—</div>
+                  <div id="bookTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Relido localmente</div>
+                  <div id="bookTraceReviewedValue" class="catalog-layer-card-value">—</div>
+                  <div id="bookTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Conservado / levado</div>
+                  <div id="bookTraceKeptValue" class="catalog-layer-card-value">—</div>
+                  <div id="bookTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Recusado / bloqueado</div>
+                  <div id="bookTraceRefusedValue" class="catalog-layer-card-value">—</div>
+                  <div id="bookTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+              </div>
             </div>
 
             <div class="form-flow-break">
@@ -3615,6 +3638,29 @@
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
 
           <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> ainda não atualizada.</div>
+          <div id="partnerMetadataTraceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida entre comparação e preparação local.</div>
+          <div class="catalog-layer-summary" style="margin-bottom:12px;">
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Importado / retomado</div>
+              <div id="partnerTraceImportedValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Relido localmente</div>
+              <div id="partnerTraceReviewedValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Conservado / levado</div>
+              <div id="partnerTraceKeptValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+            </div>
+            <div class="catalog-layer-card">
+              <div class="catalog-layer-card-title">Recusado / bloqueado</div>
+              <div id="partnerTraceRefusedValue" class="catalog-layer-card-value">—</div>
+              <div id="partnerTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+            </div>
+          </div>
 
           <div class="catalog-layer-summary" id="partnerGovernanceSummary" style="margin-bottom:12px;">
             <div class="catalog-layer-card">
@@ -4564,6 +4610,15 @@
       bookPublicFichaAccess: el('bookPublicFichaAccess'),
       bookPublicFichaSubjects: el('bookPublicFichaSubjects'),
       bookInterlibraryRightsSummary: el('bookInterlibraryRightsSummary'),
+      bookMetadataTraceSummary: el('bookMetadataTraceSummary'),
+      bookTraceImportedValue: el('bookTraceImportedValue'),
+      bookTraceImportedNote: el('bookTraceImportedNote'),
+      bookTraceReviewedValue: el('bookTraceReviewedValue'),
+      bookTraceReviewedNote: el('bookTraceReviewedNote'),
+      bookTraceKeptValue: el('bookTraceKeptValue'),
+      bookTraceKeptNote: el('bookTraceKeptNote'),
+      bookTraceRefusedValue: el('bookTraceRefusedValue'),
+      bookTraceRefusedNote: el('bookTraceRefusedNote'),
       catalogRightsSurfaceSummary: el('catalogRightsSurfaceSummary'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
@@ -9631,6 +9686,7 @@
       refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
+      renderBookMetadataTraceSummary();
     }
 
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
@@ -15170,6 +15226,15 @@ function initPartnerProbeUi() {
   const partnerImportBlockersNoteEl = document.getElementById('partnerImportBlockersNote');
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
+  const partnerMetadataTraceSummaryEl = document.getElementById('partnerMetadataTraceSummary');
+  const partnerTraceImportedValueEl = document.getElementById('partnerTraceImportedValue');
+  const partnerTraceImportedNoteEl = document.getElementById('partnerTraceImportedNote');
+  const partnerTraceReviewedValueEl = document.getElementById('partnerTraceReviewedValue');
+  const partnerTraceReviewedNoteEl = document.getElementById('partnerTraceReviewedNote');
+  const partnerTraceKeptValueEl = document.getElementById('partnerTraceKeptValue');
+  const partnerTraceKeptNoteEl = document.getElementById('partnerTraceKeptNote');
+  const partnerTraceRefusedValueEl = document.getElementById('partnerTraceRefusedValue');
+  const partnerTraceRefusedNoteEl = document.getElementById('partnerTraceRefusedNote');
 
   const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
   const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
@@ -15209,7 +15274,10 @@ function initPartnerProbeUi() {
     !partnerImportSurfaceSummaryEl || !partnerImportExerciseSummaryEl ||
     !partnerImportStateValueEl || !partnerImportStateNoteEl || !partnerImportWriteValueEl || !partnerImportWriteNoteEl ||
     !partnerImportProtectedValueEl || !partnerImportProtectedNoteEl || !partnerImportBlockersValueEl || !partnerImportBlockersNoteEl ||
-    !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl
+    !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl ||
+    !partnerMetadataTraceSummaryEl || !partnerTraceImportedValueEl || !partnerTraceImportedNoteEl ||
+    !partnerTraceReviewedValueEl || !partnerTraceReviewedNoteEl || !partnerTraceKeptValueEl ||
+    !partnerTraceKeptNoteEl || !partnerTraceRefusedValueEl || !partnerTraceRefusedNoteEl
   ) {
     return;
   }
@@ -15910,6 +15978,69 @@ function initPartnerProbeUi() {
     if (!refs.bookInterlibraryRightsSummary) return;
     const meta = getBookCurrentInterlibraryRightsMeta();
     refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
+    renderBookMetadataTraceSummary();
+  }
+
+  function buildTraceabilityItems(...values) {
+    return values
+      .flatMap((value) => String(value || '').split(/
++/))
+      .flatMap((value) => value.split(/[;•]+/))
+      .map((value) => compactSpaces(value.replace(/^[\-–—*\d\.)\s]+/, '')))
+      .filter(Boolean);
+  }
+
+  function countFilledTraceFields(values = []) {
+    return values.reduce((total, value) => total + (String(value || '').trim() ? 1 : 0), 0);
+  }
+
+  function countTraceActionLines(...values) {
+    return buildTraceabilityItems(...values).length;
+  }
+
+  function getBookMetadataTraceState() {
+    const partnerLabel = getSelectedOptionLabel(bookPartnerSourceEl);
+    const sourceRecordId = String(bookSourceRecordIdEl?.value || '').trim();
+    const sourceRecordUrl = String(bookSourceRecordUrlEl?.value || '').trim();
+    const importFormatLabel = getSelectedOptionLabel(bookImportFormatEl);
+    const importMethodLabel = getSelectedOptionLabel(bookImportMethodEl);
+    const provenanceNote = String(bookProvenanceNoteEl?.value || '').trim();
+    const importedCount = countFilledTraceFields([partnerLabel, sourceRecordId, sourceRecordUrl, importFormatLabel, importMethodLabel]);
+    const reviewedCount = countTraceActionLines(provenanceNote);
+    const keptCount = buildTraceabilityItems(provenanceNote).filter((line) => /(retom|mant|conserv|aproveit|valid|confirm|prioriz|preserv)/i.test(line)).length;
+    const refusedCount = buildTraceabilityItems(provenanceNote).filter((line) => /(não\s+retom|nao\s+retom|recus|dispens|ignor|bloque|sem\s+copiar|não\s+copiar|nao\s+copiar)/i.test(line)).length;
+    return {
+      importedCount,
+      reviewedCount,
+      keptCount,
+      refusedCount,
+      importedNote: importedCount
+        ? `Camada de proveniência já identifica ${importedCount} marcador(es) estruturados de origem, formato ou modo de retomada.`
+        : 'Ainda sem marcador estruturado de origem ou importação nesta ficha.',
+      reviewedNote: reviewedCount
+        ? `A nota de proveniência já traz ${reviewedCount} linha(s) de releitura humana local.`
+        : 'Ainda sem releitura humana visível na nota de proveniência.',
+      keptNote: keptCount
+        ? `${keptCount} gesto(s) de conservação, retomada ou validação local já ficaram legíveis nesta ficha.`
+        : 'Ainda sem gesto explícito de conservação ou retomada local legível nesta ficha.',
+      refusedNote: refusedCount
+        ? `${refusedCount} recusa(s), bloqueio(s) ou exclusão(ões) já ficaram legíveis nesta ficha.`
+        : 'Ainda sem recusa ou bloqueio explícito legível nesta ficha.',
+    };
+  }
+
+  function renderBookMetadataTraceSummary() {
+    if (!refs.bookMetadataTraceSummary) return;
+    const meta = getBookMetadataTraceState();
+    refs.bookMetadataTraceSummary.innerHTML = `<strong>Traçabilidade dos metadados:</strong> origem/importação ${sanitize(String(meta.importedCount))}, releitura local ${sanitize(String(meta.reviewedCount))}, conservação ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
+    if (refs.bookTraceImportedValue) refs.bookTraceImportedValue.textContent = String(meta.importedCount);
+    if (refs.bookTraceImportedNote) refs.bookTraceImportedNote.textContent = meta.importedNote;
+    if (refs.bookTraceReviewedValue) refs.bookTraceReviewedValue.textContent = String(meta.reviewedCount);
+    if (refs.bookTraceReviewedNote) refs.bookTraceReviewedNote.textContent = meta.reviewedNote;
+    if (refs.bookTraceKeptValue) refs.bookTraceKeptValue.textContent = String(meta.keptCount);
+    if (refs.bookTraceKeptNote) refs.bookTraceKeptNote.textContent = meta.keptNote;
+    if (refs.bookTraceRefusedValue) refs.bookTraceRefusedValue.textContent = String(meta.refusedCount);
+    if (refs.bookTraceRefusedNote) refs.bookTraceRefusedNote.textContent = meta.refusedNote;
   }
 
   function getCurrentPartnerLabel() {
@@ -16692,6 +16823,63 @@ ${decisionSummary}` : '',
     partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Sem situação relacional aplicável ainda.')} Esta aba continua em leitura política e técnica, sem microfluxo documental aberto.`;
   }
 
+  function getPartnerMetadataTraceState() {
+    const importedCount = countFilledTraceFields([
+      getCurrentPartnerLabel(),
+      getSelectedOptionLabel(importFormatSelectEl),
+      getSelectedOptionLabel(importMethodSelectEl),
+      String(importSourceSummaryEl?.value || '').trim(),
+    ]) + countTraceActionLines(importTakeSummaryEl?.value || '');
+    const reviewedCount = countTraceActionLines(
+      comparisonChecklistEl?.value || '',
+      comparisonDecisionEl?.value || '',
+      differenceSummaryEl?.value || '',
+      importDecisionSummaryEl?.value || '',
+      importChecklistEl?.value || ''
+    );
+    const keptCount = countTraceActionLines(importTakeSummaryEl?.value || '') + buildTraceabilityItems(
+      comparisonDecisionEl?.value || '',
+      importDecisionSummaryEl?.value || ''
+    ).filter((line) => /(mant|retom|conserv|valid|confirm|preserv|aproveit)/i.test(line)).length;
+    const refusedCount = countTraceActionLines(importSkipSummaryEl?.value || '') + buildTraceabilityItems(
+      differenceSummaryEl?.value || '',
+      comparisonDecisionEl?.value || '',
+      importDecisionSummaryEl?.value || ''
+    ).filter((line) => /(não\s+retom|nao\s+retom|recus|dispens|ignor|bloque|sem\s+copiar|não\s+copiar|nao\s+copiar)/i.test(line)).length;
+    return {
+      importedCount,
+      reviewedCount,
+      keptCount,
+      refusedCount,
+      importedNote: importedCount
+        ? `${importedCount} marcador(es) de origem, retomada ou preparação já ficaram visíveis entre comparação e importação controlada.`
+        : 'Ainda sem marcador visível de origem ou retomada entre comparação e preparação local.',
+      reviewedNote: reviewedCount
+        ? `${reviewedCount} linha(s) de releitura humana já ficaram visíveis entre checklist, diferenças e decisões locais.`
+        : 'Ainda sem releitura humana visível entre comparação e preparação local.',
+      keptNote: keptCount
+        ? `${keptCount} elemento(s) já foram marcados como conservados, retomados ou levados para a camada local.`
+        : 'Ainda sem elemento explicitamente conservado ou levado para a camada local.',
+      refusedNote: refusedCount
+        ? `${refusedCount} recusa(s), exclusão(ões) ou bloqueio(s) já ficaram visíveis nesta estação documental.`
+        : 'Ainda sem recusa, exclusão ou bloqueio explícito legível nesta estação documental.',
+    };
+  }
+
+  function renderPartnerMetadataTraceSummary() {
+    if (!partnerMetadataTraceSummaryEl) return;
+    const meta = getPartnerMetadataTraceState();
+    partnerMetadataTraceSummaryEl.innerHTML = `<strong>Traçabilidade dos metadados:</strong> retomadas/importações ${sanitize(String(meta.importedCount))}, releituras locais ${sanitize(String(meta.reviewedCount))}, conservaçōes ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
+    partnerTraceImportedValueEl.textContent = String(meta.importedCount);
+    partnerTraceImportedNoteEl.textContent = meta.importedNote;
+    partnerTraceReviewedValueEl.textContent = String(meta.reviewedCount);
+    partnerTraceReviewedNoteEl.textContent = meta.reviewedNote;
+    partnerTraceKeptValueEl.textContent = String(meta.keptCount);
+    partnerTraceKeptNoteEl.textContent = meta.keptNote;
+    partnerTraceRefusedValueEl.textContent = String(meta.refusedCount);
+    partnerTraceRefusedNoteEl.textContent = meta.refusedNote;
+  }
+
   function refreshPartnerPilotSummary() {
     workflowScopeEl.value = getPartnerWorkflowScopeText();
     writeNowEl.value = getPartnerWriteNowText();
@@ -16704,6 +16892,7 @@ ${decisionSummary}` : '',
     renderPartnerCompareExerciseSummary();
     renderPartnerImportSurfaceSummary();
     renderPartnerImportExerciseSummary();
+    renderPartnerMetadataTraceSummary();
   }
 
   function renderPartnerGovernanceSummary() {
