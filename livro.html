@@ -2367,14 +2367,15 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         return;
       }
       try {
-        const { data, error } = await apiFrom("api", "my_reservations_active")
-          .select("bib_ref");
-        if (!error && Array.isArray(data)) {
-          currentActiveReservationBibRefs = new Set(
-            data
-              .map((row) => normalizeBibRefValue(row?.bib_ref))
-              .filter(Boolean)
-          );
+        const reservationViews = ["my_reservations_active", "my_reservations_active_v2"];
+        for (const viewName of reservationViews) {
+          const { data, error } = await apiFrom("api", viewName)
+            .select("bib_ref");
+          if (error || !Array.isArray(data)) continue;
+          data
+            .map((row) => normalizeBibRefValue(row?.bib_ref))
+            .filter(Boolean)
+            .forEach((bibRef) => currentActiveReservationBibRefs.add(bibRef));
         }
       } catch (err) {
         console.warn("AnarBib livro: falha ao carregar reservas ativas do usuário", err);
