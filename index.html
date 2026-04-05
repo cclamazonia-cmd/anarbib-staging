@@ -1132,6 +1132,7 @@ let selectedLibraryKeys = new Set();
 let selectedAvailabilityKeys = new Set();
 let availabilityAllExplicitlySelected = false;
 let activeReservedBibRefs = new Set();
+let activeReservationDebugRows = [];
 let sessionAvailabilityFactsByBookId = new Map();
 const CATALOG_BATCH_SIZE = 100;
 let visibleRowLimit = CATALOG_BATCH_SIZE;
@@ -1764,9 +1765,41 @@ function getSelectedLibraryLabels() {
 function normalizeBibRefValue(value) {
   return String(value || '').trim();
 }
+function extractReservationRefCandidates(row = {}) {
+  const candidates = [
+    row?.bib_ref,
+    row?.local_bib_ref,
+    row?.session_local_bib_ref,
+    row?.holding_local_bib_ref,
+    row?.ref_trimmed,
+    row?.input_ref
+  ].map((value) => normalizeBibRefValue(value)).filter(Boolean);
+  return [...new Set(candidates)];
+}
+function buildReservationDebugRow(row = {}) {
+  return {
+    bib_ref: normalizeBibRefValue(row?.bib_ref),
+    local_bib_ref: normalizeBibRefValue(row?.local_bib_ref),
+    session_local_bib_ref: normalizeBibRefValue(row?.session_local_bib_ref),
+    holding_local_bib_ref: normalizeBibRefValue(row?.holding_local_bib_ref),
+    ref_trimmed: normalizeBibRefValue(row?.ref_trimmed),
+    input_ref: normalizeBibRefValue(row?.input_ref),
+    status: firstNonEmptyString(row?.status, row?.workflow_stage, row?.reserva_status),
+    line_status: firstNonEmptyString(row?.line_status, row?.item_status)
+  };
+}
+function publishIndexReservationDebug(extra = {}) {
+  window.__ANARBIB_INDEX_C1_DEBUG__ = {
+    activeReservedBibRefs: [...activeReservedBibRefs],
+    rows: activeReservationDebugRows,
+    ...extra
+  };
+}
 function hasActiveReservationBibRef(bibRef) {
   const key = normalizeBibRefValue(bibRef);
-  return !!(key && activeReservedBibRefs.has(key));
+  const matched = !!(key && activeReservedBibRefs.has(key));
+  publishIndexReservationDebug({ lastCheck: { bibRef: key, matched } });
+  return matched;
 }
 function getSingleSelectedLibraryLabel() {
   if (libraryAllExplicitlySelected || selectedLibraryKeys.size !== 1) return '';
@@ -3926,11 +3959,15 @@ async function fetchAuthenticatedRestRows(path, accessToken) {
 
 async function loadActiveReservedBibRefs() {
   activeReservedBibRefs = new Set();
-  if (!authState?.user || !authState?.accessToken) return;
+  activeReservationDebugRows = [];
+  if (!authState?.user || !authState?.accessToken) {
+    publishIndexReservationDebug({ skipped: true, reason: 'not_logged_in' });
+    return;
+  }
   const viewNames = ['my_reservations_active', 'my_reservations_active_v2'];
   try {
     for (const viewName of viewNames) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${viewName}?select=${encodeURIComponent('bib_ref')}`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${viewName}?select=*`, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${authState.accessToken}`,
@@ -3939,16 +3976,27 @@ async function loadActiveReservedBibRefs() {
           'Content-Profile': 'api'
         }
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        activeReservationDebugRows.push({ viewName, ok: false, status: res.status });
+        continue;
+      }
       const body = await res.text();
       const data = body ? JSON.parse(body) : [];
-      if (!Array.isArray(data)) continue;
-      data
-        .map((row) => normalizeBibRefValue(row?.bib_ref))
-        .filter(Boolean)
-        .forEach((bibRef) => activeReservedBibRefs.add(bibRef));
+      if (!Array.isArray(data)) {
+        activeReservationDebugRows.push({ viewName, ok: true, rows: [], note: 'non_array_response' });
+        continue;
+      }
+      for (const row of data) {
+        const refs = extractReservationRefCandidates(row);
+        refs.forEach((bibRef) => activeReservedBibRefs.add(bibRef));
+        activeReservationDebugRows.push({ viewName, ok: true, refs, row: buildReservationDebugRow(row) });
+      }
+      if (!data.length) activeReservationDebugRows.push({ viewName, ok: true, rows: [] });
     }
-  } catch (e) {}
+  } catch (e) {
+    activeReservationDebugRows.push({ ok: false, error: String(e?.message || e || 'unknown_error') });
+  }
+  publishIndexReservationDebug();
 }
 async function loadAuthenticatedLibraryContext(accessToken) {
   if (!accessToken) return null;
