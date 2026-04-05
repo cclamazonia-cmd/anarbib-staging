@@ -1132,6 +1132,7 @@ let selectedLibraryKeys = new Set();
 let selectedAvailabilityKeys = new Set();
 let availabilityAllExplicitlySelected = false;
 let activeReservedBibRefs = new Set();
+let activeLoanBibRefs = new Set();
 let activeReservationDebugRows = [];
 let sessionAvailabilityFactsByBookId = new Map();
 const CATALOG_BATCH_SIZE = 100;
@@ -1624,7 +1625,11 @@ function getStatusInfo(r) {
   const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
 
   if (authState?.user && hasActiveReservationBibRef(r?.bib_ref)) {
-    return { key: 'already_reserved', filterKey: 'available', label: 'Já reservado na sua conta', cls: 'status-available', nextDateLabel: '' };
+    return { key: 'already_reserved', filterKey: 'unavailable_now', label: 'Já reservado na sua conta', cls: 'status-local', nextDateLabel: '' };
+  }
+
+  if (authState?.user && hasActiveLoanBibRef(r?.bib_ref)) {
+    return { key: 'already_loaned', filterKey: 'unavailable_now', label: 'Já emprestado na sua conta', cls: 'status-local', nextDateLabel: '' };
   }
 
   if (hasScopedLibrary) {
@@ -1791,6 +1796,7 @@ function buildReservationDebugRow(row = {}) {
 function publishIndexReservationDebug(extra = {}) {
   window.__ANARBIB_INDEX_C1_DEBUG__ = {
     activeReservedBibRefs: [...activeReservedBibRefs],
+    activeLoanBibRefs: [...activeLoanBibRefs],
     rows: activeReservationDebugRows,
     ...extra
   };
@@ -1799,6 +1805,12 @@ function hasActiveReservationBibRef(bibRef) {
   const key = normalizeBibRefValue(bibRef);
   const matched = !!(key && activeReservedBibRefs.has(key));
   publishIndexReservationDebug({ lastCheck: { bibRef: key, matched } });
+  return matched;
+}
+function hasActiveLoanBibRef(bibRef) {
+  const key = normalizeBibRefValue(bibRef);
+  const matched = !!(key && activeLoanBibRefs.has(key));
+  publishIndexReservationDebug({ lastLoanCheck: { bibRef: key, matched } });
   return matched;
 }
 function getSingleSelectedLibraryLabel() {
@@ -3265,7 +3277,10 @@ function buildReservationMarkup(r) {
   const consultationsClosed = arePublicConsultationsClosed(serviceState) && !authState.isLibrarian;
   const reservationsClosed = arePublicReservationsClosed(serviceState) && !authState.isLibrarian;
   if (r._reserveDone || hasActiveReservationBibRef(r.bib_ref)) {
-    return '<div class="reserve-slot"><span class="status-badge status-available">Reservado</span></div>';
+    return '<div class="reserve-slot"><span class="status-badge status-local">Já reservado</span></div>';
+  }
+  if (hasActiveLoanBibRef(r.bib_ref)) {
+    return '<div class="reserve-slot"><span class="reserve-note">Já emprestado na sua conta</span></div>';
   }
   if (status.key === 'local') {
     if (consultationsClosed) {
@@ -3959,12 +3974,14 @@ async function fetchAuthenticatedRestRows(path, accessToken) {
 
 async function loadActiveReservedBibRefs() {
   activeReservedBibRefs = new Set();
+  activeLoanBibRefs = new Set();
   activeReservationDebugRows = [];
   if (!authState?.user || !authState?.accessToken) {
     publishIndexReservationDebug({ skipped: true, reason: 'not_logged_in' });
     return;
   }
   const viewNames = ['my_reservations_active', 'my_reservations_active_v2'];
+  const loanViewPath = `emprestimo_itens_ui?select=${encodeURIComponent('bib_ref,emprestimo_status,item_status,due_at')}&emprestimo_status=eq.aberto&item_status=eq.aberto`;
   try {
     for (const viewName of viewNames) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${viewName}?select=*`, {
@@ -3996,6 +4013,21 @@ async function loadActiveReservedBibRefs() {
   } catch (e) {
     activeReservationDebugRows.push({ ok: false, error: String(e?.message || e || 'unknown_error') });
   }
+
+  try {
+    const loanRows = await fetchAuthenticatedRestRows(loanViewPath, authState.accessToken);
+    if (Array.isArray(loanRows)) {
+      for (const row of loanRows) {
+        const refs = extractReservationRefCandidates(row);
+        refs.forEach((bibRef) => activeLoanBibRefs.add(bibRef));
+        activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, refs, row: { bib_ref: normalizeBibRefValue(row?.bib_ref), status: firstNonEmptyString(row?.emprestimo_status), line_status: firstNonEmptyString(row?.item_status), due_at: firstNonEmptyString(row?.due_at) } });
+      }
+      if (!loanRows.length) activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, rows: [] });
+    }
+  } catch (e) {
+    activeReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: false, error: String(e?.message || e || 'unknown_error') });
+  }
+
   publishIndexReservationDebug();
 }
 async function loadAuthenticatedLibraryContext(accessToken) {
