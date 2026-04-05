@@ -6662,6 +6662,34 @@
       return state.bookDigitalDraftResources.find((record) => String(record?.id || '') === normalizedId) || null;
     }
 
+    function buildBookDigitalDraftAggregateMeta(records = []) {
+      const safeRecords = Array.isArray(records) ? records : [];
+      const familyMap = new Map();
+      safeRecords.forEach((record) => {
+        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
+        const familyKey = familyMeta.key || 'recurso_digital';
+        if (!familyMap.has(familyKey)) familyMap.set(familyKey, { key: familyKey, label: familyMeta.label, count: 0 });
+        familyMap.get(familyKey).count += 1;
+      });
+      const familyEntries = Array.from(familyMap.values());
+      const familySummary = familyEntries
+        .map((entry) => `${entry.label} (${entry.count})`)
+        .join(' · ');
+      const primaryCount = safeRecords.filter((record) => !!record?.is_primary).length;
+      const validatedCount = safeRecords.filter((record) => !!record?.bibliographic_match_validated).length;
+      const publicCount = safeRecords.filter((record) => isBookDigitalResourcePublic(record)).length;
+      const restrictedCount = Math.max(safeRecords.length - publicCount, 0);
+      return {
+        totalCount: safeRecords.length,
+        familyEntries,
+        familySummary,
+        primaryCount,
+        validatedCount,
+        publicCount,
+        restrictedCount,
+      };
+    }
+
     function updateBookDigitalWorkspaceSummary(records = [], currentRecord = null) {
       const summaryNode = refs.bookDigitalWorkspaceSummary;
       if (!summaryNode) return;
@@ -6670,24 +6698,11 @@
         summaryNode.innerHTML = '<strong>Leitura da superfície:</strong> esta ficha comum ainda não tem recursos digitais vinculados.';
         return;
       }
-      const familyMap = new Map();
-      safeRecords.forEach((record) => {
-        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
-        const familyKey = familyMeta.key || 'recurso_digital';
-        if (!familyMap.has(familyKey)) familyMap.set(familyKey, { label: familyMeta.label, count: 0 });
-        familyMap.get(familyKey).count += 1;
-      });
-      const familySummary = Array.from(familyMap.values())
-        .map((entry) => `${entry.label} (${entry.count})`)
-        .join(' · ');
-      const primaryCount = safeRecords.filter((record) => !!record?.is_primary).length;
-      const validatedCount = safeRecords.filter((record) => !!record?.bibliographic_match_validated).length;
-      const publicCount = safeRecords.filter((record) => isBookDigitalResourcePublic(record)).length;
-      const restrictedCount = Math.max(safeRecords.length - publicCount, 0);
+      const aggregate = buildBookDigitalDraftAggregateMeta(safeRecords);
       const currentLabel = currentRecord?.id
         ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
         : 'nenhum recurso específico aberto agora; o formulário está pronto para outro vínculo';
-      summaryNode.innerHTML = `<strong>Leitura da superfície:</strong> ${safeRecords.length} recurso(s) digital(is) já ligados a esta ficha comum · famílias visíveis: ${sanitize(familySummary)} · ${primaryCount} principal(is) · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${validatedCount} com correspondência validada · ${currentLabel}.`;
+      summaryNode.innerHTML = `<strong>Leitura da superfície:</strong> ${aggregate.totalCount} recurso(s) digital(is) já ligados a esta ficha comum · famílias visíveis: ${sanitize(aggregate.familySummary || 'recurso digital')} · ${aggregate.primaryCount} principal(is) · ${aggregate.publicCount} público(s) · ${aggregate.restrictedCount} restrito(s) · ${aggregate.validatedCount} com correspondência validada · ${currentLabel}.`;
     }
 
     function renderBookDigitalResourceList(records = []) {
@@ -6703,9 +6718,7 @@
       }
       const currentResourceId = String(el('bookDigitalDraftResourceId')?.value || '');
       const currentRecord = findBookDigitalResourceById(currentResourceId);
-      const primaryCount = records.filter(record => !!record?.is_primary).length;
-      const publicCount = records.filter(record => isBookDigitalResourcePublic(record)).length;
-      const restrictedCount = Math.max(records.length - publicCount, 0);
+      const aggregate = buildBookDigitalDraftAggregateMeta(records);
       const groupedRecords = new Map();
       records.forEach((record) => {
         const familyMeta = getBookDigitalPlannedFamilyMeta(record);
@@ -6726,7 +6739,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). Nesta passe, o formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
+      summaryNode.textContent = `${aggregate.totalCount} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${aggregate.publicCount} público(s) · ${aggregate.restrictedCount} restrito(s) · ${aggregate.primaryCount || 0} marcado(s) como principal(is). Nesta passe, o formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
       updateBookDigitalWorkspaceSummary(records, currentRecord);
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
@@ -9444,7 +9457,6 @@
       const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
       const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
       const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
-      const layerPreview = buildBookHoldingAndDigitalPreview();
       const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
       const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
       const acquisitionSourceLabel = compactSpaces(el('bookAcquisitionSourceLabel')?.value || '');
@@ -9456,17 +9468,11 @@
       const currentResourceId = el('bookDigitalDraftResourceId')?.value || '';
       const currentResource = findBookDigitalResourceById(currentResourceId);
       const linkedResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
-      const linkedPublicCount = linkedResources.filter((record) => isBookDigitalResourcePublic(record)).length;
-      const linkedRestrictedCount = Math.max(linkedResources.length - linkedPublicCount, 0);
-      const validatedCount = linkedResources.filter((record) => !!record?.bibliographic_match_validated).length;
-      const familyMap = new Map();
-      linkedResources.forEach((record) => {
-        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
-        const familyKey = familyMeta.key || 'recurso_digital';
-        if (!familyMap.has(familyKey)) familyMap.set(familyKey, { label: familyMeta.label, count: 0 });
-        familyMap.get(familyKey).count += 1;
-      });
-      const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
+      const digitalAggregate = buildBookDigitalDraftAggregateMeta(linkedResources);
+      const linkedPublicCount = digitalAggregate.publicCount;
+      const linkedRestrictedCount = digitalAggregate.restrictedCount;
+      const validatedCount = digitalAggregate.validatedCount;
+      const familySummary = digitalAggregate.familySummary;
 
       const holdingCatalog = joinSummaryParts([
         displayLibrary !== 'Biblioteca não definida' ? `biblioteca: ${displayLibrary}` : '',
@@ -13534,13 +13540,29 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         || typeCandidates.some((value) => /public/i.test(value))
         || bucketCandidates.some((value) => value === DIGITAL_PUBLIC_BUCKET || value === DIGITAL_PUBLIC_BUCKET_LEGACY);
       const count = explicitCount !== null ? explicitCount : ((hasBucketPath || hasUrl || publicish) ? 1 : 0);
+      const storagePath = pathCandidates[0] || '';
+      const sourceUrl = urlCandidates[0] || '';
+      const familyMeta = getBookDigitalPlannedFamilyMeta({
+        resource_type: typeCandidates[0] || '',
+        source_url: sourceUrl,
+        storage_path: storagePath,
+        mime_type: inferMimeTypeFromBookDigitalPath(storagePath),
+      });
       const locationPreview = hasBucketPath
-        ? truncatePreviewText(`${bucketCandidates[0]}/${pathCandidates[0]}`, 88)
-        : (hasUrl ? truncatePreviewText(urlCandidates[0], 88) : '');
+        ? truncatePreviewText(`${bucketCandidates[0]}/${storagePath}`, 88)
+        : (hasUrl ? truncatePreviewText(sourceUrl, 88) : '');
+      const locationModeLabel = hasBucketPath && hasUrl
+        ? 'arquivo local + fonte externa'
+        : (hasBucketPath ? 'arquivo local' : (hasUrl ? 'fonte externa' : 'camada digital não detalhada'));
+      const accessLabel = publicish ? 'público' : (count > 0 ? 'restrito / interno' : 'sem acesso relido');
       return {
         count,
         publicish,
         locationPreview,
+        locationModeLabel,
+        accessLabel,
+        familyKey: familyMeta.key,
+        familyLabel: familyMeta.label,
         hasSignal: count > 0,
       };
     }
@@ -13681,13 +13703,13 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         );
       }
       const title = digitalMeta.count === 1
-        ? (digitalMeta.publicish ? '1 recurso digital público relido' : '1 recurso digital relido')
-        : `${digitalMeta.count} recursos digitais ${digitalMeta.publicish ? 'públicos ' : ''}relidos`;
-      const chips = [digitalMeta.publicish ? 'Digital público' : 'Digital'];
+        ? `1 recurso ${digitalMeta.familyLabel} ${digitalMeta.publicish ? 'público ' : ''}relido`
+        : `${digitalMeta.count} recursos ${digitalMeta.familyLabel} ${digitalMeta.publicish ? 'públicos ' : ''}relidos`;
+      const chips = [digitalMeta.publicish ? 'Digital público' : 'Digital restrito', `Família: ${digitalMeta.familyLabel}`];
       if (digitalMeta.count > 1) chips.push(`${digitalMeta.count} vínculo(s)`);
       const lines = [
-        { text: digitalMeta.publicish ? 'Esta ficha já mostra um sinal de recurso digital público neste recorte.' : 'Esta ficha já mostra um sinal de recurso digital neste recorte.', muted: false },
-        { text: digitalMeta.locationPreview ? `Ponto de leitura relido: ${digitalMeta.locationPreview}` : 'O detalhe fino do vínculo digital ainda depende da camada dedicada de recursos.', muted: true },
+        { text: `Esta ficha já mostra uma camada digital relida como ${digitalMeta.familyLabel} com acesso ${digitalMeta.accessLabel}.`, muted: false },
+        { text: digitalMeta.locationPreview ? `Ponto de leitura relido via ${digitalMeta.locationModeLabel}: ${digitalMeta.locationPreview}` : `Leitura publicada: ${digitalMeta.locationModeLabel}.`, muted: true },
       ];
       return buildCatalogLayerStack(title, lines, chips, 'Recurso digital publicado');
     }
@@ -13757,7 +13779,8 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       const visibleBookish = visibleDocuments.filter(isCatalogBookLikeItem);
       const visibleOther = visibleDocuments.filter(isCatalogOtherDocumentItem);
       const visibleCompat = visibleDocuments.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat);
-      const visibleDigital = visibleDocuments.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal);
+      const digitalAggregate = buildCatalogDigitalSurfaceAggregate(visibleDocuments);
+      const visibleDigital = digitalAggregate.metas;
       const visibleRights = visibleDocuments.map((book) => getCatalogBookInterlibraryRightsMeta(book));
       const visibleExemplars = [...(state.exemplars || [])].filter((ex) => {
         if (!exemplarSearch) return true;
@@ -13772,7 +13795,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
 
       if (refs.catalogSummaryNoticeValue) refs.catalogSummaryNoticeValue.textContent = String(visibleDocuments.length);
       if (refs.catalogSummaryNoticeNote) refs.catalogSummaryNoticeNote.textContent = visibleDocuments.length
-        ? `${visibleBookish.length} livros/brochuras/periódicos e ${visibleOther.length} outros documentos publicados neste recorte; ${visibleDigital.length} já mostram sinal explícito de recurso digital publicado nesta leitura.`
+        ? `${visibleBookish.length} livros/brochuras/periódicos e ${visibleOther.length} outros documentos publicados neste recorte; ${visibleDigital.length} já mostram sinal explícito de recurso digital publicado nesta leitura; ${digitalAggregate.publicCount} com acesso público relido e ${digitalAggregate.restrictedCount} com acesso restrito/interno.`
         : 'Nenhuma ficha comum publicada visível para este recorte.';
 
       if (refs.catalogSummaryCompatValue) refs.catalogSummaryCompatValue.textContent = String(visibleCompat.length);
@@ -13870,11 +13893,27 @@ function setCatalogSurfaceSummary(node, html) {
   node.innerHTML = html;
 }
 
+
+function buildCatalogDigitalSurfaceAggregate(items = []) {
+  const metas = (Array.isArray(items) ? items : []).map((book) => getCatalogBookDigitalSignalMeta(book)).filter((meta) => meta.hasSignal);
+  const publicCount = metas.filter((meta) => meta.publicish).length;
+  const restrictedCount = Math.max(metas.length - publicCount, 0);
+  const familyMap = new Map();
+  metas.forEach((meta) => {
+    const key = meta.familyKey || 'recurso_digital';
+    if (!familyMap.has(key)) familyMap.set(key, { label: meta.familyLabel || 'recurso digital', count: 0 });
+    familyMap.get(key).count += 1;
+  });
+  const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
+  return { metas, publicCount, restrictedCount, familySummary };
+}
+
 function renderCatalogBooksSurfaceSummary(items = []) {
   const draftLinkMap = getCatalogBookDraftLinkMap();
   const compatCount = items.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat).length;
   const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
-  const digitalCount = items.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal).length;
+  const digitalAggregate = buildCatalogDigitalSurfaceAggregate(items);
+  const digitalCount = digitalAggregate.metas.length;
   const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
   if (!items.length) {
     setCatalogSurfaceSummary(refs.catalogBooksSummary, '<strong>Leitura da superfície:</strong> nenhuma ficha comum livro/brochura/periódico visível neste recorte.');
@@ -13882,7 +13921,7 @@ function renderCatalogBooksSurfaceSummary(items = []) {
   }
   setCatalogSurfaceSummary(
     refs.catalogBooksSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de fichas comuns visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
+    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de fichas comuns visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado (${digitalAggregate.publicCount} público(s), ${digitalAggregate.restrictedCount} restrito(s)); ${digitalAggregate.familySummary ? `famílias visíveis: ${digitalAggregate.familySummary}; ` : ''}${draftCount} já têm retomada editorial local.`
   );
 }
 
@@ -13890,7 +13929,8 @@ function renderCatalogOtherDocsSurfaceSummary(items = []) {
   const draftLinkMap = getCatalogBookDraftLinkMap();
   const compatCount = items.filter((book) => getCatalogHoldingCompatMeta(book).hasCompat).length;
   const exemplarCount = items.filter((book) => Number(book.total_exemplares || 0) > 0).length;
-  const digitalCount = items.filter((book) => getCatalogBookDigitalSignalMeta(book).hasSignal).length;
+  const digitalAggregate = buildCatalogDigitalSurfaceAggregate(items);
+  const digitalCount = digitalAggregate.metas.length;
   const draftCount = items.filter((book) => draftLinkMap.has(String(book.id))).length;
   if (!items.length) {
     setCatalogSurfaceSummary(refs.catalogOtherDocsSummary, '<strong>Leitura da superfície:</strong> nenhum documento não-livro visível neste recorte.');
@@ -13898,7 +13938,7 @@ function renderCatalogOtherDocsSurfaceSummary(items = []) {
   }
   setCatalogSurfaceSummary(
     refs.catalogOtherDocsSummary,
-    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de materiais especiais visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado; ${draftCount} já têm retomada editorial local.`
+    `<strong>Leitura da superfície:</strong> ${items.length} linhas públicas de materiais especiais visíveis; ${compatCount} já mostram compatibilidade legada relida desde holdings locais ou desde o legado comum ainda exposto; ${exemplarCount} já mostram holding ou exemplar local publicado; ${digitalCount} já mostram um sinal explícito de recurso digital publicado (${digitalAggregate.publicCount} público(s), ${digitalAggregate.restrictedCount} restrito(s)); ${digitalAggregate.familySummary ? `famílias visíveis: ${digitalAggregate.familySummary}; ` : ''}${draftCount} já têm retomada editorial local.`
   );
 }
 
