@@ -2980,7 +2980,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, ficha comum, referência local, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, ficha comum, compatibilidade local, tombo ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -3015,7 +3015,7 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Referência local da ficha comum</label>
+            <label for="exemplarBibRef">Compatibilidade local / ficha comum</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
             <small>Use aqui a referência local que ancora este exemplar à ficha comum já existente ou em preparação.</small>
           </div>
@@ -3074,7 +3074,7 @@
               </div>
               <div class="book-derived-summary-card">
                 <div id="exemplarContextKind" class="book-derived-summary-kind">Ficha comum ainda não localizada</div>
-                <div id="exemplarContextTitle" class="book-derived-summary-title">Referência local da ficha comum ainda não informada</div>
+                <div id="exemplarContextTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
                 <div id="exemplarContextHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
                 <div id="exemplarContextCopy" class="book-derived-summary-line">Exemplar local: —</div>
                 <div id="exemplarContextLabel" class="book-derived-summary-line is-muted">Rótulo e revisão local: —</div>
@@ -3123,7 +3123,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="labelBatchSearchInput">Filtrar rótulos a validar</label>
-              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, referência local, tombo, CDD ou nota" />
+              <input id="labelBatchSearchInput" type="text" placeholder="Título, autor, compatibilidade local, tombo, CDD ou nota" />
             </div>
             <div class="field">
               <label for="labelPendingScope">Recorte</label>
@@ -3151,7 +3151,7 @@
           <p class="hint" style="margin:0 0 12px;">Primeiro crie o exemplar local na aba Exemplares. Depois, aqui, você ajusta e valida o rótulo correspondente, sem perder de vista a ficha comum e a leitura do holding local.</p>
           <div class="grid cols-4" style="margin-bottom:12px;">
             <div class="pill info">Lote: <span id="labelCurrentBatch">—</span></div>
-            <div class="pill info">Ref. local: <span id="labelCurrentBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelCurrentBibRef">—</span></div>
             <div class="pill info">Tombo: <span id="labelCurrentTombo">—</span></div>
             <div class="pill info">Localização: <span id="labelCurrentShelf">—</span></div>
           </div>
@@ -3215,7 +3215,7 @@
             </div>
             <div class="book-derived-summary-card">
               <div id="labelFlowKind" class="book-derived-summary-kind">Ficha comum ainda não relida</div>
-              <div id="labelFlowTitle" class="book-derived-summary-title">Referência local da ficha comum ainda não informada</div>
+              <div id="labelFlowTitle" class="book-derived-summary-title">Compatibilidade local ainda não informada</div>
               <div id="labelFlowHolding" class="book-derived-summary-line is-muted">Holding local: —</div>
               <div id="labelFlowCopy" class="book-derived-summary-line">Exemplar local: —</div>
               <div id="labelFlowLabel" class="book-derived-summary-line is-muted">Rótulo local: —</div>
@@ -3253,7 +3253,7 @@
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
-            <div class="pill info">Ref. local: <span id="labelPrevBibRef">—</span></div>
+            <div class="pill info">Compat. local: <span id="labelPrevBibRef">—</span></div>
             <div class="pill info">Autor: <span id="labelPrevAuthor">—</span></div>
             <div class="pill info">CDD: <span id="labelPrevCDD">—</span></div>
           </div>
@@ -3313,7 +3313,7 @@
           </div>
           <div class="field">
             <label for="queueSearch">Buscar na fila</label>
-            <input id="queueSearch" type="text" placeholder="Ficha comum, autoridade, referência local, tombo ou localização…" />
+            <input id="queueSearch" type="text" placeholder="Ficha comum, autoridade, compatibilidade local, tombo ou localização…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -9046,7 +9046,7 @@
       if (!bibRef) {
         return {
           kind: 'Ficha comum ainda não relida',
-          title: 'Preencha a referência local da ficha comum para reler a ficha comum',
+          title: 'Preencha a compatibilidade local para reler a ficha comum',
           notice: null,
         };
       }
@@ -9055,7 +9055,7 @@
       if (publishedNotice) {
         return {
           kind: 'Ficha comum publicada localizada',
-          title: getBookDisplayTitle(publishedNotice) || `Referência local ${bibRef}`,
+          title: getBookDisplayTitle(publishedNotice) || `Compatibilidade local ${bibRef}`,
           notice: publishedNotice,
         };
       }
@@ -9063,13 +9063,13 @@
       if (queueDraft) {
         return {
           kind: 'Ficha comum ativa localizada na fila editorial',
-          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || `Referência local ${bibRef}`,
+          title: compactSpaces(queueDraft?.title || queueDraft?.display_title || queueDraft?.book_title || '') || `Compatibilidade local ${bibRef}`,
           notice: queueDraft,
         };
       }
       return {
         kind: 'Ficha comum ainda não localizada nesta superfície',
-        title: `Referência local ${bibRef}`,
+        title: `Compatibilidade local ${bibRef}`,
         notice: null,
       };
     }
@@ -9110,9 +9110,9 @@
         refs.labelFlowStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : (labelDraftStableState === 'dirty' ? 'warn' : 'info')}`;
       }
       refs.labelFlowKind.textContent = linked.kind;
-      refs.labelFlowTitle.textContent = linked.title || 'Referência local da ficha comum ainda não informada';
+      refs.labelFlowTitle.textContent = linked.title || 'Compatibilidade local ainda não informada';
       refs.labelFlowHolding.textContent = `Holding local: ${joinSummaryParts([
-        bibRef ? `Referência local ${bibRef}` : '',
+        bibRef ? `Compat. local ${bibRef}` : '',
         localLibrary ? `Biblioteca: ${localLibrary}` : '',
         batchLabel ? `Lote: ${batchLabel}` : ''
       ]) || '—'}`;
@@ -9215,8 +9215,17 @@
       const acquisitionSourceLabel = compactSpaces(el('bookAcquisitionSourceLabel')?.value || '');
       const acquisitionDate = compactSpaces(el('bookAcquisitionDate')?.value || '');
       const provenanceNote = compactSpaces(el('bookProvenanceNote')?.value || '');
+      const digitalNativeUrl = compactSpaces(el('bookDigitalNativeUrl')?.value || '');
+      const digitalNativeAccess = compactSpaces(el('bookDigitalNativeAccess')?.value || '');
+      const digitalNativeRestriction = compactSpaces(el('bookDigitalNativeRestriction')?.value || '');
+      const digitalNativeUsage = compactSpaces(el('bookDigitalNativeUsage')?.value || '');
       const documentContextParts = [];
       const localLayerParts = [];
+      const commonLayerParts = [];
+
+      if (author) commonLayerParts.push(author);
+      if (publisher) commonLayerParts.push(publisher);
+      if (place || year) commonLayerParts.push(joinSummaryParts([place, year]));
 
       if (SERIAL_MATERIAL_TYPES.has(materialType)) {
         documentContextParts.push(joinSummaryParts([
@@ -9248,10 +9257,10 @@
         ]));
       } else if (materialType === 'recurso_digital') {
         documentContextParts.push(joinSummaryParts([
-          compactSpaces(el('bookDigitalNativeUsage')?.value || ''),
-          compactSpaces(el('bookDigitalNativeAccess')?.value || ''),
-          compactSpaces(el('bookDigitalNativeRestriction')?.value || ''),
-          compactSpaces(el('bookDigitalNativeUrl')?.value || ''),
+          digitalNativeUsage ? `uso: ${digitalNativeUsage}` : '',
+          digitalNativeAccess ? `acesso: ${digitalNativeAccess}` : '',
+          digitalNativeRestriction ? `restrição: ${digitalNativeRestriction}` : '',
+          digitalNativeUrl ? truncatePreviewText(digitalNativeUrl, 90) : '',
         ]));
       } else if (materialType === 'dossie') {
         documentContextParts.push(joinSummaryParts([
@@ -9268,7 +9277,7 @@
       }
 
       const notes = compactSpaces(el('bookNotes')?.value || '');
-      if (notes) documentContextParts.push(`Nota documental: ${truncatePreviewText(notes, 140)}`);
+      if (notes) documentContextParts.push(`Nota documental: ${truncatePreviewText(notes, 110)}`);
 
       const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
       const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
@@ -9280,35 +9289,56 @@
       if (acquisitionSourceLabel) localLayerParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) localLayerParts.push(`rede: ${mutualizationStatusLabel}`);
       if (legacyBibRef) localLayerParts.push(`compat. legada do holding: ${legacyBibRef}`);
-      if (provenanceNote) localLayerParts.push(`proveniência: ${truncatePreviewText(provenanceNote, 120)}`);
+      if (provenanceNote) localLayerParts.push(`proveniência: ${truncatePreviewText(provenanceNote, 100)}`);
 
       const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
       const linkedDigitalPublicCount = linkedDigitalResources.filter((record) => isBookDigitalResourcePublic(record)).length;
       const linkedDigitalRestrictedCount = Math.max(linkedDigitalResources.length - linkedDigitalPublicCount, 0);
+      const familyMap = new Map();
+      linkedDigitalResources.forEach((record) => {
+        const familyMeta = getBookDigitalPlannedFamilyMeta(record);
+        const familyKey = familyMeta.key || 'recurso_digital';
+        if (!familyMap.has(familyKey)) familyMap.set(familyKey, { label: familyMeta.label, count: 0 });
+        familyMap.get(familyKey).count += 1;
+      });
+      const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
+
       const accessParts = [];
-      accessParts.push(loanable ? 'circulação local com empréstimo possível' : 'consulta local / circulação restrita');
+      accessParts.push(loanable ? 'empréstimo local possível' : 'consulta local / circulação restrita');
       if (linkedDigitalResources.length) {
-        const digitalParts = [`${linkedDigitalResources.length} recurso(s) digital(is) vinculado(s)`];
+        const digitalParts = [`${linkedDigitalResources.length} vínculo(s) digital(is)`];
+        if (familySummary) digitalParts.push(`famílias: ${familySummary}`);
         if (linkedDigitalPublicCount) digitalParts.push(`${linkedDigitalPublicCount} público(s)`);
         if (linkedDigitalRestrictedCount) digitalParts.push(`${linkedDigitalRestrictedCount} restrito(s)`);
         accessParts.push(joinSummaryParts(digitalParts));
       } else if (digitalLinked) {
         accessParts.push(digitalPublic ? 'recurso digital público vinculado' : 'recurso digital restrito vinculado');
+      } else if (materialType === 'recurso_digital' && (digitalNativeAccess || digitalNativeRestriction || digitalNativeUsage)) {
+        accessParts.push(joinSummaryParts([
+          digitalNativeUsage ? `uso: ${digitalNativeUsage}` : '',
+          digitalNativeAccess ? `acesso: ${digitalNativeAccess}` : '',
+          digitalNativeRestriction ? `restrição: ${digitalNativeRestriction}` : '',
+        ]));
       }
-      if (holderLibrary) accessParts.push(`biblioteca de uso: ${holderLibrary}`);
+      if (holderLibrary || ownerLibrary) accessParts.push(`biblioteca de uso: ${holderLibrary || ownerLibrary}`);
 
-      const commonMeta = joinSummaryParts([author, publisher, place, year]) || 'núcleo bibliográfico ainda incompleto';
       const documentContext = documentContextParts.filter(Boolean).join(' — ');
       const localContext = localLayerParts.filter(Boolean).join(' · ');
-      const contextSegments = [];
-      if (documentContext) contextSegments.push(`Contexto documental: ${documentContext}`);
-      if (localContext) contextSegments.push(`Camada local: ${localContext}`);
+      const combinedContextParts = [];
+      if (documentContext) combinedContextParts.push(`Contexto documental: ${documentContext}`);
+      if (localContext) combinedContextParts.push(`Camada local: ${localContext}`);
+
+      const commonMetaParts = [];
+      const commonLayer = commonLayerParts.filter(Boolean).join(' · ');
+      if (commonLayer) commonMetaParts.push(commonLayer);
+      if (documentContext) commonMetaParts.push(documentContext);
 
       return {
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
-        meta: `Ficha comum: ${commonMeta}`,
-        context: contextSegments.join(' — ') || 'Camada local: ainda não descrita.',
+        meta: `Ficha comum: ${commonMetaParts.join(' — ') || 'núcleo comum ainda incompleto'}`,
+        context: combinedContextParts.join(' — ') || 'Camada local: ainda não descrita.',
+        derivedContext: localContext ? `Camada local: ${localContext}` : 'Camada local: ainda não descrita.',
         access: accessParts.join(' · ') || '—',
         subjects: subjects || '—',
       };
@@ -9324,7 +9354,7 @@
       refs.bookDerivedSummaryKind.textContent = summary.kindLabel;
       refs.bookDerivedSummaryTitle.textContent = summary.title;
       refs.bookDerivedSummaryMeta.textContent = summary.meta;
-      refs.bookDerivedSummaryContext.textContent = summary.context;
+      refs.bookDerivedSummaryContext.textContent = summary.derivedContext || summary.context;
       refs.bookDerivedSummaryAccess.textContent = `Acesso local: ${summary.access}`;
       refs.bookDerivedSummarySubjects.textContent = `Assuntos comuns: ${summary.subjects}`;
     }
@@ -9333,7 +9363,6 @@
       const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
       const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
       const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
-      const layerPreview = buildBookHoldingAndDigitalPreview();
       const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
       const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
       const acquisitionSourceLabel = compactSpaces(el('bookAcquisitionSourceLabel')?.value || '');
@@ -9408,6 +9437,7 @@
       const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
       const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
       const displayLibrary = holderLibrary || ownerLibrary || 'Biblioteca não definida';
+      const layerPreview = buildBookHoldingAndDigitalPreview();
       const author = compactSpaces(el('bookAuthor')?.value || '');
       const publisher = compactSpaces(el('bookPublisher')?.value || '');
       const place = compactSpaces(el('bookPlace')?.value || '');
@@ -9641,6 +9671,54 @@
         if (dossierContext) fichaBodyParts.push(`Contexto: ${dossierContext}`);
       }
 
+      const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
+      const publicDigitalResources = linkedDigitalResources.filter((record) => isBookDigitalResourcePublic(record));
+      const publicDigitalFamilySummary = Array.from(new Set(publicDigitalResources.map((record) => getBookDigitalPlannedFamilyMeta(record).label))).join(' · ');
+      const publicDigitalCurrent = publicDigitalResources[0] ? truncatePreviewText(getBookDigitalResourceDisplayTitle(publicDigitalResources[0]), 90) : '';
+      const nativeRestrictionNormalized = String(digitalNativeRestriction || '').trim().toLowerCase();
+      const digitalNativeLooksPublic = materialType === 'recurso_digital' && (
+        !nativeRestrictionNormalized
+        || nativeRestrictionNormalized.includes('públic')
+        || nativeRestrictionNormalized.includes('public')
+        || nativeRestrictionNormalized.includes('livre')
+        || nativeRestrictionNormalized.includes('aberto')
+      );
+      const localReserveParts = [];
+      if (acquisitionModeLabel) localReserveParts.push(`entrada: ${acquisitionModeLabel}`);
+      if (acquisitionSourceLabel) localReserveParts.push(`origem imediata: ${acquisitionSourceLabel}`);
+      if (ownerLibrary && ownerLibrary !== holderLibrary) localReserveParts.push(`propriedade local: ${ownerLibrary}`);
+
+      const publicLineNotice = joinSummaryParts(publicNoticeParts) || 'núcleo comum ainda incompleto';
+      const publicLineSignal = joinSummaryParts(localSignalParts) || 'sinal local mínimo ainda não definido';
+      const publicLineNarrativeParts = [];
+      if (summary.context) publicLineNarrativeParts.push(summary.context);
+      if (localReserveParts.length) publicLineNarrativeParts.push(`Permanece local / editorial: ${joinSummaryParts(localReserveParts)}`);
+      const publicCatalogHoldingText = localSignalParts.length
+        ? joinSummaryParts(localSignalParts)
+        : 'nenhum holding local suficiente para leitura pública mínima agora';
+      let publicCatalogResourceText = 'nenhum recurso digital publicável aparece nesta linha mínima';
+      if (publicDigitalResources.length) {
+        publicCatalogResourceText = joinSummaryParts([
+          `${publicDigitalResources.length} recurso(s) público(s)`,
+          publicDigitalFamilySummary ? `famílias: ${publicDigitalFamilySummary}` : '',
+          publicDigitalCurrent ? `ex.: ${publicDigitalCurrent}` : '',
+        ]);
+      } else if (digitalNativeLooksPublic && (digitalNativeUrl || digitalNativeAccess || digitalNativeUsage)) {
+        publicCatalogResourceText = joinSummaryParts([
+          'recurso digital nativo publicável',
+          digitalNativeUsage ? `uso: ${digitalNativeUsage}` : '',
+          digitalNativeAccess ? `acesso: ${digitalNativeAccess}` : '',
+        ]);
+      }
+
+      const publicFichaBodyParts = [...fichaBodyParts];
+      if (localReserveParts.length) publicFichaBodyParts.push(`Continua local / preparatório: ${joinSummaryParts(localReserveParts)}`);
+      const publicFichaHoldingText = layerPreview.holdingFicha || 'camada de holding local ainda não relida';
+      let publicFichaResourceText = layerPreview.resourceFicha || 'nenhum recurso digital relido para a abertura desta ficha';
+      if (!publicDigitalResources.length && !digitalNativeLooksPublic) {
+        publicFichaResourceText = 'nenhum recurso digital claramente publicável foi relido nesta abertura';
+      }
+
       const publishedLayerAccessParts = [];
       publishedLayerAccessParts.push(loanable ? 'circulação pública relida como empréstimo local possível' : 'circulação pública relida como consulta local / restrição');
       if (supportText) publishedLayerAccessParts.push(`suporte relido: ${supportText}`);
@@ -9650,16 +9728,16 @@
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: joinSummaryParts(catalogMetaParts) || 'Ficha comum visível na linha: —',
-        catalogSnippet: joinSummaryParts(snippetParts) || 'Saída mínima da linha pública ainda não relida.',
-        catalogHolding: layerPreview.holdingCatalog,
-        catalogResource: layerPreview.resourceCatalog,
+        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinal local mínimo: ${publicLineSignal}`,
+        catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
+        catalogHolding: publicCatalogHoldingText,
+        catalogResource: publicCatalogResourceText,
         catalogAccess: joinSummaryParts(catalogAccessParts) || 'Sinal local público mínimo ainda não definido.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
-        fichaBody: joinSummaryParts(fichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
-        fichaHolding: layerPreview.holdingFicha,
-        fichaResource: layerPreview.resourceFicha,
+        fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
+        fichaHolding: publicFichaHoldingText,
+        fichaResource: publicFichaResourceText,
         fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Camada local tornada pública ainda não definida.',
         fichaSubjects: subjects || summary.subjects || '—',
       };
@@ -9810,10 +9888,10 @@
       refs.exemplarContextKind.textContent = linked?.kindLabel || 'Ficha comum ainda não localizada';
       refs.exemplarContextTitle.textContent = linked
         ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
-        : (bibRef ? `Referência local ${bibRef} ainda sem ficha comum relida` : 'Referência local da ficha comum ainda não informada');
+        : (bibRef ? `Compatibilidade local ${bibRef} ainda sem ficha comum relida` : 'Compatibilidade local ainda não informada');
 
       const holdingParts = [];
-      holdingParts.push(`Referência local da ficha comum: ${bibRef || '—'}`);
+      holdingParts.push(`Compatibilidade local: ${bibRef || '—'}`);
       holdingParts.push(`Biblioteca: ${library || linked?.library || '—'}`);
       holdingParts.push(batchLabel);
       refs.exemplarContextHolding.textContent = `Holding local: ${holdingParts.join(' · ')}`;
@@ -11356,7 +11434,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Ficha comum:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Referência local da ficha comum:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11366,7 +11444,7 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Autoridade:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Referência local da ficha comum:</strong> ${reference}${batch}</div>`
+          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -11377,7 +11455,7 @@
       const exemplar = getQueueExemplarRecord(item);
       const parts = [
         `<div><strong>Exemplar local:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-        `<div><strong>Referência local da ficha comum:</strong> ${reference}${batch}</div>`
+        `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
       ];
       if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo local:</strong> ${secondary}</div>`);
       if (exemplar?.tombo) parts.push(`<div><strong>Tombo:</strong> ${sanitize(exemplar.tombo)}</div>`);
@@ -11438,7 +11516,7 @@
         : 'Nenhuma camada ativa neste recorte da fila';
       refs.queueFlowScope.textContent = `Camadas visíveis: ${scopeParts.length ? scopeParts.join(' · ') : '—'}. Situação filtrada: ${statusText}.${search ? ` Busca ativa: ${search}.` : ''}`;
       refs.queueFlowWork.textContent = items.length
-        ? `Em rascunho: ${drafts} · Prontos: ${ready} · Com lote atribuído: ${withBatch}. A fila continua separando ficha comum, autoridade e exemplar local; quando houver exemplar, a referência local da ficha comum permanece como ponte de releitura sem misturar publicação, lixeira e catálogo publicado.`
+        ? `Em rascunho: ${drafts} · Prontos: ${ready} · Com lote atribuído: ${withBatch}. A fila continua separando ficha comum, autoridade e exemplar local sem misturar publicação, lixeira e catálogo publicado.`
         : 'Nenhum item ativo permanece neste recorte. A fila segue separando publicação, lixeira e catálogo já publicado.';
       refs.queueFlowNext.textContent = nextText;
     }
@@ -11497,20 +11575,39 @@
     function updateQueueActionSummary(items = []) {
       if (!refs.queueActionSummary) return;
       const targetBatchId = el('queueBatchAssign')?.value || '';
+      const selectedEntries = buildSelectionEntries([...state.queueSelection]);
       const breakdown = formatQueueTypeBreakdown(items);
+      const selectionBreakdown = formatQueueTypeBreakdown(selectedEntries);
+      const typeFilter = el('queueTypeFilter')?.value || '';
+      const statusFilter = el('queueStatusFilter')?.value || '';
+      const search = normalizeInlineWhitespace(el('queueSearch')?.value || '');
+      const filterParts = [];
+      if (typeFilter) filterParts.push(`camada em foco: ${getQueueLayerKindLabel(typeFilter).toLowerCase()}`);
+      if (statusFilter === 'draft') filterParts.push('situação: somente em rascunho');
+      else if (statusFilter === 'ready') filterParts.push('situação: somente prontos');
+      if (search) filterParts.push(`busca ativa: ${search}`);
+      const filterText = filterParts.length ? `Recorte atual: ${filterParts.join(' · ')}.` : 'Recorte atual: sem filtro específico além das camadas ativas.';
       const batchText = targetBatchId
         ? `Lote em foco para atribuição rápida: #${targetBatchId}.`
         : 'Nenhum lote aberto escolhido ainda para atribuição rápida.';
+      const selectionText = selectedEntries.length
+        ? `Seleção ativa nesta fila: ${selectionBreakdown || `${selectedEntries.length} rascunhos`} prontos para gesto em massa.`
+        : 'Seleção ativa nesta fila: nenhuma camada marcada para gesto em massa.';
       refs.queueActionSummary.innerHTML = items.length
-        ? `<strong>Ações nesta fila:</strong> Editar reabre a camada em trabalho; Publicar envia diretamente esta camada ao catálogo; Atribuir lote usa o lote aberto escolhido acima; Descartar envia para a lixeira sem apagar definitivamente. Recorte atual: ${breakdown || `${items.length} rascunhos`}. ${batchText}`
+        ? `<strong>Ações nesta fila:</strong> Editar reabre a camada em trabalho; Publicar envia diretamente esta camada ao catálogo; Atribuir lote usa o lote aberto escolhido acima; Descartar envia para a lixeira sem apagar definitivamente. Camadas visíveis: ${breakdown || `${items.length} rascunhos`}. ${filterText} ${selectionText} ${batchText}`
         : '<strong>Ações nesta fila:</strong> sem camadas ativas neste recorte. Limpa os filtros ou muda o tipo para reabrir um gesto editorial.';
     }
 
     function updateTrashActionSummary(items = []) {
       if (!refs.trashActionSummary) return;
+      const selectedEntries = buildSelectionEntries([...state.trashSelection]);
       const breakdown = formatQueueTypeBreakdown(items);
+      const selectionBreakdown = formatQueueTypeBreakdown(selectedEntries);
+      const selectionText = selectedEntries.length
+        ? `Seleção ativa na lixeira: ${selectionBreakdown || `${selectedEntries.length} rascunhos descartados`} prontos para restauração.`
+        : 'Seleção ativa na lixeira: nenhum rascunho descartado marcado para restauração.';
       refs.trashActionSummary.innerHTML = items.length
-        ? `<strong>Ações na lixeira:</strong> Restaurar devolve o rascunho à fila ativa; Restaurar e abrir já reabre a edição; Esvaziar lixeira apaga definitivamente os descartados. Recorte atual: ${breakdown || `${items.length} rascunhos descartados`}.`
+        ? `<strong>Ações na lixeira:</strong> Restaurar devolve o rascunho à fila ativa; Restaurar e abrir já reabre a edição; Esvaziar lixeira apaga definitivamente os descartados. Recorte atual: ${breakdown || `${items.length} rascunhos descartados`}. ${selectionText}`
         : '<strong>Ações na lixeira:</strong> não há rascunhos descartados neste momento.';
     }
 
@@ -11532,7 +11629,8 @@
 
       if (!selectedEntries.length) return 0;
 
-      const confirmed = window.confirm('Os rascunhos selecionados serão restaurados da lixeira. Deseja continuar?');
+      const selectionBreakdown = formatQueueTypeBreakdown(selectedEntries);
+      const confirmed = window.confirm(`Os rascunhos selecionados serão restaurados da lixeira e voltarão para a fila ativa. Recorte selecionado: ${selectionBreakdown || `${selectedEntries.length} rascunhos descartados`}. Deseja continuar?`);
       if (!confirmed) return 0;
 
       const groupedIds = selectedEntries.reduce((acc, entry) => {
@@ -11587,7 +11685,7 @@
 
       refs.trashTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados na lixeira: ${state.trashSelection.size}${hasAnySelection ? ` · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.trashSelection]))}` : ''}</div>
+          <div class="small">Seleção ativa na lixeira: ${hasAnySelection ? `${state.trashSelection.size} · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.trashSelection]))}` : 'nenhum rascunho descartado marcado para restauração'}.</div>
           <div class="row-actions">
             <button id="trashClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="trashRestoreSelectedBtn" class="button success" type="button" ${hasAnySelection ? '' : 'disabled'}>Restaurar selecionados</button>
@@ -11598,7 +11696,7 @@
             <tr>
               <th style="width:52px; text-align:center;"><input id="trashSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis da lixeira" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
               <th>Camada de trabalho</th>
-              <th>Referência local da ficha comum</th>
+              <th>Compatibilidade / referência</th>
               <th>Ficha comum / autoridade / exemplar local</th>
               <th>Leitura local da camada</th>
               <th>Lote</th>
@@ -11662,7 +11760,7 @@
           try {
             const result = await restoreSelectedTrashDrafts();
             if (result?.count) {
-              showMessage(refs.trashMessage, `${result.count} rascunhos foram restaurados da lixeira (${result.breakdown}).`, 'ok');
+              showMessage(refs.trashMessage, `Restauração concluída para ${result.count} rascunho${result.count > 1 ? 's descartados' : ' descartado'} (${result.breakdown}). Eles voltaram para a fila ativa.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.trashMessage, error.message, 'error');
@@ -12370,7 +12468,7 @@
         refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos carregada ainda.';
         return;
       }
-      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais. Cada linha continua relida por referência local, tombo e exemplar local.`;
+      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
     }
 
     async function validateLabelDraftIds(ids = []) {
@@ -12439,7 +12537,7 @@
             <tr>
               <th>ID</th>
               <th>Tombo</th>
-              <th>Referência local</th>
+              <th>Compatibilidade local</th>
               <th>Autor</th>
               <th>Título</th>
               <th>CDD</th>
@@ -12516,7 +12614,7 @@
             <tr>
               <th>Rascunho</th>
               <th>Situação</th>
-              <th>Referência local</th>
+              <th>Compatibilidade local</th>
               <th>Tombo</th>
               <th>Localização</th>
               <th>Atualizado em</th>
@@ -12611,7 +12709,7 @@
 
       refs.queueTableWrap.innerHTML = `
         <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-          <div class="small">Selecionados: ${state.queueSelection.size}${hasAnySelection ? ` · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.queueSelection]))}` : ''}</div>
+          <div class="small">Seleção ativa na fila: ${hasAnySelection ? `${state.queueSelection.size} · ${formatQueueTypeBreakdown(buildSelectionEntries([...state.queueSelection]))}` : 'nenhuma camada marcada para gesto em massa'}.</div>
           <div class="row-actions">
             <button id="queueClearSelectionBtn" class="button secondary" type="button" ${hasAnySelection ? '' : 'disabled'}>Limpar seleção</button>
             <button id="queueDiscardSelectedBtn" class="button warning" type="button" ${hasAnySelection ? '' : 'disabled'}>Descartar selecionados para a lixeira</button>
@@ -12624,7 +12722,7 @@
               <th>Camada de trabalho</th>
               <th>Situação</th>
               <th>Gesto</th>
-              <th>Referência local da ficha comum</th>
+              <th>Compatibilidade / referência</th>
               <th>Ficha comum / autoridade / exemplar local</th>
               <th>Leitura local da camada</th>
               <th>Lote</th>
@@ -12693,7 +12791,7 @@
           try {
             const discardedCount = await discardSelectedQueueDrafts();
             if (discardedCount) {
-              showMessage(refs.queueMessage, `${discardedCount} rascunhos foram enviados para a lixeira (${formatQueueTypeBreakdown(selectedEntries)}).`, 'ok');
+              showMessage(refs.queueMessage, `Envio para a lixeira concluído para ${discardedCount} rascunho${discardedCount > 1 ? 's' : ''} deste recorte (${formatQueueTypeBreakdown(selectedEntries)}). Eles continuam restauráveis na lixeira.`, 'ok');
             }
           } catch (error) {
             showMessage(refs.queueMessage, error.message, 'error');
@@ -12739,10 +12837,10 @@
 
       refs.queueTableWrap.querySelectorAll('[data-action="discard-queue"]').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const confirmed = confirmDiscardAction('Este rascunho será descartado e irá para a lixeira. Deseja continuar?');
+          const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
+          const confirmed = confirmDiscardAction(`${getQueueItemContextLabel(item)} será enviado para a lixeira e continuará restaurável depois. Deseja continuar?`);
           if (!confirmed) return;
           try {
-            const item = findQueueItem(btn.dataset.type, Number(btn.dataset.id));
             await discardQueueDraft(btn.dataset.type, Number(btn.dataset.id));
             showMessage(refs.queueMessage, getQueueActionFeedback('discard', item), 'ok');
           } catch (error) {
@@ -15012,7 +15110,9 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         try {
           await loadQueue();
           const discardedCount = state.queueItems.filter(item => item.status === 'cancelled').length;
-          showMessage(refs.trashMessage, discardedCount ? `Lixeira atualizada com ${discardedCount} rascunho${discardedCount > 1 ? 's descartados' : ' descartado'}.` : 'Lixeira atualizada: nenhum rascunho descartado no momento.', 'ok');
+          const discardedEntries = state.queueItems.filter(item => item.status === 'cancelled').map(item => ({ type: item.item_type, id: Number(item.draft_id) }));
+          const discardedBreakdown = formatQueueTypeBreakdown(discardedEntries);
+          showMessage(refs.trashMessage, discardedCount ? `Lixeira atualizada com ${discardedCount} rascunho${discardedCount > 1 ? 's descartados' : ' descartado'} (${discardedBreakdown || 'sem detalhamento por camada'}).` : 'Lixeira atualizada: nenhum rascunho descartado no momento.', 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message || 'Não foi possível atualizar a lixeira.', 'error');
         }
@@ -15025,12 +15125,14 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
           showMessage(refs.trashMessage, 'A lixeira já está vazia.', 'info');
           return;
         }
-        const confirmed = window.confirm('Tem certeza? Esta ação vai apagar definitivamente todos os rascunhos descartados da lixeira. O processo é irreversível.');
+        const discardedEntries = state.queueItems.filter(item => item.status === 'cancelled').map(item => ({ type: item.item_type, id: Number(item.draft_id) }));
+        const discardedBreakdown = formatQueueTypeBreakdown(discardedEntries);
+        const confirmed = window.confirm(`Tem certeza? Esta ação vai apagar definitivamente todos os rascunhos descartados da lixeira. Recorte atual: ${discardedBreakdown || `${discardedEntries.length} rascunhos descartados`}. O processo é irreversível.`);
         if (!confirmed) return;
         try {
-          const discardedCount = state.queueItems.filter(item => item.status === 'cancelled').length;
+          const discardedCount = discardedEntries.length;
           await emptyTrash();
-          showMessage(refs.trashMessage, `${discardedCount} rascunho${discardedCount > 1 ? 's descartados foram apagados' : ' descartado foi apagado'} da lixeira. A operação é irreversível.`, 'ok');
+          showMessage(refs.trashMessage, `${discardedCount} rascunho${discardedCount > 1 ? 's descartados foram apagados' : ' descartado foi apagado'} da lixeira (${discardedBreakdown || 'sem detalhamento por camada'}). A operação é irreversível.`, 'ok');
         } catch (error) {
           showMessage(refs.trashMessage, error.message, 'error');
         }
@@ -18527,212 +18629,134 @@ ${decisionSummary}` : '',
 
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   </script>
-  <!-- passe48 guard line 001: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 002: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 003: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 004: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 005: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 006: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 007: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 008: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 009: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 010: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 011: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 012: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 013: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 014: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 015: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 016: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 017: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 018: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 019: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 020: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 021: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 022: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 023: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 024: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 025: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 026: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 027: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 028: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 029: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 030: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 031: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 032: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 033: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 034: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 035: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 036: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 037: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 038: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 039: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 040: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 041: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 042: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 043: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 044: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 045: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 046: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 047: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 048: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 049: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 050: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 051: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 052: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 053: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 054: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 055: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 056: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 057: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 058: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 059: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 060: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 061: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 062: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 063: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 064: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 065: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 066: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 067: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 068: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 069: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 070: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 071: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 072: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 073: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 074: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 075: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 076: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 077: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 078: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 079: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 080: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 081: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 082: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 083: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 084: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 085: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 086: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 087: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 088: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 089: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 090: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 091: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 092: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 093: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 094: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 095: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 096: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 097: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 098: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 099: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 100: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 101: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 102: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 103: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 104: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 105: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 106: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 107: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 108: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 109: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 110: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 111: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 112: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 113: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 114: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 115: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 116: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 117: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 118: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 119: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 120: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 121: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 122: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 123: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 124: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 125: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 126: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 127: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 128: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 129: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 130: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 131: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 132: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 133: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 134: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 135: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 136: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 137: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 138: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 139: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 140: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 141: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 142: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 143: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 144: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 145: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 146: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 147: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 148: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 149: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 150: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 151: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 152: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 153: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 154: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 155: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 156: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 157: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 158: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 159: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 160: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 161: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 162: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 163: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 164: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 165: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 166: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 167: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 168: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 169: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 170: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 171: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 172: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 173: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 174: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 175: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 176: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 177: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 178: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 179: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 180: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 181: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 182: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 183: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 184: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 185: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 186: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 187: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 188: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 189: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 190: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 191: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 192: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 193: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 194: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 195: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 196: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 197: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 198: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 199: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 200: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 201: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 202: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 203: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 204: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 205: volume conservé sans effet fonctionnel -->
-  <!-- passe48 guard line 206: volume conservé sans effet fonctionnel -->
 </body>
 </html>
