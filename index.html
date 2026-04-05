@@ -1622,6 +1622,10 @@ function getStatusInfo(r) {
   const hasScopedLibrary = !!(authState?.user && (userLibrary.library_id || userLibrary.library_slug || userLibrary.library_name));
   const canUsePersonalizedAvailability = !!(hasScopedLibrary && personalizedAvailabilityReady);
 
+  if (authState?.user && hasActiveReservationBibRef(r?.bib_ref)) {
+    return { key: 'already_reserved', filterKey: 'available', label: 'Já reservado na sua conta', cls: 'status-available', nextDateLabel: '' };
+  }
+
   if (hasScopedLibrary) {
     const sessionLibraryIncluded = isSessionLibraryIncludedInActiveFilter(userLibrary);
     if (!sessionLibraryIncluded) {
@@ -3923,25 +3927,27 @@ async function fetchAuthenticatedRestRows(path, accessToken) {
 async function loadActiveReservedBibRefs() {
   activeReservedBibRefs = new Set();
   if (!authState?.user || !authState?.accessToken) return;
+  const viewNames = ['my_reservations_active', 'my_reservations_active_v2'];
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/my_reservations_active?select=${encodeURIComponent('bib_ref')}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${authState.accessToken}`,
-        Accept: 'application/json',
-        'Accept-Profile': 'api',
-        'Content-Profile': 'api'
-      }
-    });
-    if (!res.ok) return;
-    const body = await res.text();
-    const data = body ? JSON.parse(body) : [];
-    if (!Array.isArray(data)) return;
-    activeReservedBibRefs = new Set(
+    for (const viewName of viewNames) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${viewName}?select=${encodeURIComponent('bib_ref')}`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${authState.accessToken}`,
+          Accept: 'application/json',
+          'Accept-Profile': 'api',
+          'Content-Profile': 'api'
+        }
+      });
+      if (!res.ok) continue;
+      const body = await res.text();
+      const data = body ? JSON.parse(body) : [];
+      if (!Array.isArray(data)) continue;
       data
         .map((row) => normalizeBibRefValue(row?.bib_ref))
         .filter(Boolean)
-    );
+        .forEach((bibRef) => activeReservedBibRefs.add(bibRef));
+    }
   } catch (e) {}
 }
 async function loadAuthenticatedLibraryContext(accessToken) {
