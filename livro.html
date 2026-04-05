@@ -726,13 +726,16 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const sessionHolding = getSessionHoldingForBook(bookRow);
       const scopedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
       const holdings = parseJsonArray(bookRow?.holding_libraries_json);
+      const preferScopedAvailability = !!(currentUserContext?.isLoggedIn && (sessionHolding || scopedHolding || explicitScope));
 
       if (sessionHolding) candidateSources.push(sessionHolding);
       if (scopedHolding && scopedHolding !== sessionHolding) candidateSources.push(scopedHolding);
-      if (!explicitScope && !scopedHolding && holdings.length) {
+      if (!explicitScope && !scopedHolding && holdings.length && !preferScopedAvailability) {
         candidateSources.push(...holdings);
       }
-      candidateSources.push(bookRow);
+      if (!preferScopedAvailability || !candidateSources.length) {
+        candidateSources.push(bookRow);
+      }
 
       const countKeys = [
         "session_available_count",
@@ -995,7 +998,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         sessionHolding?.session_available_count ?? sessionHolding?.available_count ?? bookRow?.session_available_count ?? bookRow?.available_count ?? 0
       );
 
-      if (sessionAvailableNow > 0 || availabilityInfo?.isAvailableNow) {
+      if (sessionAvailableNow > 0 || (!hasSessionHolding && availabilityInfo?.isAvailableNow)) {
         return {
           key: "available",
           label: availableNowLabel,
