@@ -9671,6 +9671,54 @@
         if (dossierContext) fichaBodyParts.push(`Contexto: ${dossierContext}`);
       }
 
+      const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
+      const publicDigitalResources = linkedDigitalResources.filter((record) => isBookDigitalResourcePublic(record));
+      const publicDigitalFamilySummary = Array.from(new Set(publicDigitalResources.map((record) => getBookDigitalPlannedFamilyMeta(record).label))).join(' · ');
+      const publicDigitalCurrent = publicDigitalResources[0] ? truncatePreviewText(getBookDigitalResourceDisplayTitle(publicDigitalResources[0]), 90) : '';
+      const nativeRestrictionNormalized = String(digitalNativeRestriction || '').trim().toLowerCase();
+      const digitalNativeLooksPublic = materialType === 'recurso_digital' && (
+        !nativeRestrictionNormalized
+        || nativeRestrictionNormalized.includes('públic')
+        || nativeRestrictionNormalized.includes('public')
+        || nativeRestrictionNormalized.includes('livre')
+        || nativeRestrictionNormalized.includes('aberto')
+      );
+      const localReserveParts = [];
+      if (acquisitionModeLabel) localReserveParts.push(`entrada: ${acquisitionModeLabel}`);
+      if (acquisitionSourceLabel) localReserveParts.push(`origem imediata: ${acquisitionSourceLabel}`);
+      if (ownerLibrary && ownerLibrary !== holderLibrary) localReserveParts.push(`propriedade local: ${ownerLibrary}`);
+
+      const publicLineNotice = joinSummaryParts(publicNoticeParts) || 'núcleo comum ainda incompleto';
+      const publicLineSignal = joinSummaryParts(localSignalParts) || 'sinal local mínimo ainda não definido';
+      const publicLineNarrativeParts = [];
+      if (summary.context) publicLineNarrativeParts.push(summary.context);
+      if (localReserveParts.length) publicLineNarrativeParts.push(`Permanece local / editorial: ${joinSummaryParts(localReserveParts)}`);
+      const publicCatalogHoldingText = localSignalParts.length
+        ? joinSummaryParts(localSignalParts)
+        : 'nenhum holding local suficiente para leitura pública mínima agora';
+      let publicCatalogResourceText = 'nenhum recurso digital publicável aparece nesta linha mínima';
+      if (publicDigitalResources.length) {
+        publicCatalogResourceText = joinSummaryParts([
+          `${publicDigitalResources.length} recurso(s) público(s)`,
+          publicDigitalFamilySummary ? `famílias: ${publicDigitalFamilySummary}` : '',
+          publicDigitalCurrent ? `ex.: ${publicDigitalCurrent}` : '',
+        ]);
+      } else if (digitalNativeLooksPublic && (digitalNativeUrl || digitalNativeAccess || digitalNativeUsage)) {
+        publicCatalogResourceText = joinSummaryParts([
+          'recurso digital nativo publicável',
+          digitalNativeUsage ? `uso: ${digitalNativeUsage}` : '',
+          digitalNativeAccess ? `acesso: ${digitalNativeAccess}` : '',
+        ]);
+      }
+
+      const publicFichaBodyParts = [...fichaBodyParts];
+      if (localReserveParts.length) publicFichaBodyParts.push(`Continua local / preparatório: ${joinSummaryParts(localReserveParts)}`);
+      const publicFichaHoldingText = layerPreview.holdingFicha || 'camada de holding local ainda não relida';
+      let publicFichaResourceText = layerPreview.resourceFicha || 'nenhum recurso digital relido para a abertura desta ficha';
+      if (!publicDigitalResources.length && !digitalNativeLooksPublic) {
+        publicFichaResourceText = 'nenhum recurso digital claramente publicável foi relido nesta abertura';
+      }
+
       const publishedLayerAccessParts = [];
       publishedLayerAccessParts.push(loanable ? 'circulação pública relida como empréstimo local possível' : 'circulação pública relida como consulta local / restrição');
       if (supportText) publishedLayerAccessParts.push(`suporte relido: ${supportText}`);
@@ -9680,16 +9728,16 @@
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: joinSummaryParts(catalogMetaParts) || 'Ficha comum visível na linha: —',
-        catalogSnippet: joinSummaryParts(snippetParts) || 'Saída mínima da linha pública ainda não relida.',
-        catalogHolding: layerPreview.holdingCatalog,
-        catalogResource: layerPreview.resourceCatalog,
+        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinal local mínimo: ${publicLineSignal}`,
+        catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
+        catalogHolding: publicCatalogHoldingText,
+        catalogResource: publicCatalogResourceText,
         catalogAccess: joinSummaryParts(catalogAccessParts) || 'Sinal local público mínimo ainda não definido.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
-        fichaBody: joinSummaryParts(fichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
-        fichaHolding: layerPreview.holdingFicha,
-        fichaResource: layerPreview.resourceFicha,
+        fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
+        fichaHolding: publicFichaHoldingText,
+        fichaResource: publicFichaResourceText,
         fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Camada local tornada pública ainda não definida.',
         fichaSubjects: subjects || summary.subjects || '—',
       };
