@@ -3964,6 +3964,29 @@
               </div>
               <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
+              <div id="partnerImportExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da preparação:</strong> ainda não atualizado.</div>
+              <div class="catalog-layer-summary" style="margin-bottom:12px;">
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Estado da preparação</div>
+                  <div id="partnerImportStateValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerImportStateNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Escrita local</div>
+                  <div id="partnerImportWriteValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerImportWriteNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Camada protegida</div>
+                  <div id="partnerImportProtectedValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerImportProtectedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Bloqueios atuais</div>
+                  <div id="partnerImportBlockersValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerImportBlockersNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+              </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportSourceSummary">Síntese da fonte parceira</label>
@@ -15136,6 +15159,15 @@ function initPartnerProbeUi() {
   const partnerCompareBlockersValueEl = document.getElementById('partnerCompareBlockersValue');
   const partnerCompareBlockersNoteEl = document.getElementById('partnerCompareBlockersNote');
   const partnerImportSurfaceSummaryEl = document.getElementById('partnerImportSurfaceSummary');
+  const partnerImportExerciseSummaryEl = document.getElementById('partnerImportExerciseSummary');
+  const partnerImportStateValueEl = document.getElementById('partnerImportStateValue');
+  const partnerImportStateNoteEl = document.getElementById('partnerImportStateNote');
+  const partnerImportWriteValueEl = document.getElementById('partnerImportWriteValue');
+  const partnerImportWriteNoteEl = document.getElementById('partnerImportWriteNote');
+  const partnerImportProtectedValueEl = document.getElementById('partnerImportProtectedValue');
+  const partnerImportProtectedNoteEl = document.getElementById('partnerImportProtectedNote');
+  const partnerImportBlockersValueEl = document.getElementById('partnerImportBlockersValue');
+  const partnerImportBlockersNoteEl = document.getElementById('partnerImportBlockersNote');
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
 
@@ -15174,6 +15206,9 @@ function initPartnerProbeUi() {
     !importFieldWritePreviewEl || !importFieldWriteHintEl || !importOperationalStateEl || !importChecklistEl ||
     !importPrudenceSignalEl || !importBoundaryNoteEl || !importLiveHintEl || !applyImportPrepBtn || !clearImportPrepBtn ||
     !workflowScopeEl || !writeNowEl || !protectedNowEl || !blockersNowEl ||
+    !partnerImportSurfaceSummaryEl || !partnerImportExerciseSummaryEl ||
+    !partnerImportStateValueEl || !partnerImportStateNoteEl || !partnerImportWriteValueEl || !partnerImportWriteNoteEl ||
+    !partnerImportProtectedValueEl || !partnerImportProtectedNoteEl || !partnerImportBlockersValueEl || !partnerImportBlockersNoteEl ||
     !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl
   ) {
     return;
@@ -16668,6 +16703,7 @@ ${decisionSummary}` : '',
     renderPartnerCompareSurfaceSummary();
     renderPartnerCompareExerciseSummary();
     renderPartnerImportSurfaceSummary();
+    renderPartnerImportExerciseSummary();
   }
 
   function renderPartnerGovernanceSummary() {
@@ -16875,6 +16911,74 @@ ${decisionSummary}` : '',
     }
 
     partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+  }
+
+  function renderPartnerImportExerciseSummary() {
+    if (
+      !partnerImportExerciseSummaryEl ||
+      !partnerImportStateValueEl ||
+      !partnerImportStateNoteEl ||
+      !partnerImportWriteValueEl ||
+      !partnerImportWriteNoteEl ||
+      !partnerImportProtectedValueEl ||
+      !partnerImportProtectedNoteEl ||
+      !partnerImportBlockersValueEl ||
+      !partnerImportBlockersNoteEl
+    ) return;
+
+    const readiness = getImportReadinessState();
+    const missingCount = readiness.missing.length;
+
+    if (!partnerDocumentActionState.importAllowed) {
+      partnerImportExerciseSummaryEl.innerHTML = '<strong>Quadro da preparação:</strong> preparação local ainda bloqueada pela política atual desta parceira.';
+      partnerImportStateValueEl.textContent = 'Bloqueada';
+      partnerImportStateNoteEl.textContent = 'Sem autorização de importação controlada, esta sub-superfície continua apenas em leitura prudente.';
+      partnerImportWriteValueEl.textContent = 'Não';
+      partnerImportWriteNoteEl.textContent = 'Nenhuma escrita local assistida pode sair deste bloco enquanto a política continuar bloqueada.';
+      partnerImportProtectedValueEl.textContent = 'Protegida';
+      partnerImportProtectedNoteEl.textContent = 'Registro da parceira, ficha comum publicada, camada compartilhada e publicação pública continuam fora desta etapa.';
+      partnerImportBlockersValueEl.textContent = String(missingCount);
+      partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
+      return;
+    }
+
+    if (!partnerDocumentActionState.importWorkspaceOpen) {
+      partnerImportExerciseSummaryEl.innerHTML = '<strong>Quadro da preparação:</strong> preparação autorizada, mas ainda não aberta como microfluxo local nesta tela.';
+      partnerImportStateValueEl.textContent = 'Fechada';
+      partnerImportStateNoteEl.textContent = 'A política já autoriza preparação local, mas ainda falta abrir e descrever este microfluxo.';
+      partnerImportWriteValueEl.textContent = 'Aguardando';
+      partnerImportWriteNoteEl.textContent = 'Sem microfluxo aberto, a escrita local assistida permanece apenas potencial.';
+      partnerImportProtectedValueEl.textContent = 'Protegida';
+      partnerImportProtectedNoteEl.textContent = 'Nada toca o registro da parceira, a ficha comum publicada ou a publicação pública enquanto o microfluxo não estiver aberto.';
+      partnerImportBlockersValueEl.textContent = String(missingCount);
+      partnerImportBlockersNoteEl.textContent = 'O principal bloqueio agora é abrir a preparação e estabilizar seus campos mínimos.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerImportExerciseSummaryEl.innerHTML = '<strong>Quadro da preparação:</strong> preparação aberta e suficientemente descrita para escrita assistida apenas na camada local da ficha.';
+      partnerImportStateValueEl.textContent = 'Pronta';
+      partnerImportStateNoteEl.textContent = 'A preparação já distingue formato, modo, retomadas, exclusões, proveniência e decisão local.';
+      partnerImportWriteValueEl.textContent = 'Local';
+      partnerImportWriteNoteEl.textContent = 'Já pode sair escrita assistida somente para fonte, governança, identificadores, formato, modo e nota de proveniência.';
+      partnerImportProtectedValueEl.textContent = partnerDocumentActionState.mutualizeAllowed ? 'Parceira / pública' : 'Parceira / comum';
+      partnerImportProtectedNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
+        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada compartilhada nem a publicação pública.'
+        : 'O registro da parceira, a ficha comum publicada e a publicação pública continuam protegidos.';
+      partnerImportBlockersValueEl.textContent = '0';
+      partnerImportBlockersNoteEl.textContent = 'Nenhum bloqueio material restante neste microfluxo; só falta a decisão humana do clique.';
+      return;
+    }
+
+    partnerImportExerciseSummaryEl.innerHTML = `<strong>Quadro da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerImportStateValueEl.textContent = 'Em curso';
+    partnerImportStateNoteEl.textContent = 'O microfluxo está aberto, mas a preparação ainda não estabilizou parâmetros suficientes para escrita local.';
+    partnerImportWriteValueEl.textContent = 'Parcial';
+    partnerImportWriteNoteEl.textContent = 'A escrita local continua limitada enquanto formato, modo, proveniência, decisão local e retomadas/exclusões não estiverem suficientemente descritos.';
+    partnerImportProtectedValueEl.textContent = 'Protegida';
+    partnerImportProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada compartilhada continuam fora do alcance deste microfluxo.';
+    partnerImportBlockersValueEl.textContent = String(missingCount);
+    partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
 
   function getComparisonOperationalStateText() {
