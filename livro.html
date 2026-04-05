@@ -1024,6 +1024,30 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       el.textContent = msg || "";
     }
 
+    const livroRuntimeTrace = [];
+    function pushLivroRuntimeTrace(stage, payload = {}) {
+      const entry = {
+        at: new Date().toISOString(),
+        stage: String(stage || "").trim(),
+        ...payload
+      };
+      livroRuntimeTrace.push(entry);
+      window.__ANARBIB_LIVRO_DEBUG__ = {
+        href: location.href,
+        trace: [...livroRuntimeTrace]
+      };
+      return entry;
+    }
+
+    function finalizeLivroRuntimeTrace(summary = {}) {
+      window.__ANARBIB_LIVRO_DEBUG__ = {
+        href: location.href,
+        ...summary,
+        trace: [...livroRuntimeTrace]
+      };
+      console.info("AnarBib livro debug", window.__ANARBIB_LIVRO_DEBUG__);
+    }
+
     function setPill(id, label, value, showDash = false) {
       const el = $(id);
       if (!el) return;
@@ -2699,8 +2723,16 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       let bib_ref = getBibRefFromUrl();
       const requestedBookId = getBookIdFromUrl();
       const libraryContext = getLibraryContextFromUrl();
+      pushLivroRuntimeTrace("loadBook:start", {
+        bib_ref,
+        requestedBookId,
+        libraryContext: { ...libraryContext },
+        isLoggedIn: !!currentUserContext?.isLoggedIn
+      });
 
       if (!bib_ref && !requestedBookId) {
+        pushLivroRuntimeTrace("loadBook:missing_params", { bib_ref, requestedBookId });
+        finalizeLivroRuntimeTrace({ ok: false, reason: "missing_params" });
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Faltou a referência ou o id na URL (ex.: livro.html?ref=0000124 ou livro.html?id=12).";
         setLine("subtitleLine", "");
@@ -2734,6 +2766,13 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
       if (!requestedBookId && localContextRequested && libraryContext.libraryId && bib_ref) {
         const holdingContextBook = await tryLoadBookByHoldingContext(bib_ref, libraryContext, v2Select, fallbackSelect);
+        pushLivroRuntimeTrace("loadBook:holding_context_lookup", {
+          attempted: true,
+          libraryId: libraryContext.libraryId,
+          bib_ref,
+          found: !!(holdingContextBook?.booksTable && holdingContextBook?.data),
+          booksTable: holdingContextBook?.booksTable || ""
+        });
         if (holdingContextBook?.booksTable && holdingContextBook?.data) {
           booksTable = holdingContextBook.booksTable;
           data = holdingContextBook.data;
@@ -2764,9 +2803,29 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
             .maybeSingle();
 
           if (result.error) {
+            pushLivroRuntimeTrace("loadBook:public_lookup_error", {
+              label: attempt.label,
+              relation: attempt.relation,
+              schema: attempt.schema || "public",
+              field: attempt.field,
+              value: attempt.value,
+              message: String(result.error?.message || "")
+            });
             console.warn(`AnarBib livro: falha ao consultar ${attempt.label}`, result.error);
             continue;
           }
+
+          pushLivroRuntimeTrace("loadBook:public_lookup_result", {
+            label: attempt.label,
+            relation: attempt.relation,
+            schema: attempt.schema || "public",
+            field: attempt.field,
+            value: attempt.value,
+            found: !!result.data,
+            resultBookId: Number(result.data?.book_id || result.data?.id || 0) || null,
+            resultBibRef: firstNonEmptyString(result.data?.bib_ref),
+            holdingCount: Array.isArray(parseJsonArray(result.data?.holding_libraries_json)) ? parseJsonArray(result.data?.holding_libraries_json).length : 0
+          });
 
           if (!result.data) continue;
 
@@ -2805,9 +2864,24 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
               .maybeSingle();
 
             if (fallbackBooks.error) {
+              pushLivroRuntimeTrace("loadBook:books_fallback_error", {
+                label: attempt.label,
+                field: attempt.field,
+                value: attempt.value,
+                message: String(fallbackBooks.error?.message || "")
+              });
               console.warn(`AnarBib livro: falha ao consultar ${attempt.label}`, fallbackBooks.error);
               continue;
             }
+
+            pushLivroRuntimeTrace("loadBook:books_fallback_result", {
+              label: attempt.label,
+              field: attempt.field,
+              value: attempt.value,
+              found: !!fallbackBooks.data,
+              resultBookId: Number(fallbackBooks.data?.id || 0) || null,
+              resultBibRef: firstNonEmptyString(fallbackBooks.data?.bib_ref)
+            });
 
             if (!fallbackBooks.data) continue;
 
@@ -2823,6 +2897,13 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       }
 
       if (!booksTable) {
+        pushLivroRuntimeTrace("loadBook:not_found", {
+          bib_ref,
+          requestedBookId,
+          localContextRequested,
+          libraryContext: { ...libraryContext }
+        });
+        finalizeLivroRuntimeTrace({ ok: false, reason: "not_found" });
         $("title").textContent = "Livro não encontrado";
         $("heroIntro").textContent = "Não encontrei esse livro no catálogo público.";
         setLine("subtitleLine", "");
@@ -3174,13 +3255,37 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       });
 
       $("btnReservar").addEventListener("click", () => reserve(bib_ref, data, libraryContext));
+      pushLivroRuntimeTrace("loadBook:success", {
+        booksTable,
+        resolvedBookId: Number(data?.book_id || data?.id || 0) || null,
+        resolvedBibRef: firstNonEmptyString(data?.bib_ref, bib_ref),
+        localContextRequested,
+        libraryContext: { ...libraryContext },
+        holdingCount: parseJsonArray(data?.holding_libraries_json).length,
+        statusLabel: String(currentBookAccessState?.label || "").trim()
+      });
+      finalizeLivroRuntimeTrace({
+        ok: true,
+        booksTable,
+        resolvedBookId: Number(data?.book_id || data?.id || 0) || null,
+        resolvedBibRef: firstNonEmptyString(data?.bib_ref, bib_ref)
+      });
     }
 
     await setupContaButton();
     await loadCurrentActiveReservationBibRefs();
     await loadCurrentActiveConsultaBibRefs();
     applyPublicServiceState();
-    await loadBook();
+    try {
+      await loadBook();
+    } catch (err) {
+      pushLivroRuntimeTrace("loadBook:fatal_error", {
+        message: String(err?.message || err || "erro desconhecido"),
+        stack: String(err?.stack || "")
+      });
+      finalizeLivroRuntimeTrace({ ok: false, reason: "fatal_error" });
+      throw err;
+    }
   </script>
 </body>
 
