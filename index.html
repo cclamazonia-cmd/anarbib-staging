@@ -3963,10 +3963,14 @@ function pickPrimaryAccessContext(rows) {
   });
   return normalized[0];
 }
-async function fetchAuthenticatedRestRows(path, accessToken) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
-  });
+async function fetchAuthenticatedRestRows(path, accessToken, schemaName = 'public') {
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json'
+  };
+  if (schemaName && schemaName !== 'public') headers['Accept-Profile'] = schemaName;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers });
   if (!res.ok) return [];
   const text = await res.text();
   return text ? JSON.parse(text) : [];
@@ -4015,7 +4019,7 @@ async function loadActiveReservedBibRefs() {
   }
 
   try {
-    const loanRows = await fetchAuthenticatedRestRows(loanViewPath, authState.accessToken);
+    const loanRows = await fetchAuthenticatedRestRows(loanViewPath, authState.accessToken, 'api');
     if (Array.isArray(loanRows)) {
       for (const row of loanRows) {
         const refs = extractReservationRefCandidates(row);
