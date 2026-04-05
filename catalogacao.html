@@ -2538,7 +2538,7 @@
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
-                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
+                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir arquivo / fonte</button>
                     <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
                     <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
                   </div>
@@ -6495,16 +6495,60 @@
       return bookUrl.toString();
     }
 
+    function inferMimeTypeFromBookDigitalPath(storagePath = '') {
+      const normalizedPath = String(storagePath || '').trim().toLowerCase();
+      if (!normalizedPath) return '';
+      if (normalizedPath.endsWith('.pdf')) return 'application/pdf';
+      if (/\.(mp3|wav|ogg|flac|m4a)$/i.test(normalizedPath)) return 'audio/mpeg';
+      if (/\.(mp4|webm|mov|avi|mkv)$/i.test(normalizedPath)) return 'video/mp4';
+      if (/\.(jpg|jpeg)$/i.test(normalizedPath)) return 'image/jpeg';
+      if (/\.(png)$/i.test(normalizedPath)) return 'image/png';
+      if (/\.(gif)$/i.test(normalizedPath)) return 'image/gif';
+      if (/\.(webp)$/i.test(normalizedPath)) return 'image/webp';
+      if (/\.(tif|tiff)$/i.test(normalizedPath)) return 'image/tiff';
+      if (/\.(epub)$/i.test(normalizedPath)) return 'application/epub+zip';
+      if (/\.(txt|md)$/i.test(normalizedPath)) return 'text/plain';
+      if (/\.(html)$/i.test(normalizedPath)) return 'text/html';
+      if (/\.(json)$/i.test(normalizedPath)) return 'application/json';
+      return 'application/octet-stream';
+    }
+
+    function getBookDigitalDraftFamilyFromForm() {
+      const storagePath = String(el('bookDigitalPath')?.value || '').trim();
+      const sourceUrl = String(el('bookDigitalSourceUrl')?.value || '').trim();
+      const mimeType = inferMimeTypeFromBookDigitalPath(storagePath);
+      return getBookDigitalPlannedFamilyMeta({
+        storage_path: storagePath,
+        source_url: sourceUrl,
+        mime_type: mimeType,
+      });
+    }
+
     function updateBookDigitalActionButtons() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
+      const sourceUrl = String(el('bookDigitalSourceUrl')?.value || '').trim();
       const compatRef = getCurrentBookCompatRef();
-      const hasFile = !!(bucket && path);
+      const hasLocalAsset = !!(bucket && path);
+      const hasSourceUrl = !!sourceUrl;
       const isPublic = isBookDigitalPublicSelection();
-      const pdfBtn = el('openBookDigitalPdfBtn');
+      const familyMeta = getBookDigitalDraftFamilyFromForm();
+      const isReaderCompatible = familyMeta.key === 'pdf_texto';
+      const openBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
-      if (pdfBtn) pdfBtn.disabled = !hasFile;
-      if (readerBtn) readerBtn.disabled = isPublic ? !hasFile : !compatRef;
+      if (openBtn) {
+        openBtn.disabled = !(hasLocalAsset || hasSourceUrl);
+        openBtn.textContent = hasSourceUrl && !hasLocalAsset ? 'Abrir fonte externa' : 'Abrir arquivo / fonte';
+        openBtn.title = hasLocalAsset
+          ? 'Abrir o arquivo local do recurso em edição.'
+          : (hasSourceUrl ? 'Abrir a fonte externa deste recurso.' : 'Informe um arquivo local ou uma fonte externa para este recurso.');
+      }
+      if (readerBtn) {
+        readerBtn.disabled = !isReaderCompatible || (isPublic ? !hasLocalAsset : !compatRef);
+        readerBtn.title = isReaderCompatible
+          ? 'Abrir este recurso no leitor do catálogo.'
+          : 'O leitor do catálogo está reservado aos recursos PDF / texto nesta etapa.';
+      }
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
@@ -6752,7 +6796,7 @@
       el('bookDigitalSourceUrl').value = record?.source_url || '';
       el('bookDigitalAttributionText').value = record?.attribution_text || '';
       el('bookDigitalRightsStatus').value = record?.rights_status || '';
-      el('bookDigitalIsPublic').checked = String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico';
+      el('bookDigitalIsPublic').checked = isBookDigitalResourcePublic(record);
       el('bookDigitalIsPrimary').checked = record ? !!record.is_primary : !state.bookDigitalDraftResources.some((item) => !!item?.is_primary);
       el('bookDigitalBibliographicMatch').checked = !!record?.bibliographic_match_validated;
       if (state.bookDigitalDraftResources.length) {
@@ -6775,18 +6819,26 @@
     function updateBookDigitalResourceSummary(record = null) {
       const bucket = normalizeBookDigitalBucket(record?.storage_bucket || el('bookDigitalBucket').value.trim());
       const path = record?.storage_path || el('bookDigitalPath').value.trim();
+      const sourceUrl = record?.source_url || el('bookDigitalSourceUrl').value.trim();
       const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
       const isPublic = record
-        ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico' || isBookDigitalPublicBucket(record.storage_bucket || ''))
+        ? isBookDigitalResourcePublic(record)
         : (!!el('bookDigitalIsPublic').checked || isBookDigitalPublicBucket(bucket));
       const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
       const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
-      if (!bucket || !path) {
+      const familyMeta = record ? getBookDigitalPlannedFamilyMeta(record) : getBookDigitalDraftFamilyFromForm();
+      const locationLabel = record ? getBookDigitalResourceLocationStatusLabel(record) : getBookDigitalResourceLocationStatusLabel({
+        storage_bucket: bucket,
+        storage_path: path,
+        source_url: sourceUrl,
+      });
+      if (!(bucket && path) && !sourceUrl) {
         refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
-      refs.bookDigitalLinkedSummary.textContent = `Recurso digital em edição: ${bucket}/${path} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      const locationSummary = bucket && path ? `${bucket}/${path}` : sourceUrl;
+      refs.bookDigitalLinkedSummary.textContent = `Recurso digital em edição: ${locationSummary} · ${language} · ${familyMeta.label} · ${locationLabel} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
       updateBookDigitalActionButtons();
     }
 
@@ -6820,14 +6872,60 @@
       const isPublic = !!el('bookDigitalIsPublic').checked;
       const isPrimary = !!el('bookDigitalIsPrimary').checked;
       const bibliographicMatchValidated = !!el('bookDigitalBibliographicMatch').checked;
+      const inferredMimeType = inferMimeTypeFromBookDigitalPath(storagePath);
+      const familyMeta = getBookDigitalPlannedFamilyMeta({
+        storage_path: storagePath,
+        source_url: sourceUrl,
+        mime_type: inferredMimeType,
+      });
       const hasAnyValue = [languageCode, storageBucket, storagePath, sourceName, sourceUrl, attributionText, rightsStatus].some(Boolean);
 
       if (!hasAnyValue) {
         return { mode: 'empty', resourceId: resourceId || '' };
       }
 
-      if (!storageBucket || !storagePath) {
-        throw new Error('Para editar o recurso digital em foco, informe a pasta no armazenamento e o caminho do arquivo.');
+      if (!sourceUrl && (!storageBucket || !storagePath)) {
+        throw new Error('Para editar o recurso digital em foco, informe um arquivo local completo (pasta + caminho) ou uma fonte externa.');
+      }
+
+      if ((storageBucket && !storagePath) || (!storageBucket && storagePath)) {
+        throw new Error('Quando houver arquivo local, informe juntos a pasta no armazenamento e o caminho do arquivo.');
+      }
+
+      let resourceType = 'pdf_restrito';
+      let usageType = 'leitura_online';
+      let mimeType = inferredMimeType || null;
+      switch (familyMeta.key) {
+        case 'audio':
+          resourceType = 'audio';
+          usageType = 'escuta_online';
+          mimeType = mimeType || 'audio/mpeg';
+          break;
+        case 'video':
+          resourceType = 'video';
+          usageType = 'visualizacao_online';
+          mimeType = mimeType || 'video/mp4';
+          break;
+        case 'image':
+          resourceType = 'image';
+          usageType = 'visualizacao_online';
+          mimeType = mimeType || 'image/jpeg';
+          break;
+        case 'link_externo':
+          resourceType = 'link_externo';
+          usageType = 'link_externo';
+          mimeType = null;
+          break;
+        case 'pdf_texto':
+          resourceType = isPublic ? 'pdf_publico' : 'pdf_restrito';
+          usageType = 'leitura_online';
+          mimeType = mimeType || 'application/pdf';
+          break;
+        default:
+          resourceType = 'recurso_digital';
+          usageType = sourceUrl && !storagePath ? 'link_externo' : 'download';
+          mimeType = mimeType || null;
+          break;
       }
 
       return {
@@ -6835,14 +6933,14 @@
         resourceId,
         payload: {
           book_draft_id: Number(draftId),
-          resource_type: isPublic ? 'pdf_publico' : 'pdf_restrito',
-          usage_type: 'leitura_online',
+          resource_type: resourceType,
+          usage_type: usageType,
           access_scope: isPublic ? 'publico' : 'conta_ativa',
           status: 'draft',
           is_active: true,
-          storage_bucket: storageBucket,
-          storage_path: storagePath,
-          mime_type: 'application/pdf',
+          storage_bucket: storageBucket || null,
+          storage_path: storagePath || null,
+          mime_type: mimeType,
           language_code: languageCode || null,
           source_name: sourceName || null,
           source_url: sourceUrl || null,
@@ -6850,7 +6948,7 @@
           rights_status: rightsStatus || null,
           is_primary: isPrimary,
           bibliographic_match_validated: bibliographicMatchValidated,
-          label: attributionText || sourceName || 'Recurso digital principal',
+          label: attributionText || sourceName || (storageBucket && storagePath ? `${storageBucket}/${storagePath}` : `${familyMeta.label}`),
         }
       };
     }
@@ -6894,16 +6992,24 @@
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      if (!bucket || !path) throw new Error('Informe a pasta no armazenamento e o caminho do recurso digital em foco para abri-lo.');
-      const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
-      let resolvedUrl = signedData?.signedUrl || '';
-      if (!resolvedUrl) {
-        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
-        resolvedUrl = publicData?.publicUrl || '';
+      const sourceUrl = el('bookDigitalSourceUrl').value.trim();
+      if (bucket && path) {
+        const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
+        let resolvedUrl = signedData?.signedUrl || '';
+        if (!resolvedUrl) {
+          const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+          resolvedUrl = publicData?.publicUrl || '';
+        }
+        if (signedError && !resolvedUrl) throw signedError;
+        if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este arquivo local.');
+        window.open(resolvedUrl, '_blank', 'noopener');
+        return;
       }
-      if (signedError && !resolvedUrl) throw signedError;
-      if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este PDF.');
-      window.open(resolvedUrl, '_blank', 'noopener');
+      if (sourceUrl) {
+        window.open(sourceUrl, '_blank', 'noopener');
+        return;
+      }
+      throw new Error('Informe um arquivo local completo ou uma fonte externa para abrir o recurso digital em foco.');
     }
 
     async function openBookDigitalReaderFromForm() {
@@ -6917,7 +7023,12 @@
       const attributionText = el('bookDigitalAttributionText').value.trim();
       const rightsStatus = el('bookDigitalRightsStatus').value.trim();
       const isPublic = isBookDigitalPublicSelection();
+      const familyMeta = getBookDigitalDraftFamilyFromForm();
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
+
+      if (familyMeta.key !== 'pdf_texto') {
+        throw new Error('Nesta etapa, o leitor do catálogo abre apenas recursos PDF / texto. Para outros formatos, use “Abrir arquivo / fonte”.');
+      }
 
       if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
       const title = el('bookTitle').value.trim();
