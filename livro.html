@@ -594,6 +594,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
     function publishLivroReservationDebug(extra = {}) {
       window.__ANARBIB_LIVRO_C1_DEBUG__ = {
         activeReservedBibRefs: [...currentActiveReservationBibRefs],
+        activeLoanBibRefs: [...currentActiveLoanBibRefs],
         rows: currentActiveReservationDebugRows,
         ...extra
       };
@@ -603,6 +604,13 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const key = normalizeBibRefValue(bibRef);
       const matched = !!(key && currentActiveReservationBibRefs.has(key));
       publishLivroReservationDebug({ lastCheck: { bibRef: key, matched } });
+      return matched;
+    }
+
+    function hasActiveLoanForBibRef(bibRef) {
+      const key = normalizeBibRefValue(bibRef);
+      const matched = !!(key && currentActiveLoanBibRefs.has(key));
+      publishLivroReservationDebug({ lastLoanCheck: { bibRef: key, matched } });
       return matched;
     }
 
@@ -644,6 +652,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
     let publicServiceState = null;
     let currentActiveReservationBibRefs = new Set();
+    let currentActiveLoanBibRefs = new Set();
     let currentActiveReservationDebugRows = [];
     let currentActiveConsultaBibRefs = new Set();
     let currentBookAccessState = {
@@ -990,10 +999,22 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         return {
           key: "already_reserved",
           label: "Já reservado na sua conta",
-          cls: "ok",
+          cls: "info",
           canReserve: false,
           allowLoginReserve: false,
           reserveTitle: "Já reservado na sua conta",
+          actionType: "reserva"
+        };
+      }
+
+      if (hasActiveLoanForBibRef(compatBibRef)) {
+        return {
+          key: "already_loaned",
+          label: "Já emprestado na sua conta",
+          cls: "info",
+          canReserve: false,
+          allowLoginReserve: false,
+          reserveTitle: "Já emprestado na sua conta",
           actionType: "reserva"
         };
       }
@@ -1570,11 +1591,6 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
     function applyReaderScopedServiceChip(state) {
       const chip = $("serviceModePill");
-      const line = $("serviceMessageLine");
-      if (line) {
-        line.style.display = "none";
-        line.textContent = "";
-      }
       if (!chip) return;
 
       const label = getServiceModeLabel(state?.service_mode);
@@ -1877,6 +1893,45 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return DEFAULT_SERVICE_MESSAGES[String(state?.service_mode || "").trim()] || "";
     }
 
+    function arePublicConsultationsClosed(state) {
+      return String(state?.service_mode || "").trim() === "pausada";
+    }
+
+    function arePublicReservationsClosed(state) {
+      return state?.allow_reservations === false;
+    }
+
+    function isGenericUnavailableServiceMessage(message) {
+      const raw = String(message || "").trim().toLowerCase();
+      if (!raw) return true;
+      return raw === DEFAULT_SERVICE_MESSAGES.funcionamento_normal.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.somente_consulta.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.pausada.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.em_organizacao.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.atendimento_eventual.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.atendimento_semanal.toLowerCase()
+        || raw === DEFAULT_SERVICE_MESSAGES.fechado_temporariamente.toLowerCase();
+    }
+
+    function getPublicServiceActionMessage(state, options = {}) {
+      const consultaAction = options?.consultaAction === true;
+      const mode = String(state?.service_mode || "").trim();
+      const publicMessage = getServiceMessage(state);
+
+      if (consultaAction && arePublicConsultationsClosed(state)) {
+        return publicMessage || "A biblioteca está pausada no momento.";
+      }
+
+      if (!consultaAction && arePublicReservationsClosed(state)) {
+        if (mode === "somente_consulta" && isGenericUnavailableServiceMessage(publicMessage)) {
+          return "As reservas públicas estão fechadas no momento. A consulta local pode continuar disponível conforme o funcionamento da biblioteca.";
+        }
+        return publicMessage || "As reservas públicas estão temporariamente fechadas no momento.";
+      }
+
+      return publicMessage || "";
+    }
+
     function formatExemplarCount(count) {
       const n = Number(count || 0);
       if (!Number.isFinite(n) || n <= 0) return "";
@@ -2090,39 +2145,44 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const btnReservar = $("btnReservar");
       const serviceModePill = $("serviceModePill");
       const serviceMessageLine = $("serviceMessageLine");
+      const consultaAction = isConsultaActionState();
+      const serviceLabel = getServiceModeLabel(state?.service_mode);
+      const serviceMessage = getPublicServiceActionMessage(state, { consultaAction });
 
       if (serviceModePill) {
-        serviceModePill.style.display = "none";
-        serviceModePill.textContent = "";
+        if (serviceLabel) setPill("serviceModePill", "funcionamento", serviceLabel);
+        else {
+          serviceModePill.style.display = "none";
+          serviceModePill.textContent = "";
+        }
       }
       if (serviceMessageLine) {
-        serviceMessageLine.style.display = "none";
-        serviceMessageLine.textContent = "";
+        serviceMessageLine.textContent = serviceMessage;
+        serviceMessageLine.style.display = serviceMessage ? "" : "none";
       }
 
       if (!btnReservar) return;
 
       const baseTitle = currentBookAccessState?.reserveTitle || "Reservar este livro";
-      const consultaAction = isConsultaActionState();
-      const serviceMode = String(state?.service_mode || "").trim();
+      const blockedPublicMessage = serviceMessage || baseTitle;
 
-      if (consultaAction && serviceMode === "pausada") {
+      if (consultaAction && arePublicConsultationsClosed(state)) {
         btnReservar.textContent = baseTitle;
         btnReservar.classList.add("disabled");
         btnReservar.setAttribute("aria-disabled", "true");
         btnReservar.disabled = true;
         btnReservar.style.display = "inline-flex";
-        btnReservar.title = "A biblioteca está pausada no momento.";
+        btnReservar.title = blockedPublicMessage;
         return;
       }
 
-      if (!consultaAction && state?.allow_reservations === false) {
+      if (!consultaAction && arePublicReservationsClosed(state)) {
         btnReservar.textContent = "Reservas temporariamente fechadas";
         btnReservar.classList.add("disabled");
         btnReservar.setAttribute("aria-disabled", "true");
         btnReservar.disabled = true;
         btnReservar.style.display = "inline-flex";
-        btnReservar.title = "As reservas públicas estão temporariamente fechadas no momento.";
+        btnReservar.title = blockedPublicMessage;
         return;
       }
 
@@ -2398,6 +2458,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
 
     async function loadCurrentActiveReservationBibRefs() {
       currentActiveReservationBibRefs = new Set();
+      currentActiveLoanBibRefs = new Set();
       currentActiveReservationDebugRows = [];
       if (!currentUserContext?.isLoggedIn) {
         publishLivroReservationDebug({ skipped: true, reason: 'not_logged_in' });
@@ -2428,6 +2489,27 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
         console.warn("AnarBib livro: falha ao carregar reservas ativas do usuário", err);
         currentActiveReservationDebugRows.push({ ok: false, error: String(err?.message || err || 'unknown_error') });
       }
+
+      try {
+        const { data, error } = await apiFrom("api", "emprestimo_itens_ui")
+          .select("bib_ref,emprestimo_status,item_status,due_at")
+          .eq("emprestimo_status", "aberto")
+          .eq("item_status", "aberto");
+        if (error) {
+          currentActiveReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: false, error: String(error?.message || error || 'unknown_error') });
+        } else if (Array.isArray(data)) {
+          for (const row of data) {
+            const refs = extractReservationRefCandidates(row);
+            refs.forEach((bibRef) => currentActiveLoanBibRefs.add(bibRef));
+            currentActiveReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, refs, row: { bib_ref: normalizeBibRefValue(row?.bib_ref), status: firstNonEmptyString(row?.emprestimo_status), line_status: firstNonEmptyString(row?.item_status), due_at: firstNonEmptyString(row?.due_at) } });
+          }
+          if (!data.length) currentActiveReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: true, rows: [] });
+        }
+      } catch (err) {
+        console.warn("AnarBib livro: falha ao carregar empréstimos em curso do usuário", err);
+        currentActiveReservationDebugRows.push({ viewName: 'emprestimo_itens_ui', ok: false, error: String(err?.message || err || 'unknown_error') });
+      }
+
       publishLivroReservationDebug();
       applyPublicServiceState();
     }
@@ -2583,13 +2665,13 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const compatBibRef = firstNonEmptyString(bib_ref, bookRow?.bib_ref);
       const consultaAction = isConsultaActionState();
 
-      if (consultaAction && String(publicServiceState?.service_mode || "").trim() === "pausada") {
-        setStatus("A biblioteca está pausada no momento.", "warn");
+      if (consultaAction && arePublicConsultationsClosed(publicServiceState)) {
+        setStatus(getPublicServiceActionMessage(publicServiceState, { consultaAction: true }) || "A biblioteca está pausada no momento.", "warn");
         return;
       }
 
-      if (!consultaAction && publicServiceState?.allow_reservations === false) {
-        setStatus("As reservas públicas estão temporariamente fechadas no momento.", "warn");
+      if (!consultaAction && arePublicReservationsClosed(publicServiceState)) {
+        setStatus(getPublicServiceActionMessage(publicServiceState, { consultaAction: false }) || "As reservas públicas estão temporariamente fechadas no momento.", "warn");
         return;
       }
 
