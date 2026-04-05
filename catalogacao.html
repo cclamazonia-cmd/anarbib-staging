@@ -15983,8 +15983,7 @@ function initPartnerProbeUi() {
 
   function buildTraceabilityItems(...values) {
     return values
-      .flatMap((value) => String(value || '').split(/
-+/))
+      .flatMap((value) => String(value || '').split(/\n+/))
       .flatMap((value) => value.split(/[;•]+/))
       .map((value) => compactSpaces(value.replace(/^[\-–—*\d\.)\s]+/, '')))
       .filter(Boolean);
@@ -16867,9 +16866,9 @@ ${decisionSummary}` : '',
   }
 
   function renderPartnerMetadataTraceSummary() {
-    if (!partnerMetadataTraceSummaryEl) return;
+    if (!partnerMetadataTraceSummaryEl || !partnerTraceImportedValueEl || !partnerTraceImportedNoteEl || !partnerTraceReviewedValueEl || !partnerTraceReviewedNoteEl || !partnerTraceKeptValueEl || !partnerTraceKeptNoteEl || !partnerTraceRefusedValueEl || !partnerTraceRefusedNoteEl) return;
     const meta = getPartnerMetadataTraceState();
-    partnerMetadataTraceSummaryEl.innerHTML = `<strong>Traçabilidade dos metadados:</strong> retomadas/importações ${sanitize(String(meta.importedCount))}, releituras locais ${sanitize(String(meta.reviewedCount))}, conservaçōes ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
+    partnerMetadataTraceSummaryEl.innerHTML = `<strong>Traçabilidade dos metadados:</strong> retomadas/importações ${sanitize(String(meta.importedCount))}, releituras locais ${sanitize(String(meta.reviewedCount))}, conservações ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
     partnerTraceImportedValueEl.textContent = String(meta.importedCount);
     partnerTraceImportedNoteEl.textContent = meta.importedNote;
     partnerTraceReviewedValueEl.textContent = String(meta.reviewedCount);
