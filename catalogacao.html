@@ -13319,6 +13319,14 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       };
     }
 
+    function getCatalogOptionLabel(value = '', options = []) {
+      const normalized = String(value || '').trim();
+      if (!normalized) return '';
+      const optionList = Array.isArray(options) ? options : [];
+      const hit = optionList.find(([optionValue]) => String(optionValue || '').trim() === normalized);
+      return String(hit?.[1] || normalized).trim();
+    }
+
     function getCatalogBookInterlibraryRightsMeta(book = {}) {
       const statusValue = compactSpaces(
         book.mutualization_status
@@ -13327,7 +13335,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         || book.holding_network_status
         || ''
       );
-      const statusLabel = getOptionLabelFromOptions(statusValue, BOOK_MUTUALIZATION_STATUS_OPTIONS) || (statusValue ? statusValue : 'Sem situação explícita');
+      const statusLabel = getCatalogOptionLabel(statusValue, BOOK_MUTUALIZATION_STATUS_OPTIONS) || (statusValue ? statusValue : 'Sem situação explícita');
       const sourceLabel = compactSpaces(
         book.partner_source_label
         || book.partner_source
@@ -13337,7 +13345,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
       );
       const sourceRecordId = compactSpaces(book.source_record_id || book.external_record_id || '');
       const sourceRecordUrl = compactSpaces(book.source_record_url || book.external_record_url || '');
-      const importMethodLabel = getOptionLabelFromOptions(book.import_method || book.source_import_method || '', BOOK_IMPORT_METHOD_OPTIONS);
+      const importMethodLabel = getCatalogOptionLabel(book.import_method || book.source_import_method || '', BOOK_IMPORT_METHOD_OPTIONS);
 
       let title = 'Situação interbibliotecas ainda não relida';
       if (statusValue === 'mutualizable') title = 'Mutualização local sinalizada';
