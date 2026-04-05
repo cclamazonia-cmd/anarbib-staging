@@ -2497,29 +2497,6 @@
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
               <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
               <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
-              <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida nesta ficha.</div>
-              <div class="catalog-layer-summary" style="margin-bottom:0;">
-                <div class="catalog-layer-card">
-                  <div class="catalog-layer-card-title">Importados / retomados</div>
-                  <div id="bookTraceImportedValue" class="catalog-layer-card-value">0</div>
-                  <div id="bookTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-                </div>
-                <div class="catalog-layer-card">
-                  <div class="catalog-layer-card-title">Relidos / verificados</div>
-                  <div id="bookTraceReviewedValue" class="catalog-layer-card-value">0</div>
-                  <div id="bookTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-                </div>
-                <div class="catalog-layer-card">
-                  <div class="catalog-layer-card-title">Conservados / levados</div>
-                  <div id="bookTraceKeptValue" class="catalog-layer-card-value">0</div>
-                  <div id="bookTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-                </div>
-                <div class="catalog-layer-card">
-                  <div class="catalog-layer-card-title">Recusados / não retomados</div>
-                  <div id="bookTraceRefusedValue" class="catalog-layer-card-value">0</div>
-                  <div id="bookTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-                </div>
-              </div>
             </div>
 
             <div class="form-flow-break">
@@ -3638,29 +3615,6 @@
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
 
           <div id="partnerFocusSurfaceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura da parceira em foco:</strong> ainda não atualizada.</div>
-          <div id="partnerMetadataTraceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida para esta parceira.</div>
-          <div class="catalog-layer-summary" style="margin-bottom:12px;">
-            <div class="catalog-layer-card">
-              <div class="catalog-layer-card-title">Importados / retomados</div>
-              <div id="partnerTraceImportedValue" class="catalog-layer-card-value">0</div>
-              <div id="partnerTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-            </div>
-            <div class="catalog-layer-card">
-              <div class="catalog-layer-card-title">Relidos / verificados</div>
-              <div id="partnerTraceReviewedValue" class="catalog-layer-card-value">0</div>
-              <div id="partnerTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-            </div>
-            <div class="catalog-layer-card">
-              <div class="catalog-layer-card-title">Conservados / levados</div>
-              <div id="partnerTraceKeptValue" class="catalog-layer-card-value">0</div>
-              <div id="partnerTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-            </div>
-            <div class="catalog-layer-card">
-              <div class="catalog-layer-card-title">Recusados / não retomados</div>
-              <div id="partnerTraceRefusedValue" class="catalog-layer-card-value">0</div>
-              <div id="partnerTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
-            </div>
-          </div>
 
           <div class="catalog-layer-summary" id="partnerGovernanceSummary" style="margin-bottom:12px;">
             <div class="catalog-layer-card">
@@ -9677,7 +9631,6 @@
       refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
-      renderBookMetadataTraceSummary();
     }
 
     function resetLabelForm(clearMessageBox = true) {      if (el('labelForm')) el('labelForm').reset();
@@ -15217,15 +15170,6 @@ function initPartnerProbeUi() {
   const partnerImportBlockersNoteEl = document.getElementById('partnerImportBlockersNote');
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
-  const partnerMetadataTraceSummaryEl = document.getElementById('partnerMetadataTraceSummary');
-  const partnerTraceImportedValueEl = document.getElementById('partnerTraceImportedValue');
-  const partnerTraceImportedNoteEl = document.getElementById('partnerTraceImportedNote');
-  const partnerTraceReviewedValueEl = document.getElementById('partnerTraceReviewedValue');
-  const partnerTraceReviewedNoteEl = document.getElementById('partnerTraceReviewedNote');
-  const partnerTraceKeptValueEl = document.getElementById('partnerTraceKeptValue');
-  const partnerTraceKeptNoteEl = document.getElementById('partnerTraceKeptNote');
-  const partnerTraceRefusedValueEl = document.getElementById('partnerTraceRefusedValue');
-  const partnerTraceRefusedNoteEl = document.getElementById('partnerTraceRefusedNote');
 
   const incomingCatalogFileEl = document.getElementById('partnerIncomingCatalogFile');
   const incomingCatalogFileNameEl = document.getElementById('partnerIncomingCatalogFileName');
@@ -15966,90 +15910,6 @@ function initPartnerProbeUi() {
     if (!refs.bookInterlibraryRightsSummary) return;
     const meta = getBookCurrentInterlibraryRightsMeta();
     refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
-    renderBookMetadataTraceSummary();
-  }
-
-  function buildTraceabilityItems(...values) {
-    return values.flatMap((value) => String(value || '')
-      .split(/
-?
-|[;•]+/)
-      .map((item) => normalizeInlineWhitespace(item))
-      .filter(Boolean));
-  }
-
-  function countFilledTraceFields(values = []) {
-    return values.filter((value) => normalizeInlineWhitespace(String(value || '')).length > 0).length;
-  }
-
-  function countTraceActionLines(value = '', patterns = []) {
-    const items = buildTraceabilityItems(value);
-    if (!patterns.length) return items.length;
-    return items.filter((item) => patterns.some((pattern) => pattern.test(item))).length;
-  }
-
-  function getBookMetadataTraceState() {
-    const provenanceText = String(el('bookProvenanceNote')?.value || '').trim();
-    const policyText = normalizeInlineWhitespace(el('bookPartnerPolicyHint')?.textContent || '');
-    const importedCount = countFilledTraceFields([
-      el('bookPartnerSource')?.value,
-      el('bookSourceRecordId')?.value,
-      el('bookSourceRecordUrl')?.value,
-      el('bookImportFormat')?.value,
-      el('bookImportMethod')?.value,
-      el('bookDigitalSourceName')?.value,
-      el('bookDigitalSourceUrl')?.value,
-      el('bookDigitalAttributionText')?.value,
-    ]);
-    const reviewedCount = countTraceActionLines(provenanceText) + (el('bookDigitalBibliographicMatch')?.checked ? 1 : 0) + (/^Sem fonte /i.test(policyText) ? 0 : 1);
-    const keptCount = countTraceActionLines(provenanceText, [/(retom|mant|conserv|aproveit|valid|confirm|corrig|preench)/i]) + countFilledTraceFields([
-      el('bookImportFormat')?.value,
-      el('bookImportMethod')?.value,
-    ]);
-    const refusedCount = countTraceActionLines(provenanceText, [/(n[aã]o retomar|n[aã]o copiar|n[aã]o usar|recus|ignor|descart|exclu|skip)/i]);
-    const sourceLabel = getOptionLabel(getSelectOptions(el('bookPartnerSource')), el('bookPartnerSource')?.value || '') || 'sem fonte parceira ativa';
-    return {
-      importedCount,
-      reviewedCount,
-      keptCount,
-      refusedCount,
-      importedNote: importedCount
-        ? `Campos locais já marcados como retomados da fonte ${sourceLabel}.`
-        : 'Nenhum campo de retomada ou fonte foi marcado ainda nesta ficha.',
-      reviewedNote: reviewedCount
-        ? 'A ficha já mostra sinais locais de revisão, validação ou conferência humana.'
-        : 'Ainda não há sinal visível de revisão ou conferência local nesta ficha.',
-      keptNote: keptCount
-        ? 'Há metadados explicitamente mantidos, levados ou preparados para a camada local.'
-        : 'Ainda não há sinal visível de metadados mantidos ou levados nesta ficha.',
-      refusedNote: refusedCount
-        ? 'A nota de proveniência já registra recusas, exclusões ou itens não retomados.'
-        : 'Nenhum item recusado ou explicitamente não retomado foi relido aqui ainda.',
-    };
-  }
-
-  function renderBookMetadataTraceSummary() {
-    const summaryEl = el('bookMetadataTraceSummary');
-    const importedValueEl = el('bookTraceImportedValue');
-    const importedNoteEl = el('bookTraceImportedNote');
-    const reviewedValueEl = el('bookTraceReviewedValue');
-    const reviewedNoteEl = el('bookTraceReviewedNote');
-    const keptValueEl = el('bookTraceKeptValue');
-    const keptNoteEl = el('bookTraceKeptNote');
-    const refusedValueEl = el('bookTraceRefusedValue');
-    const refusedNoteEl = el('bookTraceRefusedNote');
-    if (!summaryEl || !importedValueEl || !importedNoteEl || !reviewedValueEl || !reviewedNoteEl || !keptValueEl || !keptNoteEl || !refusedValueEl || !refusedNoteEl) return;
-
-    const trace = getBookMetadataTraceState();
-    summaryEl.innerHTML = `<strong>Traçabilidade dos metadados:</strong> ${trace.importedCount} importado(s) / retomado(s), ${trace.reviewedCount} relido(s), ${trace.keptCount} conservado(s) / levado(s) e ${trace.refusedCount} recusado(s) / não retomado(s) nesta ficha.`;
-    importedValueEl.textContent = String(trace.importedCount);
-    importedNoteEl.textContent = trace.importedNote;
-    reviewedValueEl.textContent = String(trace.reviewedCount);
-    reviewedNoteEl.textContent = trace.reviewedNote;
-    keptValueEl.textContent = String(trace.keptCount);
-    keptNoteEl.textContent = trace.keptNote;
-    refusedValueEl.textContent = String(trace.refusedCount);
-    refusedNoteEl.textContent = trace.refusedNote;
   }
 
   function getCurrentPartnerLabel() {
@@ -16844,7 +16704,6 @@ ${decisionSummary}` : '',
     renderPartnerCompareExerciseSummary();
     renderPartnerImportSurfaceSummary();
     renderPartnerImportExerciseSummary();
-    renderPartnerMetadataTraceSummary();
   }
 
   function renderPartnerGovernanceSummary() {
@@ -17120,59 +16979,6 @@ ${decisionSummary}` : '',
     partnerImportProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada compartilhada continuam fora do alcance deste microfluxo.';
     partnerImportBlockersValueEl.textContent = String(missingCount);
     partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
-  }
-
-
-  function getPartnerMetadataTraceState() {
-    const importedCount = countFilledTraceFields([
-      importSourceSummaryEl?.value,
-      partnerNoticeSummaryEl?.value,
-      importFormatSelectEl?.value,
-      importMethodSelectEl?.value,
-    ]) + countTraceActionLines(importTakeSummaryEl?.value || '');
-    const reviewedCount = countFilledTraceFields([
-      differenceSummaryEl?.value,
-      comparisonDecisionEl?.value,
-      comparisonChecklistEl?.value,
-      importDecisionSummaryEl?.value,
-      importChecklistEl?.value,
-    ]);
-    const keptCount = countTraceActionLines(importTakeSummaryEl?.value || '') + countTraceActionLines(importCarryPreviewEl?.value || '', [/(retom|mant|conserv|preench|proveni|fonte|modo|formato|corrig)/i]) + countTraceActionLines(comparisonCarryPreviewEl?.value || '', [/(proveni|manter|retomar|corrig|preench)/i]);
-    const refusedCount = countTraceActionLines(importSkipSummaryEl?.value || '') + countTraceActionLines(differenceSummaryEl?.value || '', [/(n[aã]o|recus|ignor|descart|bloque|incompat)/i]);
-    const activeFlow = partnerDocumentActionState.importWorkspaceOpen ? 'preparação local' : (partnerDocumentActionState.workspaceOpen ? 'comparação local' : 'sem microfluxo aberto');
-    return {
-      importedCount,
-      reviewedCount,
-      keptCount,
-      refusedCount,
-      importedNote: importedCount
-        ? `A parceira em foco já mostra retomadas visíveis entre resumo da fonte, formato, modo e elementos a retomar (${activeFlow}).`
-        : 'Ainda não há retomadas visíveis suficientes entre a fonte parceira e a preparação local.',
-      reviewedNote: reviewedCount
-        ? 'A comparação e/ou a preparação já registram releitura humana visível nesta tela.'
-        : 'Ainda não há releitura humana suficientemente visível entre comparação e preparação.',
-      keptNote: keptCount
-        ? 'A tela já mostra o que será conservado, levado ou escrito na camada local da ficha.'
-        : 'Ainda não há quadro suficientemente visível do que será conservado ou levado para a ficha.',
-      refusedNote: refusedCount
-        ? 'A tela já torna visíveis exclusões, recusas ou itens conscientemente não retomados.'
-        : 'Nenhum item recusado ou explicitamente não retomado foi relido nesta superfície ainda.',
-    };
-  }
-
-  function renderPartnerMetadataTraceSummary() {
-    if (!partnerMetadataTraceSummaryEl || !partnerTraceImportedValueEl || !partnerTraceImportedNoteEl || !partnerTraceReviewedValueEl || !partnerTraceReviewedNoteEl || !partnerTraceKeptValueEl || !partnerTraceKeptNoteEl || !partnerTraceRefusedValueEl || !partnerTraceRefusedNoteEl) return;
-
-    const trace = getPartnerMetadataTraceState();
-    partnerMetadataTraceSummaryEl.innerHTML = `<strong>Traçabilidade dos metadados:</strong> ${trace.importedCount} importado(s) / retomado(s), ${trace.reviewedCount} relido(s), ${trace.keptCount} conservado(s) / levado(s) e ${trace.refusedCount} recusado(s) / não retomado(s) nesta superfície.`;
-    partnerTraceImportedValueEl.textContent = String(trace.importedCount);
-    partnerTraceImportedNoteEl.textContent = trace.importedNote;
-    partnerTraceReviewedValueEl.textContent = String(trace.reviewedCount);
-    partnerTraceReviewedNoteEl.textContent = trace.reviewedNote;
-    partnerTraceKeptValueEl.textContent = String(trace.keptCount);
-    partnerTraceKeptNoteEl.textContent = trace.keptNote;
-    partnerTraceRefusedValueEl.textContent = String(trace.refusedCount);
-    partnerTraceRefusedNoteEl.textContent = trace.refusedNote;
   }
 
   function getComparisonOperationalStateText() {
