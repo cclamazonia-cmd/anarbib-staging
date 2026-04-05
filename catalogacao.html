@@ -3868,6 +3868,29 @@
               </div>
               <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
+              <div id="partnerCompareExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da comparação:</strong> ainda não atualizado.</div>
+              <div class="catalog-layer-summary" style="margin-bottom:12px;">
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Estado da comparação</div>
+                  <div id="partnerCompareStateValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerCompareStateNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Escrita local</div>
+                  <div id="partnerCompareWriteValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerCompareWriteNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Camada protegida</div>
+                  <div id="partnerCompareProtectedValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerCompareProtectedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+                <div class="catalog-layer-card">
+                  <div class="catalog-layer-card-title">Bloqueios atuais</div>
+                  <div id="partnerCompareBlockersValue" class="catalog-layer-card-value">—</div>
+                  <div id="partnerCompareBlockersNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                </div>
+              </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
@@ -15103,6 +15126,15 @@ function initPartnerProbeUi() {
   const partnerGovernanceBoundaryValueEl = document.getElementById('partnerGovernanceBoundaryValue');
   const partnerGovernanceBoundaryNoteEl = document.getElementById('partnerGovernanceBoundaryNote');
   const partnerCompareSurfaceSummaryEl = document.getElementById('partnerCompareSurfaceSummary');
+  const partnerCompareExerciseSummaryEl = document.getElementById('partnerCompareExerciseSummary');
+  const partnerCompareStateValueEl = document.getElementById('partnerCompareStateValue');
+  const partnerCompareStateNoteEl = document.getElementById('partnerCompareStateNote');
+  const partnerCompareWriteValueEl = document.getElementById('partnerCompareWriteValue');
+  const partnerCompareWriteNoteEl = document.getElementById('partnerCompareWriteNote');
+  const partnerCompareProtectedValueEl = document.getElementById('partnerCompareProtectedValue');
+  const partnerCompareProtectedNoteEl = document.getElementById('partnerCompareProtectedNote');
+  const partnerCompareBlockersValueEl = document.getElementById('partnerCompareBlockersValue');
+  const partnerCompareBlockersNoteEl = document.getElementById('partnerCompareBlockersNote');
   const partnerImportSurfaceSummaryEl = document.getElementById('partnerImportSurfaceSummary');
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
@@ -16634,6 +16666,7 @@ ${decisionSummary}` : '',
     renderPartnerFocusSurfaceSummary();
     renderPartnerGovernanceSummary();
     renderPartnerCompareSurfaceSummary();
+    renderPartnerCompareExerciseSummary();
     renderPartnerImportSurfaceSummary();
   }
 
@@ -16749,6 +16782,77 @@ ${decisionSummary}` : '',
     }
 
     partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+  }
+
+
+  function renderPartnerCompareExerciseSummary() {
+    if (
+      !partnerCompareExerciseSummaryEl ||
+      !partnerCompareStateValueEl ||
+      !partnerCompareStateNoteEl ||
+      !partnerCompareWriteValueEl ||
+      !partnerCompareWriteNoteEl ||
+      !partnerCompareProtectedValueEl ||
+      !partnerCompareProtectedNoteEl ||
+      !partnerCompareBlockersValueEl ||
+      !partnerCompareBlockersNoteEl
+    ) return;
+
+    const readiness = getComparisonReadinessState();
+    const missingCount = readiness.missing.length;
+
+    if (!partnerDocumentActionState.compareAllowed) {
+      partnerCompareExerciseSummaryEl.innerHTML = '<strong>Quadro da comparação:</strong> comparação documental ainda bloqueada politicamente para esta parceira.';
+      partnerCompareStateValueEl.textContent = 'Bloqueada';
+      partnerCompareStateNoteEl.textContent = 'A comparação não pode sair do plano de leitura política e técnica nesta etapa.';
+      partnerCompareWriteValueEl.textContent = 'Fechada';
+      partnerCompareWriteNoteEl.textContent = 'Nenhuma escrita local assistida pode sair deste microfluxo enquanto a comparação estiver bloqueada.';
+      partnerCompareProtectedValueEl.textContent = 'Protegida';
+      partnerCompareProtectedNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam intocados.';
+      partnerCompareBlockersValueEl.textContent = missingCount ? String(missingCount) : 'Política';
+      partnerCompareBlockersNoteEl.textContent = missingCount
+        ? formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:')
+        : 'O bloqueio principal continua sendo político, antes mesmo do preenchimento local.';
+      return;
+    }
+
+    if (!partnerDocumentActionState.workspaceOpen) {
+      partnerCompareExerciseSummaryEl.innerHTML = '<strong>Quadro da comparação:</strong> comparação autorizada, mas ainda sem microfluxo aberto nesta tela.';
+      partnerCompareStateValueEl.textContent = 'Autorizada';
+      partnerCompareStateNoteEl.textContent = 'A política abriu a comparação, mas a pessoa bibliotecária ainda não abriu o microfluxo local.';
+      partnerCompareWriteValueEl.textContent = 'Aguardando';
+      partnerCompareWriteNoteEl.textContent = 'A escrita local assistida depende primeiro da abertura deste espaço e da descrição da comparação.';
+      partnerCompareProtectedValueEl.textContent = 'Protegida';
+      partnerCompareProtectedNoteEl.textContent = 'Mesmo autorizada, esta comparação não modifica livremente o registro da parceira nem publica nada.';
+      partnerCompareBlockersValueEl.textContent = 'Abrir';
+      partnerCompareBlockersNoteEl.textContent = 'Primeiro falta abrir o microfluxo de comparação nesta própria tela.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerCompareExerciseSummaryEl.innerHTML = '<strong>Quadro da comparação:</strong> comparação aberta e suficientemente descrita para escrita assistida apenas na camada local da ficha.';
+      partnerCompareStateValueEl.textContent = 'Pronta';
+      partnerCompareStateNoteEl.textContent = 'A comparação já distingue suficientemente o registro parceiro, as diferenças e a decisão local.';
+      partnerCompareWriteValueEl.textContent = 'Local';
+      partnerCompareWriteNoteEl.textContent = 'Já pode sair escrita assistida somente para a camada local e para a nota de proveniência.';
+      partnerCompareProtectedValueEl.textContent = partnerDocumentActionState.mutualizeAllowed ? 'Parceira / pública' : 'Parceira / comum';
+      partnerCompareProtectedNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
+        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada compartilhada nem a publicação pública.'
+        : 'A ficha comum publicada, o registro da parceira e a publicação pública continuam protegidos.';
+      partnerCompareBlockersValueEl.textContent = '0';
+      partnerCompareBlockersNoteEl.textContent = 'Nenhum bloqueio material restante neste microfluxo; só falta a decisão humana do clique.';
+      return;
+    }
+
+    partnerCompareExerciseSummaryEl.innerHTML = `<strong>Quadro da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerCompareStateValueEl.textContent = 'Em curso';
+    partnerCompareStateNoteEl.textContent = 'O microfluxo está aberto, mas a comparação ainda não estabilizou leitura suficiente para escrita local.';
+    partnerCompareWriteValueEl.textContent = 'Parcial';
+    partnerCompareWriteNoteEl.textContent = 'A escrita local continua limitada enquanto diferenças, resumo parceiro e decisão local não estiverem suficientemente descritos.';
+    partnerCompareProtectedValueEl.textContent = 'Protegida';
+    partnerCompareProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada compartilhada continuam fora do alcance deste microfluxo.';
+    partnerCompareBlockersValueEl.textContent = String(missingCount);
+    partnerCompareBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
 
   function renderPartnerImportSurfaceSummary() {
