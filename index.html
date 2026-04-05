@@ -1002,6 +1002,14 @@ mark { background: rgba(225,29,47,.35); color:#fff; padding:0 2px; border-radius
     </div>
   </section>
 
+  <section id="serviceBanner" class="service-banner" hidden>
+    <div class="service-banner-title">
+      <span id="serviceBannerMode" class="service-banner-mode">Funcionamento</span>
+    </div>
+    <div id="serviceBannerText" class="service-banner-text"></div>
+    <div id="serviceBannerRequests" class="service-banner-text"></div>
+  </section>
+
   <div class="stats">
     <div class="pill" id="totalPill">Total: 0</div>
     <div class="pill" id="visiblePill">Exibidos: 0</div>
@@ -1162,6 +1170,10 @@ const libraryFilterToggle = document.getElementById('libraryFilterToggle');
 const totalPill = document.getElementById('totalPill');
 const visiblePill = document.getElementById('visiblePill');
 const statusPill = document.getElementById('statusPill');
+const serviceBanner = document.getElementById('serviceBanner');
+const serviceBannerMode = document.getElementById('serviceBannerMode');
+const serviceBannerText = document.getElementById('serviceBannerText');
+const serviceBannerRequests = document.getElementById('serviceBannerRequests');
 const empty = document.getElementById('empty');
 const loadMoreWrap = document.getElementById('loadMoreWrap');
 const loadMoreBtn = document.getElementById('loadMoreBtn');
@@ -3081,6 +3093,65 @@ async function loadRowsFromSupabase() {
   }
 }
 
+const SERVICE_MODE_LABELS = {
+  funcionamento_normal: 'Funcionamento normal',
+  somente_consulta: 'Somente consulta',
+  pausada: 'Pausada'
+};
+const SERVICE_MODE_MESSAGES = {
+  funcionamento_normal: 'A biblioteca está em funcionamento normal.',
+  somente_consulta: 'A biblioteca está funcionando apenas para consulta local no momento.',
+  pausada: 'A biblioteca está com o atendimento pausado no momento.'
+};
+function arePublicConsultationsClosed(state) {
+  return !!(state && (state.allow_reservations === false || String(state.service_mode || '').trim() === 'pausada'));
+}
+function arePublicReservationsClosed(state) {
+  return !!(state && (arePublicConsultationsClosed(state) || String(state.service_mode || '').trim() === 'somente_consulta'));
+}
+function isGenericUnavailableServiceMessage(message) {
+  return [
+    'informação temporariamente indisponível.',
+    'informacao temporariamente indisponivel.',
+    'service information temporarily unavailable.',
+    'information temporairement indisponible.'
+  ].includes(String(message || '').trim().toLowerCase());
+}
+function getServiceModeMessage(state) {
+  if (!state) return 'Informação de funcionamento indisponível no momento.';
+  const publicMessage = String(state.public_message || '').trim();
+  if (publicMessage && !isGenericUnavailableServiceMessage(publicMessage)) return publicMessage;
+  return SERVICE_MODE_MESSAGES[state.service_mode] || 'Informação de funcionamento indisponível no momento.';
+}
+function renderPublicServiceBanner() {
+  if (!serviceBanner || !serviceBannerMode || !serviceBannerText || !serviceBannerRequests) return;
+  if (!serviceState) {
+    serviceBanner.hidden = true;
+    serviceBannerMode.textContent = 'Funcionamento';
+    serviceBannerText.textContent = '';
+    serviceBannerRequests.textContent = '';
+    return;
+  }
+  const mode = String(serviceState.service_mode || '').trim();
+  const modeLabel = SERVICE_MODE_LABELS[mode] || 'Funcionamento não informado';
+  const message = getServiceModeMessage(serviceState);
+  const consultationsClosed = arePublicConsultationsClosed(serviceState);
+  const reservationsClosed = arePublicReservationsClosed(serviceState);
+  let requestsLabel = 'Novas reservas e consultas públicas possíveis';
+  let requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de reserva e de consulta local.';
+  if (consultationsClosed) {
+    requestsLabel = 'Novas reservas e consultas públicas temporariamente interrompidas';
+    requestsMessage = 'A biblioteca não está recebendo novos pedidos públicos de reserva nem de consulta local no momento.';
+  } else if (reservationsClosed) {
+    requestsLabel = 'Novas reservas públicas interrompidas; consultas locais possíveis';
+    requestsMessage = 'No momento, a biblioteca aceita novos pedidos públicos de consulta local, mas não está abrindo novas reservas de empréstimo.';
+  }
+  serviceBanner.hidden = false;
+  serviceBannerMode.textContent = `Funcionamento: ${modeLabel}`;
+  serviceBannerText.textContent = message;
+  serviceBannerRequests.innerHTML = `<strong>${escapeHTML(requestsLabel)}</strong> — ${escapeHTML(requestsMessage)}`;
+}
+
 function normalizeServiceStateRow(row) {
   if (!row || typeof row !== 'object') return null;
   const mode = String(
@@ -3150,14 +3221,23 @@ async function loadPublicServiceState() {
   } catch (e) {
     serviceState = null;
   }
+  renderPublicServiceBanner();
 }
 function buildReservationMarkup(r) {
   const status = r._status;
+  const consultationsClosed = arePublicConsultationsClosed(serviceState) && !authState.isLibrarian;
+  const reservationsClosed = arePublicReservationsClosed(serviceState) && !authState.isLibrarian;
   if (r._reserveDone || hasActiveReservationBibRef(r.bib_ref)) {
     return '<div class="reserve-slot"><span class="status-badge status-available">Reservado</span></div>';
   }
   if (status.key === 'local') {
-    return '<div class="reserve-slot"><span class="reserve-note">Consultável no lugar</span></div>';
+    if (consultationsClosed) {
+      return '<div class="reserve-slot"><span class="reserve-note reserve-note-closed">Consultas locais<br>temporariamente fechadas</span></div>';
+    }
+    if (!authState.user) {
+      return '<div class="reserve-slot"><span class="reserve-note">Entre para pedir consulta local</span></div>';
+    }
+    return '<div class="reserve-slot"><span class="reserve-note">Consulta local possível</span></div>';
   }
   if (status.key === 'unavailable') {
     return `<div class="reserve-slot"><span class="reserve-note">${escapeHTML(status?.label || 'Indisponível no momento')}</span></div>`;
@@ -3165,8 +3245,11 @@ function buildReservationMarkup(r) {
   if (!r.bib_ref) {
     return '<div class="reserve-slot"><span class="reserve-note">Referência indisponível</span></div>';
   }
-  if (serviceState?.allow_reservations === false) {
-    return '<div class="reserve-slot"><span class="reserve-note reserve-note-closed">Reservas temporariamente<br>fechadas</span></div>';
+  if (consultationsClosed) {
+    return '<div class="reserve-slot"><span class="reserve-note reserve-note-closed">Reservas e consultas<br>temporariamente fechadas</span></div>';
+  }
+  if (reservationsClosed) {
+    return '<div class="reserve-slot"><span class="reserve-note reserve-note-closed">Reservas temporariamente<br>fechadas</span><span class="reserve-note">Consulta local possível</span></div>';
   }
   if (!authState.user) {
     return '<div class="reserve-slot"><span class="reserve-note">Entre para reservar</span></div>';
@@ -3181,7 +3264,8 @@ function isDuplicateReservaMessage(msg) {
 function mapReservaError(msg) {
   const s = normalize(msg || '');
   if (!s) return 'Não foi possível registrar a reserva agora.';
-  if (s.includes('temporariamente fechadas') || (s.includes('reserva') && s.includes('fechad'))) return 'As novas reservas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.';
+  if ((s.includes('consulta') && s.includes('fechad')) || (s.includes('reserva') && s.includes('consulta') && s.includes('fechad'))) return 'As novas reservas e consultas públicas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.';
+  if (s.includes('temporariamente fechadas') || (s.includes('reserva') && s.includes('fechad'))) return 'As novas reservas públicas estão temporariamente fechadas no momento. A biblioteca segue aceitando pedidos públicos de consulta local.';
   if (isDuplicateReservaMessage(s)) return 'Este livro já está reservado na sua conta.';
   if (s.includes('permission denied') || s.includes('row-level security') || s.includes('42501')) return 'Sua sessão não tem permissão para reservar agora. Entre novamente e tente outra vez.';
   if (s.includes('jwt') || s.includes('token') || s.includes('auth') || s.includes('session')) return 'Sua sessão expirou. Entre novamente para reservar.';
@@ -3190,8 +3274,13 @@ function mapReservaError(msg) {
 }
 
 async function createReservaFromCatalog(bibRef, row = null) {
-  if (serviceState?.allow_reservations === false && !authState.isLibrarian) {
-    return { ok: false, message: 'As novas reservas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.' };
+  const consultationsClosed = arePublicConsultationsClosed(serviceState) && !authState.isLibrarian;
+  const reservationsClosed = arePublicReservationsClosed(serviceState) && !authState.isLibrarian;
+  if (consultationsClosed) {
+    return { ok: false, message: 'As novas reservas e consultas públicas estão temporariamente fechadas conforme o modo de funcionamento atual da biblioteca.' };
+  }
+  if (reservationsClosed) {
+    return { ok: false, message: 'As novas reservas públicas estão temporariamente fechadas no momento. A biblioteca segue aceitando pedidos públicos de consulta local.' };
   }
   if (!authState.user || !authState.accessToken) {
     location.assign(buildCadastroUrl(location.href));
