@@ -3568,12 +3568,12 @@
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field" style="grid-column: span 2;">
               <label for="partnerIncomingCatalogFile">Arquivo recebido</label>
-              <input id="partnerIncomingCatalogFile" class="sr-only" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.ods,.pdf,.json,.xml,.zip,text/csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,application/json,application/xml,text/xml" />
+              <input id="partnerIncomingCatalogFile" class="sr-only" type="file" accept=".csv,.tsv,.txt,.ris,.xlsx,.xls,.ods,.pdf,.json,.xml,.zip,text/csv,text/plain,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,application/json,application/xml,text/xml,application/x-research-info-systems" />
               <div class="file-row">
                 <label for="partnerIncomingCatalogFile" class="file-button">Escolher arquivo</label>
                 <span id="partnerIncomingCatalogFileName" class="file-status">Nenhum arquivo selecionado</span>
               </div>
-              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura é apenas local e preparatória.</small>
+              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, RIS, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura é apenas local e preparatória.</small>
             </div>
 
             <div class="field">
@@ -3626,6 +3626,55 @@
               <small id="partnerIncomingCatalogHint">Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.</small>
               <div id="partnerIncomingSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da recepção:</strong> ainda não atualizada.</div>
             </div>
+          </div>
+
+          <div class="card" id="partnerIncomingImportCard" style="margin-top:16px;">
+            <h4>Encaminhamento técnico deste arquivo para o pipeline parceiro</h4>
+            <p class="hint" style="margin:0 0 12px;">Este bloco continua prudente: ele envia o arquivo bruto para o bucket técnico, cria um <code>import_run</code> normal e dispara apenas o processamento até a revisão editorial. Nenhuma decisão humana, nenhum lote e nenhum rascunho normal são criados automaticamente aqui.</p>
+
+            <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+              <div class="field">
+                <label for="partnerIncomingSourceId">Fonte parceira já cadastrada (ID)</label>
+                <input id="partnerIncomingSourceId" type="number" min="1" step="1" placeholder="Ex.: 3" />
+                <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Nesta passe, a escolha da fonte continua explícita e manual.</small>
+              </div>
+              <div class="field">
+                <label for="partnerIncomingImportBucket">Bucket bruto</label>
+                <input id="partnerIncomingImportBucket" type="text" value="catalogos_parceiros_raw" readonly />
+              </div>
+              <div class="field">
+                <label for="partnerIncomingDetectedFormat">Formato detectado</label>
+                <input id="partnerIncomingDetectedFormat" type="text" readonly placeholder="Ainda não detectado" />
+              </div>
+              <div class="field">
+                <label for="partnerIncomingRunId">Run atual</label>
+                <input id="partnerIncomingRunId" type="number" min="1" step="1" placeholder="Será preenchido após a criação" />
+              </div>
+            </div>
+
+            <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+              <div class="field">
+                <label for="partnerIncomingImportStoragePath">Caminho bruto sugerido</label>
+                <input id="partnerIncomingImportStoragePath" type="text" readonly placeholder="Será gerado a partir do arquivo e da identificação local" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;" />
+                <small>O arquivo será enviado para este caminho técnico antes da criação do run. O nome é sugerido localmente para manter rastreabilidade sem abrir ainda qualquer fluxo editorial.</small>
+              </div>
+              <div class="field">
+                <label for="partnerIncomingImportSummary">Resumo técnico local</label>
+                <textarea id="partnerIncomingImportSummary" rows="5" readonly placeholder="O resumo do upload, do run e do dispatch aparecerá aqui."></textarea>
+                <label class="checkbox-line" style="margin-top:8px;">
+                  <input id="partnerIncomingForceReparse" type="checkbox" />
+                  <span>Relançar com force_reparse no run atual</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="actions" style="margin-bottom:12px;">
+              <button id="partnerCreateDispatchIncomingImportBtn" class="button primary" type="button">Criar run e lançar importação</button>
+              <button id="partnerDispatchIncomingRunBtn" class="button secondary" type="button">Relançar este run</button>
+              <button id="partnerRefreshIncomingRunBtn" class="button ghost" type="button">Recarregar resumo do run</button>
+            </div>
+
+            <div id="partnerIncomingImportStatus" class="catalog-surface-summary"><strong>Encaminhamento técnico:</strong> nenhum run técnico preparado ainda.</div>
           </div>
         </div>
 
@@ -15413,6 +15462,17 @@ function initPartnerProbeUi() {
   const incomingCatalogSummaryEl = document.getElementById('partnerIncomingCatalogSummary');
   const incomingIdentityPreviewEl = document.getElementById('partnerIncomingIdentityPreview');
   const incomingCatalogHintEl = document.getElementById('partnerIncomingCatalogHint');
+  const incomingImportSourceIdEl = document.getElementById('partnerIncomingSourceId');
+  const incomingImportBucketEl = document.getElementById('partnerIncomingImportBucket');
+  const incomingImportDetectedFormatEl = document.getElementById('partnerIncomingDetectedFormat');
+  const incomingImportStoragePathEl = document.getElementById('partnerIncomingImportStoragePath');
+  const incomingImportRunIdEl = document.getElementById('partnerIncomingRunId');
+  const incomingImportSummaryEl = document.getElementById('partnerIncomingImportSummary');
+  const incomingImportForceReparseEl = document.getElementById('partnerIncomingForceReparse');
+  const incomingImportStatusEl = document.getElementById('partnerIncomingImportStatus');
+  const incomingCreateDispatchBtn = document.getElementById('partnerCreateDispatchIncomingImportBtn');
+  const incomingDispatchRunBtn = document.getElementById('partnerDispatchIncomingRunBtn');
+  const incomingRefreshRunBtn = document.getElementById('partnerRefreshIncomingRunBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -15483,6 +15543,16 @@ function initPartnerProbeUi() {
   const partnerOptionRegistry = new Map();
   let partnerUrlSuggestionState = null;
   let incomingCatalogFileAnalysis = null;
+  const PARTNER_INCOMING_RAW_BUCKET = 'catalogos_parceiros_raw';
+  let incomingCatalogImportState = {
+    uploadedPath: '',
+    suggestedPath: '',
+    runId: '',
+    lastCreateResult: null,
+    lastDispatchResult: null,
+    lastSummary: null,
+    busy: false,
+  };
 
   function parsePartnerAgreementList(value) {
     if (Array.isArray(value)) {
@@ -15651,6 +15721,7 @@ function initPartnerProbeUi() {
     if (lower.endsWith('.csv')) return 'csv';
     if (lower.endsWith('.tsv')) return 'tsv';
     if (lower.endsWith('.txt')) return 'txt';
+    if (lower.endsWith('.ris')) return 'ris';
     if (lower.endsWith('.xlsx')) return 'xlsx';
     if (lower.endsWith('.xls')) return 'xls';
     if (lower.endsWith('.ods')) return 'ods';
@@ -15712,6 +15783,287 @@ function initPartnerProbeUi() {
     refreshPartnerPilotSummary();
   }
 
+  function getIncomingCatalogMimeType(file) {
+    const type = normalizeInlineWhitespace(file?.type || '');
+    if (type) return type;
+    const kind = getIncomingCatalogFileKind(file?.name || '');
+    const mimeByKind = {
+      csv: 'text/csv',
+      tsv: 'text/tab-separated-values',
+      txt: 'text/plain',
+      ris: 'application/x-research-info-systems',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      xls: 'application/vnd.ms-excel',
+      ods: 'application/vnd.oasis.opendocument.spreadsheet',
+      pdf: 'application/pdf',
+      json: 'application/json',
+      xml: 'application/xml',
+      zip: 'application/zip',
+    };
+    return mimeByKind[kind] || 'application/octet-stream';
+  }
+
+  function buildSuggestedIncomingCatalogStoragePath(file) {
+    const identity = buildIncomingCatalogIdentity();
+    const slug = normalizePartnerSlug(identity.slug || identity.shortName || identity.libraryName || identity.acronym || '') || 'parceira-sem-slug';
+    const safeName = String(file?.name || 'catalogo').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const datePart = new Date().toISOString().slice(0, 10);
+    return `partner/manual/${slug}/${datePart}/${Date.now()}-${safeName}`;
+  }
+
+  function resetIncomingCatalogImportState({ keepRun = false, keepSourceId = true } = {}) {
+    incomingCatalogImportState = {
+      uploadedPath: keepRun ? incomingCatalogImportState.uploadedPath : '',
+      suggestedPath: '',
+      runId: keepRun ? String(incomingCatalogImportState.runId || '') : '',
+      lastCreateResult: keepRun ? incomingCatalogImportState.lastCreateResult : null,
+      lastDispatchResult: keepRun ? incomingCatalogImportState.lastDispatchResult : null,
+      lastSummary: keepRun ? incomingCatalogImportState.lastSummary : null,
+      busy: false,
+    };
+    if (!keepRun && incomingImportRunIdEl) incomingImportRunIdEl.value = '';
+    if (!keepSourceId && incomingImportSourceIdEl) incomingImportSourceIdEl.value = '';
+    refreshIncomingCatalogImportUi();
+  }
+
+  function reseedIncomingCatalogImportPath({ preserveUploaded = true } = {}) {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    if (!file) {
+      incomingCatalogImportState.suggestedPath = '';
+      if (!preserveUploaded) incomingCatalogImportState.uploadedPath = '';
+      refreshIncomingCatalogImportUi();
+      return;
+    }
+    if (!preserveUploaded) incomingCatalogImportState.uploadedPath = '';
+    if (!incomingCatalogImportState.uploadedPath) {
+      incomingCatalogImportState.suggestedPath = buildSuggestedIncomingCatalogStoragePath(file);
+    }
+    refreshIncomingCatalogImportUi();
+  }
+
+  function getIncomingCatalogImportRunId() {
+    const raw = normalizeInlineWhitespace(incomingImportRunIdEl?.value || incomingCatalogImportState.runId || '');
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  }
+
+  function buildIncomingCatalogImportStatusText() {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const kind = file ? getIncomingCatalogFileKind(file.name).toUpperCase() : '—';
+    const storagePath = incomingCatalogImportState.uploadedPath || incomingCatalogImportState.suggestedPath || '—';
+    const runId = getIncomingCatalogImportRunId();
+    if (!runId && !file) {
+      return '<strong>Encaminhamento técnico:</strong> nenhum run técnico preparado ainda.';
+    }
+    if (!runId) {
+      return `<strong>Encaminhamento técnico:</strong> arquivo ${sanitize(file?.name || '—')} pronto para envio bruto ao bucket técnico, ainda sem <code>import_run</code> criado.`;
+    }
+    const summary = incomingCatalogImportState.lastSummary || {};
+    const runStatus = sanitize(summary.run_status || summary.status || 'run criado / aguardando leitura');
+    const importedRows = sanitize(summary.imported_rows ?? summary.inserted_rows ?? summary.rows_imported ?? '—');
+    const selectedRows = sanitize(summary.selected_rows ?? summary.review_selected ?? '—');
+    const createdDrafts = sanitize(summary.created_drafts ?? summary.drafts_created ?? '—');
+    return `<strong>Encaminhamento técnico:</strong> run #${sanitize(runId)} em ${runStatus}. Caminho bruto: <code>${sanitize(storagePath)}</code>. Formato: ${sanitize(kind)}. Importadas: ${importedRows}. Selecionadas: ${selectedRows}. Rascunhos criados depois da revisão: ${createdDrafts}.`;
+  }
+
+  function buildIncomingCatalogImportSummaryText() {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const kind = file ? getIncomingCatalogFileKind(file.name) : 'desconhecido';
+    const lines = [
+      `Arquivo em foco: ${file?.name || '—'}`,
+      `Formato detectado: ${kind.toUpperCase()}`,
+      `Bucket bruto: ${incomingImportBucketEl?.value || PARTNER_INCOMING_RAW_BUCKET}`,
+      `Caminho bruto: ${incomingCatalogImportState.uploadedPath || incomingCatalogImportState.suggestedPath || '—'}`,
+      `Run atual: ${getIncomingCatalogImportRunId() || '—'}`,
+    ];
+    if (incomingCatalogImportState.lastCreateResult) {
+      lines.push('', 'Run técnico criado com sucesso.');
+      lines.push(JSON.stringify(incomingCatalogImportState.lastCreateResult, null, 2));
+    }
+    if (incomingCatalogImportState.lastDispatchResult) {
+      lines.push('', 'Dispatch backend enviado para a Edge Function.');
+      lines.push(JSON.stringify(incomingCatalogImportState.lastDispatchResult, null, 2));
+    }
+    if (incomingCatalogImportState.lastSummary) {
+      lines.push('', 'Resumo mais recente relido desde a base:');
+      lines.push(JSON.stringify(incomingCatalogImportState.lastSummary, null, 2));
+    }
+    if (!incomingCatalogImportState.lastCreateResult && !incomingCatalogImportState.lastDispatchResult && !incomingCatalogImportState.lastSummary) {
+      lines.push('', 'Ainda não houve criação de run nem dispatch backend nesta etapa.');
+    }
+    lines.push('', 'Lembrete: este gesto só prepara o arquivo bruto, cria o run normal e dispara o processamento até a revisão editorial.');
+    return lines.join('\n');
+  }
+
+  function refreshIncomingCatalogImportUi() {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    if (incomingImportBucketEl) incomingImportBucketEl.value = PARTNER_INCOMING_RAW_BUCKET;
+    if (incomingImportDetectedFormatEl) incomingImportDetectedFormatEl.value = file ? getIncomingCatalogFileKind(file.name).toUpperCase() : '';
+    if (incomingImportStoragePathEl) incomingImportStoragePathEl.value = incomingCatalogImportState.uploadedPath || incomingCatalogImportState.suggestedPath || '';
+    if (incomingImportRunIdEl && !document.activeElement?.isSameNode?.(incomingImportRunIdEl)) {
+      incomingImportRunIdEl.value = incomingCatalogImportState.runId || incomingImportRunIdEl.value || '';
+    }
+    if (incomingImportSummaryEl) incomingImportSummaryEl.value = buildIncomingCatalogImportSummaryText();
+    if (incomingImportStatusEl) incomingImportStatusEl.innerHTML = buildIncomingCatalogImportStatusText();
+    const disableCreate = incomingCatalogImportState.busy || !file;
+    const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
+    if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
+    if (incomingDispatchRunBtn) incomingDispatchRunBtn.disabled = disableDispatch;
+    if (incomingRefreshRunBtn) incomingRefreshRunBtn.disabled = disableDispatch;
+  }
+
+  async function sha256HexForIncomingCatalogFile(file) {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(digest)).map((part) => part.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function callIncomingCatalogIngestRpc(fnName, params, { timeoutMs = 20000 } = {}) {
+    const attempts = [
+      { label: 'ingest schema', run: () => supabase.schema('ingest').rpc(fnName, params) },
+      { label: 'default schema', run: () => supabase.rpc(fnName, params) },
+    ];
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        const response = await withTimeout(Promise.resolve().then(attempt.run), `rpc ${fnName}`, timeoutMs);
+        if (!response?.error) return response?.data;
+        lastError = response.error;
+        const message = String(response.error?.message || response.error?.details || response.error?.hint || response.error || '');
+        if (!/not found|schema|exposed|PGRST|function/i.test(message)) {
+          break;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(lastError?.message || `Não consegui executar ${fnName}.`);
+  }
+
+  async function readIncomingCatalogRunSummary(runId) {
+    const numericRunId = Number(runId);
+    if (!Number.isFinite(numericRunId) || numericRunId <= 0) return null;
+    const attempts = [
+      () => supabase.schema('api').from('partner_catalog_import_run_bulk_summary_ui').select('*').eq('run_id', numericRunId).maybeSingle(),
+      () => supabase.from('partner_catalog_import_run_bulk_summary_ui').select('*').eq('run_id', numericRunId).maybeSingle(),
+      () => supabase.schema('ingest').from('partner_catalog_import_runs').select('*').eq('id', numericRunId).maybeSingle(),
+    ];
+    let lastError = null;
+    for (const run of attempts) {
+      try {
+        const response = await withTimeout(Promise.resolve().then(run), 'incoming import summary read', 6000);
+        if (!response?.error && response?.data) {
+          incomingCatalogImportState.lastSummary = response.data;
+          refreshIncomingCatalogImportUi();
+          return response.data;
+        }
+        lastError = response?.error || lastError;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError) console.warn('Não consegui reler o resumo do run de importação parceiro.', lastError);
+    refreshIncomingCatalogImportUi();
+    return null;
+  }
+
+  function waitForIncomingImport(ms = 1200) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async function pollIncomingCatalogRunSummary(runId, { attempts = 6, delayMs = 1400 } = {}) {
+    let latest = null;
+    for (let index = 0; index < attempts; index += 1) {
+      await waitForIncomingImport(delayMs);
+      latest = await readIncomingCatalogRunSummary(runId);
+      const status = String(latest?.run_status || latest?.status || '').trim().toLowerCase();
+      if (status && ['ready_for_review', 'failed', 'drafts_created', 'draft_created'].includes(status)) break;
+    }
+    return latest;
+  }
+
+  async function createAndDispatchIncomingCatalogImport() {
+    if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode lançar esta importação desde a catalogação.');
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    if (!file) throw new Error('Escolha primeiro um arquivo artesanal para criar o run técnico.');
+    const sourceId = Number(incomingImportSourceIdEl?.value || 0);
+    if (!Number.isFinite(sourceId) || sourceId <= 0) {
+      throw new Error('Informe o ID da fonte parceira já cadastrada antes de criar o run técnico.');
+    }
+    const requestedBy = state.session?.user?.id || state.profile?.user_id || null;
+    if (!requestedBy) throw new Error('Sessão bibliotecária não reconhecida para registrar quem pediu esta importação.');
+
+    const kind = getIncomingCatalogFileKind(file.name);
+    if (kind === 'desconhecido') {
+      throw new Error('O formato deste arquivo ainda não é reconhecido nesta etapa.');
+    }
+    if (!incomingCatalogFileAnalysis) {
+      await analyzeIncomingCatalogFile();
+    }
+
+    incomingCatalogImportState.busy = true;
+    refreshIncomingCatalogImportUi();
+    try {
+      if (!incomingCatalogImportState.suggestedPath && !incomingCatalogImportState.uploadedPath) {
+        reseedIncomingCatalogImportPath();
+      }
+      const storagePath = incomingCatalogImportState.uploadedPath || incomingCatalogImportState.suggestedPath || buildSuggestedIncomingCatalogStoragePath(file);
+      await uploadFileToBucket(PARTNER_INCOMING_RAW_BUCKET, file, storagePath);
+      incomingCatalogImportState.uploadedPath = storagePath;
+      const sha256 = await sha256HexForIncomingCatalogFile(file);
+      const createData = await callIncomingCatalogIngestRpc('fn_create_partner_catalog_import', {
+        p_source_id: sourceId,
+        p_storage_path: storagePath,
+        p_original_filename: file.name,
+        p_bucket_id: PARTNER_INCOMING_RAW_BUCKET,
+        p_mime_type: getIncomingCatalogMimeType(file),
+        p_size_bytes: Number(file.size || 0),
+        p_sha256: sha256,
+        p_detected_format: kind,
+        p_requested_by: requestedBy,
+      }, { timeoutMs: 30000 });
+      incomingCatalogImportState.lastCreateResult = createData;
+      const createdRunId = extractRpcNumericId(createData, ['run_id', 'p_run_id', 'new_run_id', 'id']);
+      if (!createdRunId) {
+        throw new Error('O run técnico foi criado, mas o retorno do ID veio em formato inesperado.');
+      }
+      incomingCatalogImportState.runId = String(createdRunId);
+      if (incomingImportRunIdEl) incomingImportRunIdEl.value = String(createdRunId);
+      const dispatchData = await callIncomingCatalogIngestRpc('fn_dispatch_partner_catalog_import', {
+        p_run_id: Number(createdRunId),
+        p_force_reparse: false,
+      }, { timeoutMs: 20000 });
+      incomingCatalogImportState.lastDispatchResult = dispatchData;
+      await pollIncomingCatalogRunSummary(createdRunId);
+      setPartnerProbeMessage(`Run técnico #${createdRunId} criado e encaminhado ao pipeline parceiro até a revisão editorial.`, 'ok');
+    } finally {
+      incomingCatalogImportState.busy = false;
+      refreshIncomingCatalogImportUi();
+    }
+  }
+
+  async function dispatchExistingIncomingCatalogRun() {
+    if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode relançar um run desde a catalogação.');
+    const runId = getIncomingCatalogImportRunId();
+    if (!runId) throw new Error('Informe primeiro um run válido para relançar.');
+    const forceReparse = !!incomingImportForceReparseEl?.checked;
+    incomingCatalogImportState.busy = true;
+    refreshIncomingCatalogImportUi();
+    try {
+      const dispatchData = await callIncomingCatalogIngestRpc('fn_dispatch_partner_catalog_import', {
+        p_run_id: Number(runId),
+        p_force_reparse: forceReparse,
+      }, { timeoutMs: 20000 });
+      incomingCatalogImportState.runId = String(runId);
+      incomingCatalogImportState.lastDispatchResult = dispatchData;
+      await pollIncomingCatalogRunSummary(runId, { attempts: 8, delayMs: 1600 });
+      setPartnerProbeMessage(`Run técnico #${runId} reenviado ao backend${forceReparse ? ' com force_reparse' : ''}.`, 'ok');
+    } finally {
+      incomingCatalogImportState.busy = false;
+      refreshIncomingCatalogImportUi();
+    }
+  }
+
   function updateIncomingCatalogFileName() {
     if (!incomingCatalogFileNameEl) return;
     const file = incomingCatalogFileEl?.files?.[0] || null;
@@ -15720,6 +16072,7 @@ function initPartnerProbeUi() {
 
   function resetIncomingCatalogReception({ keepIdentity = false } = {}) {
     incomingCatalogFileAnalysis = null;
+    resetIncomingCatalogImportState({ keepRun: false, keepSourceId: true });
     if (incomingCatalogFileEl) incomingCatalogFileEl.value = '';
     updateIncomingCatalogFileName();
     if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = '';
@@ -15729,6 +16082,7 @@ function initPartnerProbeUi() {
       });
     }
     renderIncomingCatalogIdentityPreview();
+    reseedIncomingCatalogImportPath({ preserveUploaded: false });
     if (incomingCatalogHintEl) {
       incomingCatalogHintEl.textContent = 'Preencha o nome da biblioteca e escolha um arquivo para preparar a recepção local sem tocar ainda na política documental.';
     }
@@ -15776,6 +16130,18 @@ function initPartnerProbeUi() {
   function summarizeIncomingTextFile(text = '', fileKind = 'txt') {
     if (fileKind === 'csv' || fileKind === 'tsv') {
       return summarizeIncomingDelimitedText(text, fileKind === 'tsv' ? 'tabulação' : 'vírgula');
+    }
+    if (fileKind === 'ris') {
+      const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const tagPreview = lines.slice(0, 8).join(' | ');
+      const recordCount = lines.filter((line) => /^TY\s*-/.test(line)).length || lines.filter((line) => /^ER\s*-/.test(line)).length;
+      return {
+        summaryLines: [
+          'Arquivo RIS lido localmente.',
+          `Registros detectados nesta prévia: ${recordCount || '—'}.`,
+          `Primeiras etiquetas RIS: ${tagPreview || '—'}.`,
+        ]
+      };
     }
     if (fileKind === 'json') {
       const preview = normalizeInlineWhitespace(text).slice(0, 320);
@@ -15825,7 +16191,7 @@ function initPartnerProbeUi() {
     }
     const kind = getIncomingCatalogFileKind(file.name);
     try {
-      if (['csv', 'tsv', 'txt', 'json', 'xml'].includes(kind)) {
+      if (['csv', 'tsv', 'txt', 'ris', 'json', 'xml'].includes(kind)) {
         const textPreview = await readIncomingCatalogTextPreview(file);
         incomingCatalogFileAnalysis = summarizeIncomingTextFile(textPreview, kind);
       } else {
@@ -18450,6 +18816,7 @@ ${decisionSummary}` : '',
         }
       }
       renderIncomingCatalogIdentityPreview();
+      reseedIncomingCatalogImportPath();
     });
   });
 
@@ -18464,6 +18831,45 @@ ${decisionSummary}` : '',
   clearIncomingCatalogBtn?.addEventListener('click', () => {
     resetIncomingCatalogReception();
     setPartnerProbeMessage('Recepção artesanal limpa. Nenhuma alteração documental foi feita.', 'info');
+  });
+
+  incomingImportRunIdEl?.addEventListener('input', () => {
+    incomingCatalogImportState.runId = normalizeInlineWhitespace(incomingImportRunIdEl.value || '');
+    refreshIncomingCatalogImportUi();
+  });
+
+  incomingCreateDispatchBtn?.addEventListener('click', async () => {
+    try {
+      await createAndDispatchIncomingCatalogImport();
+    } catch (error) {
+      console.error('Falha ao criar e lançar importação parceira.', error);
+      setPartnerProbeMessage(`Não consegui criar e lançar o run técnico: ${error?.message || error}`, 'error');
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  incomingDispatchRunBtn?.addEventListener('click', async () => {
+    try {
+      await dispatchExistingIncomingCatalogRun();
+    } catch (error) {
+      console.error('Falha ao relançar run parceiro.', error);
+      setPartnerProbeMessage(`Não consegui relançar este run: ${error?.message || error}`, 'error');
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  incomingRefreshRunBtn?.addEventListener('click', async () => {
+    try {
+      const runId = getIncomingCatalogImportRunId();
+      if (!runId) throw new Error('Informe primeiro um run válido para reler o resumo.');
+      const summary = await readIncomingCatalogRunSummary(runId);
+      setPartnerProbeMessage(summary ? `Resumo do run #${runId} relido desde a base.` : `Não encontrei um resumo legível para o run #${runId} nesta etapa.`, summary ? 'ok' : 'warn');
+      refreshIncomingCatalogImportUi();
+    } catch (error) {
+      console.error('Falha ao reler resumo do run parceiro.', error);
+      setPartnerProbeMessage(`Não consegui reler o resumo deste run: ${error?.message || error}`, 'error');
+      refreshIncomingCatalogImportUi();
+    }
   });
 
   [importTakeSummaryEl, importSkipSummaryEl, importProvenanceSummaryEl, importDecisionSummaryEl, importFormatSelectEl, importMethodSelectEl].forEach((node) => {
@@ -18505,6 +18911,7 @@ ${decisionSummary}` : '',
   });
 
   resetIncomingCatalogReception({ keepIdentity: true });
+  refreshIncomingCatalogImportUi();
   clearPartnerUrlSuggestionReadout();
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
@@ -18628,134 +19035,6 @@ ${decisionSummary}` : '',
     }
 
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   </script>
 </body>
