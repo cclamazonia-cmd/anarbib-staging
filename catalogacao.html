@@ -13355,21 +13355,21 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         return buildCatalogLayerStack(
           compatMeta.compatLabel || 'Holding local sem compatibilidade legível',
           [
-            { text: `Compatibilidade legada relida desde o holding local${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
-            { text: 'Nesta célula, a leitura privilegia o holding publicado (holding_libraries_json / local_bib_ref), e não book.bib_ref como pivô principal.', muted: true },
+            { text: `Compatibilidade local relida desde o holding${compatMeta.holdingId ? ` #${compatMeta.holdingId}` : ''}${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
+            { text: 'Leitura holdings-first validada: quando o holding local já aparece, book.bib_ref deixa de ser o pivô principal e fica apenas como fallback de compatibilidade.', muted: true },
           ],
-          [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding'],
-          'Holding local / compat. legada'
+          [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingId ? `Holding #${compatMeta.holdingId}` : (compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding')],
+          'Holding local / compat. local'
         );
       }
       return buildCatalogLayerStack(
         compatMeta.fallbackBibRef || 'Sem compatibilidade legada visível',
         [
-          { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas a referência comum/legada: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra compatibilidade legada neste recorte.', muted: false },
-          { text: 'O SQL já prevê holdings locais com local_bib_ref, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
+          { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas o código comum/legado de compatibilidade: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra compatibilidade local neste recorte.', muted: false },
+          { text: 'Fallback legado: quando a linha ainda não expõe o holding de forma estruturada, o código comum permanece apenas como apoio de leitura.', muted: true },
         ],
-        compatMeta.fallbackBibRef ? ['Legado comum'] : [],
-        'Compatibilidade legada'
+        compatMeta.fallbackBibRef ? ['Fallback legado'] : [],
+        'Compatibilidade local / legado'
       );
     }
 
@@ -13480,6 +13480,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         holdingsCount: holdings.length,
         librariesCount: Math.max(librariesCount || 0, holdings.length),
         firstHolding,
+        holdingId: compactSpaces(firstCompatHolding?.holding_id || firstHolding?.holding_id || ''),
         compatLabel,
         compatLibrary,
         fallbackBibRef,
@@ -13589,7 +13590,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         totalExemplares ? exemplarLabel : 'Sem exemplar local publicado',
         [
           { text: totalExemplares ? `${holdingsLabel}${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}` : 'Nenhum holding ou exemplar local publicado visível para esta ficha comum neste recorte.', muted: false },
-          { text: compatMeta.compatLabel ? `Compatibilidade legada hoje carregada por este holding: ${compatMeta.compatLabel}.` : 'A camada local publicada já passa pelos holdings, mesmo quando a compatibilidade legada não aparece aqui.', muted: true },
+          { text: compatMeta.compatLabel ? `Código local de compatibilidade hoje carregado por este holding${compatMeta.holdingId ? ` #${compatMeta.holdingId}` : ''}: ${compatMeta.compatLabel}.` : 'A camada local publicada já passa pelos holdings, mesmo quando o código local de compatibilidade não aparece aqui.', muted: true },
         ],
         totalExemplares ? [compatMeta.librariesCount ? `${compatMeta.librariesCount} holding(s)` : 'Holding local visível'] : ['Sem exemplar visível'],
         'Holding / exemplar local publicado'
@@ -13610,15 +13611,16 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
     }
 
     function renderCatalogExemplarCompatCell(ex = {}) {
-      const bibRef = compactSpaces(ex.bib_ref || '');
+      const bibRef = compactSpaces(ex.bib_ref || ex.local_bib_ref || '');
+      const holdingId = compactSpaces(ex.holding_id || ex.target_holding_id || '');
       return buildCatalogLayerStack(
-        bibRef || 'Sem compatibilidade legada visível',
+        bibRef || (holdingId ? `Holding #${holdingId}` : 'Sem compatibilidade local visível'),
         [
-          { text: bibRef ? `Compatibilidade legada atual: ${bibRef}` : 'Este exemplar não mostra compatibilidade legada neste recorte.', muted: false },
-          { text: 'No SQL atual, o exemplar já carrega holding_id, mas esta superfície publicada ainda expõe bib_ref como ponte legada de leitura e de rótulo.', muted: true },
+          { text: holdingId ? `Holding local: #${holdingId}${bibRef ? ` · código local de compatibilidade: ${bibRef}` : ''}` : (bibRef ? `Código local de compatibilidade atual: ${bibRef}` : 'Este exemplar não mostra compatibilidade local neste recorte.'), muted: false },
+          { text: 'Leitura holdings-first validada: holding_id é agora o pivô métier; bib_ref permanece apenas como código local de compatibilidade quando ainda aparece nesta superfície.', muted: true },
         ],
-        bibRef ? ['Legado local'] : [],
-        'Compatibilidade legada'
+        [holdingId ? `Holding #${holdingId}` : 'Compat. local', ...(bibRef ? ['Código local'] : [])],
+        'Holding local / compat. local'
       );
     }
 
@@ -14147,7 +14149,7 @@ function renderCatalogExemplars() {
         <tr>
           <th>Operações</th>
           <th class="sortable">${renderSortableHeader('Exemplar local publicado', 'exemplars', 'tombo')}</th>
-          <th class="sortable">${renderSortableHeader('Compatibilidade / referência local', 'exemplars', 'bib_ref')}</th>
+          <th class="sortable">${renderSortableHeader('Holding local / compatibilidade local', 'exemplars', 'bib_ref')}</th>
           <th class="sortable">${renderSortableHeader('Ficha comum publicada relida', 'exemplars', 'titulo_etiqueta')}</th>
           <th>Rascunho de edição local</th>
         </tr>
