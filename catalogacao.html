@@ -3632,6 +3632,26 @@
             <h4>Resultado do tratamento</h4>
             <p class="hint" style="margin:0 0 12px;">Este bloco recebe o arquivo bruto, lança o tratamento inicial e para em revisão humana. Nenhuma decisão editorial, nenhum lote e nenhum rascunho normal são criados automaticamente aqui.</p>
 
+            <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+              <div class="field" style="grid-column: span 2;">
+                <label for="partnerIncomingSourceSelect">Fonte parceira (nome legível)</label>
+                <select id="partnerIncomingSourceSelect">
+                  <option value="">Selecionar uma fonte parceira conhecida</option>
+                </select>
+                <small>Escolha aqui pelo nome legível da fonte. O ID bruto continua disponível apenas no bloco técnico opcional, como apoio.</small>
+              </div>
+              <div class="field">
+                <label for="partnerRefreshSourceChoicesBtn">Vínculo desta recepção</label>
+                <div class="row-actions">
+                  <button id="partnerRefreshSourceChoicesBtn" class="button secondary" type="button">Atualizar fontes</button>
+                  <button id="partnerSuggestIncomingSourceBtn" class="button ghost" type="button">Sugerir vínculo</button>
+                </div>
+                <small>Você pode reler a lista de fontes conhecidas ou pedir uma sugestão com base na biblioteca já identificada nesta superfície.</small>
+              </div>
+            </div>
+
+            <div id="partnerIncomingSourceSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Fonte parceira:</strong> ainda não escolhida nesta etapa.</div>
+
             <div class="catalog-layer-summary" style="margin-bottom:12px;">
               <div class="catalog-layer-card">
                 <div class="catalog-layer-card-title">Arquivo recebido</div>
@@ -7699,6 +7719,7 @@
       } else if (activeTab === 'catalogPanel') {
         await loadCatalog();
       } else if (activeTab === 'partnerCatalogsPanel') {
+        await readIncomingCatalogSourceChoices();
         await readIncomingCatalogRunHistory();
         const activeRunId = getIncomingCatalogImportRunId();
         if (activeRunId) {
@@ -15575,6 +15596,10 @@ function initPartnerProbeUi() {
   const incomingIdentityPreviewEl = document.getElementById('partnerIncomingIdentityPreview');
   const incomingCatalogHintEl = document.getElementById('partnerIncomingCatalogHint');
   const incomingImportSourceIdEl = document.getElementById('partnerIncomingSourceId');
+  const partnerIncomingSourceSelectEl = document.getElementById('partnerIncomingSourceSelect');
+  const partnerIncomingSourceSummaryEl = document.getElementById('partnerIncomingSourceSummary');
+  const partnerRefreshSourceChoicesBtn = document.getElementById('partnerRefreshSourceChoicesBtn');
+  const partnerSuggestIncomingSourceBtn = document.getElementById('partnerSuggestIncomingSourceBtn');
   const incomingImportBucketEl = document.getElementById('partnerIncomingImportBucket');
   const incomingImportDetectedFormatEl = document.getElementById('partnerIncomingDetectedFormat');
   const incomingImportStoragePathEl = document.getElementById('partnerIncomingImportStoragePath');
@@ -15716,6 +15741,14 @@ function initPartnerProbeUi() {
     draftsCreated: 0,
     draftIds: [],
     lastError: '',
+  };
+  let incomingCatalogSourceState = {
+    items: [],
+    loading: false,
+    lastError: '',
+    chosenSourceId: '',
+    lastSuggestedSourceId: '',
+    userTouched: false,
   };
 
   function parsePartnerAgreementList(value) {
@@ -16978,6 +17011,223 @@ function initPartnerProbeUi() {
       </table>`;
   }
 
+
+  function extractIncomingCatalogSourceId(item) {
+    const numeric = Number(
+      item?.source_id
+      || item?.id
+      || item?.partner_source_id
+      || item?.catalog_source_id
+      || 0
+    );
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+  }
+
+  function extractIncomingCatalogSourceSlug(item) {
+    return normalizePartnerSlug(
+      item?.slug
+      || item?.source_slug
+      || item?.library_slug
+      || item?.partner_slug
+      || ''
+    );
+  }
+
+  function extractIncomingCatalogSourceDisplayName(item) {
+    const numericId = extractIncomingCatalogSourceId(item);
+    return normalizeInlineWhitespace(
+      item?.display_name
+      || item?.source_label
+      || item?.source_name
+      || item?.library_name
+      || item?.name
+      || item?.short_name
+      || item?.public_name
+      || (numericId ? `Fonte #${numericId}` : '')
+    ) || (numericId ? `Fonte #${numericId}` : 'Fonte sem nome');
+  }
+
+  function extractIncomingCatalogSourceSupportLine(item) {
+    const parts = [];
+    const shortName = normalizeInlineWhitespace(item?.short_name || item?.acronym || item?.code || '');
+    const territory = normalizeInlineWhitespace(item?.territory || item?.city || item?.region || item?.country || '');
+    const family = normalizeInlineWhitespace(item?.family || item?.software_family || item?.catalog_family || '');
+    if (shortName) parts.push(shortName);
+    if (territory) parts.push(territory);
+    if (family) parts.push(family.toUpperCase());
+    return parts.join(' · ');
+  }
+
+  function buildIncomingCatalogSourceCandidateKeys() {
+    const identity = buildIncomingCatalogIdentity();
+    const keys = {
+      slugs: new Set(),
+      names: new Set(),
+    };
+    [
+      identity.slug,
+      typeof getCurrentPartnerSlug === 'function' ? getCurrentPartnerSlug() : '',
+      presetEl?.value,
+      incomingLibrarySlugEl?.value,
+    ].forEach((value) => {
+      const slug = normalizePartnerSlug(value || '');
+      if (slug) keys.slugs.add(slug);
+    });
+    [
+      identity.libraryName,
+      identity.shortName,
+      displayEl?.value,
+      incomingLibraryNameEl?.value,
+      incomingLibraryShortNameEl?.value,
+    ].forEach((value) => {
+      const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+      if (normalized) keys.names.add(normalized);
+    });
+    return keys;
+  }
+
+  function scoreIncomingCatalogSourceMatch(item) {
+    const sourceId = extractIncomingCatalogSourceId(item);
+    if (!sourceId) return -1;
+    const keys = buildIncomingCatalogSourceCandidateKeys();
+    const sourceSlug = extractIncomingCatalogSourceSlug(item);
+    const displayName = extractIncomingCatalogSourceDisplayName(item).toLowerCase();
+    const altName = normalizeInlineWhitespace(item?.short_name || item?.library_name || item?.name || '').toLowerCase();
+    let score = 0;
+    if (sourceSlug && keys.slugs.has(sourceSlug)) score += 100;
+    if (displayName && keys.names.has(displayName)) score += 90;
+    if (altName && keys.names.has(altName)) score += 70;
+    keys.names.forEach((name) => {
+      if (!name) return;
+      if (displayName && (displayName.includes(name) || name.includes(displayName))) score += 18;
+      if (altName && (altName.includes(name) || name.includes(altName))) score += 12;
+    });
+    return score;
+  }
+
+  function findSuggestedIncomingCatalogSource(items = []) {
+    const sourceId = Number(incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || 0);
+    if (Number.isFinite(sourceId) && sourceId > 0) {
+      const exact = items.find((item) => extractIncomingCatalogSourceId(item) === sourceId);
+      if (exact) return exact;
+    }
+    const scored = (Array.isArray(items) ? items : [])
+      .map((item) => ({ item, score: scoreIncomingCatalogSourceMatch(item) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored[0]?.item || null;
+  }
+
+  function setIncomingCatalogSourceChoice(sourceId, { markUserTouched = false } = {}) {
+    const numericId = Number(sourceId || 0);
+    const normalized = Number.isFinite(numericId) && numericId > 0 ? String(numericId) : '';
+    incomingCatalogSourceState.chosenSourceId = normalized;
+    if (markUserTouched) incomingCatalogSourceState.userTouched = true;
+    if (partnerIncomingSourceSelectEl && partnerIncomingSourceSelectEl.value !== normalized) {
+      partnerIncomingSourceSelectEl.value = normalized;
+    }
+    if (incomingImportSourceIdEl && normalizeInlineWhitespace(incomingImportSourceIdEl.value || '') !== normalized) {
+      incomingImportSourceIdEl.value = normalized;
+    }
+    renderIncomingCatalogSourceChoices();
+  }
+
+  function renderIncomingCatalogSourceChoices() {
+    const items = Array.isArray(incomingCatalogSourceState.items) ? incomingCatalogSourceState.items : [];
+    const currentRawId = Number(incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || 0);
+    const currentId = Number.isFinite(currentRawId) && currentRawId > 0 ? String(currentRawId) : '';
+    const suggested = findSuggestedIncomingCatalogSource(items);
+    incomingCatalogSourceState.lastSuggestedSourceId = suggested ? String(extractIncomingCatalogSourceId(suggested) || '') : '';
+
+    if (partnerIncomingSourceSelectEl) {
+      const options = ['<option value="">Selecionar uma fonte parceira conhecida</option>'];
+      items.forEach((item) => {
+        const sourceId = extractIncomingCatalogSourceId(item);
+        if (!sourceId) return;
+        const displayName = extractIncomingCatalogSourceDisplayName(item);
+        const support = extractIncomingCatalogSourceSupportLine(item);
+        const selected = currentId === String(sourceId) ? ' selected' : '';
+        const suffix = support ? ` — ${support}` : '';
+        options.push(`<option value="${sanitize(String(sourceId))}"${selected}>${sanitize(displayName + suffix)}</option>`);
+      });
+      if (currentId && !items.some((item) => String(extractIncomingCatalogSourceId(item)) === currentId)) {
+        options.push(`<option value="${sanitize(currentId)}" selected>Fonte #${sanitize(currentId)} (ID técnico informado)</option>`);
+      }
+      partnerIncomingSourceSelectEl.innerHTML = options.join('');
+      partnerIncomingSourceSelectEl.disabled = incomingCatalogSourceState.loading;
+    }
+
+    if (partnerRefreshSourceChoicesBtn) partnerRefreshSourceChoicesBtn.disabled = incomingCatalogSourceState.loading;
+    if (partnerSuggestIncomingSourceBtn) {
+      partnerSuggestIncomingSourceBtn.disabled = incomingCatalogSourceState.loading || !suggested;
+    }
+
+    if (!partnerIncomingSourceSummaryEl) return;
+    if (incomingCatalogSourceState.loading) {
+      partnerIncomingSourceSummaryEl.innerHTML = '<strong>Fonte parceira:</strong> relendo a lista legível de fontes conhecidas nesta superfície.';
+      return;
+    }
+    if (incomingCatalogSourceState.lastError) {
+      partnerIncomingSourceSummaryEl.innerHTML = `<strong>Fonte parceira:</strong> a lista legível falhou nesta leitura. ${sanitize(incomingCatalogSourceState.lastError)}`;
+      return;
+    }
+    const current = items.find((item) => String(extractIncomingCatalogSourceId(item)) === currentId) || null;
+    if (current) {
+      const displayName = extractIncomingCatalogSourceDisplayName(current);
+      const support = extractIncomingCatalogSourceSupportLine(current);
+      partnerIncomingSourceSummaryEl.innerHTML = `<strong>Fonte parceira:</strong> ${sanitize(displayName)}${support ? ` · ${sanitize(support)}` : ''}. O ID técnico #${sanitize(currentId)} ficou sincronizado só como apoio.`;
+      return;
+    }
+    if (currentId) {
+      partnerIncomingSourceSummaryEl.innerHTML = `<strong>Fonte parceira:</strong> ID técnico #${sanitize(currentId)} informado, mas a leitura legível desta lista ainda não encontrou o nome correspondente.`;
+      return;
+    }
+    if (suggested) {
+      const displayName = extractIncomingCatalogSourceDisplayName(suggested);
+      const support = extractIncomingCatalogSourceSupportLine(suggested);
+      partnerIncomingSourceSummaryEl.innerHTML = `<strong>Fonte parceira:</strong> nenhuma fonte escolhida ainda. Sugestão disponível: ${sanitize(displayName)}${support ? ` · ${sanitize(support)}` : ''}.`;
+      return;
+    }
+    partnerIncomingSourceSummaryEl.innerHTML = '<strong>Fonte parceira:</strong> escolha uma fonte pelo nome legível. O ID bruto continua apenas no bloco técnico opcional.';
+  }
+
+  async function readIncomingCatalogSourceChoices(force = false) {
+    if (!force && Array.isArray(incomingCatalogSourceState.items) && incomingCatalogSourceState.items.length) {
+      renderIncomingCatalogSourceChoices();
+      return incomingCatalogSourceState.items;
+    }
+    incomingCatalogSourceState.loading = true;
+    incomingCatalogSourceState.lastError = '';
+    renderIncomingCatalogSourceChoices();
+    const attempts = [
+      () => supabase.schema('api').from('partner_catalog_sources_ui').select('*').limit(200),
+      () => supabase.from('partner_catalog_sources_ui').select('*').limit(200),
+      () => supabase.schema('ingest').from('partner_catalog_sources').select('*').limit(200),
+    ];
+    let data = [];
+    let lastError = null;
+    for (const run of attempts) {
+      try {
+        const response = await withTimeout(Promise.resolve().then(run), 'incoming source choices read', 8000);
+        if (!response?.error && Array.isArray(response?.data)) {
+          data = response.data;
+          lastError = null;
+          break;
+        }
+        lastError = response?.error || lastError;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    incomingCatalogSourceState.items = (Array.isArray(data) ? data : [])
+      .filter((item) => extractIncomingCatalogSourceId(item) > 0)
+      .sort((a, b) => extractIncomingCatalogSourceDisplayName(a).localeCompare(extractIncomingCatalogSourceDisplayName(b), 'pt-BR', { sensitivity: 'base' }));
+    incomingCatalogSourceState.loading = false;
+    incomingCatalogSourceState.lastError = lastError ? String(lastError?.message || lastError) : '';
+    renderIncomingCatalogSourceChoices();
+    return incomingCatalogSourceState.items;
+  }
+
   async function readIncomingCatalogRunHistory() {
     if (!partnerRunHistoryWrapEl || !partnerRunHistorySummaryEl) return [];
     incomingCatalogRunHistoryState.loading = true;
@@ -17021,6 +17271,10 @@ function initPartnerProbeUi() {
       if (incomingImportSourceIdEl && !normalizeInlineWhitespace(incomingImportSourceIdEl.value || '')) {
         const sourceId = Number(match?.source_id || match?.partner_source_id || 0);
         if (Number.isFinite(sourceId) && sourceId > 0) incomingImportSourceIdEl.value = String(sourceId);
+      }
+      const runSourceId = Number(match?.source_id || match?.partner_source_id || 0);
+      if (Number.isFinite(runSourceId) && runSourceId > 0) {
+        setIncomingCatalogSourceChoice(runSourceId, { markUserTouched: false });
       }
       if (incomingImportDetectedFormatEl) {
         const formatLabel = normalizeInlineWhitespace(match?.detected_format || match?.format || '').toUpperCase();
@@ -17080,6 +17334,7 @@ function initPartnerProbeUi() {
     }
     if (incomingImportSummaryEl) incomingImportSummaryEl.value = buildIncomingCatalogImportSummaryText();
     if (incomingImportStatusEl) incomingImportStatusEl.innerHTML = buildIncomingCatalogImportStatusText();
+    renderIncomingCatalogSourceChoices();
     renderIncomingCatalogImportStepCards();
     renderIncomingCatalogRunDetail();
     renderIncomingCatalogRunBulkSummary();
@@ -17089,6 +17344,9 @@ function initPartnerProbeUi() {
     const disableBulk = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
     const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
     if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
+    if (partnerIncomingSourceSelectEl) partnerIncomingSourceSelectEl.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
+    if (partnerRefreshSourceChoicesBtn) partnerRefreshSourceChoicesBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
+    if (partnerSuggestIncomingSourceBtn) partnerSuggestIncomingSourceBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading || !incomingCatalogSourceState.lastSuggestedSourceId;
     if (incomingDispatchRunBtn) incomingDispatchRunBtn.disabled = disableDispatch;
     if (incomingRefreshRunBtn) incomingRefreshRunBtn.disabled = disableDispatch;
     if (partnerRefreshRunDetailBtn) partnerRefreshRunDetailBtn.disabled = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
@@ -20042,6 +20300,46 @@ ${decisionSummary}` : '',
     refreshIncomingCatalogImportUi();
   });
 
+  incomingImportSourceIdEl?.addEventListener('input', () => {
+    incomingCatalogSourceState.userTouched = true;
+    incomingCatalogSourceState.chosenSourceId = normalizeInlineWhitespace(incomingImportSourceIdEl.value || '');
+    renderIncomingCatalogSourceChoices();
+    refreshIncomingCatalogImportUi();
+  });
+
+  partnerIncomingSourceSelectEl?.addEventListener('change', () => {
+    setIncomingCatalogSourceChoice(partnerIncomingSourceSelectEl.value || '', { markUserTouched: true });
+    const chosenId = normalizeInlineWhitespace(partnerIncomingSourceSelectEl.value || '');
+    if (chosenId) {
+      setPartnerProbeMessage(`Fonte parceira legível vinculada a esta recepção: #${chosenId}.`, 'ok');
+    }
+  });
+
+  partnerRefreshSourceChoicesBtn?.addEventListener('click', async () => {
+    try {
+      await readIncomingCatalogSourceChoices(true);
+      setPartnerProbeMessage('Lista legível de fontes parceiras atualizada.', 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui atualizar a lista legível de fontes parceiras.', 'error');
+    }
+  });
+
+  partnerSuggestIncomingSourceBtn?.addEventListener('click', async () => {
+    try {
+      if (!incomingCatalogSourceState.items.length) {
+        await readIncomingCatalogSourceChoices(true);
+      }
+      const suggested = findSuggestedIncomingCatalogSource(incomingCatalogSourceState.items || []);
+      if (!suggested) {
+        throw new Error('Ainda não encontrei uma fonte conhecida que combine com a biblioteca identificada nesta recepção.');
+      }
+      setIncomingCatalogSourceChoice(extractIncomingCatalogSourceId(suggested), { markUserTouched: true });
+      setPartnerProbeMessage(`Sugestão aplicada: ${extractIncomingCatalogSourceDisplayName(suggested)}.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui sugerir uma fonte parceira nesta etapa.', 'warn');
+    }
+  });
+
   partnerRefreshRunHistoryBtn?.addEventListener('click', async () => {
     try {
       await readIncomingCatalogRunHistory();
@@ -20343,6 +20641,9 @@ ${decisionSummary}` : '',
   resetIncomingCatalogReception({ keepIdentity: true });
   refreshIncomingCatalogImportUi();
   if (getActiveCatalogacaoTab() === 'partnerCatalogsPanel') {
+    readIncomingCatalogSourceChoices(true).catch((error) => {
+      console.warn('Não consegui carregar a lista inicial de fontes parceiras.', error);
+    });
     readIncomingCatalogRunHistory().catch((error) => {
       console.warn('Não consegui carregar a lista inicial de tratamentos parceiros.', error);
     });
