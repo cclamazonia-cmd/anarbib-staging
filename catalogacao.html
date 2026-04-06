@@ -3747,6 +3747,32 @@
           <div id="partnerRunDetailWrap" class="table-wrap">
             <div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>
           </div>
+
+          <div class="card" id="partnerRunDraftOutputCard" style="margin-top:12px;">
+            <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
+              <div>
+                <h4 style="margin:0 0 6px;">Saída normal para lote e rascunhos</h4>
+                <p class="hint" style="margin:0;">Depois da revisão editorial, gere aqui um lote normal e os rascunhos normais correspondentes para voltar ao fluxo editorial habitual do AnarBib.</p>
+              </div>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+              <div class="field">
+                <label for="partnerDraftBatchName">Nome do lote normal</label>
+                <input id="partnerDraftBatchName" type="text" placeholder="Ex.: Importação parceira · run #12" />
+                <small>Se você deixar em branco, esta superfície sugere um nome a partir do tratamento atual.</small>
+              </div>
+              <div class="field" style="grid-column: span 2;">
+                <label for="partnerDraftBatchNotes">Nota curta do lote</label>
+                <input id="partnerDraftBatchNotes" type="text" placeholder="Ex.: retomada local após revisão editorial humana do tratamento parceiro." />
+              </div>
+            </div>
+            <div id="partnerDraftCreationSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Saída normal:</strong> revise as decisões editoriais e gere um lote normal para criar os rascunhos correspondentes.</div>
+            <div class="row-actions">
+              <button id="partnerCreateBatchDraftsBtn" class="button primary" type="button">Criar lote e rascunhos</button>
+              <button id="partnerOpenQueueFromPartnerBtn" class="button secondary" type="button">Abrir fila editorial</button>
+              <button id="partnerOpenBatchesFromPartnerBtn" class="button ghost" type="button">Abrir lotes</button>
+            </div>
+          </div>
         </div>
 
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
@@ -15579,6 +15605,12 @@ function initPartnerProbeUi() {
   const partnerBulkAcceptNewBtn = document.getElementById('partnerBulkAcceptNewBtn');
   const partnerBulkAcceptDuplicateBtn = document.getElementById('partnerBulkAcceptDuplicateBtn');
   const partnerBulkRejectBtn = document.getElementById('partnerBulkRejectBtn');
+  const partnerDraftBatchNameEl = document.getElementById('partnerDraftBatchName');
+  const partnerDraftBatchNotesEl = document.getElementById('partnerDraftBatchNotes');
+  const partnerDraftCreationSummaryEl = document.getElementById('partnerDraftCreationSummary');
+  const partnerCreateBatchDraftsBtn = document.getElementById('partnerCreateBatchDraftsBtn');
+  const partnerOpenQueueFromPartnerBtn = document.getElementById('partnerOpenQueueFromPartnerBtn');
+  const partnerOpenBatchesFromPartnerBtn = document.getElementById('partnerOpenBatchesFromPartnerBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -15674,6 +15706,16 @@ function initPartnerProbeUi() {
     runId: '',
     selectedRowIds: new Set(),
     busy: false,
+  };
+  let incomingCatalogDraftCreationState = {
+    runId: '',
+    busy: false,
+    batchId: '',
+    batchName: '',
+    rowsPassed: 0,
+    draftsCreated: 0,
+    draftIds: [],
+    lastError: '',
   };
 
   function parsePartnerAgreementList(value) {
@@ -16406,6 +16448,301 @@ function initPartnerProbeUi() {
       </div>`;
   }
 
+
+  function getIncomingPartnerRowId(record = null) {
+    if (!record || typeof record !== 'object') return NaN;
+    const candidates = [
+      pickIncomingPartnerValue(record, ['row_id', 'id', 'staging_row_id', 'import_row_id', 'source_row_id'])
+    ];
+    const nestedDetails = parseIncomingPartnerDetails(record);
+    if (nestedDetails && typeof nestedDetails === 'object') {
+      candidates.push(
+        pickIncomingPartnerValue(nestedDetails, ['row_id', 'id', 'staging_row_id', 'import_row_id', 'source_row_id'])
+      );
+    }
+    for (const candidate of candidates) {
+      const numeric = Number(candidate);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    }
+    return NaN;
+  }
+
+  function isIncomingPartnerRowLockedForEditorialDecision(record = null) {
+    const reviewStatus = normalizeInlineWhitespace(pickIncomingPartnerValue(record, ['review_status', 'row_review_status'])).toLowerCase();
+    const workflowStatus = normalizeInlineWhitespace(pickIncomingPartnerValue(record, ['workflow_status', 'row_workflow_status'])).toLowerCase();
+    const draftId = extractRpcNumericId(record, ['draft_id', 'book_draft_id', 'created_draft_id', 'published_draft_id']);
+    return reviewStatus === 'draft_created' || workflowStatus === 'draft_created' || (Number.isFinite(draftId) && draftId > 0);
+  }
+
+  function syncIncomingCatalogRunSelection() {
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    if (!runId || incomingCatalogRunSelectionState.runId !== runId) {
+      incomingCatalogRunSelectionState.runId = runId;
+      incomingCatalogRunSelectionState.selectedRowIds = new Set();
+      return;
+    }
+    const currentEligibleIds = new Set(
+      (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [])
+        .map((item) => {
+          const rowId = getIncomingPartnerRowId(item);
+          return Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item) ? String(rowId) : '';
+        })
+        .filter(Boolean)
+    );
+    incomingCatalogRunSelectionState.selectedRowIds = new Set(
+      Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).filter((rowId) => currentEligibleIds.has(String(rowId)))
+    );
+  }
+
+  function renderIncomingCatalogRunBulkSummary() {
+    if (!partnerRunDetailBulkSummaryEl) return;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    const items = Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [];
+    if (!runId) {
+      partnerRunDetailBulkSummaryEl.innerHTML = '<strong>Decisões em lote:</strong> abra primeiro um tratamento para selecionar linhas elegíveis.';
+      return;
+    }
+    if (incomingCatalogRunDetailState.loading) {
+      partnerRunDetailBulkSummaryEl.innerHTML = `<strong>Decisões em lote do tratamento #${sanitize(runId)}:</strong> aguardando a releitura das linhas para calcular a seleção possível.`;
+      return;
+    }
+    const eligibleIds = items
+      .map((item) => {
+        const rowId = getIncomingPartnerRowId(item);
+        return Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item) ? String(rowId) : '';
+      })
+      .filter(Boolean);
+    const lockedCount = items.length - eligibleIds.length;
+    const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
+    if (!eligibleIds.length) {
+      partnerRunDetailBulkSummaryEl.innerHTML = `<strong>Decisões em lote do tratamento #${sanitize(runId)}:</strong> não há linhas elegíveis nesta superfície. ${lockedCount ? `${lockedCount} já saíram para rascunho normal.` : 'Revise as decisões linha por linha.'}`;
+      return;
+    }
+    partnerRunDetailBulkSummaryEl.innerHTML = `<strong>Decisões em lote do tratamento #${sanitize(runId)}:</strong> ${eligibleIds.length} linha(s) elegível(is), ${selectedCount} selecionada(s) agora e ${lockedCount} já convertida(s) para rascunho normal.`;
+  }
+
+  function setIncomingCatalogRunSelectionFromCurrent(selectAll) {
+    if (!selectAll) {
+      incomingCatalogRunSelectionState.selectedRowIds = new Set();
+      renderIncomingCatalogRunBulkSummary();
+      return;
+    }
+    const eligibleIds = (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [])
+      .map((item) => {
+        const rowId = getIncomingPartnerRowId(item);
+        return Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item) ? String(rowId) : '';
+      })
+      .filter(Boolean);
+    incomingCatalogRunSelectionState.selectedRowIds = new Set(eligibleIds);
+    renderIncomingCatalogRunBulkSummary();
+  }
+
+  async function applyIncomingCatalogBulkDecision(editorialDecision) {
+    const decision = normalizeInlineWhitespace(editorialDecision).toLowerCase();
+    if (!['accept_new', 'accept_duplicate', 'reject'].includes(decision)) {
+      throw new Error('Decisão em lote inválida nesta superfície.');
+    }
+    const reviewerId = state.session?.user?.id || state.profile?.user_id || null;
+    if (!reviewerId) throw new Error('Sessão bibliotecária não reconhecida para decisões em lote.');
+    const rowIds = Array.from(incomingCatalogRunSelectionState.selectedRowIds || [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!rowIds.length) throw new Error('Selecione pelo menos uma linha elegível antes de aplicar a decisão em lote.');
+
+    incomingCatalogRunSelectionState.busy = true;
+    refreshIncomingCatalogImportUi();
+    let lastError = null;
+    const attempts = [
+      { p_row_ids: rowIds, p_editorial_decision: decision, p_reviewed_by: reviewerId },
+      { p_row_ids: rowIds, p_editorial_decision: decision, p_reviewed_by_user_id: reviewerId },
+      { row_ids: rowIds, editorial_decision: decision, reviewed_by: reviewerId },
+      { row_ids: rowIds, editorial_decision: decision, reviewed_by_user_id: reviewerId },
+    ];
+    try {
+      for (const params of attempts) {
+        try {
+          await callIncomingCatalogIngestRpc('fn_bulk_set_partner_catalog_editorial_decision', params, { timeoutMs: 30000 });
+          incomingCatalogRunSelectionState.selectedRowIds = new Set();
+          return { count: rowIds.length };
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      for (const rowId of rowIds) {
+        await setIncomingCatalogEditorialDecision(rowId, decision);
+      }
+      incomingCatalogRunSelectionState.selectedRowIds = new Set();
+      return { count: rowIds.length, fallback: true };
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(error?.message || lastError?.message || 'Não consegui aplicar a decisão em lote.');
+    } finally {
+      incomingCatalogRunSelectionState.busy = false;
+    }
+  }
+
+  function buildSuggestedIncomingDraftBatchName() {
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    const sourceLabel = extractIncomingRunSourceLabel(incomingCatalogImportState.lastSummary || {}).replace(/^Fonte:\s*/i, '').trim();
+    if (sourceLabel && runId) return `Importação parceira · ${sourceLabel} · run #${runId}`;
+    if (runId) return `Importação parceira · run #${runId}`;
+    return 'Importação parceira';
+  }
+
+  function syncIncomingCatalogDraftCreationRun(runId = '') {
+    const normalizedRunId = normalizeInlineWhitespace(runId || '');
+    if (incomingCatalogDraftCreationState.runId === normalizedRunId) return;
+    incomingCatalogDraftCreationState = {
+      runId: normalizedRunId,
+      busy: false,
+      batchId: '',
+      batchName: '',
+      rowsPassed: 0,
+      draftsCreated: 0,
+      draftIds: [],
+      lastError: '',
+    };
+    if (partnerDraftBatchNameEl && !normalizeInlineWhitespace(partnerDraftBatchNameEl.value || '')) {
+      partnerDraftBatchNameEl.placeholder = buildSuggestedIncomingDraftBatchName();
+    }
+  }
+
+  function getIncomingCatalogDraftEligibleItems() {
+    return (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : []).filter((item) => {
+      const rowId = getIncomingPartnerRowId(item);
+      const decision = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase();
+      return Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item) && ['accept_new', 'accept_duplicate'].includes(decision);
+    });
+  }
+
+  function collectIncomingCatalogDraftIds(value, seen = new Set()) {
+    const draftIds = [];
+    const visit = (node) => {
+      if (node == null) return;
+      if (Array.isArray(node)) {
+        node.forEach(visit);
+        return;
+      }
+      if (typeof node === 'object') {
+        const directList = []
+          .concat(node.draft_ids || [])
+          .concat(node.created_draft_ids || [])
+          .concat(node.book_draft_ids || []);
+        directList.forEach((item) => {
+          const numeric = Number(item);
+          if (Number.isFinite(numeric) && numeric > 0 && !seen.has(numeric)) {
+            seen.add(numeric);
+            draftIds.push(numeric);
+          }
+        });
+        Object.values(node).forEach(visit);
+        return;
+      }
+      const numeric = Number(node);
+      if (Number.isFinite(numeric) && numeric > 0 && !seen.has(numeric)) {
+        seen.add(numeric);
+        draftIds.push(numeric);
+      }
+    };
+    visit(value);
+    return draftIds;
+  }
+
+  function extractIncomingCatalogDraftResultSummary(result, fallbackBatchId, fallbackEligibleCount) {
+    const batchId = extractRpcNumericId(result, ['batch_id', 'p_batch_id', 'created_batch_id', 'new_batch_id']) || Number(fallbackBatchId || 0) || 0;
+    const draftIds = collectIncomingCatalogDraftIds(result);
+    const numericFrom = (...keys) => {
+      const value = extractRpcNumericId(result, keys);
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    };
+    const draftsCreated = numericFrom('drafts_created', 'created_drafts', 'draft_count', 'created_count', 'drafts_count') || draftIds.length || Number(fallbackEligibleCount || 0) || 0;
+    const rowsPassed = numericFrom('rows_passed', 'approved_rows', 'eligible_rows', 'processed_rows', 'rows_converted', 'row_count', 'count') || Number(fallbackEligibleCount || 0) || draftsCreated;
+    return { batchId, draftIds, draftsCreated, rowsPassed };
+  }
+
+  async function createIncomingCatalogBatch(batchName, batchNotes) {
+    const payload = {
+      name: batchName,
+      notes: normalizeInlineWhitespace(batchNotes || '') || null,
+      created_by: getCurrentActorId(),
+    };
+    const { data, error } = await supabase.from('catalog_batches').insert(payload).select('id,name,notes').single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function createIncomingCatalogDraftsFromRun(runId, batchId) {
+    const numericRunId = Number(runId);
+    const numericBatchId = Number(batchId);
+    const actorId = getCurrentActorId();
+    const attempts = [
+      { p_run_id: numericRunId, p_batch_id: numericBatchId, p_created_by: actorId },
+      { p_run_id: numericRunId, p_batch_id: numericBatchId, p_requested_by: actorId },
+      { p_run_id: numericRunId, p_batch_id: numericBatchId, p_actor_id: actorId },
+      { run_id: numericRunId, batch_id: numericBatchId, created_by: actorId },
+      { run_id: numericRunId, batch_id: numericBatchId, requested_by: actorId },
+      { p_run_id: numericRunId, p_batch_id: numericBatchId },
+      { run_id: numericRunId, batch_id: numericBatchId },
+    ];
+    let lastError = null;
+    for (const params of attempts) {
+      try {
+        return await callIncomingCatalogIngestRpc('fn_bulk_create_book_drafts_from_run', params, { timeoutMs: 45000 });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(lastError?.message || 'Não consegui criar os rascunhos normais deste tratamento.');
+  }
+
+  function renderIncomingCatalogDraftCreationSummary() {
+    if (!partnerDraftCreationSummaryEl) return;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    if (!runId) {
+      partnerDraftCreationSummaryEl.innerHTML = '<strong>Saída normal:</strong> abra primeiro um tratamento e revise as decisões antes de criar lote e rascunhos.';
+      if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      return;
+    }
+
+    syncIncomingCatalogDraftCreationRun(runId);
+    const eligibleItems = getIncomingCatalogDraftEligibleItems();
+    const lockedCount = (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : []).filter((item) => isIncomingPartnerRowLockedForEditorialDecision(item)).length;
+    const suggestedName = buildSuggestedIncomingDraftBatchName();
+    if (partnerDraftBatchNameEl && !normalizeInlineWhitespace(partnerDraftBatchNameEl.value || '')) {
+      partnerDraftBatchNameEl.placeholder = suggestedName;
+    }
+
+    if (incomingCatalogDraftCreationState.busy) {
+      partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> criando lote e rascunhos normais a partir das decisões já aprovadas…`;
+      if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      return;
+    }
+
+    if (incomingCatalogDraftCreationState.lastError) {
+      partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(incomingCatalogDraftCreationState.lastError)}`;
+      if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = !eligibleItems.length;
+      return;
+    }
+
+    if (incomingCatalogDraftCreationState.batchId) {
+      const draftsCreated = Number(incomingCatalogDraftCreationState.draftsCreated || 0);
+      const rowsPassed = Number(incomingCatalogDraftCreationState.rowsPassed || 0);
+      partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> lote #${sanitize(incomingCatalogDraftCreationState.batchId)} criado. ${sanitize(rowsPassed)} linha(s) passaram e ${sanitize(draftsCreated)} rascunho(s) normal(is) foram gerados. Continue agora pela fila editorial ou pelos lotes.`;
+      if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = !eligibleItems.length;
+      return;
+    }
+
+    if (!eligibleItems.length) {
+      partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ainda não há linhas elegíveis para gerar rascunhos. Aceite novo ou aceite duplicado nas linhas que devem seguir para o workflow normal.${lockedCount ? ` ${sanitize(lockedCount)} já saíram para rascunho normal.` : ''}`;
+      if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      return;
+    }
+
+    const duplicateCount = eligibleItems.filter((item) => normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase() === 'accept_duplicate').length;
+    const newCount = eligibleItems.length - duplicateCount;
+    partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(eligibleItems.length)} linha(s) pronta(s) para virar rascunho normal (${sanitize(newCount)} novo(s), ${sanitize(duplicateCount)} duplicado(s) aceito(s)). O lote sugerido é “${sanitize(suggestedName)}”.`;
+    if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = false;
+  }
+
   function renderIncomingCatalogRunDetail() {
     if (!partnerRunDetailWrapEl || !partnerRunDetailSummaryEl) return;
     syncIncomingCatalogRunSelection();
@@ -16546,6 +16883,7 @@ function initPartnerProbeUi() {
   async function readIncomingCatalogRunDetail(runId) {
     const numericRunId = Number(runId);
     incomingCatalogRunDetailState.runId = Number.isFinite(numericRunId) && numericRunId > 0 ? String(numericRunId) : '';
+    syncIncomingCatalogDraftCreationRun(incomingCatalogRunDetailState.runId);
     if (!Number.isFinite(numericRunId) || numericRunId <= 0) {
       incomingCatalogRunDetailState.items = [];
       incomingCatalogRunDetailState.lastError = '';
@@ -16745,6 +17083,7 @@ function initPartnerProbeUi() {
     renderIncomingCatalogImportStepCards();
     renderIncomingCatalogRunDetail();
     renderIncomingCatalogRunBulkSummary();
+    renderIncomingCatalogDraftCreationSummary();
     const disableCreate = incomingCatalogImportState.busy || !file;
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
     const disableBulk = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
@@ -16759,6 +17098,10 @@ function initPartnerProbeUi() {
     if (partnerBulkAcceptNewBtn) partnerBulkAcceptNewBtn.disabled = disableBulk || !selectedCount;
     if (partnerBulkAcceptDuplicateBtn) partnerBulkAcceptDuplicateBtn.disabled = disableBulk || !selectedCount;
     if (partnerBulkRejectBtn) partnerBulkRejectBtn.disabled = disableBulk || !selectedCount;
+    if (partnerDraftBatchNameEl) partnerDraftBatchNameEl.disabled = incomingCatalogDraftCreationState.busy;
+    if (partnerDraftBatchNotesEl) partnerDraftBatchNotesEl.disabled = incomingCatalogDraftCreationState.busy;
+    if (partnerOpenQueueFromPartnerBtn) partnerOpenQueueFromPartnerBtn.disabled = incomingCatalogDraftCreationState.busy;
+    if (partnerOpenBatchesFromPartnerBtn) partnerOpenBatchesFromPartnerBtn.disabled = incomingCatalogDraftCreationState.busy;
   }
 
   async function sha256HexForIncomingCatalogFile(file) {
@@ -19854,6 +20197,74 @@ ${decisionSummary}` : '',
     } finally {
       refreshIncomingCatalogImportUi();
     }
+  });
+
+  partnerDraftBatchNameEl?.addEventListener('input', () => {
+    incomingCatalogDraftCreationState.batchName = normalizeInlineWhitespace(partnerDraftBatchNameEl.value || '');
+    incomingCatalogDraftCreationState.lastError = '';
+    renderIncomingCatalogDraftCreationSummary();
+  });
+
+  partnerDraftBatchNotesEl?.addEventListener('input', () => {
+    incomingCatalogDraftCreationState.lastError = '';
+    renderIncomingCatalogDraftCreationSummary();
+  });
+
+  partnerCreateBatchDraftsBtn?.addEventListener('click', async () => {
+    const runId = getIncomingCatalogImportRunId();
+    if (!runId) {
+      setPartnerProbeMessage('Abra primeiro um tratamento válido antes de criar lote e rascunhos.', 'warn');
+      return;
+    }
+    const eligibleItems = getIncomingCatalogDraftEligibleItems();
+    if (!eligibleItems.length) {
+      setPartnerProbeMessage('Ainda não há linhas elegíveis para criar rascunhos normais neste tratamento.', 'warn');
+      refreshIncomingCatalogImportUi();
+      return;
+    }
+    let createdBatch = null;
+    try {
+      incomingCatalogDraftCreationState.busy = true;
+      incomingCatalogDraftCreationState.lastError = '';
+      refreshIncomingCatalogImportUi();
+      const batchName = normalizeInlineWhitespace(partnerDraftBatchNameEl?.value || '') || buildSuggestedIncomingDraftBatchName();
+      const batchNotes = normalizeInlineWhitespace(partnerDraftBatchNotesEl?.value || '') || `Retomada local do tratamento parceiro #${runId}.`;
+      createdBatch = await createIncomingCatalogBatch(batchName, batchNotes);
+      const rpcResult = await createIncomingCatalogDraftsFromRun(runId, createdBatch?.id);
+      const summary = extractIncomingCatalogDraftResultSummary(rpcResult, createdBatch?.id, eligibleItems.length);
+      incomingCatalogDraftCreationState.batchId = String(summary.batchId || createdBatch?.id || '');
+      incomingCatalogDraftCreationState.batchName = batchName;
+      incomingCatalogDraftCreationState.rowsPassed = Number(summary.rowsPassed || 0);
+      incomingCatalogDraftCreationState.draftsCreated = Number(summary.draftsCreated || 0);
+      incomingCatalogDraftCreationState.draftIds = Array.isArray(summary.draftIds) ? summary.draftIds : [];
+      incomingCatalogDraftCreationState.lastError = '';
+      await Promise.all([loadBatches(), loadQueue(), readIncomingCatalogRunDetail(runId), readIncomingCatalogRunHistory(), readIncomingCatalogRunSummary(runId)]);
+      updateStats();
+      try {
+        const publishBatchSelect = document.getElementById('publishBatchId');
+        if (publishBatchSelect && incomingCatalogDraftCreationState.batchId) publishBatchSelect.value = String(incomingCatalogDraftCreationState.batchId);
+      } catch (error) {
+        console.warn('Não consegui posicionar o lote recém-criado na aba de lotes.', error);
+      }
+      setPartnerProbeMessage(`Lote #${incomingCatalogDraftCreationState.batchId || createdBatch?.id} criado e ${incomingCatalogDraftCreationState.draftsCreated} rascunho(s) normal(is) gerado(s) a partir deste tratamento.`, 'ok');
+    } catch (error) {
+      const baseMessage = error?.message || 'Não consegui criar lote e rascunhos normais nesta superfície.';
+      incomingCatalogDraftCreationState.lastError = createdBatch?.id
+        ? `O lote #${createdBatch.id} foi criado, mas a geração dos rascunhos falhou: ${baseMessage}`
+        : baseMessage;
+      setPartnerProbeMessage(incomingCatalogDraftCreationState.lastError, 'error');
+    } finally {
+      incomingCatalogDraftCreationState.busy = false;
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  partnerOpenQueueFromPartnerBtn?.addEventListener('click', () => {
+    setTab('queuePanel');
+  });
+
+  partnerOpenBatchesFromPartnerBtn?.addEventListener('click', () => {
+    setTab('batchesPanel');
   });
 
   incomingCreateDispatchBtn?.addEventListener('click', async () => {
