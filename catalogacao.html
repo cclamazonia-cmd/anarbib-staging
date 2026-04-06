@@ -16188,6 +16188,27 @@ function initPartnerProbeUi() {
     return labels[normalized] || normalized.replace(/_/g, ' ');
   }
 
+
+  function formatIncomingResponsibilitySignalLabel(value = '') {
+    const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+    if (!normalized) return 'Responsabilidade não relida';
+    const labels = {
+      exact: 'Responsabilidade compatível',
+      compatible: 'Responsabilidade compatível',
+      match: 'Responsabilidade compatível',
+      true: 'Responsabilidade compatível',
+      partial: 'Responsabilidade parcialmente compatível',
+      close: 'Responsabilidade próxima',
+      weak: 'Responsabilidade próxima',
+      false: 'Responsabilidade divergente',
+      mismatch: 'Responsabilidade divergente',
+      divergent: 'Responsabilidade divergente',
+      none: 'Responsabilidade não relida',
+      unknown: 'Responsabilidade não relida',
+    };
+    return labels[normalized] || normalized.replace(/_/g, ' ');
+  }
+
   function parseIncomingPartnerDetails(value) {
     if (!value) return null;
     if (typeof value === 'object') return value;
@@ -16407,18 +16428,20 @@ function initPartnerProbeUi() {
     partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ${items.length} linha(s) relida(s). ${counts.novo} novo(s), ${counts.forte} duplicado(s) forte(s), ${counts.edicao} outra(s) edição(ões) provável(is) e ${counts.ambiguo} caso(s) ambíguo(s).`;
 
     const rowsHtml = items.map((item) => {
+      const rowKey = getIncomingPartnerRowKey(item);
       const rowNumber = getIncomingPartnerRowNumber(item);
       const category = describeIncomingPartnerRowCategory(item);
       const duplicateSignal = formatIncomingDuplicateSignalLabel(pickIncomingPartnerValue(item, ['duplicate_signal', 'match_duplicate_signal']));
-      const responsibilityMatchRaw = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['responsibility_match'])).toLowerCase();
+      const responsibilityRaw = pickIncomingPartnerValue(item, ['responsibility_match_mode', 'responsibility_match']);
       const responsibilityMode = pickIncomingPartnerValue(item, ['responsibility_match_mode']);
-      const responsibilityLabel = responsibilityMatchRaw === 'true' ? 'Responsabilidade compatível' : (responsibilityMatchRaw === 'false' ? 'Responsabilidade divergente' : 'Responsabilidade não relida');
+      const responsibilityLabel = formatIncomingResponsibilitySignalLabel(responsibilityRaw);
       const matchStatus = formatIncomingMatchStatusLabel(pickIncomingPartnerValue(item, ['match_status']));
-      const editorialDecision = formatIncomingEditorialDecisionLabel(pickIncomingPartnerValue(item, ['editorial_decision']));
-      const reviewStatus = formatIncomingReviewStatusLabel(pickIncomingPartnerValue(item, ['review_status']));
+      const editorialDecision = formatIncomingEditorialDecisionLabel(pickIncomingPartnerValue(item, ['editorial_decision']) || 'pending');
+      const reviewStatus = formatIncomingReviewStatusLabel(pickIncomingPartnerValue(item, ['review_status']) || 'pending');
+      const decisionLocked = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['review_status'])).toLowerCase() === 'draft_created';
       return `
         <tr>
-          <td><strong>${sanitize(rowNumber != null ? String(rowNumber) : '—')}</strong><div class="small">${sanitize(item.__rowKey || 'Linha sem chave')}</div></td>
+          <td><strong>${sanitize(rowNumber != null ? String(rowNumber) : '—')}</strong><div class="small">${sanitize(item.__rowKey || rowKey || 'Linha sem chave')}</div></td>
           <td>${buildIncomingPartnerSourceStack(item)}</td>
           <td>${buildIncomingPartnerTopMatch(item)}</td>
           <td>
@@ -16436,6 +16459,13 @@ function initPartnerProbeUi() {
               <div class="catalog-layer-line is-muted">Revisão: ${sanitize(reviewStatus)}</div>
             </div>
           </td>
+          <td>
+            <div class="row-actions" style="justify-content:flex-start;">
+              <button type="button" class="button small secondary" data-row-decision="accept_new" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Aceitar novo</button>
+              <button type="button" class="button small secondary" data-row-decision="accept_duplicate" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Aceitar duplicado</button>
+              <button type="button" class="button small ghost" data-row-decision="reject" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Rejeitar</button>
+            </div>
+          </td>
         </tr>`;
     }).join('');
 
@@ -16448,6 +16478,7 @@ function initPartnerProbeUi() {
             <th>Top match</th>
             <th>Sinais</th>
             <th>Situação editorial</th>
+            <th>Decisão</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
@@ -16625,6 +16656,38 @@ function initPartnerProbeUi() {
     await readIncomingCatalogRunSummary(numericRunId);
     await readIncomingCatalogRunDetail(numericRunId);
     setPartnerProbeMessage(`Tratamento #${numericRunId} aberto nesta superfície para continuação da revisão.`, 'ok');
+  }
+
+
+  async function setIncomingCatalogEditorialDecision(rowId, editorialDecision) {
+    const numericRowId = Number(rowId);
+    if (!Number.isFinite(numericRowId) || numericRowId <= 0) {
+      throw new Error('Linha inválida para decisão editorial.');
+    }
+    const decision = String(editorialDecision || '').trim().toLowerCase();
+    if (!['accept_new', 'accept_duplicate', 'reject'].includes(decision)) {
+      throw new Error('Decisão editorial inválida nesta etapa.');
+    }
+    const reviewerId = state.session?.user?.id || state.profile?.user_id || null;
+    if (!reviewerId) {
+      throw new Error('Sessão bibliotecária não reconhecida para registrar esta decisão.');
+    }
+    const attempts = [
+      { p_row_id: numericRowId, p_editorial_decision: decision, p_reviewed_by: reviewerId },
+      { p_row_id: numericRowId, p_editorial_decision: decision, p_reviewed_by_user_id: reviewerId },
+      { row_id: numericRowId, editorial_decision: decision, reviewed_by: reviewerId },
+      { row_id: numericRowId, editorial_decision: decision, reviewed_by_user_id: reviewerId },
+    ];
+    let lastError = null;
+    for (const params of attempts) {
+      try {
+        await callIncomingCatalogIngestRpc('fn_set_partner_catalog_editorial_decision', params, { timeoutMs: 20000 });
+        return true;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(lastError?.message || 'Não consegui registrar a decisão editorial desta linha.');
   }
 
   function refreshIncomingCatalogImportUi() {
@@ -19602,6 +19665,32 @@ ${decisionSummary}` : '',
       setPartnerProbeMessage(`Detalhe do tratamento #${runId} atualizado nesta superfície.`, 'ok');
     } catch (error) {
       setPartnerProbeMessage(error?.message || 'Não consegui atualizar o detalhe deste tratamento.', 'error');
+    }
+  });
+
+
+  partnerRunDetailWrapEl?.addEventListener('click', async (event) => {
+    const button = event.target?.closest?.('[data-row-decision][data-row-id]');
+    if (!button) return;
+    const rowId = Number(button.getAttribute('data-row-id') || 0);
+    const decision = String(button.getAttribute('data-row-decision') || '').trim().toLowerCase();
+    if (!Number.isFinite(rowId) || rowId <= 0 || !decision) return;
+    const runId = getIncomingCatalogImportRunId();
+    if (!runId) {
+      setPartnerProbeMessage('Abra primeiro um tratamento válido antes de decidir linha por linha.', 'warn');
+      return;
+    }
+    button.disabled = true;
+    try {
+      await setIncomingCatalogEditorialDecision(rowId, decision);
+      await readIncomingCatalogRunDetail(runId);
+      await readIncomingCatalogRunHistory();
+      await readIncomingCatalogRunSummary(runId);
+      setPartnerProbeMessage(`Decisão editorial registrada para a linha ${rowId}: ${formatIncomingEditorialDecisionLabel(decision)}.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(`Não consegui registrar a decisão desta linha: ${error?.message || error}`, 'error');
+    } finally {
+      refreshIncomingCatalogImportUi();
     }
   });
 
