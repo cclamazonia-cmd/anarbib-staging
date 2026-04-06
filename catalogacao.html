@@ -3725,6 +3725,22 @@
           <div id="partnerRunHistoryWrap" class="table-wrap"></div>
         </div>
 
+        <div class="card" id="partnerRunDetailCard" style="margin-bottom:16px;">
+          <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
+            <div>
+              <h4 style="margin:0 0 6px;">Detalhe de um tratamento</h4>
+              <p class="hint" style="margin:0;">Aqui aparecem as linhas importadas, o top match relido pela base, os sinais principais e a situação editorial atual, sem esconder nenhuma decisão automática.</p>
+            </div>
+            <div class="row-actions">
+              <button id="partnerRefreshRunDetailBtn" class="button secondary" type="button">Atualizar detalhe</button>
+            </div>
+          </div>
+          <div id="partnerRunDetailSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.</div>
+          <div id="partnerRunDetailWrap" class="table-wrap">
+            <div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>
+          </div>
+        </div>
+
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
           <h4>Governança e comparação (bloco secundário)</h4>
           <p class="hint" style="margin:0 0 12px;">
@@ -7649,7 +7665,17 @@
       } else if (activeTab === 'catalogPanel') {
         await loadCatalog();
       } else if (activeTab === 'partnerCatalogsPanel') {
-        // O módulo de parceiros externos tem seus próprios controles locais e leitura política dedicada.
+        await readIncomingCatalogRunHistory();
+        const activeRunId = getIncomingCatalogImportRunId();
+        if (activeRunId) {
+          await readIncomingCatalogRunDetail(activeRunId);
+        } else {
+          incomingCatalogRunDetailState.runId = '';
+          incomingCatalogRunDetailState.items = [];
+          incomingCatalogRunDetailState.lastError = '';
+          incomingCatalogRunDetailState.loading = false;
+          renderIncomingCatalogRunDetail();
+        }
       }
 
       updateStats();
@@ -15536,6 +15562,9 @@ function initPartnerProbeUi() {
   const partnerRunHistoryWrapEl = document.getElementById('partnerRunHistoryWrap');
   const partnerRunHistorySummaryEl = document.getElementById('partnerRunHistorySummary');
   const partnerRefreshRunHistoryBtn = document.getElementById('partnerRefreshRunHistoryBtn');
+  const partnerRunDetailWrapEl = document.getElementById('partnerRunDetailWrap');
+  const partnerRunDetailSummaryEl = document.getElementById('partnerRunDetailSummary');
+  const partnerRefreshRunDetailBtn = document.getElementById('partnerRefreshRunDetailBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -15617,6 +15646,12 @@ function initPartnerProbeUi() {
     busy: false,
   };
   let incomingCatalogRunHistoryState = {
+    items: [],
+    loading: false,
+    lastError: '',
+  };
+  let incomingCatalogRunDetailState = {
+    runId: '',
     items: [],
     loading: false,
     lastError: '',
@@ -16101,6 +16136,381 @@ function initPartnerProbeUi() {
     return date.toLocaleString('pt-BR');
   }
 
+  function formatIncomingEditorialDecisionLabel(value) {
+    const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+    if (!normalized) return 'Pendente';
+    const labels = {
+      pending: 'Pendente',
+      accept_new: 'Aceitar como novo',
+      accept_duplicate: 'Aceitar como duplicado',
+      reject: 'Rejeitar',
+      draft_created: 'Rascunho criado',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+    };
+    return labels[normalized] || normalized.replace(/_/g, ' ');
+  }
+
+  function formatIncomingReviewStatusLabel(value) {
+    const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+    if (!normalized) return 'Pendente';
+    const labels = {
+      pending: 'Pendente',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      draft_created: 'Rascunho criado',
+    };
+    return labels[normalized] || normalized.replace(/_/g, ' ');
+  }
+
+  function formatIncomingMatchStatusLabel(value) {
+    const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+    if (!normalized) return 'Sem leitura';
+    const labels = {
+      unreviewed: 'Sem revisão',
+      new_record: 'Novo registro',
+      possible_duplicate: 'Duplicado possível',
+      matched_book: 'Livro publicado já encontrado',
+      matched_draft: 'Rascunho já encontrado',
+      manual_decision: 'Decisão manual',
+    };
+    return labels[normalized] || normalized.replace(/_/g, ' ');
+  }
+
+  function formatIncomingDuplicateSignalLabel(value) {
+    const normalized = normalizeInlineWhitespace(value || '').toLowerCase();
+    if (!normalized) return 'Sem sinal';
+    const labels = {
+      strong_duplicate: 'Duplicado forte',
+      weak_duplicate: 'Duplicado fraco',
+      possible_other_edition: 'Outra edição provável',
+    };
+    return labels[normalized] || normalized.replace(/_/g, ' ');
+  }
+
+  function parseIncomingPartnerDetails(value) {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    if (typeof value !== 'string') return null;
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function pickIncomingPartnerValue(record, keys = []) {
+    const sources = [
+      record || null,
+      record?.source_row || null,
+      record?.match_row || null,
+      record?.workflow_row || null,
+      parseIncomingPartnerDetails(record?.details),
+      parseIncomingPartnerDetails(record?.match_details),
+      parseIncomingPartnerDetails(record?.workflow_details),
+      parseIncomingPartnerDetails(record?.raw_row_json),
+      parseIncomingPartnerDetails(record?.source_payload),
+      parseIncomingPartnerDetails(record?.payload),
+    ].filter(Boolean);
+
+    for (const source of sources) {
+      for (const key of keys) {
+        if (!key) continue;
+        const value = source?.[key];
+        if (value == null) continue;
+        if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+        const textValue = normalizeInlineWhitespace(String(value || ''));
+        if (textValue) return textValue;
+      }
+    }
+    return '';
+  }
+
+  function getIncomingPartnerRowKey(record) {
+    const candidates = [
+      record?.row_id,
+      record?.staging_row_id,
+      record?.import_row_id,
+      record?.row_number,
+      record?.line_number,
+      record?.source_row_number,
+      record?.id,
+    ];
+    for (const candidate of candidates) {
+      const value = normalizeInlineWhitespace(String(candidate ?? ''));
+      if (value) return value;
+    }
+    return '';
+  }
+
+  function getIncomingPartnerRowNumber(record) {
+    const candidates = [
+      record?.row_number,
+      record?.line_number,
+      record?.source_row_number,
+      record?.original_row_number,
+      record?.row_id,
+      record?.staging_row_id,
+      record?.import_row_id,
+    ];
+    for (const candidate of candidates) {
+      const numeric = Number(candidate);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    }
+    return null;
+  }
+
+  function mergeIncomingPartnerRows(baseRows = [], matchRows = [], workflowRows = []) {
+    const registry = new Map();
+
+    function apply(records, bucket) {
+      records.forEach((record, index) => {
+        const key = getIncomingPartnerRowKey(record) || `${bucket}:${index + 1}`;
+        const current = registry.get(key) || { __rowKey: key, source_row: null, match_row: null, workflow_row: null };
+        if (bucket === 'base') current.source_row = Object.assign({}, current.source_row || {}, record);
+        if (bucket === 'match') current.match_row = Object.assign({}, current.match_row || {}, record);
+        if (bucket === 'workflow') current.workflow_row = Object.assign({}, current.workflow_row || {}, record);
+        registry.set(key, current);
+      });
+    }
+
+    apply(Array.isArray(baseRows) ? baseRows : [], 'base');
+    apply(Array.isArray(matchRows) ? matchRows : [], 'match');
+    apply(Array.isArray(workflowRows) ? workflowRows : [], 'workflow');
+
+    return Array.from(registry.values())
+      .map((entry) => ({
+        __rowKey: entry.__rowKey,
+        ...(entry.source_row || {}),
+        ...(entry.match_row || {}),
+        ...(entry.workflow_row || {}),
+        source_row: entry.source_row || {},
+        match_row: entry.match_row || {},
+        workflow_row: entry.workflow_row || {},
+      }))
+      .sort((left, right) => {
+        const leftNumber = getIncomingPartnerRowNumber(left) ?? Number.MAX_SAFE_INTEGER;
+        const rightNumber = getIncomingPartnerRowNumber(right) ?? Number.MAX_SAFE_INTEGER;
+        if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+        return String(left.__rowKey || '').localeCompare(String(right.__rowKey || ''), 'pt-BR');
+      });
+  }
+
+  function describeIncomingPartnerRowCategory(record) {
+    const duplicateSignal = normalizeInlineWhitespace(
+      pickIncomingPartnerValue(record, ['duplicate_signal', 'match_duplicate_signal'])
+    ).toLowerCase();
+    const matchStatus = normalizeInlineWhitespace(
+      pickIncomingPartnerValue(record, ['match_status'])
+    ).toLowerCase();
+
+    if (duplicateSignal === 'strong_duplicate') {
+      return { label: 'Duplicado forte', note: 'Sinais fortes de duplicação já apareceram nesta linha.' };
+    }
+    if (duplicateSignal === 'possible_other_edition') {
+      return { label: 'Outra edição provável', note: 'A base sugere outra edição provável, mas a revisão humana continua necessária.' };
+    }
+    if (matchStatus === 'new_record') {
+      return { label: 'Novo registro', note: 'Sem duplicação dominante nesta superfície.' };
+    }
+    return { label: 'Caso ambíguo', note: 'A linha ainda pede decisão editorial humana antes da saída para lote e rascunho.' };
+  }
+
+  function buildIncomingPartnerSourceStack(record) {
+    const title = pickIncomingPartnerValue(record, ['title', 'raw_title', 'source_title', 'import_title']);
+    const subtitle = pickIncomingPartnerValue(record, ['subtitle', 'raw_subtitle', 'source_subtitle']);
+    const author = pickIncomingPartnerValue(record, ['formatted_authors', 'authors_display', 'authors', 'raw_author', 'author', 'creator']);
+    const year = pickIncomingPartnerValue(record, ['year', 'publication_year', 'raw_year']);
+    const publisher = pickIncomingPartnerValue(record, ['publisher', 'raw_publisher', 'publisher_name']);
+    const place = pickIncomingPartnerValue(record, ['place', 'publication_place', 'raw_place']);
+    const isbn = pickIncomingPartnerValue(record, ['isbn', 'normalized_isbn']);
+    const issn = pickIncomingPartnerValue(record, ['issn', 'normalized_issn']);
+
+    const titleLine = normalizeInlineWhitespace([title, subtitle].filter(Boolean).join(': ')) || 'Linha sem título relido';
+    const meta = [author, year].filter(Boolean).join(' · ') || 'Responsabilidades ou data ainda não relidas';
+    const context = [publisher, place].filter(Boolean).join(' · ') || 'Sem editora ou local relidos nesta superfície';
+    const ids = [isbn ? `ISBN ${isbn}` : '', issn ? `ISSN ${issn}` : ''].filter(Boolean).join(' · ') || 'Sem identificador relido';
+
+    return `
+      <div class="catalog-layer-stack">
+        <div class="catalog-layer-title">${sanitize(titleLine)}</div>
+        <div class="catalog-layer-line is-muted">${sanitize(meta)}</div>
+        <div class="catalog-layer-line">${sanitize(context)}</div>
+        <div class="catalog-layer-line is-muted">${sanitize(ids)}</div>
+      </div>`;
+  }
+
+  function buildIncomingPartnerTopMatch(record) {
+    const title = pickIncomingPartnerValue(record, [
+      'matched_title', 'match_title', 'candidate_title', 'best_match_title', 'book_title', 'draft_title', 'title'
+    ]);
+    const author = pickIncomingPartnerValue(record, [
+      'matched_author', 'match_author', 'candidate_author', 'best_match_author', 'book_author', 'draft_author', 'author'
+    ]);
+    const year = pickIncomingPartnerValue(record, [
+      'matched_year', 'match_year', 'candidate_year', 'best_match_year', 'book_year', 'draft_year', 'year'
+    ]);
+    const target = pickIncomingPartnerValue(record, [
+      'matched_kind', 'match_target_kind', 'candidate_kind', 'matched_target_label', 'match_target_label', 'target_label'
+    ]);
+    const mode = pickIncomingPartnerValue(record, ['match_mode', 'best_match_mode']);
+    const titleLine = title || 'Sem top match dominante relido';
+    const meta = [author, year].filter(Boolean).join(' · ') || 'Responsabilidades ou data do top match ainda não relidas';
+    const context = [target || formatIncomingMatchStatusLabel(pickIncomingPartnerValue(record, ['match_status'])), mode].filter(Boolean).join(' · ') || 'Sem qualificação do top match';
+    return `
+      <div class="catalog-layer-stack">
+        <div class="catalog-layer-title">${sanitize(titleLine)}</div>
+        <div class="catalog-layer-line is-muted">${sanitize(meta)}</div>
+        <div class="catalog-layer-line">${sanitize(context)}</div>
+      </div>`;
+  }
+
+  function renderIncomingCatalogRunDetail() {
+    if (!partnerRunDetailWrapEl || !partnerRunDetailSummaryEl) return;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    const items = Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [];
+
+    if (!runId) {
+      partnerRunDetailSummaryEl.innerHTML = '<strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.';
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>';;
+      return;
+    }
+
+    if (incomingCatalogRunDetailState.loading) {
+      partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> carregando linhas importadas, top matches e sinais…`;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';;
+      return;
+    }
+
+    if (incomingCatalogRunDetailState.lastError) {
+      partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ainda não consegui reler as linhas deste tratamento. ${sanitize(incomingCatalogRunDetailState.lastError)}`;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Detalhe indisponível por enquanto. Tente atualizar novamente.</div>';;
+      return;
+    }
+
+    if (!items.length) {
+      partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> nenhuma linha relida ainda nesta superfície.`;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Nenhuma linha relida ainda para este tratamento.</div>';;
+      return;
+    }
+
+    const counts = { novo: 0, forte: 0, edicao: 0, ambiguo: 0 };
+    items.forEach((item) => {
+      const label = describeIncomingPartnerRowCategory(item).label;
+      if (label === 'Novo registro') counts.novo += 1;
+      else if (label === 'Duplicado forte') counts.forte += 1;
+      else if (label === 'Outra edição provável') counts.edicao += 1;
+      else counts.ambiguo += 1;
+    });
+
+    partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ${items.length} linha(s) relida(s). ${counts.novo} novo(s), ${counts.forte} duplicado(s) forte(s), ${counts.edicao} outra(s) edição(ões) provável(is) e ${counts.ambiguo} caso(s) ambíguo(s).`;
+
+    const rowsHtml = items.map((item) => {
+      const rowNumber = getIncomingPartnerRowNumber(item);
+      const category = describeIncomingPartnerRowCategory(item);
+      const duplicateSignal = formatIncomingDuplicateSignalLabel(pickIncomingPartnerValue(item, ['duplicate_signal', 'match_duplicate_signal']));
+      const responsibilityMatchRaw = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['responsibility_match'])).toLowerCase();
+      const responsibilityMode = pickIncomingPartnerValue(item, ['responsibility_match_mode']);
+      const responsibilityLabel = responsibilityMatchRaw === 'true' ? 'Responsabilidade compatível' : (responsibilityMatchRaw === 'false' ? 'Responsabilidade divergente' : 'Responsabilidade não relida');
+      const matchStatus = formatIncomingMatchStatusLabel(pickIncomingPartnerValue(item, ['match_status']));
+      const editorialDecision = formatIncomingEditorialDecisionLabel(pickIncomingPartnerValue(item, ['editorial_decision']));
+      const reviewStatus = formatIncomingReviewStatusLabel(pickIncomingPartnerValue(item, ['review_status']));
+      return `
+        <tr>
+          <td><strong>${sanitize(rowNumber != null ? String(rowNumber) : '—')}</strong><div class="small">${sanitize(item.__rowKey || 'Linha sem chave')}</div></td>
+          <td>${buildIncomingPartnerSourceStack(item)}</td>
+          <td>${buildIncomingPartnerTopMatch(item)}</td>
+          <td>
+            <div class="catalog-layer-stack">
+              <div class="catalog-layer-title">${sanitize(category.label)}</div>
+              <div class="catalog-layer-line is-muted">${sanitize(category.note)}</div>
+              <div class="catalog-layer-line">${sanitize(duplicateSignal)}</div>
+              <div class="catalog-layer-line is-muted">${sanitize(responsibilityLabel)}${responsibilityMode ? ` · ${sanitize(responsibilityMode)}` : ''}</div>
+            </div>
+          </td>
+          <td>
+            <div class="catalog-layer-stack">
+              <div class="catalog-layer-title">${sanitize(matchStatus)}</div>
+              <div class="catalog-layer-line">Decisão editorial: ${sanitize(editorialDecision)}</div>
+              <div class="catalog-layer-line is-muted">Revisão: ${sanitize(reviewStatus)}</div>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    partnerRunDetailWrapEl.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Linha</th>
+            <th>Leitura importada</th>
+            <th>Top match</th>
+            <th>Sinais</th>
+            <th>Situação editorial</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
+  }
+
+  async function readIncomingCatalogRunViewRows(viewName, numericRunId) {
+    const attempts = [
+      () => supabase.schema('api').from(viewName).select('*').eq('run_id', numericRunId).limit(1500),
+      () => supabase.from(viewName).select('*').eq('run_id', numericRunId).limit(1500),
+    ];
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        const response = await withTimeout(Promise.resolve().then(attempt), `${viewName} read`, 8000);
+        if (!response?.error) return Array.isArray(response?.data) ? response.data : [];
+        lastError = response.error;
+        const message = String(response.error?.message || response.error?.details || response.error?.hint || response.error || '');
+        if (!/not found|schema|exposed|run_id|PGRST|column/i.test(message)) break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(lastError?.message || `Não consegui reler ${viewName}.`);
+  }
+
+  async function readIncomingCatalogRunDetail(runId) {
+    const numericRunId = Number(runId);
+    incomingCatalogRunDetailState.runId = Number.isFinite(numericRunId) && numericRunId > 0 ? String(numericRunId) : '';
+    if (!Number.isFinite(numericRunId) || numericRunId <= 0) {
+      incomingCatalogRunDetailState.items = [];
+      incomingCatalogRunDetailState.lastError = '';
+      incomingCatalogRunDetailState.loading = false;
+      renderIncomingCatalogRunDetail();
+      return [];
+    }
+
+    incomingCatalogRunDetailState.loading = true;
+    incomingCatalogRunDetailState.lastError = '';
+    renderIncomingCatalogRunDetail();
+
+    let baseRows = [];
+    let matchRows = [];
+    let workflowRows = [];
+    let lastError = null;
+
+    try {
+      [baseRows, matchRows, workflowRows] = await Promise.all([
+        readIncomingCatalogRunViewRows('partner_catalog_import_rows_ui', numericRunId),
+        readIncomingCatalogRunViewRows('partner_catalog_import_rows_match_ui', numericRunId),
+        readIncomingCatalogRunViewRows('partner_catalog_import_rows_workflow_ui', numericRunId),
+      ]);
+    } catch (error) {
+      lastError = error;
+    }
+
+    incomingCatalogRunDetailState.items = mergeIncomingPartnerRows(baseRows, matchRows, workflowRows);
+    incomingCatalogRunDetailState.lastError = lastError ? String(lastError?.message || lastError) : '';
+    incomingCatalogRunDetailState.loading = false;
+    renderIncomingCatalogRunDetail();
+    return incomingCatalogRunDetailState.items;
+  }
+
   function renderIncomingCatalogRunHistory() {
     if (!partnerRunHistoryWrapEl || !partnerRunHistorySummaryEl) return;
     const items = Array.isArray(incomingCatalogRunHistoryState.items) ? incomingCatalogRunHistoryState.items : [];
@@ -16210,8 +16620,10 @@ function initPartnerProbeUi() {
         if (storagePath) incomingImportStoragePathEl.value = storagePath;
       }
     }
+    incomingCatalogRunDetailState.runId = String(numericRunId);
     refreshIncomingCatalogImportUi();
     await readIncomingCatalogRunSummary(numericRunId);
+    await readIncomingCatalogRunDetail(numericRunId);
     setPartnerProbeMessage(`Tratamento #${numericRunId} aberto nesta superfície para continuação da revisão.`, 'ok');
   }
 
@@ -16226,11 +16638,13 @@ function initPartnerProbeUi() {
     if (incomingImportSummaryEl) incomingImportSummaryEl.value = buildIncomingCatalogImportSummaryText();
     if (incomingImportStatusEl) incomingImportStatusEl.innerHTML = buildIncomingCatalogImportStatusText();
     renderIncomingCatalogImportStepCards();
+    renderIncomingCatalogRunDetail();
     const disableCreate = incomingCatalogImportState.busy || !file;
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
     if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
     if (incomingDispatchRunBtn) incomingDispatchRunBtn.disabled = disableDispatch;
     if (incomingRefreshRunBtn) incomingRefreshRunBtn.disabled = disableDispatch;
+    if (partnerRefreshRunDetailBtn) partnerRefreshRunDetailBtn.disabled = disableDispatch || incomingCatalogRunDetailState.loading;
   }
 
   async function sha256HexForIncomingCatalogFile(file) {
@@ -16275,6 +16689,7 @@ function initPartnerProbeUi() {
         const response = await withTimeout(Promise.resolve().then(run), 'incoming import summary read', 6000);
         if (!response?.error && response?.data) {
           incomingCatalogImportState.lastSummary = response.data;
+          incomingCatalogRunDetailState.runId = String(numericRunId);
           refreshIncomingCatalogImportUi();
           await readIncomingCatalogRunHistory();
           return response.data;
@@ -16358,6 +16773,7 @@ function initPartnerProbeUi() {
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(createdRunId);
       await readIncomingCatalogRunHistory();
+      await readIncomingCatalogRunDetail(createdRunId);
       setPartnerProbeMessage(`Arquivo recebido. Tratamento lançado e enviado para leitura inicial até a revisão humana.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
@@ -16381,6 +16797,7 @@ function initPartnerProbeUi() {
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(runId, { attempts: 8, delayMs: 1600 });
       await readIncomingCatalogRunHistory();
+      await readIncomingCatalogRunDetail(runId);
       setPartnerProbeMessage(`Leitura deste tratamento relançada${forceReparse ? ' desde o arquivo bruto' : ''}.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
@@ -19159,6 +19576,12 @@ ${decisionSummary}` : '',
 
   incomingImportRunIdEl?.addEventListener('input', () => {
     incomingCatalogImportState.runId = normalizeInlineWhitespace(incomingImportRunIdEl.value || '');
+    incomingCatalogRunDetailState.runId = incomingCatalogImportState.runId;
+    if (!incomingCatalogImportState.runId) {
+      incomingCatalogRunDetailState.items = [];
+      incomingCatalogRunDetailState.lastError = '';
+      incomingCatalogRunDetailState.loading = false;
+    }
     refreshIncomingCatalogImportUi();
   });
 
@@ -19168,6 +19591,17 @@ ${decisionSummary}` : '',
       setPartnerProbeMessage('Lista recente de tratamentos atualizada.', 'ok');
     } catch (error) {
       setPartnerProbeMessage(error?.message || 'Não consegui atualizar a lista recente de tratamentos.', 'error');
+    }
+  });
+
+  partnerRefreshRunDetailBtn?.addEventListener('click', async () => {
+    try {
+      const runId = getIncomingCatalogImportRunId();
+      if (!runId) throw new Error('Abra ou informe primeiro um tratamento válido para reler o detalhe.');
+      await readIncomingCatalogRunDetail(runId);
+      setPartnerProbeMessage(`Detalhe do tratamento #${runId} atualizado nesta superfície.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui atualizar o detalhe deste tratamento.', 'error');
     }
   });
 
@@ -19208,6 +19642,7 @@ ${decisionSummary}` : '',
       const runId = getIncomingCatalogImportRunId();
       if (!runId) throw new Error('Informe primeiro um run válido para reler o resumo.');
       const summary = await readIncomingCatalogRunSummary(runId);
+      await readIncomingCatalogRunDetail(runId);
       setPartnerProbeMessage(summary ? `Resumo do run #${runId} relido desde a base.` : `Não encontrei um resumo legível para o run #${runId} nesta etapa.`, summary ? 'ok' : 'warn');
       refreshIncomingCatalogImportUi();
     } catch (error) {
