@@ -3711,6 +3711,20 @@
             </details>
         </div>
 
+        <div class="card" id="partnerRunHistoryCard" style="margin-bottom:16px;">
+          <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
+            <div>
+              <h4 style="margin:0 0 6px;">Tratamentos já lançados</h4>
+              <p class="hint" style="margin:0;">Lista curta e legível dos tratamentos recentes, com situação, data, formato, quantidade de linhas e abertura direta para revisão.</p>
+            </div>
+            <div class="row-actions">
+              <button id="partnerRefreshRunHistoryBtn" class="button secondary" type="button">Atualizar lista</button>
+            </div>
+          </div>
+          <div id="partnerRunHistorySummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura dos tratamentos:</strong> ainda não atualizada.</div>
+          <div id="partnerRunHistoryWrap" class="table-wrap"></div>
+        </div>
+
         <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
           <h4>Governança e comparação (bloco secundário)</h4>
           <p class="hint" style="margin:0 0 12px;">
@@ -7694,6 +7708,11 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         setTab(btn.dataset.tab);
+        if (btn.dataset.tab === 'partnerCatalogsPanel') {
+          readIncomingCatalogRunHistory().catch((error) => {
+            console.warn('Não consegui reler a lista de tratamentos ao abrir a aba de parceiras.', error);
+          });
+        }
       });
     });
 
@@ -15514,6 +15533,9 @@ function initPartnerProbeUi() {
   const partnerIncomingStepRowsNoteEl = document.getElementById('partnerIncomingStepRowsNote');
   const partnerIncomingStepNextValueEl = document.getElementById('partnerIncomingStepNextValue');
   const partnerIncomingStepNextNoteEl = document.getElementById('partnerIncomingStepNextNote');
+  const partnerRunHistoryWrapEl = document.getElementById('partnerRunHistoryWrap');
+  const partnerRunHistorySummaryEl = document.getElementById('partnerRunHistorySummary');
+  const partnerRefreshRunHistoryBtn = document.getElementById('partnerRefreshRunHistoryBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -15593,6 +15615,11 @@ function initPartnerProbeUi() {
     lastDispatchResult: null,
     lastSummary: null,
     busy: false,
+  };
+  let incomingCatalogRunHistoryState = {
+    items: [],
+    loading: false,
+    lastError: '',
   };
 
   function parsePartnerAgreementList(value) {
@@ -16015,6 +16042,179 @@ function initPartnerProbeUi() {
     }
   }
 
+  function extractIncomingRunFileLabel(run = null) {
+    const fileName = normalizeInlineWhitespace(
+      run?.original_filename ||
+      run?.file_name ||
+      run?.filename ||
+      run?.storage_filename ||
+      ''
+    );
+    if (fileName) return fileName;
+    const storagePath = normalizeInlineWhitespace(run?.storage_path || run?.file_path || run?.path || '');
+    if (storagePath) return storagePath.split('/').filter(Boolean).pop() || storagePath;
+    return 'Arquivo sem nome visível';
+  }
+
+  function extractIncomingRunSourceLabel(run = null) {
+    return normalizeInlineWhitespace(
+      run?.source_display_name ||
+      run?.source_name ||
+      run?.partner_source_name ||
+      run?.library_name ||
+      run?.display_name ||
+      run?.partner_name ||
+      ''
+    ) || 'Fonte não relida';
+  }
+
+  function extractIncomingRunRowsValue(run = null) {
+    const candidates = [
+      run?.imported_rows,
+      run?.inserted_rows,
+      run?.rows_imported,
+      run?.staging_rows,
+      run?.staged_rows,
+      run?.staging_count,
+      run?.staging_rows_count,
+      run?.rows_count,
+      run?.total_rows,
+      run?.row_count,
+    ];
+    for (const value of candidates) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && numeric >= 0) return numeric;
+    }
+    return null;
+  }
+
+  function formatIncomingRunRowsLabel(run = null) {
+    const rows = extractIncomingRunRowsValue(run);
+    if (rows == null) return '—';
+    return String(rows);
+  }
+
+  function formatIncomingRunHistoryDate(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('pt-BR');
+  }
+
+  function renderIncomingCatalogRunHistory() {
+    if (!partnerRunHistoryWrapEl || !partnerRunHistorySummaryEl) return;
+    const items = Array.isArray(incomingCatalogRunHistoryState.items) ? incomingCatalogRunHistoryState.items : [];
+    if (incomingCatalogRunHistoryState.loading) {
+      partnerRunHistorySummaryEl.innerHTML = '<strong>Leitura dos tratamentos:</strong> carregando histórico recente…';
+      partnerRunHistoryWrapEl.innerHTML = '<div class="empty">Carregando tratamentos recentes…</div>';
+      return;
+    }
+    if (!items.length) {
+      if (incomingCatalogRunHistoryState.lastError) {
+        partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ainda não consegui reler a lista recente. ${sanitize(incomingCatalogRunHistoryState.lastError)}`;
+        partnerRunHistoryWrapEl.innerHTML = '<div class="empty">Lista indisponível por enquanto. Tente atualizar novamente.</div>';
+      } else {
+        partnerRunHistorySummaryEl.innerHTML = '<strong>Leitura dos tratamentos:</strong> nenhum tratamento recente encontrado ainda nesta superfície.';
+        partnerRunHistoryWrapEl.innerHTML = '<div class="empty">Nenhum tratamento recente encontrado ainda.</div>';
+      }
+      return;
+    }
+    const readyCount = items.filter((item) => String(item?.run_status || item?.status || '').trim().toLowerCase() === 'ready_for_review').length;
+    partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ${items.length} tratamento(s) recente(s) relido(s) nesta superfície. ${readyCount} já pronto(s) para revisão.`;
+    const rows = items.map((item) => {
+      const runId = Number(item?.run_id || item?.id || 0);
+      const statusLabel = formatIncomingCatalogRunStatusLabel(item?.run_status || item?.status || '');
+      const fileLabel = extractIncomingRunFileLabel(item);
+      const sourceLabel = extractIncomingRunSourceLabel(item);
+      const formatLabel = normalizeInlineWhitespace(item?.detected_format || item?.format || '').toUpperCase() || '—';
+      const rowsLabel = formatIncomingRunRowsLabel(item);
+      const dateLabel = formatIncomingRunHistoryDate(item?.requested_at || item?.created_at || item?.updated_at || item?.started_at);
+      return `
+        <tr>
+          <td><strong>#${sanitize(runId || '—')}</strong><div class="small">${sanitize(fileLabel)}</div></td>
+          <td>${sanitize(statusLabel)}</td>
+          <td>${sanitize(dateLabel)}</td>
+          <td>${sanitize(formatLabel)}</td>
+          <td>${sanitize(rowsLabel)}</td>
+          <td>${sanitize(sourceLabel)}</td>
+          <td><button class="button small secondary" type="button" data-open-partner-run="${sanitize(runId || '')}">Abrir</button></td>
+        </tr>`;
+    }).join('');
+    partnerRunHistoryWrapEl.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Tratamento</th>
+            <th>Situação</th>
+            <th>Data</th>
+            <th>Formato</th>
+            <th>Linhas</th>
+            <th>Fonte</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  async function readIncomingCatalogRunHistory() {
+    if (!partnerRunHistoryWrapEl || !partnerRunHistorySummaryEl) return [];
+    incomingCatalogRunHistoryState.loading = true;
+    incomingCatalogRunHistoryState.lastError = '';
+    renderIncomingCatalogRunHistory();
+    const attempts = [
+      () => supabase.schema('api').from('partner_catalog_import_runs_ui').select('*').order('requested_at', { ascending: false }).limit(20),
+      () => supabase.from('partner_catalog_import_runs_ui').select('*').order('requested_at', { ascending: false }).limit(20),
+      () => supabase.schema('ingest').from('partner_catalog_import_runs').select('*').order('created_at', { ascending: false }).limit(20),
+    ];
+    let data = [];
+    let lastError = null;
+    for (const run of attempts) {
+      try {
+        const response = await withTimeout(Promise.resolve().then(run), 'incoming import history read', 8000);
+        if (!response?.error && Array.isArray(response?.data)) {
+          data = response.data;
+          lastError = null;
+          break;
+        }
+        lastError = response?.error || lastError;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    incomingCatalogRunHistoryState.items = Array.isArray(data) ? data : [];
+    incomingCatalogRunHistoryState.lastError = lastError ? String(lastError?.message || lastError) : '';
+    incomingCatalogRunHistoryState.loading = false;
+    renderIncomingCatalogRunHistory();
+    return incomingCatalogRunHistoryState.items;
+  }
+
+  async function openIncomingCatalogRunFromHistory(runId) {
+    const numericRunId = Number(runId);
+    if (!Number.isFinite(numericRunId) || numericRunId <= 0) return;
+    const match = (incomingCatalogRunHistoryState.items || []).find((item) => Number(item?.run_id || item?.id || 0) === numericRunId) || null;
+    incomingCatalogImportState.runId = String(numericRunId);
+    if (incomingImportRunIdEl) incomingImportRunIdEl.value = String(numericRunId);
+    if (match) {
+      incomingCatalogImportState.lastSummary = match;
+      if (incomingImportSourceIdEl && !normalizeInlineWhitespace(incomingImportSourceIdEl.value || '')) {
+        const sourceId = Number(match?.source_id || match?.partner_source_id || 0);
+        if (Number.isFinite(sourceId) && sourceId > 0) incomingImportSourceIdEl.value = String(sourceId);
+      }
+      if (incomingImportDetectedFormatEl) {
+        const formatLabel = normalizeInlineWhitespace(match?.detected_format || match?.format || '').toUpperCase();
+        if (formatLabel) incomingImportDetectedFormatEl.value = formatLabel;
+      }
+      if (incomingImportStoragePathEl) {
+        const storagePath = normalizeInlineWhitespace(match?.storage_path || match?.file_path || '');
+        if (storagePath) incomingImportStoragePathEl.value = storagePath;
+      }
+    }
+    refreshIncomingCatalogImportUi();
+    await readIncomingCatalogRunSummary(numericRunId);
+    setPartnerProbeMessage(`Tratamento #${numericRunId} aberto nesta superfície para continuação da revisão.`, 'ok');
+  }
+
   function refreshIncomingCatalogImportUi() {
     const file = incomingCatalogFileEl?.files?.[0] || null;
     if (incomingImportBucketEl) incomingImportBucketEl.value = PARTNER_INCOMING_RAW_BUCKET;
@@ -16076,6 +16276,7 @@ function initPartnerProbeUi() {
         if (!response?.error && response?.data) {
           incomingCatalogImportState.lastSummary = response.data;
           refreshIncomingCatalogImportUi();
+          await readIncomingCatalogRunHistory();
           return response.data;
         }
         lastError = response?.error || lastError;
@@ -16156,6 +16357,7 @@ function initPartnerProbeUi() {
       }, { timeoutMs: 20000 });
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(createdRunId);
+      await readIncomingCatalogRunHistory();
       setPartnerProbeMessage(`Arquivo recebido. Tratamento lançado e enviado para leitura inicial até a revisão humana.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
@@ -16178,6 +16380,7 @@ function initPartnerProbeUi() {
       incomingCatalogImportState.runId = String(runId);
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(runId, { attempts: 8, delayMs: 1600 });
+      await readIncomingCatalogRunHistory();
       setPartnerProbeMessage(`Leitura deste tratamento relançada${forceReparse ? ' desde o arquivo bruto' : ''}.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
@@ -18959,6 +19162,27 @@ ${decisionSummary}` : '',
     refreshIncomingCatalogImportUi();
   });
 
+  partnerRefreshRunHistoryBtn?.addEventListener('click', async () => {
+    try {
+      await readIncomingCatalogRunHistory();
+      setPartnerProbeMessage('Lista recente de tratamentos atualizada.', 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui atualizar a lista recente de tratamentos.', 'error');
+    }
+  });
+
+  partnerRunHistoryWrapEl?.addEventListener('click', async (event) => {
+    const button = event.target?.closest?.('[data-open-partner-run]');
+    if (!button) return;
+    const runId = Number(button.getAttribute('data-open-partner-run') || 0);
+    if (!Number.isFinite(runId) || runId <= 0) return;
+    try {
+      await openIncomingCatalogRunFromHistory(runId);
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui abrir este tratamento na superfície atual.', 'error');
+    }
+  });
+
   incomingCreateDispatchBtn?.addEventListener('click', async () => {
     try {
       await createAndDispatchIncomingCatalogImport();
@@ -19033,6 +19257,11 @@ ${decisionSummary}` : '',
 
   resetIncomingCatalogReception({ keepIdentity: true });
   refreshIncomingCatalogImportUi();
+  if (getActiveCatalogacaoTab() === 'partnerCatalogsPanel') {
+    readIncomingCatalogRunHistory().catch((error) => {
+      console.warn('Não consegui carregar a lista inicial de tratamentos parceiros.', error);
+    });
+  }
   clearPartnerUrlSuggestionReadout();
   loadPartnerPresetOptionsFromBase({ silent: true, preferredValue: presetEl.value || getCurrentPartnerSlug() });
   refreshPartnerPolicy({ silent: true });
