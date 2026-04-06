@@ -3736,6 +3736,14 @@
             </div>
           </div>
           <div id="partnerRunDetailSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.</div>
+          <div id="partnerRunDetailBulkSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Decisões em lote:</strong> nenhuma linha selecionada ainda.</div>
+          <div class="row-actions" style="margin-bottom:12px;">
+            <button id="partnerSelectAllRunRowsBtn" class="button secondary small" type="button">Selecionar linhas elegíveis</button>
+            <button id="partnerClearRunRowsSelectionBtn" class="button ghost small" type="button">Limpar seleção</button>
+            <button id="partnerBulkAcceptNewBtn" class="button success small" type="button">Aceitar novo em lote</button>
+            <button id="partnerBulkAcceptDuplicateBtn" class="button secondary small" type="button">Aceitar duplicado em lote</button>
+            <button id="partnerBulkRejectBtn" class="button warning small" type="button">Rejeitar em lote</button>
+          </div>
           <div id="partnerRunDetailWrap" class="table-wrap">
             <div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>
           </div>
@@ -15565,6 +15573,12 @@ function initPartnerProbeUi() {
   const partnerRunDetailWrapEl = document.getElementById('partnerRunDetailWrap');
   const partnerRunDetailSummaryEl = document.getElementById('partnerRunDetailSummary');
   const partnerRefreshRunDetailBtn = document.getElementById('partnerRefreshRunDetailBtn');
+  const partnerRunDetailBulkSummaryEl = document.getElementById('partnerRunDetailBulkSummary');
+  const partnerSelectAllRunRowsBtn = document.getElementById('partnerSelectAllRunRowsBtn');
+  const partnerClearRunRowsSelectionBtn = document.getElementById('partnerClearRunRowsSelectionBtn');
+  const partnerBulkAcceptNewBtn = document.getElementById('partnerBulkAcceptNewBtn');
+  const partnerBulkAcceptDuplicateBtn = document.getElementById('partnerBulkAcceptDuplicateBtn');
+  const partnerBulkRejectBtn = document.getElementById('partnerBulkRejectBtn');
 
   if (
     !presetEl || !displayEl || !slugEl || !baseUrlEl || !familyEl ||
@@ -15655,6 +15669,11 @@ function initPartnerProbeUi() {
     items: [],
     loading: false,
     lastError: '',
+  };
+  let incomingCatalogRunSelectionState = {
+    runId: '',
+    selectedRowIds: new Set(),
+    busy: false,
   };
 
   function parsePartnerAgreementList(value) {
@@ -16389,30 +16408,35 @@ function initPartnerProbeUi() {
 
   function renderIncomingCatalogRunDetail() {
     if (!partnerRunDetailWrapEl || !partnerRunDetailSummaryEl) return;
+    syncIncomingCatalogRunSelection();
     const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
     const items = Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [];
 
     if (!runId) {
       partnerRunDetailSummaryEl.innerHTML = '<strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.';
-      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>';;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>';
+      renderIncomingCatalogRunBulkSummary();
       return;
     }
 
     if (incomingCatalogRunDetailState.loading) {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> carregando linhas importadas, top matches e sinais…`;
-      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';
+      renderIncomingCatalogRunBulkSummary();
       return;
     }
 
     if (incomingCatalogRunDetailState.lastError) {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ainda não consegui reler as linhas deste tratamento. ${sanitize(incomingCatalogRunDetailState.lastError)}`;
-      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Detalhe indisponível por enquanto. Tente atualizar novamente.</div>';;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Detalhe indisponível por enquanto. Tente atualizar novamente.</div>';
+      renderIncomingCatalogRunBulkSummary();
       return;
     }
 
     if (!items.length) {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> nenhuma linha relida ainda nesta superfície.`;
-      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Nenhuma linha relida ainda para este tratamento.</div>';;
+      partnerRunDetailWrapEl.innerHTML = '<div class="empty">Nenhuma linha relida ainda para este tratamento.</div>';
+      renderIncomingCatalogRunBulkSummary();
       return;
     }
 
@@ -16426,22 +16450,34 @@ function initPartnerProbeUi() {
     });
 
     partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ${items.length} linha(s) relida(s). ${counts.novo} novo(s), ${counts.forte} duplicado(s) forte(s), ${counts.edicao} outra(s) edição(ões) provável(is) e ${counts.ambiguo} caso(s) ambíguo(s).`;
+    renderIncomingCatalogRunBulkSummary();
 
     const rowsHtml = items.map((item) => {
-      const rowKey = getIncomingPartnerRowKey(item);
       const rowNumber = getIncomingPartnerRowNumber(item);
+      const rowId = getIncomingPartnerRowId(item);
+      const rowIdText = Number.isFinite(rowId) && rowId > 0 ? String(rowId) : '';
+      const isLocked = isIncomingPartnerRowLockedForEditorialDecision(item);
+      const isSelected = rowIdText && incomingCatalogRunSelectionState.selectedRowIds?.has(rowIdText);
       const category = describeIncomingPartnerRowCategory(item);
       const duplicateSignal = formatIncomingDuplicateSignalLabel(pickIncomingPartnerValue(item, ['duplicate_signal', 'match_duplicate_signal']));
-      const responsibilityRaw = pickIncomingPartnerValue(item, ['responsibility_match_mode', 'responsibility_match']);
+      const responsibilityLabel = formatIncomingResponsibilitySignalLabel(pickIncomingPartnerValue(item, ['responsibility_match']));
       const responsibilityMode = pickIncomingPartnerValue(item, ['responsibility_match_mode']);
-      const responsibilityLabel = formatIncomingResponsibilitySignalLabel(responsibilityRaw);
       const matchStatus = formatIncomingMatchStatusLabel(pickIncomingPartnerValue(item, ['match_status']));
-      const editorialDecision = formatIncomingEditorialDecisionLabel(pickIncomingPartnerValue(item, ['editorial_decision']) || 'pending');
-      const reviewStatus = formatIncomingReviewStatusLabel(pickIncomingPartnerValue(item, ['review_status']) || 'pending');
-      const decisionLocked = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['review_status'])).toLowerCase() === 'draft_created';
+      const editorialDecisionRaw = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase();
+      const editorialDecision = formatIncomingEditorialDecisionLabel(editorialDecisionRaw);
+      const reviewStatus = formatIncomingReviewStatusLabel(pickIncomingPartnerValue(item, ['review_status']));
+      const actionNote = isLocked
+        ? 'Linha já convertida para rascunho normal.'
+        : (rowIdText ? 'Decisão editorial unitária disponível nesta superfície.' : 'Linha sem identificador seguro para decisão editorial.');
       return `
         <tr>
-          <td><strong>${sanitize(rowNumber != null ? String(rowNumber) : '—')}</strong><div class="small">${sanitize(item.__rowKey || rowKey || 'Linha sem chave')}</div></td>
+          <td>
+            <label class="checkbox-line">
+              <input type="checkbox" data-partner-run-select-row="${sanitize(rowIdText)}" ${isSelected ? 'checked' : ''} ${(!rowIdText || isLocked || incomingCatalogRunSelectionState.busy) ? 'disabled' : ''} />
+              <span>Selecionar</span>
+            </label>
+          </td>
+          <td><strong>${sanitize(rowNumber != null ? String(rowNumber) : '—')}</strong><div class="small">${sanitize(item.__rowKey || 'Linha sem chave')}</div></td>
           <td>${buildIncomingPartnerSourceStack(item)}</td>
           <td>${buildIncomingPartnerTopMatch(item)}</td>
           <td>
@@ -16460,11 +16496,12 @@ function initPartnerProbeUi() {
             </div>
           </td>
           <td>
-            <div class="row-actions" style="justify-content:flex-start;">
-              <button type="button" class="button small secondary" data-row-decision="accept_new" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Aceitar novo</button>
-              <button type="button" class="button small secondary" data-row-decision="accept_duplicate" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Aceitar duplicado</button>
-              <button type="button" class="button small ghost" data-row-decision="reject" data-row-id="${sanitize(rowKey)}" ${decisionLocked ? 'disabled' : ''}>Rejeitar</button>
+            <div class="row-actions" style="margin-bottom:8px;">
+              <button class="button success small" type="button" data-partner-run-row-action="accept_new" data-partner-run-row-id="${sanitize(rowIdText)}" ${(!rowIdText || isLocked || incomingCatalogRunSelectionState.busy) ? 'disabled' : ''}>Aceitar novo</button>
+              <button class="button secondary small" type="button" data-partner-run-row-action="accept_duplicate" data-partner-run-row-id="${sanitize(rowIdText)}" ${(!rowIdText || isLocked || incomingCatalogRunSelectionState.busy) ? 'disabled' : ''}>Aceitar duplicado</button>
+              <button class="button warning small" type="button" data-partner-run-row-action="reject" data-partner-run-row-id="${sanitize(rowIdText)}" ${(!rowIdText || isLocked || incomingCatalogRunSelectionState.busy) ? 'disabled' : ''}>Rejeitar</button>
             </div>
+            <div class="small">${sanitize(actionNote)}</div>
           </td>
         </tr>`;
     }).join('');
@@ -16473,6 +16510,7 @@ function initPartnerProbeUi() {
       <table>
         <thead>
           <tr>
+            <th>Seleção</th>
             <th>Linha</th>
             <th>Leitura importada</th>
             <th>Top match</th>
@@ -16512,6 +16550,8 @@ function initPartnerProbeUi() {
       incomingCatalogRunDetailState.items = [];
       incomingCatalogRunDetailState.lastError = '';
       incomingCatalogRunDetailState.loading = false;
+      incomingCatalogRunSelectionState.runId = '';
+      incomingCatalogRunSelectionState.selectedRowIds = new Set();
       renderIncomingCatalogRunDetail();
       return [];
     }
@@ -16538,6 +16578,8 @@ function initPartnerProbeUi() {
     incomingCatalogRunDetailState.items = mergeIncomingPartnerRows(baseRows, matchRows, workflowRows);
     incomingCatalogRunDetailState.lastError = lastError ? String(lastError?.message || lastError) : '';
     incomingCatalogRunDetailState.loading = false;
+    incomingCatalogRunSelectionState.runId = String(numericRunId);
+    incomingCatalogRunSelectionState.selectedRowIds = new Set();
     renderIncomingCatalogRunDetail();
     return incomingCatalogRunDetailState.items;
   }
@@ -16702,12 +16744,21 @@ function initPartnerProbeUi() {
     if (incomingImportStatusEl) incomingImportStatusEl.innerHTML = buildIncomingCatalogImportStatusText();
     renderIncomingCatalogImportStepCards();
     renderIncomingCatalogRunDetail();
+    renderIncomingCatalogRunBulkSummary();
     const disableCreate = incomingCatalogImportState.busy || !file;
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
+    const disableBulk = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
+    const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
     if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
     if (incomingDispatchRunBtn) incomingDispatchRunBtn.disabled = disableDispatch;
     if (incomingRefreshRunBtn) incomingRefreshRunBtn.disabled = disableDispatch;
-    if (partnerRefreshRunDetailBtn) partnerRefreshRunDetailBtn.disabled = disableDispatch || incomingCatalogRunDetailState.loading;
+    if (partnerRefreshRunDetailBtn) partnerRefreshRunDetailBtn.disabled = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
+    if (partnerRefreshRunHistoryBtn) partnerRefreshRunHistoryBtn.disabled = incomingCatalogRunHistoryState.loading || incomingCatalogRunSelectionState.busy;
+    if (partnerSelectAllRunRowsBtn) partnerSelectAllRunRowsBtn.disabled = disableBulk || !Array.isArray(incomingCatalogRunDetailState.items) || !incomingCatalogRunDetailState.items.some((item) => !isIncomingPartnerRowLockedForEditorialDecision(item) && Number.isFinite(getIncomingPartnerRowId(item)));
+    if (partnerClearRunRowsSelectionBtn) partnerClearRunRowsSelectionBtn.disabled = disableBulk || !selectedCount;
+    if (partnerBulkAcceptNewBtn) partnerBulkAcceptNewBtn.disabled = disableBulk || !selectedCount;
+    if (partnerBulkAcceptDuplicateBtn) partnerBulkAcceptDuplicateBtn.disabled = disableBulk || !selectedCount;
+    if (partnerBulkRejectBtn) partnerBulkRejectBtn.disabled = disableBulk || !selectedCount;
   }
 
   async function sha256HexForIncomingCatalogFile(file) {
@@ -19703,6 +19754,105 @@ ${decisionSummary}` : '',
       await openIncomingCatalogRunFromHistory(runId);
     } catch (error) {
       setPartnerProbeMessage(error?.message || 'Não consegui abrir este tratamento na superfície atual.', 'error');
+    }
+  });
+
+  partnerRunDetailWrapEl?.addEventListener('change', (event) => {
+    const checkbox = event.target?.closest?.('[data-partner-run-select-row]');
+    if (!checkbox) return;
+    const rowId = normalizeInlineWhitespace(checkbox.getAttribute('data-partner-run-select-row') || '');
+    if (!rowId) return;
+    const next = new Set(incomingCatalogRunSelectionState.selectedRowIds || []);
+    if (checkbox.checked) next.add(rowId);
+    else next.delete(rowId);
+    incomingCatalogRunSelectionState.selectedRowIds = next;
+    renderIncomingCatalogRunBulkSummary();
+    refreshIncomingCatalogImportUi();
+  });
+
+  partnerRunDetailWrapEl?.addEventListener('click', async (event) => {
+    const actionBtn = event.target?.closest?.('[data-partner-run-row-action]');
+    if (!actionBtn) return;
+    const rowId = Number(actionBtn.getAttribute('data-partner-run-row-id') || 0);
+    const action = normalizeInlineWhitespace(actionBtn.getAttribute('data-partner-run-row-action') || '').toLowerCase();
+    if (!Number.isFinite(rowId) || rowId <= 0 || !action) return;
+    try {
+      incomingCatalogRunSelectionState.busy = true;
+      refreshIncomingCatalogImportUi();
+      await setIncomingCatalogEditorialDecision(rowId, action);
+      const runId = getIncomingCatalogImportRunId();
+      if (runId) {
+        await readIncomingCatalogRunDetail(runId);
+        await readIncomingCatalogRunHistory();
+        await readIncomingCatalogRunSummary(runId);
+      }
+      setPartnerProbeMessage('Decisão editorial unitária registrada nesta linha.', 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui registrar a decisão editorial desta linha.', 'error');
+    } finally {
+      incomingCatalogRunSelectionState.busy = false;
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  partnerSelectAllRunRowsBtn?.addEventListener('click', () => {
+    setIncomingCatalogRunSelectionFromCurrent(true);
+    refreshIncomingCatalogImportUi();
+  });
+
+  partnerClearRunRowsSelectionBtn?.addEventListener('click', () => {
+    setIncomingCatalogRunSelectionFromCurrent(false);
+    refreshIncomingCatalogImportUi();
+  });
+
+  partnerBulkAcceptNewBtn?.addEventListener('click', async () => {
+    try {
+      const result = await applyIncomingCatalogBulkDecision('accept_new');
+      const runId = getIncomingCatalogImportRunId();
+      if (runId) {
+        await readIncomingCatalogRunDetail(runId);
+        await readIncomingCatalogRunHistory();
+        await readIncomingCatalogRunSummary(runId);
+      }
+      setPartnerProbeMessage(`${result.count} linha(s) passaram para “aceitar novo” nesta superfície.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui aplicar “aceitar novo” em lote.', 'error');
+    } finally {
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  partnerBulkAcceptDuplicateBtn?.addEventListener('click', async () => {
+    try {
+      const result = await applyIncomingCatalogBulkDecision('accept_duplicate');
+      const runId = getIncomingCatalogImportRunId();
+      if (runId) {
+        await readIncomingCatalogRunDetail(runId);
+        await readIncomingCatalogRunHistory();
+        await readIncomingCatalogRunSummary(runId);
+      }
+      setPartnerProbeMessage(`${result.count} linha(s) passaram para “aceitar duplicado” nesta superfície.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui aplicar “aceitar duplicado” em lote.', 'error');
+    } finally {
+      refreshIncomingCatalogImportUi();
+    }
+  });
+
+  partnerBulkRejectBtn?.addEventListener('click', async () => {
+    try {
+      const result = await applyIncomingCatalogBulkDecision('reject');
+      const runId = getIncomingCatalogImportRunId();
+      if (runId) {
+        await readIncomingCatalogRunDetail(runId);
+        await readIncomingCatalogRunHistory();
+        await readIncomingCatalogRunSummary(runId);
+      }
+      setPartnerProbeMessage(`${result.count} linha(s) passaram para “rejeitar” nesta superfície.`, 'ok');
+    } catch (error) {
+      setPartnerProbeMessage(error?.message || 'Não consegui aplicar “rejeitar” em lote.', 'error');
+    } finally {
+      refreshIncomingCatalogImportUi();
     }
   });
 
