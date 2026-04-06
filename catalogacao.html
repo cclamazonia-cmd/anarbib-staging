@@ -3632,9 +3632,32 @@
             <h4>Resultado do tratamento</h4>
             <p class="hint" style="margin:0 0 12px;">Este bloco recebe o arquivo bruto, lança o tratamento inicial e para em revisão humana. Nenhuma decisão editorial, nenhum lote e nenhum rascunho normal são criados automaticamente aqui.</p>
 
+            <div class="catalog-layer-summary" style="margin-bottom:12px;">
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Arquivo recebido</div>
+                <div id="partnerIncomingStepFileValue" class="catalog-layer-card-value">—</div>
+                <div id="partnerIncomingStepFileNote" class="catalog-layer-card-note">Escolha um arquivo para começar.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Formato reconhecido</div>
+                <div id="partnerIncomingStepFormatValue" class="catalog-layer-card-value">—</div>
+                <div id="partnerIncomingStepFormatNote" class="catalog-layer-card-note">CSV ou RIS aparecem aqui logo após a leitura.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Registros encontrados</div>
+                <div id="partnerIncomingStepRowsValue" class="catalog-layer-card-value">—</div>
+                <div id="partnerIncomingStepRowsNote" class="catalog-layer-card-note">A contagem só aparece depois do tratamento.</div>
+              </div>
+              <div class="catalog-layer-card">
+                <div class="catalog-layer-card-title">Próximo passo</div>
+                <div id="partnerIncomingStepNextValue" class="catalog-layer-card-value">—</div>
+                <div id="partnerIncomingStepNextNote" class="catalog-layer-card-note">A orientação operacional curta aparece aqui.</div>
+              </div>
+            </div>
+
             <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
               <div class="field">
-                <label for="partnerIncomingImportSummary">Resultado do tratamento</label>
+                <label for="partnerIncomingImportSummary">Resumo curto do tratamento</label>
                 <textarea id="partnerIncomingImportSummary" rows="6" readonly placeholder="Arquivo recebido, formato reconhecido, quantidade de registros e situação atual aparecerão aqui."></textarea>
               </div>
               <div class="field">
@@ -3686,12 +3709,14 @@
                 </div>
               </div>
             </details>
-        </div>
+          </div>
 
-        <div class="card" id="partnerProbeCard" style="margin-bottom:16px;">
-          <h4>Governança e comparação (bloco secundário)</h4>
+        <details class="card" id="partnerProbeCard" style="margin-bottom:16px;">
+          <summary style="cursor:pointer; font-weight:800; color:#fff;">Governança e comparação (abrir quando necessário)</summary>
+          <div style="margin-top:12px;">
+            <h4>Parceiras externas: situação relacional e governança documental</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Use este bloco secundário para leitura política, governança documental e comparação local. O tratamento do arquivo não decide acordos nem substitui revisão humana.
+            Consulte aqui a situação relacional, a leitura documental e os limites de ação com cada parceira. Nesta aba, teste técnico não vale como autorização política; importação não vale como mutualização; mutualização não vale como modificação livre do registro da parceira.
           </p>
         
           <div id="partnerProbeMessage" class="hint" style="margin:0 0 12px;"></div>
@@ -4179,6 +4204,9 @@
             </div>
           </div>
         </div>
+
+          </div>
+        </details>
       </div>
     </section>
   </div>
@@ -15480,6 +15508,14 @@ function initPartnerProbeUi() {
   const incomingImportSummaryEl = document.getElementById('partnerIncomingImportSummary');
   const incomingImportForceReparseEl = document.getElementById('partnerIncomingForceReparse');
   const incomingImportStatusEl = document.getElementById('partnerIncomingImportStatus');
+  const incomingStepFileValueEl = document.getElementById('partnerIncomingStepFileValue');
+  const incomingStepFileNoteEl = document.getElementById('partnerIncomingStepFileNote');
+  const incomingStepFormatValueEl = document.getElementById('partnerIncomingStepFormatValue');
+  const incomingStepFormatNoteEl = document.getElementById('partnerIncomingStepFormatNote');
+  const incomingStepRowsValueEl = document.getElementById('partnerIncomingStepRowsValue');
+  const incomingStepRowsNoteEl = document.getElementById('partnerIncomingStepRowsNote');
+  const incomingStepNextValueEl = document.getElementById('partnerIncomingStepNextValue');
+  const incomingStepNextNoteEl = document.getElementById('partnerIncomingStepNextNote');
   const incomingCreateDispatchBtn = document.getElementById('partnerCreateDispatchIncomingImportBtn');
   const incomingDispatchRunBtn = document.getElementById('partnerDispatchIncomingRunBtn');
   const incomingRefreshRunBtn = document.getElementById('partnerRefreshIncomingRunBtn');
@@ -15857,6 +15893,22 @@ function initPartnerProbeUi() {
     return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
   }
 
+  function formatIncomingCatalogRunStatusLabel(status) {
+    const normalized = normalizeInlineWhitespace(status || '').toLowerCase();
+    const labels = {
+      created: 'aguardando leitura',
+      uploaded: 'arquivo enviado',
+      parsing: 'lendo arquivo',
+      parsed: 'arquivo lido',
+      matched: 'comparação inicial concluída',
+      ready_for_review: 'pronto para revisão',
+      drafts_created: 'rascunhos criados',
+      draft_created: 'rascunho criado',
+      failed: 'falhou',
+    };
+    return labels[normalized] || status || 'aguardando leitura';
+  }
+
   function formatIncomingCatalogRunStatusLabel(value) {
     const raw = String(value || '').trim().toLowerCase();
     if (!raw) return 'aguardando leitura';
@@ -15909,7 +15961,8 @@ function initPartnerProbeUi() {
     if (!runId && !file) {
       lines.push('Nenhum tratamento lançado ainda.');
       lines.push('Escolha um arquivo, confira a identificação da biblioteca e lance o tratamento quando estiver pronto.');
-      return lines.join('\n');
+      return lines.join('
+');
     }
     lines.push(`Arquivo recebido: ${fileName}`);
     if (runId) lines.push('Tratamento lançado');
@@ -15918,7 +15971,46 @@ function initPartnerProbeUi() {
     lines.push(`Situação atual: ${statusLabel}`);
     if (runId) lines.push(`Número interno do tratamento: ${runId}`);
     lines.push('Próximo passo: revisão editorial humana.');
-    return lines.join('\n');
+    return lines.join('
+');
+  }
+
+  function refreshIncomingCatalogImportOutcomeCards() {
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const summary = incomingCatalogImportState.lastSummary || {};
+    const createResult = incomingCatalogImportState.lastCreateResult || {};
+    const fileName = file?.name || summary.original_filename || createResult.original_filename || '—';
+    const detectedFormat = String(
+      file ? getIncomingCatalogFileKind(file.name) : (summary.detected_format || createResult.detected_format || '')
+    ).trim().toUpperCase();
+    const runId = getIncomingCatalogImportRunId();
+    const importedRows = summary.imported_rows ?? summary.inserted_rows ?? summary.rows_imported ?? createResult.inserted_rows ?? createResult.imported_rows ?? null;
+    const statusLabel = formatIncomingCatalogRunStatusLabel(summary.run_status || summary.status || (runId ? 'queued' : ''));
+    const nextStepLabel = !runId
+      ? 'Lançar'
+      : (String(summary.run_status || summary.status || '').trim().toLowerCase() === 'drafts_created'
+        ? 'Revisar rascunhos'
+        : 'Revisão humana');
+
+    if (incomingStepFileValueEl) incomingStepFileValueEl.textContent = file ? 'Sim' : '—';
+    if (incomingStepFileNoteEl) incomingStepFileNoteEl.textContent = file ? fileName : 'Escolha um arquivo para começar.';
+
+    if (incomingStepFormatValueEl) incomingStepFormatValueEl.textContent = detectedFormat || '—';
+    if (incomingStepFormatNoteEl) incomingStepFormatNoteEl.textContent = detectedFormat
+      ? `Formato reconhecido para este arquivo: ${detectedFormat}.`
+      : 'CSV ou RIS aparecem aqui logo após a leitura.';
+
+    if (incomingStepRowsValueEl) incomingStepRowsValueEl.textContent = importedRows == null || importedRows === '' ? '—' : String(importedRows);
+    if (incomingStepRowsNoteEl) incomingStepRowsNoteEl.textContent = importedRows == null || importedRows === ''
+      ? 'A contagem só aparece depois do tratamento.'
+      : `Situação atual: ${statusLabel}.`;
+
+    if (incomingStepNextValueEl) incomingStepNextValueEl.textContent = nextStepLabel;
+    if (incomingStepNextNoteEl) {
+      incomingStepNextNoteEl.textContent = !runId
+        ? 'Confira a identificação local e lance o tratamento quando estiver pronto.'
+        : 'O próximo gesto útil continua sendo a revisão editorial humana.';
+    }
   }
 
   function refreshIncomingCatalogImportUi() {
@@ -15931,6 +16023,7 @@ function initPartnerProbeUi() {
     }
     if (incomingImportSummaryEl) incomingImportSummaryEl.value = buildIncomingCatalogImportSummaryText();
     if (incomingImportStatusEl) incomingImportStatusEl.innerHTML = buildIncomingCatalogImportStatusText();
+    refreshIncomingCatalogImportOutcomeCards();
     const disableCreate = incomingCatalogImportState.busy || !file;
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
     if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
@@ -16011,10 +16104,10 @@ function initPartnerProbeUi() {
   async function createAndDispatchIncomingCatalogImport() {
     if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode lançar esta importação desde a catalogação.');
     const file = incomingCatalogFileEl?.files?.[0] || null;
-    if (!file) throw new Error('Escolha primeiro um arquivo para lançar o tratamento.');
+    if (!file) throw new Error('Escolha primeiro um arquivo artesanal para lançar o tratamento.');
     const sourceId = Number(incomingImportSourceIdEl?.value || 0);
     if (!Number.isFinite(sourceId) || sourceId <= 0) {
-      throw new Error('Abra os detalhes técnicos e informe o ID da fonte parceira antes de lançar o tratamento.');
+      throw new Error('Informe primeiro o ID interno da fonte parceira antes de lançar o tratamento.');
     }
     const requestedBy = state.session?.user?.id || state.profile?.user_id || null;
     if (!requestedBy) throw new Error('Sessão bibliotecária não reconhecida para registrar quem pediu esta importação.');
@@ -16051,7 +16144,7 @@ function initPartnerProbeUi() {
       incomingCatalogImportState.lastCreateResult = createData;
       const createdRunId = extractRpcNumericId(createData, ['run_id', 'p_run_id', 'new_run_id', 'id']);
       if (!createdRunId) {
-        throw new Error('O tratamento foi lançado, mas o número interno voltou em formato inesperado.');
+        throw new Error('O tratamento foi criado, mas o número interno não voltou no formato esperado.');
       }
       incomingCatalogImportState.runId = String(createdRunId);
       if (incomingImportRunIdEl) incomingImportRunIdEl.value = String(createdRunId);
@@ -16061,7 +16154,7 @@ function initPartnerProbeUi() {
       }, { timeoutMs: 20000 });
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(createdRunId);
-      setPartnerProbeMessage(`Arquivo recebido. Tratamento lançado e enviado para leitura inicial até a revisão humana.`, 'ok');
+      setPartnerProbeMessage(`Tratamento #${createdRunId} lançado com sucesso. O arquivo já foi encaminhado até a etapa de revisão editorial.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
       refreshIncomingCatalogImportUi();
@@ -16069,9 +16162,9 @@ function initPartnerProbeUi() {
   }
 
   async function dispatchExistingIncomingCatalogRun() {
-    if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode refazer a leitura deste tratamento desde a catalogação.');
+    if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode refazer um tratamento desde a catalogação.');
     const runId = getIncomingCatalogImportRunId();
-    if (!runId) throw new Error('Ainda não há número interno de tratamento para refazer a leitura deste arquivo.');
+    if (!runId) throw new Error('Informe primeiro um número interno de tratamento válido.');
     const forceReparse = !!incomingImportForceReparseEl?.checked;
     incomingCatalogImportState.busy = true;
     refreshIncomingCatalogImportUi();
@@ -16083,7 +16176,7 @@ function initPartnerProbeUi() {
       incomingCatalogImportState.runId = String(runId);
       incomingCatalogImportState.lastDispatchResult = dispatchData;
       await pollIncomingCatalogRunSummary(runId, { attempts: 8, delayMs: 1600 });
-      setPartnerProbeMessage(`Leitura deste tratamento relançada${forceReparse ? ' desde o arquivo bruto' : ''}.`, 'ok');
+      setPartnerProbeMessage(`Tratamento #${runId} relançado${forceReparse ? ' com releitura completa' : ''}.`, 'ok');
     } finally {
       incomingCatalogImportState.busy = false;
       refreshIncomingCatalogImportUi();
@@ -18868,8 +18961,8 @@ ${decisionSummary}` : '',
     try {
       await createAndDispatchIncomingCatalogImport();
     } catch (error) {
-      console.error('Falha ao lançar o tratamento do arquivo parceiro.', error);
-      setPartnerProbeMessage(`Não consegui lançar o tratamento deste arquivo: ${error?.message || error}`, 'error');
+      console.error('Falha ao criar e lançar importação parceira.', error);
+      setPartnerProbeMessage(`Não consegui lançar o tratamento: ${error?.message || error}`, 'error');
       refreshIncomingCatalogImportUi();
     }
   });
@@ -18878,8 +18971,8 @@ ${decisionSummary}` : '',
     try {
       await dispatchExistingIncomingCatalogRun();
     } catch (error) {
-      console.error('Falha ao refazer a leitura do arquivo parceiro.', error);
-      setPartnerProbeMessage(`Não consegui refazer a leitura deste arquivo: ${error?.message || error}`, 'error');
+      console.error('Falha ao relançar run parceiro.', error);
+      setPartnerProbeMessage(`Não consegui relançar este run: ${error?.message || error}`, 'error');
       refreshIncomingCatalogImportUi();
     }
   });
@@ -19061,134 +19154,6 @@ ${decisionSummary}` : '',
     }
 
     // Segunda tentativa automática tardia desativada para evitar refreshs intempestivos ao carregar a catalogação.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   </script>
 </body>
