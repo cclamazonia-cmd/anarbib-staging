@@ -2156,7 +2156,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Compatibilidade local legada do holding</label>
               <input id="bookBibRef" type="text" placeholder="Ref. local legada do holding" />
-              <small>Apoio legado desta ficha. Na leitura pública atual, a camada local aparece primeiro a partir dos dados do holding local; este campo continua útil como apoio, mas não é o centro principal da ficha comum.</small>
+              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_holdings.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
             </div>
 
             <div class="field">
@@ -2920,7 +2920,7 @@
 
             <div class="form-flow-break">
               <strong>Autoridade enriquecida</strong>
-              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Por enquanto, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
+              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Enquanto o backend dedicado não chega, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
             </div>
 
             <div class="field">
@@ -3509,9 +3509,9 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
-                <div class="hint">Aqui, o lote é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
               </div>
-              <span id="batchFlowStatusPill" class="pill info">Composição do lote</span>
+              <span id="batchFlowStatusPill" class="pill info">Lotes em leitura</span>
             </div>
             <div class="book-derived-summary-card">
               <div id="batchFlowKind" class="book-derived-summary-kind">Lotes ainda não relidos</div>
@@ -3553,7 +3553,7 @@
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
             <div id="publishBatchSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.</div>
-            <p class="hint">A publicação por lote envia de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
+            <p class="hint">A publicação por lote chama <code>publish_catalog_batch</code> e empurra de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
           </div>
         </div>
 
@@ -3688,7 +3688,7 @@
       <div class="panel-header">
         <div>
           <h3>Catálogos de parceiras externas</h3>
-          <p>Camada separada para situação relacional, leitura documental, comparação local e preparação controlada. Aqui, teste técnico não vale como autorização política; importação não vale como mutualização.</p>
+          <p>Camada separada para situação relacional, leitura documental, comparação local e preparação controlada. Aqui, verificação de conexão não vale como autorização política; importação não vale como mutualização.</p>
         </div>
       </div>
       <div class="panel-body">
@@ -3722,7 +3722,7 @@
 
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
             <div class="field">
-              <label for="partnerIncomingLibrarySlug">Slug sugerido / local</label>
+              <label for="partnerIncomingLibrarySlug">Identificador curto sugerido</label>
               <input id="partnerIncomingLibrarySlug" type="text" placeholder="biblioteca-da-maloca" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
             </div>
 
@@ -3834,7 +3834,7 @@
                 <div class="field">
                   <label for="partnerIncomingSourceId">Fonte parceira (número interno)</label>
                   <input id="partnerIncomingSourceId" type="number" min="1" step="1" placeholder="Ex.: 3" />
-                  <small>Use aqui apenas o número interno da fonte, como apoio. A escolha principal continua sendo feita pelo nome legível da fonte.</small>
+                  <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Nesta passe, a escolha da fonte continua explícita e manual.</small>
                 </div>
                 <div class="field">
                   <label for="partnerIncomingDetectedFormat">Formato reconhecido</label>
@@ -3854,13 +3854,13 @@
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
                 <div class="field">
-                  <label for="partnerIncomingImportBucket">Pasta interna do arquivo</label>
+                  <label for="partnerIncomingImportBucket">Bucket bruto</label>
                   <input id="partnerIncomingImportBucket" type="text" value="catalogos_parceiros_raw" readonly />
                 </div>
                 <div class="field">
-                  <label for="partnerIncomingImportStoragePath">Caminho interno do arquivo</label>
+                  <label for="partnerIncomingImportStoragePath">Caminho técnico do arquivo</label>
                   <input id="partnerIncomingImportStoragePath" type="text" readonly placeholder="Será gerado a partir do arquivo e da identificação local" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;" />
-                  <small>Este caminho fica guardado aqui apenas como apoio de conferência e de rastreabilidade.</small>
+                  <small>Este caminho fica guardado aqui apenas para apoio técnico e rastreabilidade.</small>
                 </div>
               </div>
             </details>
@@ -3884,7 +3884,7 @@
           <div class="inline" style="justify-content:space-between; gap:12px; margin-bottom:12px;">
             <div>
               <h4 style="margin:0 0 6px;">Detalhe de um tratamento</h4>
-              <p class="hint" style="margin:0;">Aqui aparecem as linhas importadas, o top match relido pela base, os sinais principais e a situação editorial atual, sem esconder nenhuma decisão automática.</p>
+              <p class="hint" style="margin:0;">Aqui aparecem as linhas importadas, o melhor aproximação relido pela base, os sinais principais e a situação editorial atual, sem esconder nenhuma decisão automática.</p>
             </div>
             <div class="row-actions">
               <button id="partnerRefreshRunDetailBtn" class="button secondary" type="button">Atualizar detalhe</button>
@@ -4010,7 +4010,7 @@
             </div>
 
             <div class="field">
-              <label for="partnerTechnicalProbeLastAtOutput">Última verificação técnica</label>
+              <label for="partnerTechnicalProbeLastAtOutput">Última verificação de conexão</label>
               <input id="partnerTechnicalProbeLastAtOutput" type="text" readonly placeholder="Sem teste registrado">
             </div>
           </div>
@@ -4018,7 +4018,7 @@
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
-            <small id="partnerPoliticalNotice">Sem leitura política ainda: teste técnico, sozinho, não libera comparação documental, importação nem mutualização.</small>
+            <small id="partnerPoliticalNotice">Sem leitura política ainda: verificação de conexão, sozinho, não libera comparação documental, importação nem mutualização.</small>
           </div>
 
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -4050,7 +4050,7 @@
               <input id="partnerRightEnrichOutput" type="text" readonly placeholder="—">
             </div>
             <div class="field">
-              <label for="partnerRightSharedOutput">Modificar a camada compartilhada</label>
+              <label for="partnerRightSharedOutput">Modificar a camada comum da rede</label>
               <input id="partnerRightSharedOutput" type="text" readonly placeholder="—">
             </div>
             <div class="field">
@@ -4083,15 +4083,15 @@
             </div>
         
             <div class="field">
-              <label for="partnerBaseUrlInput">Endereço-base do catálogo</label>
+              <label for="partnerBaseUrlInput">Endereço-base</label>
               <input id="partnerBaseUrlInput" type="text" placeholder="https://www.cira.ch/catalogue">
             </div>
           </div>
         
           <div class="field" style="margin-bottom:12px;">
-            <label for="partnerDiscoveryUrlInput">Ajuda de preenchimento por URL pública</label>
+            <label for="partnerDiscoveryUrlInput">Ajuda de pré-preenchimento por URL pública</label>
             <input id="partnerDiscoveryUrlInput" type="text" placeholder="Cola aqui uma URL pública de catálogo, de busca ou de notice de parceira">
-            <small>Esta ajuda só sugere nome público, identificador curto, endereço-base do catálogo, família provável, confiança, país e nota curta. Ela não salva nada na base, não importa nada e não decide nenhum estatuto relacional.</small>
+            <small>Esta ajuda só sugere nome público, slug, base URL, família provável, confiança, país e nota técnica curta. Ela não salva nada na base, não importa nada e não decide nenhum estatuto relacional.</small>
             <div class="actions" style="margin-top:10px;">
               <button id="partnerAnalyzeUrlBtn" class="button secondary" type="button">Analisar URL</button>
               <button id="partnerApplyUrlSuggestionBtn" class="button secondary" type="button">Aplicar sugestão local</button>
@@ -4145,9 +4145,9 @@
           <div class="actions">
             <button id="partnerRefreshPolicyBtn" class="button primary" type="button">Aplicar acordos desta parceira</button>
             <button id="partnerGenerateBtn" class="button secondary" type="button">Gerar prévia técnica</button>
-            <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar prévia técnica</button>
+            <button id="partnerCopyReportBtn" class="button secondary" type="button">Copiar relatório</button>
             <button id="partnerCopySeedBtn" class="button secondary" type="button">Copiar texto de cadastro</button>
-            <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir endereço-base</button>
+            <button id="partnerOpenBaseBtn" class="button secondary" type="button">Abrir base URL</button>
           </div>
 
           <div class="field" style="margin-top:12px;">
@@ -4156,7 +4156,7 @@
               <button id="partnerCompareActionBtn" class="button secondary" type="button" disabled>Comparação documental</button>
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
-            <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.</small>
+            <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um verificação de conexão isolado não basta para liberá-las.</small>
           </div>
 
           <div class="field" style="margin-top:12px;">
@@ -4190,7 +4190,7 @@
             <div class="field">
               <label for="partnerProtectedNowOutput">O que esta etapa não tocará</label>
               <textarea id="partnerProtectedNowOutput" rows="6" readonly placeholder="Os limites materiais desta etapa aparecerão aqui."></textarea>
-              <small>Serve para reler, de forma seca, o que continua protegido: notice publicada, registro da parceira, camada compartilhada e publicação pública.</small>
+              <small>Serve para reler, de forma seca, o que continua protegido: notice publicada, registro da parceira, camada comum da rede e publicação pública.</small>
             </div>
             <div class="field">
               <label for="partnerBlockersNowOutput">Bloqueios e faltas atuais</label>
@@ -4200,7 +4200,7 @@
           </div>
 
           <div id="partnerRightsDecisionNote" class="hint" style="margin-top:8px;">
-            A matriz acima manda nesta etapa: ela separa leitura política, comparação local, retomada local, enriquecimento da camada local, camada compartilhada e publicação na tua biblioteca.
+            A matriz acima manda nesta etapa: ela separa leitura política, comparação local, retomada local, enriquecimento da camada local, camada comum da rede e publicação na tua biblioteca.
           </div>
         
           <div id="partnerCompareWorkspace" class="field is-hidden" style="margin-top:12px;">
@@ -4215,7 +4215,7 @@
                   <button id="partnerClearComparisonBtn" class="button ghost" type="button">Limpar comparação</button>
                 </div>
               </div>
-              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O última verificação técnica, sozinho, não basta.</div>
+              <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último verificação de conexão, sozinho, não basta.</div>
               <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
               <div id="partnerCompareExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da comparação:</strong> ainda não atualizado.</div>
               <div id="partnerCompareFlowSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Gesto de comparação:</strong> ainda não relido.</div>
@@ -4312,7 +4312,7 @@
                   <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
                 </div>
               </div>
-              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O última verificação técnica, sozinho, não basta.</div>
+              <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último verificação de conexão, sozinho, não basta.</div>
               <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
               <div id="partnerImportExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da preparação:</strong> ainda não atualizado.</div>
               <div id="partnerImportFlowSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Gesto de preparação:</strong> ainda não relido.</div>
@@ -4416,12 +4416,12 @@
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;">
             <div class="field">
               <label for="partnerProbeOutput">Prévia técnica da conexão</label>
-              <textarea id="partnerProbeOutput" rows="14" readonly placeholder="A prévia técnica da conexão aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
+              <textarea id="partnerProbeOutput" rows="14" readonly placeholder="Os endpoints prováveis aparecerão aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
             </div>
         
             <div class="field">
               <label for="partnerSeedOutput">Texto de cadastro da parceira</label>
-              <textarea id="partnerSeedOutput" rows="14" readonly placeholder="O texto de cadastro da parceira aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
+              <textarea id="partnerSeedOutput" rows="14" readonly placeholder="O insert em public.catalog_partners aparecerá aqui." style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></textarea>
             </div>
           </div>
         </div>
@@ -5624,7 +5624,7 @@
     function getProfileDefaultLibraryContext() {
       return {
         libraryId: compactSpaces(state.profile?.library_id || state.profile?.default_library_id || ''),
-        libraryIdentificador curto: compactSpaces(state.profile?.library_slug || state.profile?.default_library_slug || ''),
+        librarySlug: compactSpaces(state.profile?.library_slug || state.profile?.default_library_slug || ''),
         libraryName: compactSpaces(state.profile?.library_name || state.profile?.default_library_name || ''),
       };
     }
@@ -6644,7 +6644,7 @@
         holderLibrary: el('bookHolderLibrary').value.trim(),
         acquisitionSourceLabel: el('bookAcquisitionSourceLabel').value.trim(),
         partnerSource: el('bookPartnerSource').value || '',
-        partnerGovernanceIdentificador curto: el('bookPartnerGovernanceSlug').value.trim(),
+        partnerGovernanceSlug: el('bookPartnerGovernanceSlug').value.trim(),
         sourceRecordId: el('bookSourceRecordId').value.trim(),
         sourceRecordUrl: el('bookSourceRecordUrl').value.trim(),
         importFormat: el('bookImportFormat').value || '',
@@ -7674,7 +7674,7 @@
       other: {
         preferredNameLabel: 'Forma retida',
         sortNameLabel: 'Forma para ordenação',
-        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até uma regra mais fina.',
+        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição backend mais fina.',
         birthYearLabel: 'Ano inicial',
         deathYearLabel: 'Ano final',
         countryLabel: 'País / território',
@@ -14070,7 +14070,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
           compatMeta.compatLabel || 'Holding local sem código local legível',
           [
             { text: `Código local hoje relido desde o holding publicado${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
-            { text: 'Nesta célula, a leitura privilegia o holding local publicado; a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
+            { text: 'Nesta célula, a leitura privilegia o holding local publicado (holding_libraries_json / local_bib_ref); a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
           ],
           [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding'],
           'Holding local / código local'
@@ -14080,7 +14080,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         compatMeta.fallbackBibRef || 'Sem código local visível',
         [
           { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas o código comum/legado: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra código local nem referência legada neste recorte.', muted: false },
-          { text: 'A organização local já prevê holdings próprios, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
+          { text: 'O backend já prevê holdings locais com local_bib_ref, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
         ],
         compatMeta.fallbackBibRef ? ['Legado comum'] : [],
         'Código local / legado comum'
@@ -14329,7 +14329,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         bibRef || 'Sem código local visível',
         [
           { text: bibRef ? `Código local / referência legada hoje relida neste exemplar: ${bibRef}` : 'Este exemplar não mostra código local nem referência legada neste recorte.', muted: false },
-          { text: 'Na estrutura atual, o exemplar já nasce ligado ao holding local, mas esta superfície publicada ainda expõe a referência legada como ponte de leitura e de rótulo.', muted: true },
+          { text: 'No SQL atual, o exemplar já carrega holding_id, mas esta superfície publicada ainda expõe bib_ref como ponte legada de leitura e de rótulo.', muted: true },
         ],
         bibRef ? ['Código local legível'] : [],
         'Código local / legado do exemplar'
@@ -16408,7 +16408,7 @@ function initPartnerProbeUi() {
     incomingIdentityPreviewEl.value = [
       `Nome da biblioteca → ${identity.libraryName || '—'}`,
       `Nome curto → ${identity.shortName || '—'}`,
-      `Identificador curto local → ${identity.slug || '—'}`,
+      `Slug local → ${identity.slug || '—'}`,
       `Sigla / acrônimo → ${identity.acronym || '—'}`,
       `Cidade / território → ${identity.territory || '—'}`,
       `Nota curta → ${noteParts.join(' ') || '—'}`,
@@ -16418,7 +16418,7 @@ function initPartnerProbeUi() {
     if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
       incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se você quiser, para os campos de governança documental abaixo.';
     } else {
-      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o identificador curto ou a sigla para preparar uma identificação local útil.';
+      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
     refreshIncomingCatalogWorkflowSummary();
     refreshPartnerPilotSummary();
@@ -16961,9 +16961,9 @@ function initPartnerProbeUi() {
       'matched_kind', 'match_target_kind', 'candidate_kind', 'matched_target_label', 'match_target_label', 'target_label'
     ]);
     const mode = pickIncomingPartnerValue(record, ['match_mode', 'best_match_mode']);
-    const titleLine = title || 'Sem top match dominante relido';
-    const meta = [author, year].filter(Boolean).join(' · ') || 'Responsabilidades ou data do top match ainda não relidas';
-    const context = [target || formatIncomingMatchStatusLabel(pickIncomingPartnerValue(record, ['match_status'])), mode].filter(Boolean).join(' · ') || 'Sem qualificação do top match';
+    const titleLine = title || 'Sem melhor aproximação dominante relido';
+    const meta = [author, year].filter(Boolean).join(' · ') || 'Responsabilidades ou data do melhor aproximação ainda não relidas';
+    const context = [target || formatIncomingMatchStatusLabel(pickIncomingPartnerValue(record, ['match_status'])), mode].filter(Boolean).join(' · ') || 'Sem qualificação do melhor aproximação';
     return `
       <div class="catalog-layer-stack">
         <div class="catalog-layer-title">${sanitize(titleLine)}</div>
@@ -17229,7 +17229,7 @@ function initPartnerProbeUi() {
       return;
     }
     if (incomingCatalogRunDetailState.loading) {
-      partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> relendo linhas, top matches e sinais para recompor a revisão editorial desta superfície…`;
+      partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> relendo linhas, melhor aproximaçãoes e sinais para recompor a revisão editorial desta superfície…`;
       return;
     }
     if (incomingCatalogRunDetailState.lastError) {
@@ -17371,7 +17371,7 @@ function initPartnerProbeUi() {
     }
 
     if (incomingCatalogRunDetailState.loading) {
-      partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> carregando linhas importadas, top matches e sinais…`;
+      partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> carregando linhas importadas, melhor aproximaçãoes e sinais…`;
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';
       renderIncomingCatalogRunBulkSummary();
       renderIncomingCatalogRunReviewFlowSummary();
@@ -17817,7 +17817,7 @@ function initPartnerProbeUi() {
       partnerIncomingSourceSummaryEl.innerHTML = `<strong>Fonte parceira:</strong> nenhuma fonte escolhida ainda. Sugestão disponível: ${sanitize(displayName)}${support ? ` · ${sanitize(support)}` : ''}.`;
       return;
     }
-    partnerIncomingSourceSummaryEl.innerHTML = '<strong>Fonte parceira:</strong> escolha uma fonte pelo nome legível. O número interno continua apenas no bloco de apoio técnico.';
+    partnerIncomingSourceSummaryEl.innerHTML = '<strong>Fonte parceira:</strong> escolha uma fonte pelo nome legível. O ID bruto continua apenas no bloco técnico opcional.';
   }
 
   async function readIncomingCatalogSourceChoices(force = false) {
@@ -17993,7 +17993,7 @@ function initPartnerProbeUi() {
       applyIncomingIdentityBtn.disabled = incomingCatalogImportState.busy || !identityReady;
       applyIncomingIdentityBtn.title = identityReady
         ? 'Levar esta biblioteca para os campos de governança abaixo, sem importar registros.'
-        : 'Preencha ao menos o nome, o nome curto, o identificador curto ou a sigla antes de levar a biblioteca para a governança.';
+        : 'Preencha ao menos o nome, o nome curto, o slug ou a sigla antes de levar a biblioteca para a governança.';
     }
     if (clearIncomingCatalogBtn) {
       clearIncomingCatalogBtn.disabled = incomingCatalogImportState.busy || !hasReceptionActivity;
@@ -18362,7 +18362,7 @@ function initPartnerProbeUi() {
     if (identity.territory) noteParts.push(`Território informado: ${identity.territory}.`);
     if (fileKind) noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
     if (!nextDisplayName && !identity.slug) {
-      setPartnerProbeMessage('Preencha ao menos o nome da biblioteca, o nome curto, o identificador curto ou a sigla antes de levar a identificação para a governança.', 'warn');
+      setPartnerProbeMessage('Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
       return;
     }
     if (displayEl && nextDisplayName) displayEl.value = nextDisplayName;
@@ -18496,20 +18496,20 @@ function initPartnerProbeUi() {
       : 'Nenhum match provável com parceira já conhecida nesta leitura local.';
     urlSuggestionOutputEl.value = [
       `URL analisada: ${suggestion.rawUrl}`,
-      `Endereço-base do catálogo provável: ${suggestion.baseUrl || '—'}`,
+      `Endereço-base provável: ${suggestion.baseUrl || '—'}`,
       `Nome público provável: ${suggestion.displayName || '—'}`,
-      `Identificador curto provável: ${suggestion.slug || '—'}`,
+      `Slug provável: ${suggestion.slug || '—'}`,
       `Família provável: ${suggestion.softwareFamily || 'unknown'}`,
       `Nível de confiança: ${suggestion.softwareConfidence || 'unknown'}`,
       `País provável: ${suggestion.countryCode || '—'}`,
-      `Nota curta: ${suggestion.note || '—'}`,
+      `Nota técnica curta: ${suggestion.note || '—'}`,
       matchLabel,
       'Lembrete: isto é só ajuda de pré-preenchimento. Não salva parceira, não importa notice e não decide situação relacional.'
     ].join('\n');
     urlSuggestionWritePreviewEl.value = [
       `Nome público → ${suggestion.displayName || '—'}`,
-      `Identificador curto → ${suggestion.slug || '—'}`,
-      `Endereço-base do catálogo → ${suggestion.baseUrl || '—'}`,
+      `Slug → ${suggestion.slug || '—'}`,
+      `Endereço-base → ${suggestion.baseUrl || '—'}`,
       `Família → ${suggestion.softwareFamily || 'unknown'}`,
       `Confiança → ${suggestion.softwareConfidence || 'unknown'}`,
       `País → ${suggestion.countryCode || '—'}`,
@@ -18889,14 +18889,14 @@ ${decisionSummary}` : '',
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter identificador curto ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar identificador curto ${nextGovernanceSlug}.`);
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta um identificador curto estável.');
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar o identificador curto local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
       lines.push('Governança parceira: sem escrita adicional prevista.');
     }
@@ -19234,7 +19234,7 @@ ${decisionSummary}` : '',
     if (partnerDocumentActionState.mutualizeAllowed) {
       return [
         'Preparação suficientemente descrita para escrita local assistida.',
-        'Mesmo assim, nada aqui modifica livremente a camada compartilhada',
+        'Mesmo assim, nada aqui modifica livremente a camada comum da rede',
         'nem dispara importação automática.',
       ].join(' ');
     }
@@ -19588,7 +19588,7 @@ ${decisionSummary}` : '',
       partnerGovernanceWriteValueEl.textContent = 'Bloqueada';
       partnerGovernanceWriteNoteEl.textContent = 'Sem parceira em foco, não há escrita local assistida disponível.';
       partnerGovernanceBoundaryValueEl.textContent = 'Protegida';
-      partnerGovernanceBoundaryNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam fora desta etapa.';
+      partnerGovernanceBoundaryNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada comum da rede e publicação pública continuam fora desta etapa.';
       return;
     }
 
@@ -19651,7 +19651,7 @@ ${decisionSummary}` : '',
     partnerGovernanceBoundaryValueEl.textContent = 'Camada local';
     partnerGovernanceBoundaryNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
       ? 'Mesmo com mutualização autorizada politicamente, esta aba não modifica livremente o registro da parceira nem publica no catálogo.'
-      : 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam protegidos nesta etapa.';
+      : 'Ficha comum publicada, registro da parceira, camada comum da rede e publicação pública continuam protegidos nesta etapa.';
   }
 
   function renderPartnerCompareSurfaceSummary() {
@@ -19700,7 +19700,7 @@ ${decisionSummary}` : '',
       partnerCompareWriteValueEl.textContent = 'Fechada';
       partnerCompareWriteNoteEl.textContent = 'Nenhuma escrita local assistida pode sair deste microfluxo enquanto a comparação estiver bloqueada.';
       partnerCompareProtectedValueEl.textContent = 'Protegida';
-      partnerCompareProtectedNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada compartilhada e publicação pública continuam intocados.';
+      partnerCompareProtectedNoteEl.textContent = 'Ficha comum publicada, registro da parceira, camada comum da rede e publicação pública continuam intocados.';
       partnerCompareBlockersValueEl.textContent = missingCount ? String(missingCount) : 'Política';
       partnerCompareBlockersNoteEl.textContent = missingCount
         ? formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:')
@@ -19729,7 +19729,7 @@ ${decisionSummary}` : '',
       partnerCompareWriteNoteEl.textContent = 'Já pode sair escrita assistida somente para a camada local e para a nota de proveniência.';
       partnerCompareProtectedValueEl.textContent = partnerDocumentActionState.mutualizeAllowed ? 'Parceira / pública' : 'Parceira / comum';
       partnerCompareProtectedNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
-        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada compartilhada nem a publicação pública.'
+        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada comum da rede nem a publicação pública.'
         : 'A ficha comum publicada, o registro da parceira e a publicação pública continuam protegidos.';
       partnerCompareBlockersValueEl.textContent = '0';
       partnerCompareBlockersNoteEl.textContent = 'Nenhum bloqueio material restante neste microfluxo; só falta a decisão humana do clique.';
@@ -19742,7 +19742,7 @@ ${decisionSummary}` : '',
     partnerCompareWriteValueEl.textContent = 'Parcial';
     partnerCompareWriteNoteEl.textContent = 'A escrita local continua limitada enquanto diferenças, resumo parceiro e decisão local não estiverem suficientemente descritos.';
     partnerCompareProtectedValueEl.textContent = 'Protegida';
-    partnerCompareProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada compartilhada continuam fora do alcance deste microfluxo.';
+    partnerCompareProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada comum da rede continuam fora do alcance deste microfluxo.';
     partnerCompareBlockersValueEl.textContent = String(missingCount);
     partnerCompareBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
@@ -19824,7 +19824,7 @@ ${decisionSummary}` : '',
       partnerImportWriteValueEl.textContent = 'Não';
       partnerImportWriteNoteEl.textContent = 'Nenhuma escrita local assistida pode sair deste bloco enquanto a política continuar bloqueada.';
       partnerImportProtectedValueEl.textContent = 'Protegida';
-      partnerImportProtectedNoteEl.textContent = 'Registro da parceira, ficha comum publicada, camada compartilhada e publicação pública continuam fora desta etapa.';
+      partnerImportProtectedNoteEl.textContent = 'Registro da parceira, ficha comum publicada, camada comum da rede e publicação pública continuam fora desta etapa.';
       partnerImportBlockersValueEl.textContent = String(missingCount);
       partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
       return;
@@ -19851,7 +19851,7 @@ ${decisionSummary}` : '',
       partnerImportWriteNoteEl.textContent = 'Já pode sair escrita assistida somente para fonte, governança, identificadores, formato, modo e nota de proveniência.';
       partnerImportProtectedValueEl.textContent = partnerDocumentActionState.mutualizeAllowed ? 'Parceira / pública' : 'Parceira / comum';
       partnerImportProtectedNoteEl.textContent = partnerDocumentActionState.mutualizeAllowed
-        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada compartilhada nem a publicação pública.'
+        ? 'Mesmo com mutualização autorizada politicamente, este microfluxo não modifica livremente a camada comum da rede nem a publicação pública.'
         : 'O registro da parceira, a ficha comum publicada e a publicação pública continuam protegidos.';
       partnerImportBlockersValueEl.textContent = '0';
       partnerImportBlockersNoteEl.textContent = 'Nenhum bloqueio material restante neste microfluxo; só falta a decisão humana do clique.';
@@ -19864,7 +19864,7 @@ ${decisionSummary}` : '',
     partnerImportWriteValueEl.textContent = 'Parcial';
     partnerImportWriteNoteEl.textContent = 'A escrita local continua limitada enquanto formato, modo, proveniência, decisão local e retomadas/exclusões não estiverem suficientemente descritos.';
     partnerImportProtectedValueEl.textContent = 'Protegida';
-    partnerImportProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada compartilhada continuam fora do alcance deste microfluxo.';
+    partnerImportProtectedNoteEl.textContent = 'O registro da parceira, a ficha comum publicada e a camada comum da rede continuam fora do alcance deste microfluxo.';
     partnerImportBlockersValueEl.textContent = String(missingCount);
     partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
@@ -20046,13 +20046,13 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
   function getImportSourceSummaryText() {
     const lines = [
       `Parceira: ${getCurrentPartnerLabel() || 'Parceira sem nome público'}`,
-      `Identificador curto: ${getCurrentPartnerSlug() || 'Sem identificador informado'}`,
-      `Endereço-base do catálogo: ${normalizePartnerBaseUrl(baseUrlEl.value || '') || 'Sem endereço-base informado'}`,
+      `Slug: ${getCurrentPartnerSlug() || 'Sem slug informado'}`,
+      `Endereço-base: ${normalizePartnerBaseUrl(baseUrlEl.value || '') || 'Sem base URL informada'}`,
       `Família / confiança: ${getSelectedOptionLabel(familyEl) || 'Sem família'} · ${getSelectedOptionLabel(confidenceEl) || 'Sem confiança'}`,
       `Situação relacional: ${String(relationshipStatusEl.value || '').trim() || 'Sem leitura relacional'}`,
       `Comparação: ${String(compareAllowedEl.value || '').trim() || '—'}`,
       `Importação: ${String(importAllowedEl.value || '').trim() || '—'}`,
-      `Última verificação técnica: ${String(technicalProbeLastAtEl.value || '').trim() || 'Sem teste registrado'}`,
+      `Última verificação de conexão: ${String(technicalProbeLastAtEl.value || '').trim() || 'Sem teste registrado'}`,
     ];
     return lines.join('\n');
   }
@@ -20136,14 +20136,14 @@ ${decisionSummary}` : '',
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter identificador curto ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar identificador curto ${nextGovernanceSlug}.`);
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta um identificador curto estável.');
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar o identificador curto local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
       lines.push('Governança parceira: sem escrita adicional prevista.');
     }
@@ -20408,7 +20408,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     if (mode === 'import_allowed') {
       partnerNextStepEl.value = mutualizeAllowed
-        ? 'Próximo gesto: abrir a preparação local, definir formato e modo, registrar a proveniência e preparar a retomada local; a camada compartilhada continua sem modificação livre.'
+        ? 'Próximo gesto: abrir a preparação local, definir formato e modo, registrar a proveniência e preparar a retomada local; a camada comum da rede continua sem modificação livre.'
         : 'Próximo gesto: abrir a preparação local, definir formato e modo, registrar a proveniência e preparar a retomada local com revisão humana.';
       return;
     }
@@ -20448,10 +20448,10 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     if (mode === 'import_allowed') {
       partnerBoundaryEl.value = mutualizeAllowed
-        ? 'Limite atual: a preparação local e a mutualização aparecem autorizadas politicamente, mas esta interface não libera modificação livre da camada compartilhada nem importação automática.'
+        ? 'Limite atual: a preparação local e a mutualização aparecem autorizadas politicamente, mas esta interface não libera modificação livre da camada comum da rede nem importação automática.'
         : 'Limite atual: a preparação local está aberta com revisão humana, mas a mutualização ainda não está autorizada nesta etapa.';
       partnerUnlockConditionEl.value = mutualizeAllowed
-        ? 'Condição mínima: manter proveniência explícita, revisão humana e separar claramente a camada local da camada compartilhada antes de qualquer passo posterior.'
+        ? 'Condição mínima: manter proveniência explícita, revisão humana e separar claramente a camada local da camada comum da rede antes de qualquer passo posterior.'
         : 'Condição mínima: a política relacional precisa chegar à mutualização autorizada para abrir um passo posterior de cooperação mais forte.';
       return;
     }
@@ -20528,7 +20528,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       return;
     }
     if (mode === 'registered_but_blocked') {
-      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um teste técnico isolado não muda isso.';
+      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um verificação de conexão isolado não muda isso.';
       setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
       setPartnerBoundaryReadout('registered_but_blocked', row, nextGateState);
       refreshPartnerPilotSummary();
@@ -20551,13 +20551,13 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       return;
     }
     if (mode === 'not_registered') {
-      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum teste técnico local.';
+      actionHintEl.textContent = 'Parceira ainda não formalizada na base. As ações documentárias ficam bloqueadas, mesmo que já exista algum verificação de conexão local.';
       setPartnerNextStepReadout('not_registered', row, nextGateState);
       setPartnerBoundaryReadout('not_registered', row, nextGateState);
       refreshPartnerPilotSummary();
       return;
     }
-    actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um teste técnico isolado não basta para liberá-las.';
+    actionHintEl.textContent = 'Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e um verificação de conexão isolado não basta para liberá-las.';
     setPartnerNextStepReadout('empty', row, nextGateState);
     setPartnerBoundaryReadout('empty', row, nextGateState);
     refreshPartnerPilotSummary();
@@ -20593,8 +20593,8 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     politicalNoticeEl.textContent = nextGateState.requireExplicitAgreement
       ? (nextGateState.explicitAgreementActive
           ? 'Os acordos desta parceira foram aplicados a partir do painel. A camada técnica continua subordinada a esses acordos e não vale como modificação livre do registro da parceira.'
-          : `${nextGateState.noAgreementMessage} O teste técnico e a identificação da parceira podem continuar visíveis, mas o uso documental fica bloqueado.`)
-      : 'Acordos aplicados sem exigência de acordo explícito prévio. Ainda assim, teste técnico não substitui decisão política nem libera modificação livre do registro da parceira.';
+          : `${nextGateState.noAgreementMessage} O verificação de conexão e a identificação da parceira podem continuar visíveis, mas o uso documental fica bloqueado.`)
+      : 'Acordos aplicados sem exigência de acordo explícito prévio. Ainda assim, verificação de conexão não substitui decisão política nem libera modificação livre do registro da parceira.';
 
     if (gateBlocked) {
       setPartnerDocumentActionsState('agreement_blocked', row, nextGateState);
@@ -20767,7 +20767,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     if (!slug) {
       clearPartnerPolicyReadout();
-      if (!silent) setPartnerProbeMessage('Preencha pelo menos o identificador curto da parceira para aplicar os acordos desta parceira.', 'warn');
+      if (!silent) setPartnerProbeMessage('Preencha pelo menos o slug da parceira para aplicar os acordos desta parceira.', 'warn');
       return;
     }
 
@@ -20806,7 +20806,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
               : row.import_allowed
                 ? 'Acordos desta parceira aplicados. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
                 : row.compare_allowed
-                  ? 'Acordos desta parceira aplicados. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o última verificação técnica e não libera importação.'
+                  ? 'Acordos desta parceira aplicados. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último verificação de conexão e não libera importação.'
                   : 'Acordos desta parceira aplicados. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
             row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
           );
@@ -20857,7 +20857,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     if (!displayName || !baseUrl || !slug) {
       reportEl.value = '';
       seedEl.value = '';
-      setPartnerProbeMessage('Preencha pelo menos nome público, identificador curto e endereço-base do catálogo.', 'warn');
+      setPartnerProbeMessage('Preencha pelo menos nome público, slug e base URL.', 'warn');
       return;
     }
 
@@ -20873,7 +20873,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       notes
     });
 
-    setPartnerProbeMessage('Prévia técnica da conexão e seed SQL gerados. Isso não substitui a leitura da situação relacional na base.', 'ok');
+    setPartnerProbeMessage('Prévia técnica da conexão e texto de cadastro gerados. Isso não substitui a leitura da situação relacional na base.', 'ok');
   }
 
   presetEl.addEventListener('change', () => {
@@ -20948,7 +20948,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
   openBaseBtn?.addEventListener('click', () => {
     const url = normalizePartnerBaseUrl(baseUrlEl.value);
     if (!url) {
-      setPartnerProbeMessage('Preencha um endereço-base antes de abrir.', 'warn');
+      setPartnerProbeMessage('Preencha uma base URL antes de abrir.', 'warn');
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
