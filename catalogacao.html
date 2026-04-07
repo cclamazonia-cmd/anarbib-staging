@@ -6699,16 +6699,53 @@
       return 'Abrir arquivo';
     }
 
+    function getBookDigitalReaderActionMeta(record = null) {
+          const resolved = record || buildBookDigitalRecordLikeFromForm();
+          const familyKey = getBookDigitalPlannedFamilyMeta(resolved).key;
+          const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
+          const hasExternal = !!String(resolved?.source_url || '').trim();
+          const hasPublishedContext = !!(getCurrentBookCompatRef() || Number(el('bookPublishedId')?.value || 0));
+          const isPublic = String(resolved?.access_scope || '') === 'publico';
+    
+          if (familyKey === 'pdf_texto') {
+            const canUseInternal = isPublic ? hasLocal : hasPublishedContext;
+            if (canUseInternal) {
+              return { label: 'Abrir no leitor', canOpen: true, mode: 'internal' };
+            }
+            if (hasLocal || hasExternal) {
+              return { label: 'Abrir PDF', canOpen: true, mode: 'direct' };
+            }
+            return { label: 'Abrir no leitor', canOpen: false, mode: 'internal' };
+          }
+    
+          const directLabels = {
+            audio: 'Ouvir',
+            video: 'Ver vídeo',
+            image: 'Ver imagem',
+            link_externo: 'Abrir no navegador',
+            recurso_digital: 'Abrir recurso',
+          };
+          return {
+            label: directLabels[familyKey] || 'Abrir recurso',
+            canOpen: !!(hasLocal || hasExternal),
+            mode: 'direct',
+          };
+        }
+
     function updateBookDigitalActionButtons() {
       const recordLike = buildBookDigitalRecordLikeFromForm();
       const hasOpenableTarget = !!(String(recordLike.storage_bucket || '').trim() && String(recordLike.storage_path || '').trim()) || !!String(recordLike.source_url || '').trim();
       const openBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
+      const readerMeta = getBookDigitalReaderActionMeta(recordLike);
       if (openBtn) {
         openBtn.disabled = !hasOpenableTarget;
         openBtn.textContent = getBookDigitalOpenPrimaryActionLabel(recordLike);
       }
-      if (readerBtn) readerBtn.disabled = !canOpenBookDigitalReaderInternally(recordLike);
+      if (readerBtn) {
+        readerBtn.disabled = !readerMeta.canOpen;
+        readerBtn.textContent = readerMeta.label;
+      }
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
@@ -7195,12 +7232,13 @@
       return data;
     }
 
-    async function openBookDigitalPdfFromForm() {
-      const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
-      const path = el('bookDigitalPath').value.trim();
-      const sourceUrl = String(el('bookDigitalSourceUrl').value || '').trim();
+    async function resolveBookDigitalOpenUrl(record = null, expiresInSeconds = 900) {
+      const resolved = record || buildBookDigitalRecordLikeFromForm();
+      const bucket = normalizeBookDigitalBucket(String(resolved?.storage_bucket || '').trim());
+      const path = String(resolved?.storage_path || '').trim();
+      const sourceUrl = String(resolved?.source_url || '').trim();
       if (bucket && path) {
-        const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
+        const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds);
         let resolvedUrl = signedData?.signedUrl || '';
         if (!resolvedUrl) {
           const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
@@ -7208,14 +7246,15 @@
         }
         if (signedError && !resolvedUrl) throw signedError;
         if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este recurso digital.');
-        window.open(resolvedUrl, '_blank', 'noopener');
-        return;
+        return resolvedUrl;
       }
-      if (sourceUrl) {
-        window.open(sourceUrl, '_blank', 'noopener');
-        return;
-      }
+      if (sourceUrl) return sourceUrl;
       throw new Error('Informe um caminho local completo ou uma URL de fonte para abrir este recurso digital.');
+    }
+
+    async function openBookDigitalPdfFromForm() {
+      const resolvedUrl = await resolveBookDigitalOpenUrl(buildBookDigitalRecordLikeFromForm());
+      window.open(resolvedUrl, '_blank', 'noopener');
     }
 
     async function openBookDigitalReaderFromForm() {
@@ -7231,10 +7270,13 @@
       const rightsStatus = String(recordLike.rights_status || '').trim();
       const isPublic = String(recordLike.access_scope || '') === 'publico';
       const familyKey = getBookDigitalPlannedFamilyMeta(recordLike).key;
+      const readerMeta = getBookDigitalReaderActionMeta(recordLike);
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
 
-      if (['audio', 'video', 'image', 'link_externo'].includes(familyKey)) {
-        throw new Error('Este tipo de recurso digital não abre no leitor interno desta ficha. Use “Abrir arquivo” ou “Abrir fonte”.');
+      if (readerMeta.mode === 'direct') {
+        const resolvedUrl = await resolveBookDigitalOpenUrl(recordLike);
+        window.open(resolvedUrl, '_blank', 'noopener');
+        return;
       }
 
       if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
@@ -7252,7 +7294,7 @@
 
       if (isPublic) {
         if (!bucket || !path) {
-          throw new Error('Para abrir no leitor interno, este recurso público precisa ter um arquivo local completo no armazenamento. Para um link externo, use “Abrir fonte”.');
+          throw new Error('Para abrir no leitor interno, este PDF público precisa ter um arquivo local completo no armazenamento. Quando houver apenas um link externo, use a abertura direta desta superfície.');
         }
 
         if (publishedBookId) {
@@ -7278,7 +7320,7 @@
         return;
       }
 
-      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir este recurso restrito no leitor.');
+      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir este PDF restrito no leitor interno.');
       if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
