@@ -14398,8 +14398,8 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         const localOnlyCount = visibleRights.filter((meta) => meta.statusValue === 'local_only').length;
         const partnerLinkedCount = visibleRights.filter((meta) => meta.hasPartnerSource).length;
         refs.catalogRightsSurfaceSummary.innerHTML = visibleDocuments.length
-          ? `<strong>Direitos interbibliotecas:</strong> ${visibleDocuments.length} linhas públicas relidas; ${localOnlyCount} local somente; ${networkVisibleCount} visíveis na rede; ${mutualizableCount} mutualizáveis; ${consultationOnlyCount} de consulta local; ${partnerLinkedCount} com fonte parceira explicitamente relida.`
-          : '<strong>Direitos interbibliotecas:</strong> nenhuma linha pública relida neste recorte.';
+          ? `<strong>Direitos interbibliotecas:</strong> ${visibleDocuments.length} linhas públicas relidas no nível ficha comum + holding local; ${localOnlyCount} local somente; ${networkVisibleCount} visíveis na rede; ${mutualizableCount} mutualizáveis; ${consultationOnlyCount} de consulta local; ${partnerLinkedCount} com fonte parceira explicitamente relida. Exemplares locais continuam em recorte próprio nesta tela.`
+          : '<strong>Direitos interbibliotecas:</strong> nenhuma linha pública relida neste recorte de ficha comum + holding local.';
       }
     }
 
@@ -18602,26 +18602,26 @@ function initPartnerProbeUi() {
     const importMethodLabel = getSelectedOptionLabel(el('bookImportMethod'));
     const policyHint = compactSpaces(bookPartnerPolicyHintEl?.textContent || '');
 
-    let heading = 'situação interbibliotecas ainda não definida nesta ficha.';
+    let heading = 'situação interbibliotecas ainda não definida para o holding local desta ficha.';
     if (statusValue === 'mutualizable') {
-      heading = `holding local marcado como ${statusLabel.toLowerCase()} nesta rede.`;
+      heading = `holding local desta ficha relido como ${statusLabel.toLowerCase()}, com circulação em rede e mutualização sinalizada.`;
     } else if (statusValue === 'network_visible') {
-      heading = `holding local marcado como ${statusLabel.toLowerCase()}, sem mutualização explícita nesta leitura.`;
+      heading = `holding local desta ficha relido como ${statusLabel.toLowerCase()}, visível na rede, mas ainda sem mutualização explícita nesta ficha.`;
     } else if (statusValue === 'consultation_only') {
-      heading = `holding local marcado como ${statusLabel.toLowerCase()}, com circulação interbibliotecas mais restrita.`;
+      heading = `holding local desta ficha relido como ${statusLabel.toLowerCase()}, com consulta local e circulação interbibliotecas mais restrita.`;
     } else if (statusValue === 'local_only') {
-      heading = `holding local marcado como ${statusLabel.toLowerCase()}, sem circulação interbibliotecas explícita nesta ficha.`;
+      heading = `holding local desta ficha relido como ${statusLabel.toLowerCase()}, mantido apenas no plano local, sem visibilidade interbibliotecas nesta ficha.`;
     } else if (statusLabel) {
-      heading = `holding local relido como ${statusLabel.toLowerCase()}.`;
+      heading = `holding local desta ficha relido como ${statusLabel.toLowerCase()}.`;
     }
 
     const sourceParts = [];
     if (sourceLabel) sourceParts.push(`Fonte parceira em foco: ${sourceLabel}.`);
-    else sourceParts.push('Sem fonte parceira ativa nesta ficha.');
+    else sourceParts.push('Sem fonte parceira ativa nesta leitura de ficha comum + holding local.');
     if (sourceRecordId) sourceParts.push(`ID de origem: ${sourceRecordId}.`);
     if (sourceRecordUrl) sourceParts.push('URL de origem já indicada.');
     if (importFormatLabel || importMethodLabel) {
-      sourceParts.push(`Preparação local: ${joinSummaryParts([
+      sourceParts.push(`Preparação local ainda no nível da ficha comum/holding: ${joinSummaryParts([
         importFormatLabel ? `formato ${importFormatLabel}` : '',
         importMethodLabel ? `modo ${importMethodLabel}` : '',
       ])}.`);
@@ -18629,6 +18629,7 @@ function initPartnerProbeUi() {
 
     return {
       heading,
+      layerLine: 'Esta leitura continua no nível ficha comum + holding local; exemplares locais e rótulos ficam em superfícies próprias.',
       sourceLine: sourceParts.join(' '),
       policyLine: policyHint || 'Sem leitura documental específica desta parceira nesta ficha.',
     };
@@ -18637,7 +18638,7 @@ function initPartnerProbeUi() {
   function updateBookInterlibraryRightsSummary() {
     if (!refs.bookInterlibraryRightsSummary) return;
     const meta = getBookCurrentInterlibraryRightsMeta();
-    refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
+    refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.layerLine)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
     renderBookMetadataTraceSummary();
   }
 
@@ -19265,15 +19266,20 @@ ${decisionSummary}` : '',
         ? 'Comparação documental local'
         : 'Nenhum microfluxo aberto';
 
+    const localWriteState = partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed
+      ? 'potencialmente aberta com revisão humana'
+      : 'bloqueada';
+
     return [
       `Parceira em foco: ${label}`,
       `Slug em foco: ${slug}`,
       `Situação relacional lida: ${relationshipStatusEl.value || '—'}`,
       `Acordo explícito: ${agreementStatusEl?.value || '—'}`,
       `Microfluxo ativo agora: ${activeFlow}`,
-      `Comparação: ${partnerDocumentActionState.compareAllowed ? 'autorizada' : 'bloqueada'}`,
-      `Preparação local: ${partnerDocumentActionState.importAllowed ? 'autorizada' : 'bloqueada'}`,
-      `Mutualização: ${partnerDocumentActionState.mutualizeAllowed ? 'autorizada politicamente, sem modificação livre' : 'fora desta etapa'}`,
+      `Escrita local sobre ficha comum/holding: ${localWriteState}`,
+      `Comparação documental local: ${partnerDocumentActionState.compareAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Preparação local de importação: ${partnerDocumentActionState.importAllowed ? 'autorizada' : 'bloqueada'}`,
+      `Mutualização: ${partnerDocumentActionState.mutualizeAllowed ? 'autorizada politicamente, mas ainda separada da escrita local assistida' : 'fora desta etapa'}`,
     ].join('\n');
   }
 
@@ -19284,7 +19290,7 @@ ${decisionSummary}` : '',
     if (partnerDocumentActionState.importWorkspaceOpen) {
       if (!importReadiness.canWrite) {
         return [
-          'A preparação local ainda não pode ser levada para a ficha.',
+          'A preparação local ainda não pode ser levada para a ficha e o holding.',
           '',
           formatPartnerMissingItems(
             importReadiness.missing,
@@ -19294,7 +19300,7 @@ ${decisionSummary}` : '',
       }
 
       return [
-        'A preparação local já pode escrever na ficha, mas só em camada local.',
+        'A preparação local já pode escrever na ficha, mas só na camada local da ficha e do holding.',
         '',
         getImportFieldWritePreviewText(),
       ].join('\n');
@@ -19303,7 +19309,7 @@ ${decisionSummary}` : '',
     if (partnerDocumentActionState.workspaceOpen) {
       if (!comparisonReadiness.canWrite) {
         return [
-          'A comparação ainda não pode ser levada para a ficha.',
+          'A comparação ainda não pode ser levada para a ficha e o holding.',
           '',
           formatPartnerMissingItems(
             comparisonReadiness.missing,
@@ -19313,29 +19319,31 @@ ${decisionSummary}` : '',
       }
 
       return [
-        'A comparação já pode escrever na ficha, mas só em camada local.',
+        'A comparação já pode escrever na ficha, mas só na camada local da ficha e do holding.',
         '',
         getComparisonFieldWritePreviewText(),
       ].join('\n');
     }
 
     if (partnerDocumentActionState.importAllowed) {
-      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta.';
+      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha/holding.';
     }
 
     if (partnerDocumentActionState.compareAllowed) {
-      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta.';
+      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha/holding.';
     }
 
-    return 'Nenhuma escrita local pode sair agora a partir desta aba.';
+    return 'Nenhuma escrita local sobre ficha comum ou holding pode sair agora a partir desta aba.';
   }
 
   function getPartnerProtectedNowText() {
     const lines = [
       'Ficha comum publicada: não é reescrita automaticamente aqui.',
+      'Holding local publicado: não muda de situação de rede por esta aba.',
       'Registro da parceira: não é alterado por esta aba.',
       'Camada compartilhada: não sofre modificação livre nesta etapa.',
       'Importação automática: não é disparada por nenhum destes cliques.',
+      'Mutualização entre bibliotecas: não é disparada por nenhum destes cliques.',
       'Publicação no catálogo: não acontece a partir deste painel.',
     ];
 
@@ -19460,26 +19468,26 @@ ${decisionSummary}` : '',
     }
 
     if (partnerDocumentActionState.catalogacaoGateBlocked) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(agreement || 'Sem acordo explícito ativo.')} A leitura política pode continuar, mas a escrita documental segue bloqueada.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(agreement || 'Sem acordo explícito ativo.')} A leitura política pode continuar, mas a escrita local sobre ficha comum/holding segue bloqueada e a mutualização permanece fora desta etapa.`;
       return;
     }
 
     if (partnerDocumentActionState.importWorkspaceOpen) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação, ainda restrita à camada local da ficha e do holding.`;
       return;
     }
 
     if (partnerDocumentActionState.workspaceOpen) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local, ainda restrita à camada local da ficha e do holding.`;
       return;
     }
 
     if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} A política já abriu uso documental, mas ainda falta escolher e abrir um microfluxo.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} A política já abriu uso documental para escrita local assistida, mas a mutualização continua separada e ainda falta escolher e abrir um microfluxo.`;
       return;
     }
 
-    partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Sem situação relacional aplicável ainda.')} Esta aba continua em leitura política e técnica, sem microfluxo documental aberto.`;
+    partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Sem situação relacional aplicável ainda.')} Esta aba continua em leitura política e técnica, sem escrita local interbibliotecas aberta.`;
   }
 
   function getPartnerMetadataTraceState() {
@@ -19651,21 +19659,21 @@ ${decisionSummary}` : '',
     const readiness = getComparisonReadinessState();
 
     if (!partnerDocumentActionState.compareAllowed) {
-      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação documental ainda bloqueada pela política atual desta parceira.';
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação documental ainda bloqueada pela política atual desta parceira; nenhuma escrita sobre ficha comum ou holding local pode sair daqui.';
       return;
     }
 
     if (!partnerDocumentActionState.workspaceOpen) {
-      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação autorizada, mas nenhum microfluxo de comparação está aberto nesta tela.';
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação autorizada, mas nenhum microfluxo de comparação está aberto nesta tela. A mutualização continua separada desta superfície.';
       return;
     }
 
     if (readiness.canWrite) {
-      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha.';
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha e do holding, sem tocar a mutualização.';
       return;
     }
 
-    partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha/holding. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
 
@@ -19776,21 +19784,21 @@ ${decisionSummary}` : '',
     const readiness = getImportReadinessState();
 
     if (!partnerDocumentActionState.importAllowed) {
-      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação local de importação ainda bloqueada pela política atual desta parceira.';
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação local de importação ainda bloqueada pela política atual desta parceira; nenhuma escrita sobre ficha comum ou holding local pode sair daqui.';
       return;
     }
 
     if (!partnerDocumentActionState.importWorkspaceOpen) {
-      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação autorizada, mas nenhum microfluxo de preparação está aberto nesta tela.';
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação autorizada, mas nenhum microfluxo de preparação está aberto nesta tela. A mutualização continua separada desta superfície.';
       return;
     }
 
     if (readiness.canWrite) {
-      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha.';
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha e do holding, sem tocar a mutualização.';
       return;
     }
 
-    partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha/holding. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
   function renderPartnerImportExerciseSummary() {
