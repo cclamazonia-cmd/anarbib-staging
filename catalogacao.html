@@ -17058,6 +17058,49 @@ function initPartnerProbeUi() {
     return parts.join(' · ');
   }
 
+  function findIncomingCatalogSourceById(sourceId) {
+    const normalized = normalizeInlineWhitespace(sourceId || '');
+    if (!normalized) return null;
+    const items = Array.isArray(incomingCatalogSourceState.items) ? incomingCatalogSourceState.items : [];
+    return items.find((item) => String(extractIncomingCatalogSourceId(item)) === normalized) || null;
+  }
+
+  function getIncomingCatalogSelectedSourceLabel(sourceId) {
+    const normalized = normalizeInlineWhitespace(sourceId || partnerIncomingSourceSelectEl?.value || incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || '');
+    if (!normalized) return '';
+    const current = findIncomingCatalogSourceById(normalized);
+    return current ? extractIncomingCatalogSourceDisplayName(current) : `Fonte #${normalized}`;
+  }
+
+  function hasIncomingCatalogSelectedSourceChoice() {
+    return Boolean(normalizeInlineWhitespace(partnerIncomingSourceSelectEl?.value || incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || ''));
+  }
+
+  function buildIncomingCatalogCreateButtonTitle() {
+    if (incomingCatalogImportState.busy) return 'Tratamento em andamento nesta superfície.';
+    if (!incomingCatalogFileEl?.files?.[0]) return 'Escolha primeiro um arquivo para lançar o tratamento.';
+    if (!hasIncomingCatalogSelectedSourceChoice()) return 'Escolha primeiro a fonte parceira pelo nome legível.';
+    const label = getIncomingCatalogSelectedSourceLabel();
+    return label ? `Lançar tratamento com a fonte ${label}.` : 'Lançar tratamento com a fonte parceira escolhida.';
+  }
+
+  function buildIncomingCatalogCreateButtonAriaLabel() {
+    if (!hasIncomingCatalogSelectedSourceChoice()) {
+      return 'Lançar tratamento desativado até a escolha da fonte parceira pelo nome legível';
+    }
+    const label = getIncomingCatalogSelectedSourceLabel();
+    return label ? `Lançar tratamento com a fonte parceira ${label}` : 'Lançar tratamento com a fonte parceira escolhida';
+  }
+
+  function buildIncomingCatalogSourceRequiredError() {
+    return 'Escolha primeiro uma fonte parceira pelo nome legível antes de lançar o tratamento.';
+  }
+
+  function buildIncomingCatalogSourceSelectedToast(sourceId) {
+    const label = getIncomingCatalogSelectedSourceLabel(sourceId);
+    return label ? `Fonte parceira legível vinculada a esta recepção: ${label}.` : 'Fonte parceira legível vinculada a esta recepção.';
+  }
+
   function buildIncomingCatalogSourceCandidateKeys() {
     const identity = buildIncomingCatalogIdentity();
     const keys = {
@@ -17151,7 +17194,7 @@ function initPartnerProbeUi() {
         options.push(`<option value="${sanitize(String(sourceId))}"${selected}>${sanitize(displayName + suffix)}</option>`);
       });
       if (currentId && !items.some((item) => String(extractIncomingCatalogSourceId(item)) === currentId)) {
-        options.push(`<option value="${sanitize(currentId)}" selected>Fonte #${sanitize(currentId)} (ID técnico informado)</option>`);
+        options.push(`<option value="${sanitize(currentId)}" selected>${sanitize(getIncomingCatalogSelectedSourceLabel(currentId) || `Fonte #${currentId}`)} (ID técnico informado)</option>`);
       }
       partnerIncomingSourceSelectEl.innerHTML = options.join('');
       partnerIncomingSourceSelectEl.disabled = incomingCatalogSourceState.loading;
@@ -17339,11 +17382,15 @@ function initPartnerProbeUi() {
     renderIncomingCatalogRunDetail();
     renderIncomingCatalogRunBulkSummary();
     renderIncomingCatalogDraftCreationSummary();
-    const disableCreate = incomingCatalogImportState.busy || !file;
+    const disableCreate = incomingCatalogImportState.busy || !file || !hasIncomingCatalogSelectedSourceChoice();
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
     const disableBulk = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
     const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
-    if (incomingCreateDispatchBtn) incomingCreateDispatchBtn.disabled = disableCreate;
+    if (incomingCreateDispatchBtn) {
+      incomingCreateDispatchBtn.disabled = disableCreate;
+      incomingCreateDispatchBtn.title = buildIncomingCatalogCreateButtonTitle();
+      incomingCreateDispatchBtn.setAttribute('aria-label', buildIncomingCatalogCreateButtonAriaLabel());
+    }
     if (partnerIncomingSourceSelectEl) partnerIncomingSourceSelectEl.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
     if (partnerRefreshSourceChoicesBtn) partnerRefreshSourceChoicesBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
     if (partnerSuggestIncomingSourceBtn) partnerSuggestIncomingSourceBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading || !incomingCatalogSourceState.lastSuggestedSourceId;
@@ -17440,7 +17487,7 @@ function initPartnerProbeUi() {
     if (!file) throw new Error('Escolha primeiro um arquivo para lançar o tratamento.');
     const sourceId = Number(incomingImportSourceIdEl?.value || 0);
     if (!Number.isFinite(sourceId) || sourceId <= 0) {
-      throw new Error('Abra os detalhes técnicos e informe o ID da fonte parceira antes de lançar o tratamento.');
+      throw new Error(buildIncomingCatalogSourceRequiredError());
     }
     const requestedBy = state.session?.user?.id || state.profile?.user_id || null;
     if (!requestedBy) throw new Error('Sessão bibliotecária não reconhecida para registrar quem pediu esta importação.');
@@ -20311,7 +20358,7 @@ ${decisionSummary}` : '',
     setIncomingCatalogSourceChoice(partnerIncomingSourceSelectEl.value || '', { markUserTouched: true });
     const chosenId = normalizeInlineWhitespace(partnerIncomingSourceSelectEl.value || '');
     if (chosenId) {
-      setPartnerProbeMessage(`Fonte parceira legível vinculada a esta recepção: #${chosenId}.`, 'ok');
+      setPartnerProbeMessage(buildIncomingCatalogSourceSelectedToast(chosenId), 'ok');
     }
   });
 
@@ -20360,31 +20407,8 @@ ${decisionSummary}` : '',
     }
   });
 
-
-  partnerRunDetailWrapEl?.addEventListener('click', async (event) => {
-    const button = event.target?.closest?.('[data-row-decision][data-row-id]');
-    if (!button) return;
-    const rowId = Number(button.getAttribute('data-row-id') || 0);
-    const decision = String(button.getAttribute('data-row-decision') || '').trim().toLowerCase();
-    if (!Number.isFinite(rowId) || rowId <= 0 || !decision) return;
-    const runId = getIncomingCatalogImportRunId();
-    if (!runId) {
-      setPartnerProbeMessage('Abra primeiro um tratamento válido antes de decidir linha por linha.', 'warn');
-      return;
-    }
-    button.disabled = true;
-    try {
-      await setIncomingCatalogEditorialDecision(rowId, decision);
-      await readIncomingCatalogRunDetail(runId);
-      await readIncomingCatalogRunHistory();
-      await readIncomingCatalogRunSummary(runId);
-      setPartnerProbeMessage(`Decisão editorial registrada para a linha ${rowId}: ${formatIncomingEditorialDecisionLabel(decision)}.`, 'ok');
-    } catch (error) {
-      setPartnerProbeMessage(`Não consegui registrar a decisão desta linha: ${error?.message || error}`, 'error');
-    } finally {
-      refreshIncomingCatalogImportUi();
-    }
-  });
+  // Listener legado removido no F7bis: a superfície atual usa apenas
+  // data-partner-run-row-action / data-partner-run-row-id para as decisões unitárias.
 
   partnerRunHistoryWrapEl?.addEventListener('click', async (event) => {
     const button = event.target?.closest?.('[data-open-partner-run]');
