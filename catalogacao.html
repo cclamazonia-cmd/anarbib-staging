@@ -1595,6 +1595,123 @@
       align-items: center;
     }
 
+    .book-digital-universal-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 1600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(6px);
+    }
+
+    .book-digital-universal-viewer.is-hidden {
+      display: none !important;
+    }
+
+    .book-digital-universal-viewer-dialog {
+      width: min(1180px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(18,18,18,.98), rgba(10,10,10,.98));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .book-digital-universal-viewer-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .book-digital-universal-viewer-title {
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      margin: 0;
+    }
+
+    .book-digital-universal-viewer-meta {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      margin-top: 4px;
+    }
+
+    .book-digital-universal-viewer-body {
+      flex: 1 1 auto;
+      min-height: 320px;
+      max-height: calc(100vh - 180px);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.32);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .book-digital-universal-viewer-body iframe,
+    .book-digital-universal-viewer-body audio,
+    .book-digital-universal-viewer-body video,
+    .book-digital-universal-viewer-body img,
+    .book-digital-universal-viewer-body embed {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+
+    .book-digital-universal-viewer-body audio {
+      height: auto;
+      max-width: 100%;
+      margin: 24px;
+      background: transparent;
+    }
+
+    .book-digital-universal-viewer-body img {
+      object-fit: contain;
+      background: rgba(0,0,0,.18);
+    }
+
+    .book-digital-universal-viewer-empty {
+      padding: 22px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 760px) {
+      .book-digital-universal-viewer {
+        padding: 10px;
+      }
+
+      .book-digital-universal-viewer-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+        padding: 10px;
+      }
+
+      .book-digital-universal-viewer-body {
+        max-height: calc(100vh - 220px);
+      }
+    }
+
 
     @media (max-width: 1520px) {
       .statusbar,
@@ -2538,7 +2655,7 @@
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
-                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
+                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir arquivo</button>
                     <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
                     <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
                   </div>
@@ -2603,6 +2720,22 @@
                 </div>
 
                 <div id="bookDigitalLinkedSummary" class="hint" style="margin-top:12px;">Nenhum recurso digital carregado neste formulário.</div>
+
+                <div id="bookDigitalUniversalViewer" class="book-digital-universal-viewer is-hidden" aria-hidden="true">
+                  <div class="book-digital-universal-viewer-dialog" role="dialog" aria-modal="true" aria-labelledby="bookDigitalUniversalViewerTitle">
+                    <div class="book-digital-universal-viewer-head">
+                      <div>
+                        <h4 id="bookDigitalUniversalViewerTitle" class="book-digital-universal-viewer-title">Recurso digital</h4>
+                        <div id="bookDigitalUniversalViewerMeta" class="book-digital-universal-viewer-meta">Leitura integrada do recurso digital em foco.</div>
+                      </div>
+                      <div class="row-actions">
+                        <button id="bookDigitalUniversalViewerOpenExternalBtn" type="button" class="button secondary small">Abrir em nova aba</button>
+                        <button id="bookDigitalUniversalViewerCloseBtn" type="button" class="button ghost small">Fechar</button>
+                      </div>
+                    </div>
+                    <div id="bookDigitalUniversalViewerBody" class="book-digital-universal-viewer-body"></div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -6700,37 +6833,24 @@
     }
 
     function getBookDigitalReaderActionMeta(record = null) {
-          const resolved = record || buildBookDigitalRecordLikeFromForm();
-          const familyKey = getBookDigitalPlannedFamilyMeta(resolved).key;
-          const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
-          const hasExternal = !!String(resolved?.source_url || '').trim();
-          const hasPublishedContext = !!(getCurrentBookCompatRef() || Number(el('bookPublishedId')?.value || 0));
-          const isPublic = String(resolved?.access_scope || '') === 'publico';
-    
-          if (familyKey === 'pdf_texto') {
-            const canUseInternal = isPublic ? hasLocal : hasPublishedContext;
-            if (canUseInternal) {
-              return { label: 'Abrir no leitor', canOpen: true, mode: 'internal' };
-            }
-            if (hasLocal || hasExternal) {
-              return { label: 'Abrir PDF', canOpen: true, mode: 'direct' };
-            }
-            return { label: 'Abrir no leitor', canOpen: false, mode: 'internal' };
-          }
-    
-          const directLabels = {
-            audio: 'Ouvir',
-            video: 'Ver vídeo',
-            image: 'Ver imagem',
-            link_externo: 'Abrir no navegador',
-            recurso_digital: 'Abrir recurso',
-          };
-          return {
-            label: directLabels[familyKey] || 'Abrir recurso',
-            canOpen: !!(hasLocal || hasExternal),
-            mode: 'direct',
-          };
-        }
+      const resolved = record || buildBookDigitalRecordLikeFromForm();
+      const familyKey = getBookDigitalPlannedFamilyMeta(resolved).key;
+      const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
+      const hasExternal = !!String(resolved?.source_url || '').trim();
+      const viewerLabels = {
+        pdf_texto: 'Ler aqui',
+        audio: 'Ouvir aqui',
+        video: 'Ver aqui',
+        image: 'Ver aqui',
+        link_externo: 'Abrir aqui',
+        recurso_digital: 'Abrir aqui',
+      };
+      return {
+        label: viewerLabels[familyKey] || 'Abrir aqui',
+        canOpen: !!(hasLocal || hasExternal),
+        mode: 'viewer',
+      };
+    }
 
     function updateBookDigitalActionButtons() {
       const recordLike = buildBookDigitalRecordLikeFromForm();
@@ -7252,6 +7372,84 @@
       throw new Error('Informe um caminho local completo ou uma URL de fonte para abrir este recurso digital.');
     }
 
+    function closeBookDigitalUniversalViewer() {
+      const viewerNode = el('bookDigitalUniversalViewer');
+      const bodyNode = el('bookDigitalUniversalViewerBody');
+      const titleNode = el('bookDigitalUniversalViewerTitle');
+      const metaNode = el('bookDigitalUniversalViewerMeta');
+      const openExternalBtn = el('bookDigitalUniversalViewerOpenExternalBtn');
+      if (!viewerNode || !bodyNode) return;
+      bodyNode.innerHTML = '';
+      viewerNode.classList.add('is-hidden');
+      viewerNode.setAttribute('aria-hidden', 'true');
+      viewerNode.removeAttribute('data-open-url');
+      if (titleNode) titleNode.textContent = 'Recurso digital';
+      if (metaNode) metaNode.textContent = 'Leitura integrada do recurso digital em foco.';
+      if (openExternalBtn) {
+        openExternalBtn.disabled = true;
+        openExternalBtn.removeAttribute('data-open-url');
+      }
+    }
+
+    async function openBookDigitalUniversalViewer(record = null) {
+      const resolvedRecord = record || buildBookDigitalRecordLikeFromForm();
+      const resolvedUrl = await resolveBookDigitalOpenUrl(resolvedRecord);
+      const familyMeta = getBookDigitalPlannedFamilyMeta(resolvedRecord);
+      const viewerNode = el('bookDigitalUniversalViewer');
+      const bodyNode = el('bookDigitalUniversalViewerBody');
+      const titleNode = el('bookDigitalUniversalViewerTitle');
+      const metaNode = el('bookDigitalUniversalViewerMeta');
+      const openExternalBtn = el('bookDigitalUniversalViewerOpenExternalBtn');
+      if (!viewerNode || !bodyNode) {
+        window.open(resolvedUrl, '_blank', 'noopener');
+        return;
+      }
+
+      bodyNode.innerHTML = '';
+      const title = getBookDigitalResourceDisplayTitle(resolvedRecord);
+      const metaParts = [
+        getBookDigitalResourceTypeLabel(resolvedRecord?.resource_type || ''),
+        getBookDigitalUsageLabel(resolvedRecord?.usage_type || ''),
+        getBookDigitalResourceLocationStatusLabel(resolvedRecord),
+        resolvedRecord?.source_name ? `fonte: ${resolvedRecord.source_name}` : '',
+        resolvedRecord?.rights_status ? `direitos: ${resolvedRecord.rights_status}` : '',
+      ].filter(Boolean);
+      if (titleNode) titleNode.textContent = title || 'Recurso digital';
+      if (metaNode) metaNode.textContent = metaParts.join(' · ') || 'Leitura integrada do recurso digital em foco.';
+      if (openExternalBtn) {
+        openExternalBtn.disabled = false;
+        openExternalBtn.dataset.openUrl = resolvedUrl;
+      }
+
+      let mediaNode = null;
+      if (familyMeta.key === 'audio') {
+        mediaNode = document.createElement('audio');
+        mediaNode.controls = true;
+        mediaNode.preload = 'metadata';
+        mediaNode.src = resolvedUrl;
+      } else if (familyMeta.key === 'video') {
+        mediaNode = document.createElement('video');
+        mediaNode.controls = true;
+        mediaNode.preload = 'metadata';
+        mediaNode.src = resolvedUrl;
+      } else if (familyMeta.key === 'image') {
+        mediaNode = document.createElement('img');
+        mediaNode.src = resolvedUrl;
+        mediaNode.alt = title || 'Imagem do recurso digital';
+      } else {
+        mediaNode = document.createElement('iframe');
+        mediaNode.src = resolvedUrl;
+        mediaNode.setAttribute('title', title || 'Leitura integrada do recurso digital');
+        mediaNode.setAttribute('loading', 'eager');
+        mediaNode.setAttribute('referrerpolicy', 'no-referrer');
+      }
+
+      bodyNode.appendChild(mediaNode);
+      viewerNode.dataset.openUrl = resolvedUrl;
+      viewerNode.classList.remove('is-hidden');
+      viewerNode.setAttribute('aria-hidden', 'false');
+    }
+
     async function openBookDigitalPdfFromForm() {
       const resolvedUrl = await resolveBookDigitalOpenUrl(buildBookDigitalRecordLikeFromForm());
       window.open(resolvedUrl, '_blank', 'noopener');
@@ -7272,6 +7470,11 @@
       const familyKey = getBookDigitalPlannedFamilyMeta(recordLike).key;
       const readerMeta = getBookDigitalReaderActionMeta(recordLike);
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
+
+      if (readerMeta.mode === 'viewer') {
+        await openBookDigitalUniversalViewer(recordLike);
+        return;
+      }
 
       if (readerMeta.mode === 'direct') {
         const resolvedUrl = await resolveBookDigitalOpenUrl(recordLike);
@@ -10382,6 +10585,21 @@
     });
 
     updateBookDigitalActionButtons();
+
+    el('bookDigitalUniversalViewerCloseBtn')?.addEventListener('click', () => {
+      closeBookDigitalUniversalViewer();
+    });
+    el('bookDigitalUniversalViewerOpenExternalBtn')?.addEventListener('click', () => {
+      const url = String(el('bookDigitalUniversalViewerOpenExternalBtn')?.dataset?.openUrl || '').trim();
+      if (!url) return;
+      window.open(url, '_blank', 'noopener');
+    });
+    el('bookDigitalUniversalViewer')?.addEventListener('click', (event) => {
+      if (event.target === el('bookDigitalUniversalViewer')) closeBookDigitalUniversalViewer();
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeBookDigitalUniversalViewer();
+    });
 
     el('bookPlace').addEventListener('blur', () => {
       const previous = el('bookPlace').value;
