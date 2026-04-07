@@ -4211,13 +4211,14 @@
                   <div class="hint">Use este espaço para comparar a ficha local em foco com um registro da parceira resumido manualmente, sem importar nada automaticamente.</div>
                 </div>
                 <div class="row-actions">
-                  <button id="partnerApplyComparisonBtn" class="button secondary" type="button">Levar comparação para a ficha</button>
+                  <button id="partnerApplyComparisonBtn" class="button secondary" type="button">Levar síntese local para a ficha</button>
                   <button id="partnerClearComparisonBtn" class="button ghost" type="button">Limpar comparação</button>
                 </div>
               </div>
               <div id="partnerCompareWorkspaceStatus" class="hint">A comparação local só abre quando a situação relacional na base autoriza comparação documental nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerCompareSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da comparação:</strong> ainda não atualizada.</div>
               <div id="partnerCompareExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da comparação:</strong> ainda não atualizado.</div>
+              <div id="partnerCompareFlowSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Gesto de comparação:</strong> ainda não relido.</div>
               <div class="catalog-layer-summary" style="margin-bottom:12px;">
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Estado da comparação</div>
@@ -4307,13 +4308,14 @@
                   <div class="hint">Este espaço prepara uma retomada local controlada, sem lançar nenhuma importação automática nem modificar livremente o registro da parceira.</div>
                 </div>
                 <div class="row-actions">
-                  <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação para a ficha</button>
+                  <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação local para a ficha</button>
                   <button id="partnerClearImportPrepBtn" class="button ghost" type="button">Limpar preparação</button>
                 </div>
               </div>
               <div id="partnerImportWorkspaceStatus" class="hint">A preparação de importação controlada só abre quando a situação relacional na base autoriza importação nesta etapa. O último teste técnico, sozinho, não basta.</div>
               <div id="partnerImportSurfaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da preparação:</strong> ainda não atualizada.</div>
               <div id="partnerImportExerciseSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Quadro da preparação:</strong> ainda não atualizado.</div>
+              <div id="partnerImportFlowSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Gesto de preparação:</strong> ainda não relido.</div>
               <div class="catalog-layer-summary" style="margin-bottom:12px;">
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Estado da preparação</div>
@@ -15987,6 +15989,7 @@ function initPartnerProbeUi() {
   const partnerGovernanceBoundaryNoteEl = document.getElementById('partnerGovernanceBoundaryNote');
   const partnerCompareSurfaceSummaryEl = document.getElementById('partnerCompareSurfaceSummary');
   const partnerCompareExerciseSummaryEl = document.getElementById('partnerCompareExerciseSummary');
+  const partnerCompareFlowSummaryEl = document.getElementById('partnerCompareFlowSummary');
   const partnerCompareStateValueEl = document.getElementById('partnerCompareStateValue');
   const partnerCompareStateNoteEl = document.getElementById('partnerCompareStateNote');
   const partnerCompareWriteValueEl = document.getElementById('partnerCompareWriteValue');
@@ -15997,6 +16000,7 @@ function initPartnerProbeUi() {
   const partnerCompareBlockersNoteEl = document.getElementById('partnerCompareBlockersNote');
   const partnerImportSurfaceSummaryEl = document.getElementById('partnerImportSurfaceSummary');
   const partnerImportExerciseSummaryEl = document.getElementById('partnerImportExerciseSummary');
+  const partnerImportFlowSummaryEl = document.getElementById('partnerImportFlowSummary');
   const partnerImportStateValueEl = document.getElementById('partnerImportStateValue');
   const partnerImportStateNoteEl = document.getElementById('partnerImportStateNote');
   const partnerImportWriteValueEl = document.getElementById('partnerImportWriteValue');
@@ -19735,6 +19739,38 @@ ${decisionSummary}` : '',
     partnerCompareBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
 
+  function renderPartnerComparisonFlowSummary() {
+    if (!partnerCompareFlowSummaryEl) return;
+
+    const readiness = getComparisonReadinessState();
+    const hasPartnerSummary = !!String(partnerNoticeSummaryEl?.value || '').trim();
+    const hasDifference = !!String(differenceSummaryEl?.value || '').trim();
+    const hasDecision = !!String(comparisonDecisionEl?.value || '').trim();
+
+    if (!partnerDocumentActionState.compareAllowed) {
+      partnerCompareFlowSummaryEl.innerHTML = '<strong>Gesto de comparação:</strong> bloqueado pela política atual desta parceira.';
+      return;
+    }
+
+    if (!partnerDocumentActionState.workspaceOpen) {
+      partnerCompareFlowSummaryEl.innerHTML = '<strong>Gesto de comparação:</strong> autorizado, mas ainda fechado. Próximo gesto: abrir a comparação documental local e preencher resumo, diferenças e decisão.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerCompareFlowSummaryEl.innerHTML = '<strong>Gesto de comparação:</strong> resumo da notice, diferenças e decisão local já estão estáveis. Próximo gesto: reler a escrita prevista e levar a síntese local para a ficha.';
+      return;
+    }
+
+    const parts = [
+      `resumo da notice: ${hasPartnerSummary ? 'ok' : 'falta'}`,
+      `diferenças: ${hasDifference ? 'ok' : 'falta'}`,
+      `decisão local: ${hasDecision ? 'ok' : 'falta'}`,
+    ];
+
+    partnerCompareFlowSummaryEl.innerHTML = `<strong>Gesto de comparação:</strong> em curso. ${sanitize(parts.join(' · '))}. Próximo gesto: fechar as pendências antes de levar a síntese local para a ficha.`;
+  }
+
   function renderPartnerImportSurfaceSummary() {
     if (!partnerImportSurfaceSummaryEl) return;
     const readiness = getImportReadinessState();
@@ -19825,6 +19861,42 @@ ${decisionSummary}` : '',
     partnerImportBlockersNoteEl.textContent = formatPartnerMissingItems(readiness.missing, 'Bloqueios atuais:');
   }
 
+  function renderPartnerImportFlowSummary() {
+    if (!partnerImportFlowSummaryEl) return;
+
+    const readiness = getImportReadinessState();
+    const hasFormat = !!String(importFormatSelectEl?.value || '').trim();
+    const hasMethod = !!String(importMethodSelectEl?.value || '').trim();
+    const hasTakeOrSkip = !!(String(importTakeSummaryEl?.value || '').trim() || String(importSkipSummaryEl?.value || '').trim());
+    const hasProvenance = !!String(importProvenanceSummaryEl?.value || '').trim();
+    const hasDecision = !!String(importDecisionSummaryEl?.value || '').trim();
+
+    if (!partnerDocumentActionState.importAllowed) {
+      partnerImportFlowSummaryEl.innerHTML = '<strong>Gesto de preparação:</strong> bloqueado pela política atual desta parceira.';
+      return;
+    }
+
+    if (!partnerDocumentActionState.importWorkspaceOpen) {
+      partnerImportFlowSummaryEl.innerHTML = '<strong>Gesto de preparação:</strong> autorizado, mas ainda fechado. Próximo gesto: abrir a preparação local e estabilizar formato, modo, retomadas, proveniência e decisão.';
+      return;
+    }
+
+    if (readiness.canWrite) {
+      partnerImportFlowSummaryEl.innerHTML = '<strong>Gesto de preparação:</strong> formato, modo, retomadas, proveniência e decisão local já estão estáveis. Próximo gesto: reler a escrita prevista e levar a preparação local para a ficha.';
+      return;
+    }
+
+    const parts = [
+      `formato: ${hasFormat ? 'ok' : 'falta'}`,
+      `modo: ${hasMethod ? 'ok' : 'falta'}`,
+      `retomadas/exclusões: ${hasTakeOrSkip ? 'ok' : 'falta'}`,
+      `proveniência: ${hasProvenance ? 'ok' : 'falta'}`,
+      `decisão local: ${hasDecision ? 'ok' : 'falta'}`,
+    ];
+
+    partnerImportFlowSummaryEl.innerHTML = `<strong>Gesto de preparação:</strong> em curso. ${sanitize(parts.join(' · '))}. Próximo gesto: fechar as pendências antes de levar a preparação local para a ficha.`;
+  }
+
   function getComparisonOperationalStateText() {
     const readiness = getComparisonReadinessState();
     const lines = [];
@@ -19864,7 +19936,10 @@ ${decisionSummary}` : '',
       ? 'A comparação continua bloqueada nesta etapa; por isso a prévia não pode ser levada para a ficha.'
       : readiness.canWrite
         ? 'A comparação está pronta para escrita local assistida. Revê a checklist, a prudência e a escrita prevista antes do clique.'
-        : `A comparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+        : `A comparação ainda não está pronta para escrita local assistida.
+
+${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+    renderPartnerComparisonFlowSummary();
     refreshPartnerPilotSummary();
   }
 
@@ -20137,10 +20212,13 @@ ${decisionSummary}` : '',
       ? 'Sem importação autorizada, a ficha não receberá escrita a partir deste bloco.'
       : readiness.canWrite
         ? 'A preparação está pronta para escrita local assistida. Revê tudo antes de levar a preparação para a ficha.'
-        : `A preparação ainda não está pronta para escrita local assistida.\n\n${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
+        : `A preparação ainda não está pronta para escrita local assistida.
+
+${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     importBoundaryNoteEl.textContent = partnerDocumentActionState.importAllowed
       ? 'Esta área continua local, assistida e sem importação automática real. Mesmo autorizada, ela só escreve parâmetros locais e nota de proveniência sob revisão humana.'
       : 'Esta área continua bloqueada enquanto a política da parceira não autorizar importação nesta etapa.';
+    renderPartnerImportFlowSummary();
     refreshPartnerPilotSummary();
   }
 
