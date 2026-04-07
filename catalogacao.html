@@ -3891,6 +3891,7 @@
             </div>
           </div>
           <div id="partnerRunDetailSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.</div>
+          <div id="partnerRunReviewFlowSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Quadro do tratamento:</strong> ainda não atualizado.</div>
           <div id="partnerRunDetailBulkSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Decisões em lote:</strong> nenhuma linha selecionada ainda.</div>
           <div class="row-actions" style="margin-bottom:12px;">
             <button id="partnerSelectAllRunRowsBtn" class="button secondary small" type="button">Selecionar linhas elegíveis</button>
@@ -3922,8 +3923,9 @@
               </div>
             </div>
             <div id="partnerDraftCreationSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Saída normal:</strong> revise as decisões editoriais e gere um lote normal para criar os rascunhos correspondentes.</div>
+            <div id="partnerDraftOutputFlowSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Quadro da saída normal:</strong> ainda não atualizado.</div>
             <div class="row-actions">
-              <button id="partnerCreateBatchDraftsBtn" class="button primary" type="button">Criar lote e rascunhos</button>
+              <button id="partnerCreateBatchDraftsBtn" class="button primary" type="button">Gerar lote e rascunhos normais</button>
               <button id="partnerOpenQueueFromPartnerBtn" class="button secondary" type="button">Abrir fila editorial</button>
               <button id="partnerOpenBatchesFromPartnerBtn" class="button ghost" type="button">Abrir lotes</button>
             </div>
@@ -16058,6 +16060,7 @@ function initPartnerProbeUi() {
   const partnerRefreshRunHistoryBtn = document.getElementById('partnerRefreshRunHistoryBtn');
   const partnerRunDetailWrapEl = document.getElementById('partnerRunDetailWrap');
   const partnerRunDetailSummaryEl = document.getElementById('partnerRunDetailSummary');
+  const partnerRunReviewFlowSummaryEl = document.getElementById('partnerRunReviewFlowSummary');
   const partnerRefreshRunDetailBtn = document.getElementById('partnerRefreshRunDetailBtn');
   const partnerRunDetailBulkSummaryEl = document.getElementById('partnerRunDetailBulkSummary');
   const partnerSelectAllRunRowsBtn = document.getElementById('partnerSelectAllRunRowsBtn');
@@ -16068,6 +16071,7 @@ function initPartnerProbeUi() {
   const partnerDraftBatchNameEl = document.getElementById('partnerDraftBatchName');
   const partnerDraftBatchNotesEl = document.getElementById('partnerDraftBatchNotes');
   const partnerDraftCreationSummaryEl = document.getElementById('partnerDraftCreationSummary');
+  const partnerDraftOutputFlowSummaryEl = document.getElementById('partnerDraftOutputFlowSummary');
   const partnerCreateBatchDraftsBtn = document.getElementById('partnerCreateBatchDraftsBtn');
   const partnerOpenQueueFromPartnerBtn = document.getElementById('partnerOpenQueueFromPartnerBtn');
   const partnerOpenBatchesFromPartnerBtn = document.getElementById('partnerOpenBatchesFromPartnerBtn');
@@ -17041,6 +17045,7 @@ function initPartnerProbeUi() {
     if (!selectAll) {
       incomingCatalogRunSelectionState.selectedRowIds = new Set();
       renderIncomingCatalogRunBulkSummary();
+      renderIncomingCatalogRunReviewFlowSummary();
       return;
     }
     const eligibleIds = (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [])
@@ -17051,6 +17056,7 @@ function initPartnerProbeUi() {
       .filter(Boolean);
     incomingCatalogRunSelectionState.selectedRowIds = new Set(eligibleIds);
     renderIncomingCatalogRunBulkSummary();
+    renderIncomingCatalogRunReviewFlowSummary();
   }
 
   async function applyIncomingCatalogBulkDecision(editorialDecision) {
@@ -17210,12 +17216,95 @@ function initPartnerProbeUi() {
     throw lastError instanceof Error ? lastError : new Error(lastError?.message || 'Não consegui criar os rascunhos normais deste tratamento.');
   }
 
+  function renderIncomingCatalogRunReviewFlowSummary() {
+    if (!partnerRunReviewFlowSummaryEl) return;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    const items = Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [];
+    if (!runId) {
+      partnerRunReviewFlowSummaryEl.innerHTML = '<strong>Quadro do tratamento:</strong> abra primeiro um tratamento para reler linhas, decidir em lote e preparar a saída normal.';
+      return;
+    }
+    if (incomingCatalogRunDetailState.loading) {
+      partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> relendo linhas, top matches e sinais para recompor a revisão editorial desta superfície…`;
+      return;
+    }
+    if (incomingCatalogRunDetailState.lastError) {
+      partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> a releitura do detalhe falhou por enquanto. ${sanitize(incomingCatalogRunDetailState.lastError)}`;
+      return;
+    }
+    if (!items.length) {
+      partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> o tratamento está aberto, mas ainda não há linhas relidas nesta superfície. O próximo gesto útil é reler o resultado antes de decidir em lote.`;
+      return;
+    }
+    const decisions = { accept_new: 0, accept_duplicate: 0, reject: 0, pending: 0 };
+    const eligibleCount = items.filter((item) => {
+      const rowId = getIncomingPartnerRowId(item);
+      return Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item);
+    }).length;
+    for (const item of items) {
+      const decision = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase();
+      if (decision === 'accept_new') decisions.accept_new += 1;
+      else if (decision === 'accept_duplicate') decisions.accept_duplicate += 1;
+      else if (decision === 'reject') decisions.reject += 1;
+      else decisions.pending += 1;
+    }
+    const lockedCount = items.filter((item) => isIncomingPartnerRowLockedForEditorialDecision(item)).length;
+    const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
+    let nextStep = 'revise linha por linha e aplique as decisões editoriais desta superfície.';
+    if (selectedCount > 0) nextStep = 'aplique agora a decisão em lote sobre as linhas já selecionadas.';
+    else if (eligibleCount > 0) nextStep = 'selecione as linhas elegíveis e feche primeiro as decisões editoriais que devem seguir.';
+    else if (lockedCount > 0) nextStep = 'gere o lote normal e siga para a fila editorial ou para os lotes.';
+    partnerRunReviewFlowSummaryEl.innerHTML = `<strong>Quadro do tratamento #${sanitize(runId)}:</strong> ${sanitize(items.length)} linha(s) relida(s), ${sanitize(eligibleCount)} ainda elegível(is), ${sanitize(selectedCount)} selecionada(s) agora, ${sanitize(lockedCount)} já levada(s) ao fluxo normal. Decisões atuais: ${sanitize(decisions.accept_new)} novo(s), ${sanitize(decisions.accept_duplicate)} duplicado(s) aceito(s), ${sanitize(decisions.reject)} rejeitada(s) e ${sanitize(decisions.pending)} pendente(s). Próximo gesto útil: ${sanitize(nextStep)}`;
+  }
+
+  function renderIncomingCatalogDraftOutputFlowSummary() {
+    if (!partnerDraftOutputFlowSummaryEl) return;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    if (!runId) {
+      partnerDraftOutputFlowSummaryEl.innerHTML = '<strong>Quadro da saída normal:</strong> abra primeiro um tratamento, revise as decisões e só então gere lote e rascunhos normais.';
+      return;
+    }
+
+    syncIncomingCatalogDraftCreationRun(runId);
+    const eligibleItems = getIncomingCatalogDraftEligibleItems();
+    const lockedCount = (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : []).filter((item) => isIncomingPartnerRowLockedForEditorialDecision(item)).length;
+    const duplicateCount = eligibleItems.filter((item) => normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase() === 'accept_duplicate').length;
+    const newCount = eligibleItems.length - duplicateCount;
+    const suggestedName = buildSuggestedIncomingDraftBatchName();
+
+    if (incomingCatalogDraftCreationState.busy) {
+      partnerDraftOutputFlowSummaryEl.innerHTML = `<strong>Quadro da saída normal do tratamento #${sanitize(runId)}:</strong> criando lote e rascunhos normais a partir das decisões já aprovadas nesta revisão…`;
+      return;
+    }
+
+    if (incomingCatalogDraftCreationState.lastError) {
+      partnerDraftOutputFlowSummaryEl.innerHTML = `<strong>Quadro da saída normal do tratamento #${sanitize(runId)}:</strong> a geração falhou por enquanto. ${sanitize(incomingCatalogDraftCreationState.lastError)}`;
+      return;
+    }
+
+    if (incomingCatalogDraftCreationState.batchId) {
+      partnerDraftOutputFlowSummaryEl.innerHTML = `<strong>Quadro da saída normal do tratamento #${sanitize(runId)}:</strong> lote #${sanitize(incomingCatalogDraftCreationState.batchId)} já criado, com ${sanitize(incomingCatalogDraftCreationState.rowsPassed || 0)} linha(s) passada(s) e ${sanitize(incomingCatalogDraftCreationState.draftsCreated || 0)} rascunho(s) normal(is) gerado(s). O próximo gesto útil é seguir para a fila editorial ou reler os lotes.`;
+      return;
+    }
+
+    if (!eligibleItems.length) {
+      const nextStep = lockedCount
+        ? 'reler a fila editorial ou os lotes gerados para continuar o fluxo normal.'
+        : 'aceitar novo ou duplicado nas linhas que realmente devem virar rascunho normal.';
+      partnerDraftOutputFlowSummaryEl.innerHTML = `<strong>Quadro da saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(lockedCount)} linha(s) já saiu(saíram) para o fluxo normal e ${sanitize(eligibleItems.length)} segue(m) apta(s) agora. Próximo gesto útil: ${sanitize(nextStep)}`;
+      return;
+    }
+
+    partnerDraftOutputFlowSummaryEl.innerHTML = `<strong>Quadro da saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(eligibleItems.length)} linha(s) pronta(s) para gerar rascunhos normais (${sanitize(newCount)} novo(s), ${sanitize(duplicateCount)} duplicado(s) aceito(s)). Nome sugerido para o lote: “${sanitize(suggestedName)}”. Próximo gesto útil: gerar o lote normal e seguir pela fila editorial habitual.`;
+  }
+
   function renderIncomingCatalogDraftCreationSummary() {
     if (!partnerDraftCreationSummaryEl) return;
     const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
     if (!runId) {
       partnerDraftCreationSummaryEl.innerHTML = '<strong>Saída normal:</strong> abra primeiro um tratamento e revise as decisões antes de criar lote e rascunhos.';
       if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      renderIncomingCatalogDraftOutputFlowSummary();
       return;
     }
 
@@ -17230,12 +17319,14 @@ function initPartnerProbeUi() {
     if (incomingCatalogDraftCreationState.busy) {
       partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> criando lote e rascunhos normais a partir das decisões já aprovadas…`;
       if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      renderIncomingCatalogDraftOutputFlowSummary();
       return;
     }
 
     if (incomingCatalogDraftCreationState.lastError) {
       partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(incomingCatalogDraftCreationState.lastError)}`;
       if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = !eligibleItems.length;
+      renderIncomingCatalogDraftOutputFlowSummary();
       return;
     }
 
@@ -17244,12 +17335,14 @@ function initPartnerProbeUi() {
       const rowsPassed = Number(incomingCatalogDraftCreationState.rowsPassed || 0);
       partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> lote #${sanitize(incomingCatalogDraftCreationState.batchId)} criado. ${sanitize(rowsPassed)} linha(s) passaram e ${sanitize(draftsCreated)} rascunho(s) normal(is) foram gerados. Continue agora pela fila editorial ou pelos lotes.`;
       if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = !eligibleItems.length;
+      renderIncomingCatalogDraftOutputFlowSummary();
       return;
     }
 
     if (!eligibleItems.length) {
       partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ainda não há linhas elegíveis para gerar rascunhos. Aceite novo ou aceite duplicado nas linhas que devem seguir para o workflow normal.${lockedCount ? ` ${sanitize(lockedCount)} já saíram para rascunho normal.` : ''}`;
       if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = true;
+      renderIncomingCatalogDraftOutputFlowSummary();
       return;
     }
 
@@ -17257,6 +17350,7 @@ function initPartnerProbeUi() {
     const newCount = eligibleItems.length - duplicateCount;
     partnerDraftCreationSummaryEl.innerHTML = `<strong>Saída normal do tratamento #${sanitize(runId)}:</strong> ${sanitize(eligibleItems.length)} linha(s) pronta(s) para virar rascunho normal (${sanitize(newCount)} novo(s), ${sanitize(duplicateCount)} duplicado(s) aceito(s)). O lote sugerido é “${sanitize(suggestedName)}”.`;
     if (partnerCreateBatchDraftsBtn) partnerCreateBatchDraftsBtn.disabled = false;
+    renderIncomingCatalogDraftOutputFlowSummary();
   }
 
   function renderIncomingCatalogRunDetail() {
@@ -17276,6 +17370,7 @@ function initPartnerProbeUi() {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> carregando linhas importadas, top matches e sinais…`;
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';
       renderIncomingCatalogRunBulkSummary();
+      renderIncomingCatalogRunReviewFlowSummary();
       return;
     }
 
@@ -17283,6 +17378,7 @@ function initPartnerProbeUi() {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ainda não consegui reler as linhas deste tratamento. ${sanitize(incomingCatalogRunDetailState.lastError)}`;
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Detalhe indisponível por enquanto. Tente atualizar novamente.</div>';
       renderIncomingCatalogRunBulkSummary();
+      renderIncomingCatalogRunReviewFlowSummary();
       return;
     }
 
@@ -17290,6 +17386,7 @@ function initPartnerProbeUi() {
       partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> nenhuma linha relida ainda nesta superfície.`;
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Nenhuma linha relida ainda para este tratamento.</div>';
       renderIncomingCatalogRunBulkSummary();
+      renderIncomingCatalogRunReviewFlowSummary();
       return;
     }
 
@@ -17457,7 +17554,8 @@ function initPartnerProbeUi() {
       return;
     }
     const readyCount = items.filter((item) => String(item?.run_status || item?.status || '').trim().toLowerCase() === 'ready_for_review').length;
-    partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ${items.length} tratamento(s) recente(s) relido(s) nesta superfície. ${readyCount} já pronto(s) para revisão.`;
+    const openRunId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ${items.length} tratamento(s) recente(s) relido(s) nesta superfície. ${readyCount} já pronto(s) para revisão.${openRunId ? ` O tratamento #${sanitize(openRunId)} já está aberto nesta leitura.` : ''}`;
     const rows = items.map((item) => {
       const runId = Number(item?.run_id || item?.id || 0);
       const statusLabel = formatIncomingCatalogRunStatusLabel(item?.run_status || item?.status || '');
@@ -17466,15 +17564,16 @@ function initPartnerProbeUi() {
       const formatLabel = normalizeInlineWhitespace(item?.detected_format || item?.format || '').toUpperCase() || '—';
       const rowsLabel = formatIncomingRunRowsLabel(item);
       const dateLabel = formatIncomingRunHistoryDate(item?.requested_at || item?.created_at || item?.updated_at || item?.started_at);
+      const isCurrentRun = openRunId && String(runId) === openRunId;
       return `
         <tr>
-          <td><strong>#${sanitize(runId || '—')}</strong><div class="small">${sanitize(fileLabel)}</div></td>
+          <td><strong>#${sanitize(runId || '—')}</strong>${isCurrentRun ? '<div class="small">Aberto nesta superfície</div>' : ''}<div class="small">${sanitize(fileLabel)}</div></td>
           <td>${sanitize(statusLabel)}</td>
           <td>${sanitize(dateLabel)}</td>
           <td>${sanitize(formatLabel)}</td>
           <td>${sanitize(rowsLabel)}</td>
           <td>${sanitize(sourceLabel)}</td>
-          <td><button class="button small secondary" type="button" data-open-partner-run="${sanitize(runId || '')}">Abrir</button></td>
+          <td><button class="button small secondary" type="button" data-open-partner-run="${sanitize(runId || '')}">${isCurrentRun ? 'Reler' : 'Abrir'}</button></td>
         </tr>`;
     }).join('');
     partnerRunHistoryWrapEl.innerHTML = `
@@ -17864,7 +17963,9 @@ function initPartnerProbeUi() {
     renderIncomingCatalogImportStepCards();
     renderIncomingCatalogRunDetail();
     renderIncomingCatalogRunBulkSummary();
+    renderIncomingCatalogRunReviewFlowSummary();
     renderIncomingCatalogDraftCreationSummary();
+    renderIncomingCatalogDraftOutputFlowSummary();
     refreshIncomingCatalogWorkflowSummary();
     const identityReady = hasIncomingCatalogIdentityReady();
     const disableCreate = incomingCatalogImportState.busy || !file || !hasIncomingCatalogSelectedSourceChoice();
