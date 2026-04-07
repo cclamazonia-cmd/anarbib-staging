@@ -9975,13 +9975,13 @@
         displayLibrary !== 'Biblioteca não definida' ? `biblioteca: ${displayLibrary}` : '',
         mutualizationStatusLabel ? `holding: ${mutualizationStatusLabel}` : '',
         acquisitionModeLabel ? `entrada: ${acquisitionModeLabel}` : '',
-      ]) || 'camada de holding local ainda não relida nesta saída';
+      ]) || 'holding local ainda não relido nesta saída';
 
       const holdingFicha = joinSummaryParts([
         displayLibrary !== 'Biblioteca não definida' ? `biblioteca pública: ${displayLibrary}` : '',
         mutualizationStatusLabel ? `situação do holding: ${mutualizationStatusLabel}` : '',
         acquisitionSourceLabel ? `origem imediata: ${acquisitionSourceLabel}` : '',
-      ]) || 'camada de holding local ainda não detalhada nesta abertura';
+      ]) || 'holding local ainda não detalhado nesta abertura';
 
       let resourceCatalog = 'nenhum recurso digital vinculado aparece nesta leitura mínima';
       let resourceFicha = 'nenhum recurso digital relido para a abertura desta ficha';
@@ -10298,7 +10298,7 @@
 
       const publicFichaBodyParts = [...fichaBodyParts];
       if (localReserveParts.length) publicFichaBodyParts.push(`Continua local / preparatório: ${joinSummaryParts(localReserveParts)}`);
-      const publicFichaHoldingText = layerPreview.holdingFicha || 'camada de holding local ainda não relida';
+      const publicFichaHoldingText = layerPreview.holdingFicha || 'holding local ainda não relido';
       let publicFichaResourceText = layerPreview.resourceFicha || 'nenhum recurso digital relido para a abertura desta ficha';
       if (!publicDigitalResources.length && !digitalNativeLooksPublic) {
         publicFichaResourceText = 'nenhum recurso digital claramente publicável foi relido nesta abertura';
@@ -10317,13 +10317,13 @@
         catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
         catalogHolding: publicCatalogHoldingText,
         catalogResource: publicCatalogResourceText,
-        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Sinal local público mínimo ainda não definido.',
+        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Circulação local visível ainda não relida.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
         fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
         fichaHolding: publicFichaHoldingText,
         fichaResource: publicFichaResourceText,
-        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Camada local tornada pública ainda não definida.',
+        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Circulação local tornada pública ainda não relida.',
         fichaSubjects: subjects || summary.subjects || '—',
       };
     }
@@ -10342,13 +10342,13 @@
       refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
       if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Holding local publicável: ${preview.catalogHolding}`;
       if (refs.bookPublicCatalogResource) refs.bookPublicCatalogResource.textContent = `Recurso digital publicável: ${preview.catalogResource}`;
-      refs.bookPublicCatalogAccess.textContent = `Sinal local público mínimo: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogAccess.textContent = `Circulação local visível: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
       refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
       refs.bookPublicFichaBody.textContent = preview.fichaBody;
       if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Holding local tornável público: ${preview.fichaHolding}`;
       if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital tornável público: ${preview.fichaResource}`;
-      refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
+      refs.bookPublicFichaAccess.textContent = `Circulação local tornada pública: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
       renderBookMetadataTraceSummary();
@@ -19290,7 +19290,7 @@ ${decisionSummary}` : '',
     if (partnerDocumentActionState.importWorkspaceOpen) {
       if (!importReadiness.canWrite) {
         return [
-          'A preparação local ainda não pode ser levada para a ficha e o holding.',
+          'A preparação local ainda não pode ser levada para a ficha comum ou o holding local.',
           '',
           formatPartnerMissingItems(
             importReadiness.missing,
@@ -19300,7 +19300,7 @@ ${decisionSummary}` : '',
       }
 
       return [
-        'A preparação local já pode escrever na ficha, mas só na camada local da ficha e do holding.',
+        'A preparação local já pode escrever na ficha, mas só na camada local da ficha comum ou do holding local.',
         '',
         getImportFieldWritePreviewText(),
       ].join('\n');
@@ -19309,7 +19309,7 @@ ${decisionSummary}` : '',
     if (partnerDocumentActionState.workspaceOpen) {
       if (!comparisonReadiness.canWrite) {
         return [
-          'A comparação ainda não pode ser levada para a ficha e o holding.',
+          'A comparação ainda não pode ser levada para a ficha comum ou o holding local.',
           '',
           formatPartnerMissingItems(
             comparisonReadiness.missing,
@@ -19319,18 +19319,18 @@ ${decisionSummary}` : '',
       }
 
       return [
-        'A comparação já pode escrever na ficha, mas só na camada local da ficha e do holding.',
+        'A comparação já pode escrever na ficha, mas só na camada local da ficha comum ou do holding local.',
         '',
         getComparisonFieldWritePreviewText(),
       ].join('\n');
     }
 
     if (partnerDocumentActionState.importAllowed) {
-      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha/holding.';
+      return 'A preparação local aparece autorizada, mas nenhum microfluxo está aberto. Abra a preparação ou a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha comum ou do holding local.';
     }
 
     if (partnerDocumentActionState.compareAllowed) {
-      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha/holding.';
+      return 'A comparação aparece autorizada, mas nenhum microfluxo está aberto. Abra a comparação para produzir uma escrita assistida concreta apenas na camada local da ficha comum ou do holding local.';
     }
 
     return 'Nenhuma escrita local sobre ficha comum ou holding pode sair agora a partir desta aba.';
@@ -19473,12 +19473,12 @@ ${decisionSummary}` : '',
     }
 
     if (partnerDocumentActionState.importWorkspaceOpen) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação, ainda restrita à camada local da ficha e do holding.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a preparação local de importação, ainda restrita à camada local da ficha comum ou do holding local.`;
       return;
     }
 
     if (partnerDocumentActionState.workspaceOpen) {
-      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local, ainda restrita à camada local da ficha e do holding.`;
+      partnerFocusSurfaceSummaryEl.innerHTML = `<strong>Leitura da parceira em foco:</strong> ${sanitize(currentLabel || currentSlug)} está em foco via ${sanitize(sourceLabel)}. ${sanitize(relationship || 'Situação relacional lida.')} O microfluxo ativo agora é a comparação documental local, ainda restrita à camada local da ficha comum ou do holding local.`;
       return;
     }
 
@@ -19669,11 +19669,11 @@ ${decisionSummary}` : '',
     }
 
     if (readiness.canWrite) {
-      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha e do holding, sem tocar a mutualização.';
+      partnerCompareSurfaceSummaryEl.innerHTML = '<strong>Leitura da comparação:</strong> comparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha comum ou do holding local, sem tocar a mutualização.';
       return;
     }
 
-    partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha/holding. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerCompareSurfaceSummaryEl.innerHTML = `<strong>Leitura da comparação:</strong> comparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha comum ou do holding local. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
 
@@ -19794,11 +19794,11 @@ ${decisionSummary}` : '',
     }
 
     if (readiness.canWrite) {
-      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha e do holding, sem tocar a mutualização.';
+      partnerImportSurfaceSummaryEl.innerHTML = '<strong>Leitura da preparação:</strong> preparação aberta e suficientemente descrita para levar escrita assistida apenas à camada local da ficha comum ou do holding local, sem tocar a mutualização.';
       return;
     }
 
-    partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha/holding. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
+    partnerImportSurfaceSummaryEl.innerHTML = `<strong>Leitura da preparação:</strong> preparação aberta, mas ainda incompleta para escrita assistida sobre a camada local da ficha comum ou do holding local. ${sanitize(formatPartnerMissingItems(readiness.missing, 'Ainda falta:')).replaceAll('\n', '<br>')}`;
   }
 
   function renderPartnerImportExerciseSummary() {
