@@ -3695,7 +3695,7 @@
         <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
           <h4>Recepção artesanal de catálogos externos</h4>
           <p class="hint" style="margin:0 0 12px;">
-            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Nada daqui importa registros automaticamente nem decide situação relacional: esta etapa só recebe o arquivo, identifica a biblioteca e prepara a passagem local para a governança abaixo.
+            Use este bloco quando uma biblioteca parceira só puder enviar PDF, CSV, planilha ou outro arquivo artesanal do seu catálogo. Aqui, o gesto é simples e sequencial: receber o arquivo, reler localmente, consolidar a biblioteca, escolher a fonte parceira e só então lançar o tratamento inicial.
           </p>
 
           <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -3706,7 +3706,7 @@
                 <label for="partnerIncomingCatalogFile" class="file-button">Escolher arquivo</label>
                 <span id="partnerIncomingCatalogFileName" class="file-status">Nenhum arquivo selecionado</span>
               </div>
-              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, RIS, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura é apenas local e preparatória.</small>
+              <small>Arquivos artesanais aceitos nesta etapa: CSV, TSV, TXT, RIS, XLSX, XLS, ODS, PDF, JSON, XML ou ZIP. A leitura continua apenas local e preparatória; depois dela, falta ainda conferir a biblioteca, escolher a fonte parceira e lançar o tratamento.</small>
             </div>
 
             <div class="field">
@@ -3743,10 +3743,12 @@
           </div>
 
           <div class="actions" style="margin-bottom:12px;">
-            <button id="partnerReadIncomingCatalogBtn" class="button secondary" type="button">Ler arquivo local</button>
-            <button id="partnerApplyIncomingIdentityBtn" class="button secondary" type="button">Levar identificação para a governança abaixo</button>
+            <button id="partnerReadIncomingCatalogBtn" class="button secondary" type="button">Ler resumo local</button>
+            <button id="partnerApplyIncomingIdentityBtn" class="button secondary" type="button">Levar biblioteca para a governança</button>
             <button id="partnerClearIncomingCatalogBtn" class="button ghost" type="button">Limpar recepção</button>
           </div>
+
+          <div id="partnerIncomingWorkflowSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Cadeia de trabalho desta recepção:</strong> escolha o arquivo, confira a biblioteca, escolha a fonte parceira e lance o tratamento inicial.</div>
 
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
             <div class="field">
@@ -3763,7 +3765,7 @@
 
           <div class="card" id="partnerIncomingImportCard" style="margin-top:16px;">
             <h4>Resultado do tratamento</h4>
-            <p class="hint" style="margin:0 0 12px;">Este bloco recebe o arquivo bruto, lança o tratamento inicial e para em revisão humana. Nenhuma decisão editorial, nenhum lote e nenhum rascunho normal são criados automaticamente aqui.</p>
+            <p class="hint" style="margin:0 0 12px;">Este bloco recebe o arquivo bruto já conferido, lança o tratamento inicial e para em revisão humana. Nenhuma decisão editorial, nenhum lote e nenhum rascunho normal são criados automaticamente aqui.</p>
 
             <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;">
               <div class="field" style="grid-column: span 2;">
@@ -3816,14 +3818,14 @@
               <div class="field">
                 <label for="partnerIncomingImportStatus">Situação atual</label>
                 <div id="partnerIncomingImportStatus" class="catalog-surface-summary" style="margin:0;"><strong>Resultado do tratamento:</strong> nenhum tratamento lançado ainda.</div>
-                <small>Depois do clique, este quadro deve mostrar só o essencial: arquivo recebido, formato reconhecido, quantidade de registros e situação atual.</small>
+                <small>Depois do clique, este quadro deve mostrar só o essencial: arquivo recebido, formato reconhecido, quantidade de registros, situação atual e próximo gesto útil.</small>
               </div>
             </div>
 
             <div class="actions" style="margin-bottom:12px;">
-              <button id="partnerCreateDispatchIncomingImportBtn" class="button primary" type="button">Lançar tratamento</button>
-              <button id="partnerRefreshIncomingRunBtn" class="button secondary" type="button">Atualizar resultado</button>
-              <button id="partnerDispatchIncomingRunBtn" class="button ghost" type="button">Refazer leitura do arquivo</button>
+              <button id="partnerCreateDispatchIncomingImportBtn" class="button primary" type="button">Lançar tratamento inicial</button>
+              <button id="partnerRefreshIncomingRunBtn" class="button secondary" type="button">Reler resultado</button>
+              <button id="partnerDispatchIncomingRunBtn" class="button ghost" type="button">Reler arquivo bruto</button>
             </div>
 
             <details class="card" style="margin-top:12px; padding:12px;">
@@ -16002,6 +16004,7 @@ function initPartnerProbeUi() {
   const partnerImportBlockersValueEl = document.getElementById('partnerImportBlockersValue');
   const partnerImportBlockersNoteEl = document.getElementById('partnerImportBlockersNote');
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
+  const partnerIncomingWorkflowSummaryEl = document.getElementById('partnerIncomingWorkflowSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
   const partnerMetadataTraceSummaryEl = document.getElementById('partnerMetadataTraceSummary');
   const partnerTraceImportedValueEl = document.getElementById('partnerTraceImportedValue');
@@ -16409,7 +16412,55 @@ function initPartnerProbeUi() {
     } else {
       incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
+    refreshIncomingCatalogWorkflowSummary();
     refreshPartnerPilotSummary();
+  }
+
+  function hasIncomingCatalogIdentityReady() {
+    const identity = buildIncomingCatalogIdentity();
+    return Boolean(identity.libraryName || identity.shortName || identity.slug || identity.acronym);
+  }
+
+  function refreshIncomingCatalogWorkflowSummary() {
+    if (!partnerIncomingWorkflowSummaryEl) return;
+    const file = incomingCatalogFileEl?.files?.[0] || null;
+    const analysisReady = Boolean(incomingCatalogFileAnalysis);
+    const identityReady = hasIncomingCatalogIdentityReady();
+    const sourceReady = hasIncomingCatalogSelectedSourceChoice();
+    const runId = getIncomingCatalogImportRunId();
+    const sourceLabel = getIncomingCatalogSelectedSourceLabel();
+
+    if (!file && !identityReady && !runId) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = '<strong>Cadeia de trabalho desta recepção:</strong> 1. escolha o arquivo; 2. confira a biblioteca; 3. escolha a fonte parceira; 4. lance o tratamento inicial.';
+      return;
+    }
+
+    if (runId) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = `<strong>Cadeia de trabalho desta recepção:</strong> tratamento #${sanitize(runId)} já lançado${sourceLabel ? ` com ${sanitize(sourceLabel)}` : ''}. Agora, releia o resultado e abra a revisão editorial humana.`;
+      return;
+    }
+
+    if (file && !analysisReady) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = `<strong>Cadeia de trabalho desta recepção:</strong> arquivo ${sanitize(file.name)} já recebido. Próximo gesto útil: ler o resumo local antes de lançar o tratamento.`;
+      return;
+    }
+
+    if (analysisReady && !identityReady) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = '<strong>Cadeia de trabalho desta recepção:</strong> leitura local pronta. Próximo gesto útil: consolidar a biblioteca antes de seguir para a fonte parceira.';
+      return;
+    }
+
+    if (analysisReady && identityReady && !sourceReady) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = '<strong>Cadeia de trabalho desta recepção:</strong> arquivo e biblioteca já conferidos. Próximo gesto útil: escolher a fonte parceira pelo nome legível.';
+      return;
+    }
+
+    if (analysisReady && identityReady && sourceReady) {
+      partnerIncomingWorkflowSummaryEl.innerHTML = `<strong>Cadeia de trabalho desta recepção:</strong> tudo pronto para lançar o tratamento inicial${sourceLabel ? ` com ${sanitize(sourceLabel)}` : ''}. Depois disso, esta superfície deve parar em revisão humana.`;
+      return;
+    }
+
+    partnerIncomingWorkflowSummaryEl.innerHTML = '<strong>Cadeia de trabalho desta recepção:</strong> continue a sequência arquivo → biblioteca → fonte parceira → tratamento inicial.';
   }
 
   function getIncomingCatalogMimeType(file) {
@@ -17814,10 +17865,37 @@ function initPartnerProbeUi() {
     renderIncomingCatalogRunDetail();
     renderIncomingCatalogRunBulkSummary();
     renderIncomingCatalogDraftCreationSummary();
+    refreshIncomingCatalogWorkflowSummary();
+    const identityReady = hasIncomingCatalogIdentityReady();
     const disableCreate = incomingCatalogImportState.busy || !file || !hasIncomingCatalogSelectedSourceChoice();
     const disableDispatch = incomingCatalogImportState.busy || !getIncomingCatalogImportRunId();
     const disableBulk = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
     const selectedCount = Array.from(incomingCatalogRunSelectionState.selectedRowIds || []).length;
+    const hasReceptionActivity = Boolean(
+      file ||
+      identityReady ||
+      incomingCatalogFileAnalysis ||
+      getIncomingCatalogImportRunId() ||
+      normalizeInlineWhitespace(incomingCatalogImportState.uploadedPath || incomingCatalogImportState.suggestedPath || '')
+    );
+    if (readIncomingCatalogBtn) {
+      readIncomingCatalogBtn.disabled = incomingCatalogImportState.busy || !file;
+      readIncomingCatalogBtn.title = !file
+        ? 'Escolha primeiro um arquivo para ler o resumo local.'
+        : (incomingCatalogFileAnalysis ? 'Reler o resumo local deste arquivo.' : 'Ler o resumo local deste arquivo.');
+    }
+    if (applyIncomingIdentityBtn) {
+      applyIncomingIdentityBtn.disabled = incomingCatalogImportState.busy || !identityReady;
+      applyIncomingIdentityBtn.title = identityReady
+        ? 'Levar esta biblioteca para os campos de governança abaixo, sem importar registros.'
+        : 'Preencha ao menos o nome, o nome curto, o slug ou a sigla antes de levar a biblioteca para a governança.';
+    }
+    if (clearIncomingCatalogBtn) {
+      clearIncomingCatalogBtn.disabled = incomingCatalogImportState.busy || !hasReceptionActivity;
+      clearIncomingCatalogBtn.title = hasReceptionActivity
+        ? 'Limpar esta recepção artesanal local.'
+        : 'Nada para limpar nesta recepção artesanal.';
+    }
     if (incomingCreateDispatchBtn) {
       incomingCreateDispatchBtn.disabled = disableCreate;
       incomingCreateDispatchBtn.title = buildIncomingCatalogCreateButtonTitle();
@@ -17826,8 +17904,18 @@ function initPartnerProbeUi() {
     if (partnerIncomingSourceSelectEl) partnerIncomingSourceSelectEl.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
     if (partnerRefreshSourceChoicesBtn) partnerRefreshSourceChoicesBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading;
     if (partnerSuggestIncomingSourceBtn) partnerSuggestIncomingSourceBtn.disabled = incomingCatalogImportState.busy || incomingCatalogSourceState.loading || !incomingCatalogSourceState.lastSuggestedSourceId;
-    if (incomingDispatchRunBtn) incomingDispatchRunBtn.disabled = disableDispatch;
-    if (incomingRefreshRunBtn) incomingRefreshRunBtn.disabled = disableDispatch;
+    if (incomingDispatchRunBtn) {
+      incomingDispatchRunBtn.disabled = disableDispatch;
+      incomingDispatchRunBtn.title = disableDispatch
+        ? 'Lance primeiro um tratamento para poder reler o arquivo bruto.'
+        : 'Reler este tratamento a partir do arquivo bruto já associado.';
+    }
+    if (incomingRefreshRunBtn) {
+      incomingRefreshRunBtn.disabled = disableDispatch;
+      incomingRefreshRunBtn.title = disableDispatch
+        ? 'Lance primeiro um tratamento para poder reler o resultado.'
+        : 'Reler o resultado atual deste tratamento.';
+    }
     if (partnerRefreshRunDetailBtn) partnerRefreshRunDetailBtn.disabled = disableDispatch || incomingCatalogRunDetailState.loading || incomingCatalogRunSelectionState.busy;
     if (partnerRefreshRunHistoryBtn) partnerRefreshRunHistoryBtn.disabled = incomingCatalogRunHistoryState.loading || incomingCatalogRunSelectionState.busy;
     if (partnerSelectAllRunRowsBtn) partnerSelectAllRunRowsBtn.disabled = disableBulk || !Array.isArray(incomingCatalogRunDetailState.items) || !incomingCatalogRunDetailState.items.some((item) => !isIncomingPartnerRowLockedForEditorialDecision(item) && Number.isFinite(getIncomingPartnerRowId(item)));
@@ -18121,6 +18209,7 @@ function initPartnerProbeUi() {
     if (!file) {
       if (incomingCatalogSummaryEl) incomingCatalogSummaryEl.value = 'Nenhum arquivo local selecionado ainda.';
       if (incomingCatalogHintEl) incomingCatalogHintEl.textContent = 'Escolha primeiro um arquivo artesanal recebido antes de pedir a leitura local.';
+      refreshIncomingCatalogImportUi();
       setPartnerProbeMessage('Escolha primeiro um arquivo artesanal recebido para esta biblioteca.', 'warn');
       return;
     }
@@ -18143,6 +18232,7 @@ function initPartnerProbeUi() {
       if (incomingCatalogHintEl) {
         incomingCatalogHintEl.textContent = 'Leitura local concluída. Agora você pode ligar esta recepção artesanal à identificação da biblioteca e, se precisar, levá-la para a governança abaixo.';
       }
+      refreshIncomingCatalogImportUi();
       setPartnerProbeMessage('Arquivo artesanal lido localmente. Nenhuma importação nem decisão política foi feita.', 'info');
     } catch (error) {
       incomingCatalogFileAnalysis = null;
@@ -18152,6 +18242,7 @@ function initPartnerProbeUi() {
       if (incomingCatalogHintEl) {
         incomingCatalogHintEl.textContent = 'Não consegui ler a prévia local deste arquivo. Mesmo assim, você pode registrar a identificação da biblioteca e seguir sem importação automática.';
       }
+      refreshIncomingCatalogImportUi();
       setPartnerProbeMessage(`Não consegui ler a prévia local do arquivo: ${error?.message || error}`, 'warn');
     }
   }
@@ -20735,6 +20826,7 @@ ${decisionSummary}` : '',
       incomingCatalogSummaryEl.value = buildIncomingCatalogSummaryText(file, null);
     }
     renderIncomingCatalogIdentityPreview();
+    refreshIncomingCatalogImportUi();
     if (incomingCatalogHintEl) {
       incomingCatalogHintEl.textContent = file
         ? 'Arquivo selecionado. Agora você pode ler a prévia local e completar a identificação da biblioteca.'
