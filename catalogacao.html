@@ -17066,14 +17066,14 @@ function initPartnerProbeUi() {
   }
 
   function getIncomingCatalogSelectedSourceLabel(sourceId) {
-    const normalized = normalizeInlineWhitespace(sourceId || partnerIncomingSourceSelectEl?.value || incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || '');
+    const normalized = normalizeInlineWhitespace(sourceId || partnerIncomingSourceSelectEl?.value || incomingCatalogSourceState.chosenSourceId || '');
     if (!normalized) return '';
     const current = findIncomingCatalogSourceById(normalized);
     return current ? extractIncomingCatalogSourceDisplayName(current) : `Fonte #${normalized}`;
   }
 
   function hasIncomingCatalogSelectedSourceChoice() {
-    return Boolean(normalizeInlineWhitespace(partnerIncomingSourceSelectEl?.value || incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || ''));
+    return Boolean(normalizeInlineWhitespace(partnerIncomingSourceSelectEl?.value || incomingCatalogSourceState.chosenSourceId || ''));
   }
 
   function buildIncomingCatalogCreateButtonTitle() {
@@ -17149,7 +17149,7 @@ function initPartnerProbeUi() {
   }
 
   function findSuggestedIncomingCatalogSource(items = []) {
-    const sourceId = Number(incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || 0);
+    const sourceId = Number(incomingCatalogSourceState.chosenSourceId || partnerIncomingSourceSelectEl?.value || 0);
     if (Number.isFinite(sourceId) && sourceId > 0) {
       const exact = items.find((item) => extractIncomingCatalogSourceId(item) === sourceId);
       if (exact) return exact;
@@ -17177,7 +17177,7 @@ function initPartnerProbeUi() {
 
   function renderIncomingCatalogSourceChoices() {
     const items = Array.isArray(incomingCatalogSourceState.items) ? incomingCatalogSourceState.items : [];
-    const currentRawId = Number(incomingImportSourceIdEl?.value || incomingCatalogSourceState.chosenSourceId || 0);
+    const currentRawId = Number(incomingCatalogSourceState.chosenSourceId || partnerIncomingSourceSelectEl?.value || 0);
     const currentId = Number.isFinite(currentRawId) && currentRawId > 0 ? String(currentRawId) : '';
     const suggested = findSuggestedIncomingCatalogSource(items);
     incomingCatalogSourceState.lastSuggestedSourceId = suggested ? String(extractIncomingCatalogSourceId(suggested) || '') : '';
@@ -17485,7 +17485,7 @@ function initPartnerProbeUi() {
     if (!state.isLibrarian) throw new Error('Só um usuário bibliotecário pode lançar esta importação desde a catalogação.');
     const file = incomingCatalogFileEl?.files?.[0] || null;
     if (!file) throw new Error('Escolha primeiro um arquivo para lançar o tratamento.');
-    const sourceId = Number(incomingImportSourceIdEl?.value || 0);
+    const sourceId = Number(incomingCatalogSourceState.chosenSourceId || partnerIncomingSourceSelectEl?.value || 0);
     if (!Number.isFinite(sourceId) || sourceId <= 0) {
       throw new Error(buildIncomingCatalogSourceRequiredError());
     }
@@ -20348,8 +20348,6 @@ ${decisionSummary}` : '',
   });
 
   incomingImportSourceIdEl?.addEventListener('input', () => {
-    incomingCatalogSourceState.userTouched = true;
-    incomingCatalogSourceState.chosenSourceId = normalizeInlineWhitespace(incomingImportSourceIdEl.value || '');
     renderIncomingCatalogSourceChoices();
     refreshIncomingCatalogImportUi();
   });
