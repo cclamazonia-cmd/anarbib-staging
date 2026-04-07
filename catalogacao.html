@@ -2039,7 +2039,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Compatibilidade local legada do holding</label>
               <input id="bookBibRef" type="text" placeholder="Ref. local legada do holding" />
-              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_holdings.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
+              <small>Apoio legado desta ficha. Na estrutura atual, a camada local publicada nasce sobretudo da referência local do holding; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
             </div>
 
             <div class="field">
@@ -2534,7 +2534,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Recurso digital em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Nesta passe, você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum.</div>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum.</div>
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
@@ -2547,7 +2547,7 @@
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
-                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Nesta passe, você já pode alternar o recurso em edição e preparar outro vínculo; o multi-CRUD fino virá depois.</div>
+                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Você já pode alternar o recurso em edição e preparar outro vínculo; a gestão fina recurso por recurso seguirá como etapa própria.</div>
                   </div>
                   <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
                   <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
@@ -2787,7 +2787,7 @@
 
             <div class="form-flow-break">
               <strong>Autoridade enriquecida</strong>
-              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Enquanto o backend dedicado não chega, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
+              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Por enquanto, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
             </div>
 
             <div class="field">
@@ -3376,9 +3376,9 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
-                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+                <div class="hint">Aqui, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
               </div>
-              <span id="batchFlowStatusPill" class="pill info">Passe 19 · batchesPanel</span>
+              <span id="batchFlowStatusPill" class="pill info">Composição do lote</span>
             </div>
             <div class="book-derived-summary-card">
               <div id="batchFlowKind" class="book-derived-summary-kind">Lotes ainda não relidos</div>
@@ -3420,7 +3420,7 @@
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
             <div id="publishBatchSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.</div>
-            <p class="hint">A publicação por lote chama <code>publish_catalog_batch</code> e empurra de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
+            <p class="hint">A publicação por lote envia de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
           </div>
         </div>
 
@@ -3699,7 +3699,7 @@
                 <div class="field">
                   <label for="partnerIncomingSourceId">Fonte parceira (ID interno)</label>
                   <input id="partnerIncomingSourceId" type="number" min="1" step="1" placeholder="Ex.: 3" />
-                  <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Nesta passe, a escolha da fonte continua explícita e manual.</small>
+                  <small>Use aqui o ID já existente da fonte parceira. Nesta etapa, a escolha da fonte continua explícita e manual.</small>
                 </div>
                 <div class="field">
                   <label for="partnerIncomingDetectedFormat">Formato reconhecido</label>
@@ -6848,7 +6848,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). Nesta passe, o formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
       updateBookDigitalWorkspaceSummary(records, currentRecord);
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
@@ -7271,7 +7271,7 @@
       other: {
         preferredNameLabel: 'Forma retida',
         sortNameLabel: 'Forma para ordenação',
-        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição backend mais fina.',
+        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição mais fina desta ficha.',
         birthYearLabel: 'Ano inicial',
         deathYearLabel: 'Ano final',
         countryLabel: 'País / território',
@@ -13636,7 +13636,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
           compatMeta.compatLabel || 'Holding local sem código local legível',
           [
             { text: `Código local hoje relido desde o holding publicado${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
-            { text: 'Nesta célula, a leitura privilegia o holding local publicado (holding_libraries_json / local_bib_ref); a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
+            { text: 'Nesta célula, a leitura privilegia o holding local publicado; a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
           ],
           [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding'],
           'Holding local / código local'
@@ -13646,7 +13646,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         compatMeta.fallbackBibRef || 'Sem código local visível',
         [
           { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas o código comum/legado: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra código local nem referência legada neste recorte.', muted: false },
-          { text: 'O backend já prevê holdings locais com local_bib_ref, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
+          { text: 'A estrutura atual já prevê holdings locais, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
         ],
         compatMeta.fallbackBibRef ? ['Legado comum'] : [],
         'Código local / legado comum'
@@ -17701,7 +17701,7 @@ function initPartnerProbeUi() {
         incomingCatalogFileAnalysis = {
           summaryLines: [
             `Formato ${kind.toUpperCase()} detectado.`,
-            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato virá depois, de forma controlada.',
+            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato seguirá em etapa controlada.',
           ]
         };
       }
@@ -18339,7 +18339,7 @@ ${decisionSummary}` : '',
   /*
    * Patch 13 — quadro de pilotagem local da parceira
    * ------------------------------------------------
-   * Este bloco não abre nenhum fluxo novo de backend.
+   * Este bloco não abre nenhum fluxo novo de processamento.
    * Ele serve para tornar legível, na própria tela,
    * o estado operacional da comparação e da preparação.
    *
