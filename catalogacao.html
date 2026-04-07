@@ -3834,7 +3834,7 @@
                 <div class="field">
                   <label for="partnerIncomingSourceId">Fonte parceira (número interno)</label>
                   <input id="partnerIncomingSourceId" type="number" min="1" step="1" placeholder="Ex.: 3" />
-                  <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Nesta passe, a escolha da fonte continua explícita e manual.</small>
+                  <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Aqui, a escolha da fonte continua explícita e manual.</small>
                 </div>
                 <div class="field">
                   <label for="partnerIncomingDetectedFormat">Formato reconhecido</label>
@@ -4208,7 +4208,7 @@
               <div class="inline">
                 <div>
                   <h4 class="section-title">Comparação documental local</h4>
-                  <div class="hint">Use este espaço para comparar a ficha local em foco com um registro da parceira resumido manualmente, sem importar nada automaticamente.</div>
+                  <div class="hint">Use este espaço para comparar a ficha comum ou o holding local em foco com um registro da parceira resumido manualmente, sem importar nada automaticamente.</div>
                 </div>
                 <div class="row-actions">
                   <button id="partnerApplyComparisonBtn" class="button secondary" type="button">Levar síntese local para a ficha</button>
@@ -4244,7 +4244,7 @@
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerLocalDraftSummary">Rascunho local em foco</label>
-                  <textarea id="partnerLocalDraftSummary" rows="7" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
+                  <textarea id="partnerLocalDraftSummary" rows="7" readonly placeholder="O resumo da ficha comum ou do holding local aparecerá aqui."></textarea>
                 </div>
                 <div class="field">
                   <label for="partnerPartnerNoticeSummary">Registro da parceira / resumo manual</label>
@@ -4254,11 +4254,11 @@
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerDifferenceSummary">Diferenças e pontos de atenção</label>
-                  <textarea id="partnerDifferenceSummary" rows="6" placeholder="Ex.: subtítulo divergente; ano ausente; editora diferente; autoria invertida; assunto mais preciso na ficha local."></textarea>
+                  <textarea id="partnerDifferenceSummary" rows="6" placeholder="Ex.: subtítulo divergente; ano ausente; editora diferente; autoria invertida; assunto mais preciso na ficha comum ou no holding local."></textarea>
                 </div>
                 <div class="field">
                   <label for="partnerComparisonDecision">Decisão local / próximos passos</label>
-                  <textarea id="partnerComparisonDecision" rows="6" placeholder="Ex.: manter a ficha local como base; registrar proveniência; revisar ISBN; verificar exemplar em mãos."></textarea>
+                  <textarea id="partnerComparisonDecision" rows="6" placeholder="Ex.: manter a ficha comum ou o holding local como base; registrar proveniência; revisar ISBN; verificar exemplar em mãos."></textarea>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -4305,7 +4305,7 @@
               <div class="inline">
                 <div>
                   <h4 class="section-title">Importação controlada / preparação local</h4>
-                  <div class="hint">Este espaço prepara uma retomada local controlada, sem lançar nenhuma importação automática nem modificar livremente o registro da parceira.</div>
+                  <div class="hint">Este espaço prepara uma retomada local controlada de ficha comum ou holding local, sem lançar nenhuma importação automática nem modificar livremente o registro da parceira.</div>
                 </div>
                 <div class="row-actions">
                   <button id="partnerApplyImportPrepBtn" class="button secondary" type="button">Levar preparação local para a ficha</button>
@@ -4345,14 +4345,14 @@
                 </div>
                 <div class="field">
                   <label for="partnerImportLocalSummary">Rascunho local em foco</label>
-                  <textarea id="partnerImportLocalSummary" rows="6" readonly placeholder="O resumo da ficha local aparecerá aqui."></textarea>
+                  <textarea id="partnerImportLocalSummary" rows="6" readonly placeholder="O resumo da ficha comum ou do holding local aparecerá aqui."></textarea>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
                 <div class="field">
                   <label for="partnerImportFormatSelect">Formato de importação a preparar</label>
                   <select id="partnerImportFormatSelect"></select>
-                  <small>Este campo só prepara a ficha local. Nada é importado automaticamente.</small>
+                  <small>Este campo só prepara a ficha comum ou o holding local. Nada é importado automaticamente.</small>
                 </div>
                 <div class="field">
                   <label for="partnerImportMethodSelect">Modo de importação a preparar</label>
@@ -18327,7 +18327,7 @@ function initPartnerProbeUi() {
         incomingCatalogFileAnalysis = {
           summaryLines: [
             `Formato ${kind.toUpperCase()} detectado.`,
-            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato virá depois, de forma controlada.',
+            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O tratamento documental completo deste formato permanece fora desta superfície por enquanto.',
           ]
         };
       }
@@ -19981,7 +19981,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     partnerDocumentActionState.workspaceOpen = true;
     compareWorkspaceEl.classList.remove('is-hidden');
     refreshLocalDraftComparisonSummary();
-    setCompareWorkspaceStatus('Comparação local aberta. Resuma o registro da parceira, registre as diferenças e decida o que entra — ou não — na ficha local.');
+    setCompareWorkspaceStatus('Comparação local aberta. Resuma o registro da parceira, registre as diferenças e decida o que entra — ou não — na ficha comum ou no holding local.');
   }
 
   function applyComparisonToBookForm() {
@@ -20402,7 +20402,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     }
 
     if (mode === 'compare_only') {
-      partnerNextStepEl.value = 'Próximo gesto: abrir a comparação documental, resumir o registro da parceira, registrar diferenças e decidir o que entra — ou não — na ficha local.';
+      partnerNextStepEl.value = 'Próximo gesto: abrir a comparação documental, resumir o registro da parceira, registrar diferenças e decidir o que entra — ou não — na ficha comum ou no holding local.';
       return;
     }
 
@@ -20836,7 +20836,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     countryEl.value = preset.countryCode || '';
     notesEl.value = preset.notes || '';
 
-    setPartnerProbeMessage(`Parceira carregada na ficha local: ${preset.label}.`, 'ok');
+    setPartnerProbeMessage(`Parceira carregada nesta superfície local: ${preset.label}.`, 'ok');
     refreshPartnerPolicy({ silent: true });
   }
 
