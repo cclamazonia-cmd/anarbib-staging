@@ -2039,7 +2039,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Compatibilidade local legada do holding</label>
               <input id="bookBibRef" type="text" placeholder="Ref. local legada do holding" />
-              <small>Apoio legado desta ficha. Na estrutura atual, a camada local publicada nasce sobretudo da referência local do holding; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
+              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_holdings.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
             </div>
 
             <div class="field">
@@ -2534,11 +2534,11 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Recurso digital em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum, sem reduzir tudo a um único PDF.</div>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Nesta passe, você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum.</div>
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
-                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir arquivo</button>
+                    <button id="openBookDigitalPdfBtn" type="button" class="button secondary small">Abrir PDF</button>
                     <button id="openBookDigitalReaderBtn" type="button" class="button secondary small">Abrir no leitor</button>
                     <button id="unlinkBookDigitalBtn" type="button" class="button ghost small">Desvincular</button>
                   </div>
@@ -2547,7 +2547,7 @@
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
-                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Você já pode alternar o recurso em edição e preparar outro vínculo; arquivos locais, links externos e outras famílias continuam distinguíveis nesta leitura.</div>
+                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Nesta passe, você já pode alternar o recurso em edição e preparar outro vínculo; o multi-CRUD fino virá depois.</div>
                   </div>
                   <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
                   <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
@@ -2560,12 +2560,12 @@
                     <input id="bookDigitalLanguageCode" type="text" placeholder="pt / es / fr" />
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
-                    <label for="bookDigitalBucket">Pasta / bucket no armazenamento</label>
-                    <input id="bookDigitalBucket" type="text" placeholder="anarbib-pdf-public, pdf-restrito ou outra pasta local" />
+                    <label for="bookDigitalBucket">Pasta no armazenamento</label>
+                    <input id="bookDigitalBucket" type="text" placeholder="anarbib-pdf-public ou pdf-restrito" />
                   </div>
                   <div class="field" style="padding:0; background:none; border:none;">
                     <label for="bookDigitalPath">Caminho do arquivo</label>
-                    <input id="bookDigitalPath" type="text" placeholder="colecao/arquivo.pdf, audio/gravacao.mp3, imagem/capa.jpg…" />
+                    <input id="bookDigitalPath" type="text" placeholder="colecao/arquivo.pdf" />
                   </div>
 
                   <div class="field" style="padding:0; background:none; border:none;">
@@ -2787,7 +2787,7 @@
 
             <div class="form-flow-break">
               <strong>Autoridade enriquecida</strong>
-              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Por enquanto, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
+              <span>Amplie aqui a ficha para coletivos, organizações, siglas, variantes, pseudônimos e períodos de atividade. Enquanto o backend dedicado não chega, estes dados ficam preservados de forma estruturada nas notas internas da ficha.</span>
             </div>
 
             <div class="field">
@@ -3376,9 +3376,9 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
-                <div class="hint">Aqui, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
               </div>
-              <span id="batchFlowStatusPill" class="pill info">Composição do lote</span>
+              <span id="batchFlowStatusPill" class="pill info">Passe 19 · batchesPanel</span>
             </div>
             <div class="book-derived-summary-card">
               <div id="batchFlowKind" class="book-derived-summary-kind">Lotes ainda não relidos</div>
@@ -3420,7 +3420,7 @@
               <button id="refreshBatchesBtn" class="button secondary">Atualizar lista</button>
             </div>
             <div id="publishBatchSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Publicação por lote:</strong> escolha um lote aberto para reler sua composição antes de publicar.</div>
-            <p class="hint">A publicação por lote envia de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
+            <p class="hint">A publicação por lote chama <code>publish_catalog_batch</code> e empurra de uma vez o que já estiver maduro neste recorte: fichas comuns, autoridades e exemplares locais ainda em rascunho ou prontos.</p>
           </div>
         </div>
 
@@ -3699,7 +3699,7 @@
                 <div class="field">
                   <label for="partnerIncomingSourceId">Fonte parceira (ID interno)</label>
                   <input id="partnerIncomingSourceId" type="number" min="1" step="1" placeholder="Ex.: 3" />
-                  <small>Use aqui o ID já existente da fonte parceira. Nesta etapa, a escolha da fonte continua explícita e manual.</small>
+                  <small>Use aqui o ID já existente em <code>ingest.partner_catalog_sources</code>. Nesta passe, a escolha da fonte continua explícita e manual.</small>
                 </div>
                 <div class="field">
                   <label for="partnerIncomingDetectedFormat">Formato reconhecido</label>
@@ -4542,7 +4542,7 @@
           title: 'Título', subtitle: 'Subtítulo / versão', publisher: 'Entidade responsável', place: 'Origem / contexto', year: 'Ano / data', loanable: 'Consulta digital', notes: 'Resumo / descrição', subjects: 'Assuntos / palavras-chave'
         },
         placeholders: {
-          title: 'Título do recurso digital', subtitle: 'Versão, subtítulo ou recorte', publisher: 'Coletivo, projeto, associação, pessoa responsável…', place: 'Site, rede, origem do recurso…', year: '2025 / sem data precisa', notes: 'Descrição do conteúdo, contexto e observações de acesso…', subjects: 'arquivo digital ; texto online ; áudio ; vídeo ; memória' 
+          title: 'Título do recurso digital', subtitle: 'Versão, subtítulo ou recorte', publisher: 'Coletivo, projeto, associação, pessoa responsável…', place: 'Site, rede, origem do recurso…', year: '2025 / sem data precisa', notes: 'Descrição do conteúdo, contexto e observações de acesso…', subjects: 'PDF ; vídeo online ; arquivo digital ; memória' 
         }
       },
       dossie: {
@@ -6661,26 +6661,54 @@
       return bookUrl.toString();
     }
 
-    function updateBookDigitalActionButtons() {
+    function buildBookDigitalRecordLikeFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
       const path = String(el('bookDigitalPath')?.value || '').trim();
       const sourceUrl = String(el('bookDigitalSourceUrl')?.value || '').trim();
-      const compatRef = getCurrentBookCompatRef();
-      const hasLocalFile = !!(bucket && path);
-      const hasOpenableTarget = !!(hasLocalFile || sourceUrl);
-      const isPublic = isBookDigitalPublicSelection();
-      const familyMeta = getBookDigitalFormPlannedFamilyMeta();
-      const pdfBtn = el('openBookDigitalPdfBtn');
+      return {
+        id: String(el('bookDigitalDraftResourceId')?.value || '').trim() || null,
+        storage_bucket: bucket,
+        storage_path: path,
+        source_url: sourceUrl,
+        source_name: String(el('bookDigitalSourceName')?.value || '').trim(),
+        attribution_text: String(el('bookDigitalAttributionText')?.value || '').trim(),
+        rights_status: String(el('bookDigitalRightsStatus')?.value || '').trim(),
+        language_code: String(el('bookDigitalLanguageCode')?.value || '').trim(),
+        access_scope: isBookDigitalPublicSelection() ? 'publico' : 'conta_ativa',
+        is_primary: !!el('bookDigitalIsPrimary')?.checked,
+        bibliographic_match_validated: !!el('bookDigitalBibliographicMatch')?.checked,
+      };
+    }
+
+    function canOpenBookDigitalReaderInternally(record = null) {
+      const resolved = record || buildBookDigitalRecordLikeFromForm();
+      const familyKey = getBookDigitalPlannedFamilyMeta(resolved).key;
+      if (['audio', 'video', 'image', 'link_externo'].includes(familyKey)) return false;
+      const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
+      if (String(resolved?.access_scope || '') === 'publico') return hasLocal;
+      return !!(hasLocal || getCurrentBookCompatRef() || Number(el('bookPublishedId')?.value || 0));
+    }
+
+    function getBookDigitalOpenPrimaryActionLabel(record = null) {
+      const resolved = record || buildBookDigitalRecordLikeFromForm();
+      const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
+      const hasExternal = !!String(resolved?.source_url || '').trim();
+      if (hasLocal && hasExternal) return 'Abrir arquivo / fonte';
+      if (hasLocal) return 'Abrir arquivo';
+      if (hasExternal) return 'Abrir fonte';
+      return 'Abrir arquivo';
+    }
+
+    function updateBookDigitalActionButtons() {
+      const recordLike = buildBookDigitalRecordLikeFromForm();
+      const hasOpenableTarget = !!(String(recordLike.storage_bucket || '').trim() && String(recordLike.storage_path || '').trim()) || !!String(recordLike.source_url || '').trim();
+      const openBtn = el('openBookDigitalPdfBtn');
       const readerBtn = el('openBookDigitalReaderBtn');
-      if (pdfBtn) {
-        pdfBtn.disabled = !hasOpenableTarget;
-        pdfBtn.textContent = getBookDigitalOpenButtonLabel(familyMeta.key);
+      if (openBtn) {
+        openBtn.disabled = !hasOpenableTarget;
+        openBtn.textContent = getBookDigitalOpenPrimaryActionLabel(recordLike);
       }
-      if (readerBtn) {
-        readerBtn.textContent = 'Abrir no leitor';
-        const canUseReader = familyMeta.key === 'pdf_texto' || familyMeta.key === 'recurso_digital';
-        readerBtn.disabled = !canUseReader || (isPublic ? !hasLocalFile : !compatRef);
-      }
+      if (readerBtn) readerBtn.disabled = !canOpenBookDigitalReaderInternally(recordLike);
     }
 
     function getBookDigitalResourceTypeLabel(resourceType = '') {
@@ -6704,108 +6732,6 @@
         link_externo: 'Link externo',
       };
       return labels[String(usageType || '').trim()] || '';
-    }
-
-    function inferBookDigitalMimeType({ storagePath = '', sourceUrl = '' } = {}) {
-      const candidate = String(storagePath || sourceUrl || '').trim().toLowerCase().split('#')[0].split('?')[0];
-      const extension = candidate.includes('.') ? candidate.split('.').pop() : '';
-      const mimeByExtension = {
-        pdf: 'application/pdf',
-        mp3: 'audio/mpeg',
-        wav: 'audio/wav',
-        ogg: 'audio/ogg',
-        flac: 'audio/flac',
-        m4a: 'audio/mp4',
-        mp4: 'video/mp4',
-        webm: 'video/webm',
-        mov: 'video/quicktime',
-        avi: 'video/x-msvideo',
-        mkv: 'video/x-matroska',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        png: 'image/png',
-        gif: 'image/gif',
-        webp: 'image/webp',
-        tif: 'image/tiff',
-        tiff: 'image/tiff',
-        svg: 'image/svg+xml',
-        html: 'text/html',
-        htm: 'text/html',
-        txt: 'text/plain',
-        epub: 'application/epub+zip',
-      };
-      if (mimeByExtension[extension]) return mimeByExtension[extension];
-      if (sourceUrl && !storagePath) return 'text/html';
-      return 'application/octet-stream';
-    }
-
-    function buildBookDigitalPlannedRecordFromForm() {
-      const storageBucket = normalizeBookDigitalBucket(el('bookDigitalBucket')?.value || '');
-      const storagePath = String(el('bookDigitalPath')?.value || '').trim();
-      const sourceUrl = String(el('bookDigitalSourceUrl')?.value || '').trim();
-      const sourceName = String(el('bookDigitalSourceName')?.value || '').trim();
-      const attributionText = String(el('bookDigitalAttributionText')?.value || '').trim();
-      const rightsStatus = String(el('bookDigitalRightsStatus')?.value || '').trim();
-      const languageCode = String(el('bookDigitalLanguageCode')?.value || '').trim();
-      const isPublic = isBookDigitalPublicSelection();
-      const mimeType = inferBookDigitalMimeType({ storagePath, sourceUrl });
-      let resourceType = isPublic ? 'pdf_publico' : 'pdf_restrito';
-      let usageType = 'leitura_online';
-
-      const probe = getBookDigitalPlannedFamilyMeta({
-        storage_path: storagePath,
-        source_url: sourceUrl,
-        mime_type: mimeType,
-        resource_type: '',
-        usage_type: '',
-      });
-
-      if (probe.key === 'audio') {
-        resourceType = 'audio';
-        usageType = 'escuta_online';
-      } else if (probe.key === 'video') {
-        resourceType = 'video';
-        usageType = 'visualizacao_online';
-      } else if (probe.key === 'image') {
-        resourceType = 'image';
-        usageType = 'visualizacao_online';
-      } else if (probe.key === 'link_externo') {
-        resourceType = 'link_externo';
-        usageType = 'link_externo';
-      } else if (probe.key === 'recurso_digital') {
-        resourceType = 'recurso_digital';
-        usageType = sourceUrl && !storagePath ? 'link_externo' : 'leitura_online';
-      }
-
-      return {
-        resource_type: resourceType,
-        usage_type: usageType,
-        mime_type: mimeType,
-        access_scope: isPublic ? 'publico' : 'conta_ativa',
-        storage_bucket: storageBucket || null,
-        storage_path: storagePath || null,
-        source_name: sourceName || null,
-        source_url: sourceUrl || null,
-        attribution_text: attributionText || null,
-        rights_status: rightsStatus || null,
-        language_code: languageCode || null,
-      };
-    }
-
-    function getBookDigitalFormPlannedFamilyMeta() {
-      return getBookDigitalPlannedFamilyMeta(buildBookDigitalPlannedRecordFromForm());
-    }
-
-    function getBookDigitalOpenButtonLabel(familyKey = '') {
-      const labels = {
-        pdf_texto: 'Abrir arquivo',
-        audio: 'Abrir áudio',
-        video: 'Abrir vídeo',
-        image: 'Abrir imagem',
-        link_externo: 'Abrir link',
-        recurso_digital: 'Abrir recurso',
-      };
-      return labels[String(familyKey || '').trim()] || 'Abrir arquivo';
     }
 
     function getBookDigitalPlannedFamilyMeta(record = {}) {
@@ -6853,7 +6779,7 @@
     }
 
     function isBookDigitalResourcePublic(record = {}) {
-      return String(record?.access_scope || '') === 'publico' || isBookDigitalPublicBucket(record?.storage_bucket || '') || String(record?.resource_type || '') === 'pdf_publico';
+      return String(record?.access_scope || '') === 'publico' || String(record?.resource_type || '') === 'pdf_publico';
     }
 
     function compareBookDigitalResourcesForDisplay(left = {}, right = {}, currentResourceId = '') {
@@ -6960,7 +6886,7 @@
       const familySummary = orderedGroups
         .map((group) => `${group.meta.label} (${group.items.length})`)
         .join(' · ');
-      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). O formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
+      summaryNode.textContent = `${records.length} recurso(s) encontrado(s) neste rascunho · famílias visíveis: ${familySummary} · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${primaryCount || 0} marcado(s) como principal(is). Nesta passe, o formulário abaixo já pode alternar entre recursos vinculados ou preparar um novo vínculo local.`;
       updateBookDigitalWorkspaceSummary(records, currentRecord);
       wrapNode.innerHTML = orderedGroups.map((group) => {
         const familyTitle = sanitize(group.meta.label);
@@ -7005,6 +6931,7 @@
               ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
               <div class="book-digital-list-actions">
                 <button type="button" class="btn-inline small secondary" data-book-digital-action="edit" data-book-digital-id="${recordId}" ${isCurrent ? 'disabled' : ''}>${isCurrent ? 'Recurso em edição' : 'Abrir este recurso no formulário'}</button>
+                <button type="button" class="btn-inline small ghost" data-book-digital-action="delete" data-book-digital-id="${recordId}">Desvincular este recurso</button>
               </div>
             </div>
           `;
@@ -7051,25 +6978,38 @@
     }
 
     function updateBookDigitalResourceSummary(record = null) {
-      const bucket = normalizeBookDigitalBucket(record?.storage_bucket || el('bookDigitalBucket').value.trim());
-      const path = record?.storage_path || el('bookDigitalPath').value.trim();
-      const sourceUrl = record?.source_url || el('bookDigitalSourceUrl').value.trim();
-      const language = record?.language_code || el('bookDigitalLanguageCode').value.trim() || 'sem idioma indicado';
-      const isPublic = record
-        ? (String(record.access_scope || '') === 'publico' || String(record.resource_type || '') === 'pdf_publico' || isBookDigitalPublicBucket(record.storage_bucket || ''))
-        : (!!el('bookDigitalIsPublic').checked || isBookDigitalPublicBucket(bucket));
-      const isPrimary = record ? !!record.is_primary : !!el('bookDigitalIsPrimary').checked;
-      const isValidated = record ? !!record.bibliographic_match_validated : !!el('bookDigitalBibliographicMatch').checked;
-      const locationLabel = record
-        ? getBookDigitalResourceLocationStatusLabel(record)
-        : getBookDigitalResourceLocationStatusLabel({ storage_bucket: bucket, storage_path: path, source_url: sourceUrl });
-      const targetLabel = [bucket && path ? `${bucket}/${path}` : '', !path && sourceUrl ? sourceUrl : ''].filter(Boolean).join(' · ');
-      if (!targetLabel) {
+      const resolved = record || buildBookDigitalRecordLikeFromForm();
+      const bucket = normalizeBookDigitalBucket(resolved?.storage_bucket || '');
+      const path = String(resolved?.storage_path || '').trim();
+      const sourceUrl = String(resolved?.source_url || '').trim();
+      const language = String(resolved?.language_code || '').trim() || 'sem idioma indicado';
+      const isPublic = String(resolved?.access_scope || '') === 'publico'
+        || String(resolved?.resource_type || '') === 'pdf_publico'
+        || isBookDigitalPublicBucket(bucket);
+      const isPrimary = !!resolved?.is_primary;
+      const isValidated = !!resolved?.bibliographic_match_validated;
+      const hasLocal = !!(bucket && path);
+      const hasExternal = !!sourceUrl;
+      const familyLabel = getBookDigitalPlannedFamilyLabel(resolved);
+      const locationLabel = getBookDigitalResourceLocationStatusLabel(resolved);
+      const title = getBookDigitalResourceDisplayTitle(resolved);
+      if (!hasLocal && !hasExternal) {
         refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital carregado neste formulário.';
         updateBookDigitalActionButtons();
         return;
       }
-      refs.bookDigitalLinkedSummary.textContent = `Recurso digital em edição: ${targetLabel} · ${locationLabel} · ${language} · ${getBookDigitalAccessScopeLabel(isPublic)}${isPrimary ? ' · principal' : ''}${isValidated ? ' · correspondência validada' : ''}`;
+      const parts = [
+        `Recurso digital em edição: ${title}`,
+        familyLabel,
+        hasLocal ? `${bucket}/${path}` : '',
+        hasExternal ? sourceUrl : '',
+        `vínculo: ${locationLabel}`,
+        language,
+        getBookDigitalAccessScopeLabel(isPublic),
+        isPrimary ? 'principal' : '',
+        isValidated ? 'correspondência validada' : '',
+      ].filter(Boolean);
+      refs.bookDigitalLinkedSummary.textContent = parts.join(' · ');
       updateBookDigitalActionButtons();
     }
 
@@ -7091,52 +7031,122 @@
       return record;
     }
 
+    async function deleteBookDraftDigitalResource(resourceId, draftId = '') {
+      const normalizedResourceId = Number(resourceId || 0);
+      if (!normalizedResourceId) {
+        prepareNewBookDigitalResourceEntry();
+        return null;
+      }
+      const { error } = await supabase.from('book_draft_digital_resources').delete().eq('id', normalizedResourceId);
+      if (error) throw error;
+      if (draftId) {
+        const draftRecords = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources.filter((item) => Number(item?.id || 0) !== normalizedResourceId) : [];
+        const nextRecord = draftRecords[0] || null;
+        await loadBookDraftDigitalResource(draftId, nextRecord?.id || '');
+        return nextRecord;
+      }
+      prepareNewBookDigitalResourceEntry();
+      return null;
+    }
+
+    function inferBookDigitalMimeType({ familyKey = '', storagePath = '', sourceUrl = '' } = {}) {
+      const candidate = String(storagePath || sourceUrl || '').trim().toLowerCase();
+      const byExtension = [
+        [/\.pdf(?:$|[?#])/, 'application/pdf'],
+        [/\.mp3(?:$|[?#])/, 'audio/mpeg'],
+        [/\.wav(?:$|[?#])/, 'audio/wav'],
+        [/\.ogg(?:$|[?#])/, 'audio/ogg'],
+        [/\.flac(?:$|[?#])/, 'audio/flac'],
+        [/\.m4a(?:$|[?#])/, 'audio/mp4'],
+        [/\.mp4(?:$|[?#])/, 'video/mp4'],
+        [/\.webm(?:$|[?#])/, 'video/webm'],
+        [/\.mov(?:$|[?#])/, 'video/quicktime'],
+        [/\.avi(?:$|[?#])/, 'video/x-msvideo'],
+        [/\.mkv(?:$|[?#])/, 'video/x-matroska'],
+        [/\.jpe?g(?:$|[?#])/, 'image/jpeg'],
+        [/\.png(?:$|[?#])/, 'image/png'],
+        [/\.gif(?:$|[?#])/, 'image/gif'],
+        [/\.webp(?:$|[?#])/, 'image/webp'],
+        [/\.tiff?(?:$|[?#])/, 'image/tiff'],
+      ];
+      for (const [pattern, mime] of byExtension) {
+        if (pattern.test(candidate)) return mime;
+      }
+      const fallback = {
+        audio: 'audio/*',
+        video: 'video/*',
+        image: 'image/*',
+        pdf_texto: 'application/pdf',
+        link_externo: 'text/html',
+        recurso_digital: 'application/octet-stream',
+      };
+      return fallback[familyKey] || 'application/octet-stream';
+    }
+
     function buildBookDraftDigitalResourcePayload(draftId) {
-      const resourceId = el('bookDigitalDraftResourceId').value || '';
-      const languageCode = el('bookDigitalLanguageCode').value.trim();
-      const storageBucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
-      const storagePath = el('bookDigitalPath').value.trim();
-      const sourceName = el('bookDigitalSourceName').value.trim();
-      const sourceUrl = el('bookDigitalSourceUrl').value.trim();
-      const attributionText = el('bookDigitalAttributionText').value.trim();
-      const rightsStatus = el('bookDigitalRightsStatus').value.trim();
-      const isPublic = !!el('bookDigitalIsPublic').checked;
-      const isPrimary = !!el('bookDigitalIsPrimary').checked;
-      const bibliographicMatchValidated = !!el('bookDigitalBibliographicMatch').checked;
+      const resourceId = String(el('bookDigitalDraftResourceId').value || '').trim();
+      const formRecord = buildBookDigitalRecordLikeFromForm();
+      const languageCode = String(formRecord.language_code || '').trim();
+      const storageBucket = normalizeBookDigitalBucket(formRecord.storage_bucket || '');
+      const storagePath = String(formRecord.storage_path || '').trim();
+      const sourceName = String(formRecord.source_name || '').trim();
+      const sourceUrl = String(formRecord.source_url || '').trim();
+      const attributionText = String(formRecord.attribution_text || '').trim();
+      const rightsStatus = String(formRecord.rights_status || '').trim();
+      const isPublic = String(formRecord.access_scope || '') === 'publico';
+      const isPrimary = !!formRecord.is_primary;
+      const bibliographicMatchValidated = !!formRecord.bibliographic_match_validated;
       const hasAnyValue = [languageCode, storageBucket, storagePath, sourceName, sourceUrl, attributionText, rightsStatus].some(Boolean);
 
       if (!hasAnyValue) {
         return { mode: 'empty', resourceId: resourceId || '' };
       }
 
-      if ((!storageBucket || !storagePath) && !sourceUrl) {
-        throw new Error('Para editar o recurso digital em foco, informe um caminho local completo ou uma URL de origem.');
+      if ((storageBucket && !storagePath) || (!storageBucket && storagePath)) {
+        throw new Error('Para editar o recurso digital em foco, informe juntos a pasta no armazenamento e o caminho do arquivo local.');
       }
 
-      const plannedRecord = buildBookDigitalPlannedRecordFromForm();
-      const plannedFamily = getBookDigitalPlannedFamilyMeta(plannedRecord);
-      const fallbackLabelByFamily = {
-        pdf_texto: 'Texto digital principal',
-        audio: 'Áudio principal',
-        video: 'Vídeo principal',
-        image: 'Imagem principal',
-        link_externo: 'Link externo principal',
-        recurso_digital: 'Recurso digital principal',
-      };
+      if (!storagePath && !sourceUrl) {
+        throw new Error('Para editar o recurso digital em foco, informe ao menos um caminho local completo ou uma URL de fonte.');
+      }
+
+      const familyMeta = getBookDigitalPlannedFamilyMeta({
+        storage_path: storagePath,
+        source_url: sourceUrl,
+        access_scope: isPublic ? 'publico' : 'conta_ativa',
+      });
+      const familyKey = familyMeta.key || 'recurso_digital';
+      const resourceType = familyKey === 'pdf_texto'
+        ? (isPublic ? 'pdf_publico' : 'pdf_restrito')
+        : (familyKey === 'link_externo' ? 'link_externo' : familyKey);
+      const usageType = {
+        audio: 'escuta_online',
+        video: 'visualizacao_online',
+        image: 'visualizacao_online',
+        link_externo: 'link_externo',
+        pdf_texto: 'leitura_online',
+        recurso_digital: 'leitura_online',
+      }[familyKey] || 'leitura_online';
+      const mimeType = inferBookDigitalMimeType({ familyKey, storagePath, sourceUrl });
+      const label = attributionText || sourceName || getBookDigitalResourceDisplayTitle({
+        storage_bucket: storageBucket,
+        storage_path: storagePath,
+        source_url: sourceUrl,
+      }) || 'Recurso digital';
 
       return {
         mode: resourceId ? 'update' : 'insert',
         resourceId,
         payload: {
           book_draft_id: Number(draftId),
-          resource_type: plannedRecord.resource_type,
-          usage_type: plannedRecord.usage_type,
-          access_scope: plannedRecord.access_scope,
+          resource_type: resourceType,
+          usage_type: usageType,
+          access_scope: isPublic ? 'publico' : 'conta_ativa',
           status: 'draft',
           is_active: true,
-          storage_bucket: plannedRecord.storage_bucket,
-          storage_path: plannedRecord.storage_path,
-          mime_type: plannedRecord.mime_type,
+          storage_bucket: storageBucket || null,
+          storage_path: storagePath || null,
+          mime_type: mimeType,
           language_code: languageCode || null,
           source_name: sourceName || null,
           source_url: sourceUrl || null,
@@ -7144,7 +7154,7 @@
           rights_status: rightsStatus || null,
           is_primary: isPrimary,
           bibliographic_match_validated: bibliographicMatchValidated,
-          label: attributionText || sourceName || fallbackLabelByFamily[plannedFamily.key] || 'Recurso digital principal',
+          label,
         }
       };
     }
@@ -7188,38 +7198,44 @@
     async function openBookDigitalPdfFromForm() {
       const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
       const path = el('bookDigitalPath').value.trim();
-      const sourceUrl = el('bookDigitalSourceUrl').value.trim();
-      if (!bucket || !path) {
-        if (sourceUrl) {
-          window.open(sourceUrl, '_blank', 'noopener');
-          return;
+      const sourceUrl = String(el('bookDigitalSourceUrl').value || '').trim();
+      if (bucket && path) {
+        const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
+        let resolvedUrl = signedData?.signedUrl || '';
+        if (!resolvedUrl) {
+          const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+          resolvedUrl = publicData?.publicUrl || '';
         }
-        throw new Error('Informe um caminho local completo ou uma URL de origem para abrir este recurso digital.');
+        if (signedError && !resolvedUrl) throw signedError;
+        if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este recurso digital.');
+        window.open(resolvedUrl, '_blank', 'noopener');
+        return;
       }
-      const { data: signedData, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(path, 900);
-      let resolvedUrl = signedData?.signedUrl || '';
-      if (!resolvedUrl) {
-        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
-        resolvedUrl = publicData?.publicUrl || '';
+      if (sourceUrl) {
+        window.open(sourceUrl, '_blank', 'noopener');
+        return;
       }
-      if (signedError && !resolvedUrl) throw signedError;
-      if (!resolvedUrl) throw new Error('Não consegui gerar um link temporário para este recurso digital.');
-      window.open(resolvedUrl, '_blank', 'noopener');
+      throw new Error('Informe um caminho local completo ou uma URL de fonte para abrir este recurso digital.');
     }
 
     async function openBookDigitalReaderFromForm() {
       const viewerUrl = new URL('ler.html', location.href);
       const publishedBookId = Number(el('bookPublishedId').value || 0);
       const bibRef = getCurrentBookCompatRef();
-      const bucket = normalizeBookDigitalBucket(el('bookDigitalBucket').value.trim());
-      const path = el('bookDigitalPath').value.trim();
-      const sourceName = el('bookDigitalSourceName').value.trim();
-      const sourceUrl = el('bookDigitalSourceUrl').value.trim();
-      const attributionText = el('bookDigitalAttributionText').value.trim();
-      const rightsStatus = el('bookDigitalRightsStatus').value.trim();
-      const isPublic = isBookDigitalPublicSelection();
-      const currentFamily = getBookDigitalFormPlannedFamilyMeta();
+      const recordLike = buildBookDigitalRecordLikeFromForm();
+      const bucket = normalizeBookDigitalBucket(recordLike.storage_bucket || '');
+      const path = String(recordLike.storage_path || '').trim();
+      const sourceName = String(recordLike.source_name || '').trim();
+      const sourceUrl = String(recordLike.source_url || '').trim();
+      const attributionText = String(recordLike.attribution_text || '').trim();
+      const rightsStatus = String(recordLike.rights_status || '').trim();
+      const isPublic = String(recordLike.access_scope || '') === 'publico';
+      const familyKey = getBookDigitalPlannedFamilyMeta(recordLike).key;
       const publicBookUrl = buildCatalogacaoPublicBookUrl(bibRef, publishedBookId);
+
+      if (['audio', 'video', 'image', 'link_externo'].includes(familyKey)) {
+        throw new Error('Este tipo de recurso digital não abre no leitor interno desta ficha. Use “Abrir arquivo” ou “Abrir fonte”.');
+      }
 
       if (publishedBookId) viewerUrl.searchParams.set('book_id', String(publishedBookId));
       const title = el('bookTitle').value.trim();
@@ -7234,13 +7250,9 @@
       if (profileLibrary.librarySlug) viewerUrl.searchParams.set('library_slug', profileLibrary.librarySlug);
       if (profileLibrary.libraryName) viewerUrl.searchParams.set('library_name', profileLibrary.libraryName);
 
-      if (currentFamily.key !== 'pdf_texto' && currentFamily.key !== 'recurso_digital') {
-        throw new Error('Para áudio, vídeo, imagem ou link externo, use “Abrir arquivo”. O leitor interno continua voltado sobretudo à leitura de texto.');
-      }
-
       if (isPublic) {
         if (!bucket || !path) {
-          throw new Error('Informe a pasta no armazenamento e o caminho do arquivo de leitura pública para abrir no leitor.');
+          throw new Error('Para abrir no leitor interno, este recurso público precisa ter um arquivo local completo no armazenamento. Para um link externo, use “Abrir fonte”.');
         }
 
         if (publishedBookId) {
@@ -7266,7 +7278,7 @@
         return;
       }
 
-      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir o recurso restrito no leitor.');
+      if (!bibRef && !publishedBookId) throw new Error('Salve ou carregue uma ficha publicada com referência de compatibilidade ou book_id para abrir este recurso restrito no leitor.');
       if (bibRef) viewerUrl.searchParams.set('ref', bibRef);
       window.open(viewerUrl.toString(), '_blank', 'noopener');
     }
@@ -7411,7 +7423,7 @@
       other: {
         preferredNameLabel: 'Forma retida',
         sortNameLabel: 'Forma para ordenação',
-        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição mais fina desta ficha.',
+        sortNameHint: 'Para formas especiais de autoridade, a ordenação acompanha a forma retida até definição backend mais fina.',
         birthYearLabel: 'Ano inicial',
         deathYearLabel: 'Ano final',
         countryLabel: 'País / território',
@@ -10297,12 +10309,28 @@
     refs.bookDigitalNewEntryBtn?.addEventListener('click', () => {
       prepareNewBookDigitalResourceEntry();
     });
-    refs.bookDigitalListWrap?.addEventListener('click', (event) => {
-      const trigger = event.target.closest('[data-book-digital-action="edit"]');
+    refs.bookDigitalListWrap?.addEventListener('click', async (event) => {
+      const trigger = event.target.closest('[data-book-digital-action]');
       if (!trigger) return;
-      const record = findBookDigitalResourceById(trigger.dataset.bookDigitalId || '');
+      const action = String(trigger.dataset.bookDigitalAction || '').trim();
+      const resourceId = String(trigger.dataset.bookDigitalId || '').trim();
+      const record = findBookDigitalResourceById(resourceId);
       if (!record) return;
-      fillBookDigitalResourceFields(record);
+      if (action === 'edit') {
+        fillBookDigitalResourceFields(record);
+        return;
+      }
+      if (action === 'delete') {
+        try {
+          const confirmed = window.confirm('Este recurso digital será desvinculado deste rascunho. Deseja continuar?');
+          if (!confirmed) return;
+          await deleteBookDraftDigitalResource(resourceId, String(el('bookDraftId')?.value || '').trim());
+          syncBookDraftVisualState();
+          showMessage(refs.bookMessage, 'Recurso digital desvinculado deste rascunho.', 'ok');
+        } catch (error) {
+          showMessage(refs.bookMessage, error.message, 'error');
+        }
+      }
     });
     el('bookDigitalBucket').addEventListener('input', syncBookDigitalPublicToggleFromBucket);
     el('bookDigitalBucket').addEventListener('change', syncBookDigitalPublicToggleFromBucket);
@@ -13776,7 +13804,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
           compatMeta.compatLabel || 'Holding local sem código local legível',
           [
             { text: `Código local hoje relido desde o holding publicado${compatMeta.compatLibrary ? ` · ${compatMeta.compatLibrary}` : ''}: ${compatMeta.compatLabel || '—'}`, muted: false },
-            { text: 'Nesta célula, a leitura privilegia o holding local publicado; a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
+            { text: 'Nesta célula, a leitura privilegia o holding local publicado (holding_libraries_json / local_bib_ref); a compatibilidade legada aparece apenas como apoio de leitura.', muted: true },
           ],
           [compatMeta.compatLibrary || 'Holding local', compatMeta.holdingsCount > 1 ? `${compatMeta.holdingsCount} holdings` : '1 holding'],
           'Holding local / código local'
@@ -13786,7 +13814,7 @@ async function loadOrCreateBookDraftFromCatalog(bookId) {
         compatMeta.fallbackBibRef || 'Sem código local visível',
         [
           { text: compatMeta.fallbackBibRef ? `A linha publicada ainda expõe apenas o código comum/legado: ${compatMeta.fallbackBibRef}` : 'Esta ficha comum publicada ainda não mostra código local nem referência legada neste recorte.', muted: false },
-          { text: 'A estrutura atual já prevê holdings locais, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
+          { text: 'O backend já prevê holdings locais com local_bib_ref, mas esta linha ainda não os expõe de forma estruturada.', muted: true },
         ],
         compatMeta.fallbackBibRef ? ['Legado comum'] : [],
         'Código local / legado comum'
@@ -14781,14 +14809,18 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
 
     el('unlinkBookDigitalBtn').addEventListener('click', async () => {
       try {
-        const resourceId = el('bookDigitalDraftResourceId').value || '';
-        if (resourceId) {
-          const { error } = await supabase.from('book_draft_digital_resources').delete().eq('id', Number(resourceId));
-          if (error) throw error;
+        const resourceId = String(el('bookDigitalDraftResourceId').value || '').trim();
+        const draftId = String(el('bookDraftId')?.value || '').trim();
+        if (!resourceId) {
+          if (draftId) await loadBookDraftDigitalResource(draftId);
+          else prepareNewBookDigitalResourceEntry();
+          syncBookDraftVisualState();
+          showMessage(refs.bookMessage, 'Formulário do recurso digital limpo. Nenhum vínculo salvo foi removido.', 'ok');
+          return;
         }
-        resetBookDigitalResourceFields();
+        await deleteBookDraftDigitalResource(resourceId, draftId);
         syncBookDraftVisualState();
-        showMessage(refs.bookMessage, 'Recurso digital desvinculado deste rascunho. Publique o rascunho para retirar ou atualizar o vínculo na ficha publicada.', 'ok');
+        showMessage(refs.bookMessage, 'Recurso digital desvinculado deste rascunho.', 'ok');
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       }
@@ -15020,10 +15052,10 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
             try {
               const digitalSync = await syncBookDraftDigitalResourceToPublishedAsset(draftId, publishedBookId);
               if (!digitalSync?.synced && digitalSync?.reason !== 'no_public_resource') {
-                digitalSyncMessage = ' Não consegui confirmar a camada canônica dos recursos digitais publicados.';
+                digitalSyncMessage = ' Não consegui confirmar a camada canônica de PDFs publicados.';
               }
             } catch (digitalError) {
-              digitalSyncMessage = ` Não consegui confirmar a camada canônica dos recursos digitais publicados: ${digitalError.message}`;
+              digitalSyncMessage = ` Não consegui confirmar a camada canônica de PDFs publicados: ${digitalError.message}`;
             }
           }
         } catch (linkingError) {
@@ -17841,7 +17873,7 @@ function initPartnerProbeUi() {
         incomingCatalogFileAnalysis = {
           summaryLines: [
             `Formato ${kind.toUpperCase()} detectado.`,
-            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato seguirá em etapa controlada.',
+            'Nesta etapa, a leitura local mostra apenas os metadados básicos do arquivo. O processamento documental deste formato virá depois, de forma controlada.',
           ]
         };
       }
@@ -18479,7 +18511,7 @@ ${decisionSummary}` : '',
   /*
    * Patch 13 — quadro de pilotagem local da parceira
    * ------------------------------------------------
-   * Este bloco não abre nenhum fluxo novo de processamento.
+   * Este bloco não abre nenhum fluxo novo de backend.
    * Ele serve para tornar legível, na própria tela,
    * o estado operacional da comparação e da preparação.
    *
