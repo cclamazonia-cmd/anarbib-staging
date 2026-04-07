@@ -4018,7 +4018,7 @@
           <div class="field" style="margin-bottom:12px;">
             <label for="partnerPolicySummaryOutput">Leitura política e documental</label>
             <textarea id="partnerPolicySummaryOutput" rows="3" readonly placeholder="A leitura da política documental desta parceira aparecerá aqui."></textarea>
-            <small id="partnerPoliticalNotice">Sem leitura política ainda: uma verificação de conexão, sozinha, não libera comparação documental, importação nem mutualização.</small>
+            <small id="partnerPoliticalNotice">Sem leitura política ainda: verificação de conexão, sozinha, não libera comparação documental, importação nem mutualização.</small>
           </div>
 
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
@@ -5624,7 +5624,7 @@
     function getProfileDefaultLibraryContext() {
       return {
         libraryId: compactSpaces(state.profile?.library_id || state.profile?.default_library_id || ''),
-        libraryIdentificador curto: compactSpaces(state.profile?.library_slug || state.profile?.default_library_slug || ''),
+        librarySlug: compactSpaces(state.profile?.library_slug || state.profile?.default_library_slug || ''),
         libraryName: compactSpaces(state.profile?.library_name || state.profile?.default_library_name || ''),
       };
     }
@@ -6644,7 +6644,7 @@
         holderLibrary: el('bookHolderLibrary').value.trim(),
         acquisitionSourceLabel: el('bookAcquisitionSourceLabel').value.trim(),
         partnerSource: el('bookPartnerSource').value || '',
-        partnerGovernanceIdentificador curto: el('bookPartnerGovernanceSlug').value.trim(),
+        partnerGovernanceSlug: el('bookPartnerGovernanceSlug').value.trim(),
         sourceRecordId: el('bookSourceRecordId').value.trim(),
         sourceRecordUrl: el('bookSourceRecordUrl').value.trim(),
         importFormat: el('bookImportFormat').value || '',
@@ -16408,7 +16408,7 @@ function initPartnerProbeUi() {
     incomingIdentityPreviewEl.value = [
       `Nome da biblioteca → ${identity.libraryName || '—'}`,
       `Nome curto → ${identity.shortName || '—'}`,
-      `Identificador curto local → ${identity.slug || '—'}`,
+      `Slug local → ${identity.slug || '—'}`,
       `Sigla / acrônimo → ${identity.acronym || '—'}`,
       `Cidade / território → ${identity.territory || '—'}`,
       `Nota curta → ${noteParts.join(' ') || '—'}`,
@@ -16418,7 +16418,7 @@ function initPartnerProbeUi() {
     if (identity.libraryName || identity.shortName || identity.slug || identity.acronym) {
       incomingCatalogHintEl.textContent = 'A identificação local já está pronta para seguir, se você quiser, para os campos de governança documental abaixo.';
     } else {
-      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o identificador curto ou a sigla para preparar uma identificação local útil.';
+      incomingCatalogHintEl.textContent = 'Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla para preparar uma identificação local útil.';
     }
     refreshIncomingCatalogWorkflowSummary();
     refreshPartnerPilotSummary();
@@ -17993,7 +17993,7 @@ function initPartnerProbeUi() {
       applyIncomingIdentityBtn.disabled = incomingCatalogImportState.busy || !identityReady;
       applyIncomingIdentityBtn.title = identityReady
         ? 'Levar esta biblioteca para os campos de governança abaixo, sem importar registros.'
-        : 'Preencha ao menos o nome, o nome curto, o identificador curto ou a sigla antes de levar a biblioteca para a governança.';
+        : 'Preencha ao menos o nome, o nome curto, o slug ou a sigla antes de levar a biblioteca para a governança.';
     }
     if (clearIncomingCatalogBtn) {
       clearIncomingCatalogBtn.disabled = incomingCatalogImportState.busy || !hasReceptionActivity;
@@ -18362,7 +18362,7 @@ function initPartnerProbeUi() {
     if (identity.territory) noteParts.push(`Território informado: ${identity.territory}.`);
     if (fileKind) noteParts.push(`Catálogo externo recebido em arquivo ${fileKind.toUpperCase()}.`);
     if (!nextDisplayName && !identity.slug) {
-      setPartnerProbeMessage('Preencha ao menos o nome da biblioteca, o nome curto, o identificador curto ou a sigla antes de levar a identificação para a governança.', 'warn');
+      setPartnerProbeMessage('Preencha ao menos o nome da biblioteca, o nome curto, o slug ou a sigla antes de levar a identificação para a governança.', 'warn');
       return;
     }
     if (displayEl && nextDisplayName) displayEl.value = nextDisplayName;
@@ -18498,7 +18498,7 @@ function initPartnerProbeUi() {
       `URL analisada: ${suggestion.rawUrl}`,
       `Endereço-base provável: ${suggestion.baseUrl || '—'}`,
       `Nome público provável: ${suggestion.displayName || '—'}`,
-      `Identificador curto provável: ${suggestion.slug || '—'}`,
+      `Slug provável: ${suggestion.slug || '—'}`,
       `Família provável: ${suggestion.softwareFamily || 'unknown'}`,
       `Nível de confiança: ${suggestion.softwareConfidence || 'unknown'}`,
       `País provável: ${suggestion.countryCode || '—'}`,
@@ -18508,7 +18508,7 @@ function initPartnerProbeUi() {
     ].join('\n');
     urlSuggestionWritePreviewEl.value = [
       `Nome público → ${suggestion.displayName || '—'}`,
-      `Identificador curto → ${suggestion.slug || '—'}`,
+      `Slug → ${suggestion.slug || '—'}`,
       `Endereço-base → ${suggestion.baseUrl || '—'}`,
       `Família → ${suggestion.softwareFamily || 'unknown'}`,
       `Confiança → ${suggestion.softwareConfidence || 'unknown'}`,
@@ -18889,14 +18889,14 @@ ${decisionSummary}` : '',
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter identificador curto ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar identificador curto ${nextGovernanceSlug}.`);
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta identificador curto canônico.');
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar identificador curto local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
       lines.push('Governança parceira: sem escrita adicional prevista.');
     }
@@ -19272,7 +19272,7 @@ ${decisionSummary}` : '',
 
     return [
       `Parceira em foco: ${label}`,
-      `Identificador curto em foco: ${slug}`,
+      `Slug em foco: ${slug}`,
       `Situação relacional lida: ${relationshipStatusEl.value || '—'}`,
       `Acordo explícito: ${agreementStatusEl?.value || '—'}`,
       `Microfluxo ativo agora: ${activeFlow}`,
@@ -20046,7 +20046,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
   function getImportSourceSummaryText() {
     const lines = [
       `Parceira: ${getCurrentPartnerLabel() || 'Parceira sem nome público'}`,
-      `Identificador curto: ${getCurrentPartnerSlug() || 'Sem slug informado'}`,
+      `Slug: ${getCurrentPartnerSlug() || 'Sem slug informado'}`,
       `Endereço-base: ${normalizePartnerBaseUrl(baseUrlEl.value || '') || 'Sem endereço-base informado'}`,
       `Família / confiança: ${getSelectedOptionLabel(familyEl) || 'Sem família'} · ${getSelectedOptionLabel(confidenceEl) || 'Sem confiança'}`,
       `Situação relacional: ${String(relationshipStatusEl.value || '').trim() || 'Sem leitura relacional'}`,
@@ -20136,14 +20136,14 @@ ${decisionSummary}` : '',
 
     if (nextSourceValue === 'other_partner') {
       if (currentGovernanceSlug === nextGovernanceSlug) {
-        lines.push(`Governança parceira: manter identificador curto ${nextGovernanceSlug || 'sem slug'}.`);
+        lines.push(`Governança parceira: manter slug ${nextGovernanceSlug || 'sem slug'}.`);
       } else if (nextGovernanceSlug) {
-        lines.push(`Governança parceira: gravar identificador curto ${nextGovernanceSlug}.`);
+        lines.push(`Governança parceira: gravar slug ${nextGovernanceSlug}.`);
       } else {
-        lines.push('Governança parceira: sem escrita prevista porque falta identificador curto canônico.');
+        lines.push('Governança parceira: sem escrita prevista porque falta slug canônico.');
       }
     } else if (currentGovernanceSlug) {
-      lines.push('Governança parceira: limpar identificador curto local e voltar ao mapeamento direto da fonte parceira.');
+      lines.push('Governança parceira: limpar slug local e voltar ao mapeamento direto da fonte parceira.');
     } else {
       lines.push('Governança parceira: sem escrita adicional prevista.');
     }
@@ -20528,7 +20528,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       return;
     }
     if (mode === 'registered_but_blocked') {
-      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Uma verificação de conexão isolada não muda isso.';
+      actionHintEl.textContent = 'Parceira cadastrada, mas sem comparação documental autorizada nem importação nesta etapa. Um verificação de conexão isolado não muda isso.';
       setPartnerNextStepReadout('registered_but_blocked', row, nextGateState);
       setPartnerBoundaryReadout('registered_but_blocked', row, nextGateState);
       refreshPartnerPilotSummary();
@@ -20593,7 +20593,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     politicalNoticeEl.textContent = nextGateState.requireExplicitAgreement
       ? (nextGateState.explicitAgreementActive
           ? 'Os acordos desta parceira foram aplicados a partir do painel. A camada técnica continua subordinada a esses acordos e não vale como modificação livre do registro da parceira.'
-          : `${nextGateState.noAgreementMessage} A verificação de conexão e a identificação da parceira podem continuar visíveis, mas o uso documental fica bloqueado.`)
+          : `${nextGateState.noAgreementMessage} O verificação de conexão e a identificação da parceira podem continuar visíveis, mas o uso documental fica bloqueado.`)
       : 'Acordos aplicados sem exigência de acordo explícito prévio. Ainda assim, verificação de conexão não substitui decisão política nem libera modificação livre do registro da parceira.';
 
     if (gateBlocked) {
@@ -20767,7 +20767,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     if (!slug) {
       clearPartnerPolicyReadout();
-      if (!silent) setPartnerProbeMessage('Preencha pelo menos o identificador curto da parceira para aplicar os acordos desta parceira.', 'warn');
+      if (!silent) setPartnerProbeMessage('Preencha pelo menos o slug da parceira para aplicar os acordos desta parceira.', 'warn');
       return;
     }
 
@@ -20806,7 +20806,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
               : row.import_allowed
                 ? 'Acordos desta parceira aplicados. A importação está autorizada, mas continua sob revisão local e não vale como mutualização.'
                 : row.compare_allowed
-                  ? 'Acordos desta parceira aplicados. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com o último verificação de conexão e não libera importação.'
+                  ? 'Acordos desta parceira aplicados. A comparação documental está autorizada por essa situação relacional, mas isso não se confunde com a última verificação de conexão e não libera importação.'
                   : 'Acordos desta parceira aplicados. Sem comparação documental, importação ou mutualização autorizadas neste estágio.',
             row.compare_allowed || row.import_allowed || row.mutualize_allowed ? 'ok' : 'warn'
           );
@@ -20857,7 +20857,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     if (!displayName || !baseUrl || !slug) {
       reportEl.value = '';
       seedEl.value = '';
-      setPartnerProbeMessage('Preencha pelo menos nome público, slug e base URL.', 'warn');
+      setPartnerProbeMessage('Preencha pelo menos nome público, identificador curto e endereço-base.', 'warn');
       return;
     }
 
@@ -20948,7 +20948,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
   openBaseBtn?.addEventListener('click', () => {
     const url = normalizePartnerBaseUrl(baseUrlEl.value);
     if (!url) {
-      setPartnerProbeMessage('Preencha uma base URL antes de abrir.', 'warn');
+      setPartnerProbeMessage('Preencha um endereço-base antes de abrir.', 'warn');
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
