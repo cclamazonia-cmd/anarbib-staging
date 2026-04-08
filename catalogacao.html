@@ -3112,7 +3112,7 @@
       <div class="panel-header">
         <div>
           <h3>Exemplares</h3>
-          <p>Crie ou edite exemplares locais ligados a uma ficha comum, com tombo, localização, leitura do vínculo local e observações materiais. Os ajustes do rótulo ficam agora na aba Rótulos.</p>
+          <p>Trabalhe aqui o exemplar material local como camada distinta do vínculo local: ficha comum ligada, código local legado, pertencimento local, tombo, localização material e passagem seguinte para o rótulo.</p>
         </div>
         <div class="inline">
           <span id="exemplarDraftModePill" class="pill info">Novo rascunho</span>
@@ -3137,11 +3137,11 @@
         </div>
 
         <div class="card" style="margin-top:16px;">
-          <h4>Importação de fichas comuns para exemplares locais</h4>
-          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Cada vínculo local previsto gera aqui uma linha própria de exemplar local. Nesta etapa, você valida somente o exemplar material; a revisão e a validação do rótulo acontecem na aba Rótulos.</p>
+          <h4>Preparação de exemplares materiais a partir da ficha comum</h4>
+          <p class="hint" style="margin:0 0 12px;">Escolha um lote ou carregue todas as fichas comuns ativas. Nesta superfície, a ficha comum continua separada do vínculo local e do exemplar material: você usa o código local legado como apoio, confirma a biblioteca e valida somente o exemplar material. A revisão e a validação do rótulo continuam na aba Rótulos.</p>
           <div class="grid cols-3" style="align-items:end;">
             <div class="field">
-              <label for="exemplarLotImportId">Fichas comuns a carregar</label>
+              <label for="exemplarLotImportId">Fichas comuns a carregar para materializar exemplares</label>
               <select id="exemplarLotImportId"></select>
             </div>
             <div class="actions" style="grid-column: span 2; justify-content:flex-start;">
@@ -3152,7 +3152,7 @@
           <div class="grid cols-4" style="margin:14px 0 12px; align-items:end;">
             <div class="field" style="grid-column: span 2;">
               <label for="exemplarBatchSearchInput">Filtrar linhas a validar</label>
-              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, ficha comum, compatibilidade local, tombo ou localização" />
+              <input id="exemplarBatchSearchInput" type="text" placeholder="Título, autor, ficha comum, código local legado, tombo, biblioteca ou localização" />
             </div>
             <div class="field">
               <label for="exemplarPendingScope">Recorte</label>
@@ -3174,7 +3174,46 @@
           <div id="exemplarBatchQueueWrap" class="label-sheet-wrap"></div>
         </div>
 
-        <form id="exemplarForm" class="grid cols-3">
+                <div class="card" style="margin-top:16px;">
+          <div class="book-public-preview">
+            <div class="book-public-preview-top">
+              <div>
+                <h4 class="autofill-panel-title">Arquitetura documental desta etapa material</h4>
+                <div class="hint">Esta leitura separa claramente a ficha comum ligada, o código local legado que ainda ancora a etapa, o vínculo local já legível, o exemplar material em montagem, a localização concreta e o próximo gesto na aba Rótulos.</div>
+              </div>
+              <span id="exemplarStructurePill" class="pill info">Camadas materiais</span>
+            </div>
+            <div class="book-public-preview-grid">
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Ficha comum ligada</div>
+                <div id="exemplarStructureNoticeTitle" class="book-public-preview-title">Nenhuma ficha comum relida ainda</div>
+                <div id="exemplarStructureNoticeBody" class="book-public-preview-line is-muted">Informe o código local legado ou abra um rascunho existente para reler a ficha comum nesta etapa.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Vínculo local</div>
+                <div id="exemplarStructureHoldingTitle" class="book-public-preview-title">Vínculo local ainda não descrito</div>
+                <div id="exemplarStructureHoldingBody" class="book-public-preview-line is-muted">Biblioteca, lote e código local legado ainda não bastam para resumir a camada local.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Exemplar material local</div>
+                <div id="exemplarStructureCopyTitle" class="book-public-preview-title">Exemplar material ainda não consolidado</div>
+                <div id="exemplarStructureCopyBody" class="book-public-preview-line is-muted">Tombo, estado do rascunho e observações materiais ainda não bastam para fechar o exemplar.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Localização e pertencimento</div>
+                <div id="exemplarStructureLocationTitle" class="book-public-preview-title">Localização ainda não descrita</div>
+                <div id="exemplarStructureLocationBody" class="book-public-preview-line is-muted">Biblioteca, setor, estante e prateleira ainda não foram relidos como localização material concreta.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Próximo gesto</div>
+                <div id="exemplarStructureNextTitle" class="book-public-preview-title">Próximo passo ainda não lido</div>
+                <div id="exemplarStructureNextBody" class="book-public-preview-line is-muted">Depois do exemplar material, a revisão do rótulo local continua separada na aba Rótulos.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+<form id="exemplarForm" class="grid cols-3">
           <input type="hidden" id="exemplarDraftId" />
           <input type="hidden" id="exemplarPublishedId" />
           <input type="hidden" id="exemplarAction" value="create" />
@@ -3187,9 +3226,9 @@
           </div>
 
           <div class="field">
-            <label for="exemplarBibRef">Compatibilidade local / ficha comum</label>
+            <label for="exemplarBibRef">Código local legado / ficha comum</label>
             <input id="exemplarBibRef" type="text" placeholder="0000123" required />
-            <small>Use aqui a referência local que ancora este exemplar à ficha comum já existente ou em preparação.</small>
+            <small>Use aqui o código local legado que ainda ajuda a reler a ligação com a ficha comum. Ele não substitui a leitura do vínculo local, mas continua sendo o apoio concreto desta etapa no backend atual.</small>
           </div>
 
           <div class="field">
@@ -3240,7 +3279,7 @@
               <div class="book-derived-summary-top">
                 <div>
                   <h4 class="autofill-panel-title">Leitura do vínculo local</h4>
-                  <div class="hint">Prévia curta do que este formulário já consegue reler como ficha comum em foco, vínculo local e exemplar local em preparação.</div>
+                  <div class="hint">Prévia curta do que este formulário já consegue reler como ficha comum em foco, vínculo local, exemplar material local, localização e próximo gesto de rotulagem.</div>
                 </div>
                 <span id="exemplarContextStatusPill" class="pill info">Exemplar local</span>
               </div>
@@ -4949,6 +4988,17 @@
       exemplarContextHolding: el('exemplarContextHolding'),
       exemplarContextCopy: el('exemplarContextCopy'),
       exemplarContextLabel: el('exemplarContextLabel'),
+      exemplarStructurePill: el('exemplarStructurePill'),
+      exemplarStructureNoticeTitle: el('exemplarStructureNoticeTitle'),
+      exemplarStructureNoticeBody: el('exemplarStructureNoticeBody'),
+      exemplarStructureHoldingTitle: el('exemplarStructureHoldingTitle'),
+      exemplarStructureHoldingBody: el('exemplarStructureHoldingBody'),
+      exemplarStructureCopyTitle: el('exemplarStructureCopyTitle'),
+      exemplarStructureCopyBody: el('exemplarStructureCopyBody'),
+      exemplarStructureLocationTitle: el('exemplarStructureLocationTitle'),
+      exemplarStructureLocationBody: el('exemplarStructureLocationBody'),
+      exemplarStructureNextTitle: el('exemplarStructureNextTitle'),
+      exemplarStructureNextBody: el('exemplarStructureNextBody'),
       bookPublishedPopupBtn: el('bookPublishedPopupBtn'),
       authorPublishedPopupBtn: el('authorPublishedPopupBtn'),
       exemplarPublishedPopupBtn: el('exemplarPublishedPopupBtn'),
@@ -10713,10 +10763,10 @@
       refs.exemplarContextKind.textContent = linked?.kindLabel || 'Ficha comum ainda não localizada';
       refs.exemplarContextTitle.textContent = linked
         ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
-        : (bibRef ? `Compatibilidade local ${bibRef} ainda sem ficha comum relida` : 'Código local legado ainda não informado');
+        : (bibRef ? `Código local legado ${bibRef} ainda sem ficha comum relida` : 'Código local legado ainda não informado');
 
       const holdingParts = [];
-      holdingParts.push(`Compatibilidade local: ${bibRef || '—'}`);
+      holdingParts.push(`Código local legado: ${bibRef || '—'}`);
       holdingParts.push(`Biblioteca: ${library || linked?.library || '—'}`);
       holdingParts.push(batchLabel);
       refs.exemplarContextHolding.textContent = `Vínculo local: ${holdingParts.join(' · ')}`;
@@ -10736,6 +10786,67 @@
       refs.exemplarContextLabel.textContent = `Rótulo e revisão local: ${labelParts.join(' · ')}`;
     }
 
+    function updateExemplarStructurePreview() {
+      if (!refs.exemplarStructureNoticeTitle) return;
+
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const notes = compactSpaces(el('exemplarNotes')?.value || '');
+      const location = compactSpaces(syncExemplarStructuredLocation());
+      const library = compactSpaces(refs.exemplarLocationLibrary?.value || '');
+      const linked = getExemplarLinkedNoticeContext(bibRef);
+      const batchLabel = el('exemplarBatchId')?.value ? `Lote #${el('exemplarBatchId').value}` : 'Sem lote';
+      const statusLabel = getExemplarStatusLabel(getCurrentExemplarStatus());
+      const labelStatusLabel = getExemplarLabelStatusLabel(getCurrentLabelStatus());
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+
+      refs.exemplarStructurePill.textContent = linked?.source === 'published'
+        ? 'Ficha comum publicada'
+        : linked?.source === 'draft'
+          ? 'Ficha comum em preparação'
+          : 'Camadas materiais';
+      refs.exemplarStructurePill.className = `pill ${linked?.source === 'published' ? 'ok' : linked?.source === 'draft' ? 'warn' : 'info'}`;
+
+      refs.exemplarStructureNoticeTitle.textContent = linked
+        ? [linked.title || '—', linked.subtitle || '', linked.author ? `· ${linked.author}` : ''].filter(Boolean).join(' ')
+        : (bibRef ? `Código local legado ${bibRef} ainda sem ficha comum relida` : 'Nenhuma ficha comum relida ainda');
+      refs.exemplarStructureNoticeBody.textContent = linked
+        ? `${linked.kindLabel || 'Ficha comum'}${linked.materialType ? ` · ${linked.materialType}` : ''}${linked.circulation === false ? ' · circulação prevista apenas local' : linked.circulation === true ? ' · circulação prevista emprestável' : ''}`
+        : 'Informe o código local legado ou abra um rascunho existente para reler a ficha comum nesta etapa.';
+
+      refs.exemplarStructureHoldingTitle.textContent = bibRef
+        ? `Vínculo local apoiado no código ${bibRef}`
+        : 'Vínculo local ainda não descrito';
+      refs.exemplarStructureHoldingBody.textContent = [
+        `Biblioteca: ${library || linked?.library || '—'}`,
+        batchLabel,
+        bibRef ? `Código local legado: ${bibRef}` : 'Código local legado ainda não informado'
+      ].join(' · ');
+
+      refs.exemplarStructureCopyTitle.textContent = tombo
+        ? `Exemplar material ${tombo}`
+        : 'Exemplar material ainda não consolidado';
+      refs.exemplarStructureCopyBody.textContent = [
+        `Situação: ${statusLabel}`,
+        notes ? `Observação material: ${notes}` : 'Sem observação material registrada ainda'
+      ].join(' · ');
+
+      refs.exemplarStructureLocationTitle.textContent = location
+        ? 'Localização material já descrita'
+        : 'Localização ainda não descrita';
+      refs.exemplarStructureLocationBody.textContent = location
+        ? `${library ? `Biblioteca: ${library} · ` : ''}${location}`
+        : `${library ? `Biblioteca: ${library} · ` : ''}Setor, estante e prateleira ainda não foram descritos como localização concreta.`;
+
+      refs.exemplarStructureNextTitle.textContent = labelTitle
+        ? 'Rótulo local já em foco'
+        : 'Próximo passo: revisão do rótulo';
+      refs.exemplarStructureNextBody.textContent = [
+        `Situação do rótulo: ${labelStatusLabel}`,
+        labelTitle ? `Título de rótulo em foco: ${labelTitle}` : 'Depois do exemplar material, a revisão do rótulo continua separada na aba Rótulos.'
+      ].join(' · ');
+    }
+
     function updateLabelPreview() {
       syncLabelSummaryFromExemplar();
       refs.labelPrevTombo.textContent = el('exemplarTombo').value || '—';
@@ -10746,6 +10857,7 @@
       refs.labelPrevNote.textContent = el('labelNoteInput')?.value || 'Sem nota de rótulo.';
       renderLabelSuggestion();
       updateExemplarContextPreview();
+      updateExemplarStructurePreview();
     }
 
     ['exemplarTombo','exemplarBibRef','exemplarShelf','exemplarBatchId'].forEach(id => {
@@ -12032,6 +12144,7 @@
       if (nextExemplarState === 'published') showPublishedPopup('exemplar'); else hidePublishedPopup('exemplar');
       exemplarDraftBaseline = serializeExemplarFormState();
       setExemplarDraftVisualState(nextExemplarState);
+      updateExemplarStructurePreview();
       if (syncLabel) fillLabelForm(record, { switchTab: false });
     }
 
@@ -12914,7 +13027,7 @@
       };
 
       if (!payload.target_bib_ref || !payload.tombo) {
-        throw new Error('Cada exemplar precisa ter referência e tombo antes da validação.');
+        throw new Error('Cada exemplar material precisa ter código local legado e tombo antes da validação.');
       }
       await guardExemplarTomboBeforePersist(payload, refs.exemplarBatchMessage);
 
@@ -13026,17 +13139,17 @@
       renderExemplarBatchQueue();
 
       if (!state.batchExemplarItems.length) {
-        showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas de livros ativas para importar em exemplares.' : 'Este lote não tem fichas de livros ativas para importar em exemplares.', 'info');
+        showMessage(refs.exemplarBatchMessage, sourceId === '__all__' ? 'Não há fichas comuns ativas para materializar em exemplares locais nesta etapa.' : 'Este lote não tem fichas comuns ativas para materializar em exemplares locais.', 'info');
       } else {
         const totalCopies = state.batchExemplarItems.reduce((sum, item) => sum + (item.copies?.length || 0), 0);
-        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) de livro carregada(s), gerando ${totalCopies} linha(s) de exemplar para validar.`, 'ok');
+        showMessage(refs.exemplarBatchMessage, `${state.batchExemplarItems.length} ficha(s) comum(ns) carregada(s), gerando ${totalCopies} linha(s) de exemplar material para validar.`, 'ok');
       }
     }
 
     function renderExemplarBatchQueue() {
       if (!refs.exemplarBatchQueueWrap) return;
       if (!state.batchExemplarItems.length) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de livros — ou todas as fichas ativas — para gerar as linhas de exemplar livro por livro.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Escolha um lote de fichas comuns — ou todas as fichas ativas — para gerar as linhas de exemplar material, sempre separadas da ficha comum e do vínculo local.</div>';
         if (refs.exemplarBatchFilterSummary) refs.exemplarBatchFilterSummary.textContent = 'Nenhuma fila carregada ainda.';
         if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = true;
         return;
@@ -13045,17 +13158,17 @@
       const snapshot = getVisibleImportedExemplarRows();
       if (refs.exemplarBatchFilterSummary) {
         if (!snapshot.totalPending) {
-          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) já passaram desta etapa.`;
+          refs.exemplarBatchFilterSummary.textContent = `Nenhuma linha pendente restante. ${snapshot.totalConcluded} exemplar(es) materiais já passaram desta etapa.`;
         } else if (!snapshot.totalVisible) {
-          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
+          refs.exemplarBatchFilterSummary.textContent = `Há ${snapshot.totalPending} linha(s) de exemplar material pendente(s), mas nenhuma corresponde aos filtros atuais. ${snapshot.totalConcluded} já concluída(s).`;
         } else {
-          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
+          refs.exemplarBatchFilterSummary.textContent = `${snapshot.totalVisible} linha(s) visível(is) de exemplar material para validar agora, dentro de ${snapshot.totalPending} pendente(s). ${snapshot.totalConcluded} já concluída(s) saíram desta fila.`;
         }
       }
       if (refs.validateVisibleExemplarRowsBtn) refs.validateVisibleExemplarRowsBtn.disabled = !snapshot.totalVisible;
 
       if (!snapshot.totalPending) {
-        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
+        refs.exemplarBatchQueueWrap.innerHTML = '<div class="empty">Todas as linhas de exemplar material desta fila já foram validadas. A próxima etapa é revisar os rótulos na aba Rótulos.</div>';
         return;
       }
 
@@ -13072,9 +13185,9 @@
               <div class="batch-exemplar-book-copy-note">${group.pendingCount} linha(s) pendente(s) para este livro${group.concludedCount ? ` · ${group.concludedCount} já concluída(s)` : ''}.</div>
             </div>
             <div class="batch-exemplar-meta">
-              <span class="pill info">Ref. ${sanitize(group.bibRef || '—')}</span>
+              <span class="pill info">Código legado ${sanitize(group.bibRef || '—')}</span>
               ${getQueueStatusBadge(group.bookStatus || 'draft')}
-              <span class="pill warn">Exemplares já cadastrados: ${sanitize(group.publishedCount)}</span>
+              <span class="pill warn">Exemplares materiais já publicados: ${sanitize(group.publishedCount)}</span>
             </div>
           </div>
 
@@ -13095,7 +13208,7 @@
                     <input type="text" data-field="tombo" value="${sanitize(copy.tombo || '')}" />
                   </div>
                   <div class="field">
-                    <label>Localização</label>
+                    <label>Localização material</label>
                     <input type="text" data-field="shelf" value="${sanitize(copy.shelf || '')}" placeholder="Estante A / Prateleira 3" />
                   </div>
                 </div>
@@ -13166,7 +13279,7 @@
       await persistImportedExemplarCopy(copy, 'ready');
       if (refs.labelLotImportId) refs.labelLotImportId.value = refs.exemplarLotImportId?.value || copy.batchId || '';
       await refreshImportedExemplarQueues();
-      showMessage(refs.exemplarBatchMessage, 'Exemplar validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
+      showMessage(refs.exemplarBatchMessage, 'Exemplar material validado. Ele saiu desta fila pendente e seguiu para a revisão do rótulo.', 'ok');
     }
 
     async function loadLabelDraftQueue() {
@@ -13401,7 +13514,7 @@
             <tr>
               <th>ID</th>
               <th>Tombo</th>
-              <th>Compatibilidade local</th>
+              <th>Código local legado / vínculo</th>
               <th>Autor</th>
               <th>Título</th>
               <th>CDD</th>
@@ -13466,7 +13579,7 @@
       const draftCount = items.filter((item) => String(item?.status || '') === 'draft').length;
       refs.exemplarActiveDraftsPill.textContent = `${items.length} exemplar(es) em curso`;
       refs.exemplarActiveDraftsSummary.innerHTML = items.length
-        ? `<strong>Leitura da superfície:</strong> ${draftCount} em rascunho · ${readyCount} prontos para publicação · retomada rápida local sem sair da aba Exemplares.`
+        ? `<strong>Leitura da superfície:</strong> ${draftCount} exemplares materiais em rascunho · ${readyCount} prontos para publicação · retomada rápida local sem sair da aba Exemplares.`
         : '<strong>Leitura da superfície:</strong> nenhum rascunho ativo de exemplar neste recorte.';
       if (!items.length) {
         refs.exemplarActiveDraftsWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo de exemplar encontrado agora.</div>';
