@@ -3501,6 +3501,45 @@
         </div>
 
         <div class="card" style="margin-top:16px;">
+          <div class="book-public-preview">
+            <div class="book-public-preview-top">
+              <div>
+                <h4 class="autofill-panel-title">Arquitetura documental desta rotulagem</h4>
+                <div class="hint">Esta leitura separa a ficha comum relida, o vínculo local retomado, o exemplar material em foco, o rótulo que já sai para impressão e a plancha/PDF que só se abre depois da validação local.</div>
+              </div>
+              <span id="labelStructureStatusPill" class="pill info">Camadas do rótulo</span>
+            </div>
+            <div class="book-public-preview-grid">
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Ficha comum em foco</div>
+                <div id="labelStructureNoticeTitle" class="book-public-preview-title">Ficha comum ainda não relida</div>
+                <div id="labelStructureNoticeBody" class="book-public-preview-line is-muted">O rótulo depende primeiro da releitura da ficha comum ligada por este código local legado.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Vínculo local retomado</div>
+                <div id="labelStructureHoldingTitle" class="book-public-preview-title">Vínculo local ainda não relido</div>
+                <div id="labelStructureHoldingBody" class="book-public-preview-line is-muted">Biblioteca, lote e apoio legado ainda não bastam para resumir a camada local desta rotulagem.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Exemplar material</div>
+                <div id="labelStructureCopyTitle" class="book-public-preview-title">Exemplar local ainda não relido</div>
+                <div id="labelStructureCopyBody" class="book-public-preview-line is-muted">Tombo, localização e estado do exemplar ainda não foram resumidos nesta etapa.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Rótulo impresso</div>
+                <div id="labelStructurePrintTitle" class="book-public-preview-title">Rótulo ainda não consolidado</div>
+                <div id="labelStructurePrintBody" class="book-public-preview-line is-muted">Autor, título, CDD e nota curta ainda não bastam para uma leitura impressa estável.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Plancha e PDF</div>
+                <div id="labelStructureSheetTitle" class="book-public-preview-title">Plancha ainda não habilitada</div>
+                <div id="labelStructureSheetBody" class="book-public-preview-line is-muted">A plancha A4 e o PDF só entram plenamente em cena quando o rótulo local já foi validado.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
           <h4>Prévia do rótulo</h4>
           <div id="labelPreview" class="grid cols-4">
             <div class="pill info">Tombo: <span id="labelPrevTombo">—</span></div>
@@ -5059,6 +5098,17 @@
       labelOutputSheetTitle: el('labelOutputSheetTitle'),
       labelOutputSheetMeta: el('labelOutputSheetMeta'),
       labelOutputSheetBody: el('labelOutputSheetBody'),
+      labelStructureStatusPill: el('labelStructureStatusPill'),
+      labelStructureNoticeTitle: el('labelStructureNoticeTitle'),
+      labelStructureNoticeBody: el('labelStructureNoticeBody'),
+      labelStructureHoldingTitle: el('labelStructureHoldingTitle'),
+      labelStructureHoldingBody: el('labelStructureHoldingBody'),
+      labelStructureCopyTitle: el('labelStructureCopyTitle'),
+      labelStructureCopyBody: el('labelStructureCopyBody'),
+      labelStructurePrintTitle: el('labelStructurePrintTitle'),
+      labelStructurePrintBody: el('labelStructurePrintBody'),
+      labelStructureSheetTitle: el('labelStructureSheetTitle'),
+      labelStructureSheetBody: el('labelStructureSheetBody'),
       exemplarLocationLibrary: el('exemplarLocationLibrary'),
       exemplarLocationSector: el('exemplarLocationSector'),
       exemplarLocationShelfUnit: el('exemplarLocationShelfUnit'),
@@ -10081,6 +10131,80 @@
       ]) || 'A leitura da plancha e do próximo gesto local aparecerá aqui.';
     }
 
+    function updateLabelStructurePreview() {
+      if (!refs.labelStructureNoticeTitle) return;
+      const linked = getLabelLinkedNoticeContext();
+      const notice = linked.notice || {};
+      const bibRef = compactSpaces(el('exemplarBibRef')?.value || '');
+      const batchLabel = getBatchLabel(el('exemplarBatchId')?.value || '');
+      const shelfDisplay = syncExemplarStructuredLocation();
+      const tombo = compactSpaces(el('exemplarTombo')?.value || '');
+      const labelAuthor = compactSpaces(el('labelAuthorInput')?.value || '');
+      const labelTitle = compactSpaces(el('labelTitleInput')?.value || '');
+      const labelCDD = compactSpaces(el('labelCDDInput')?.value || '');
+      const labelNote = compactSpaces(el('labelNoteInput')?.value || '');
+      const exemplarStatus = String(el('exemplarCurrentStatus')?.value || 'draft').trim();
+      const labelStatus = String(el('exemplarLabelStatus')?.value || 'pending').trim();
+      const localLibrary = compactSpaces(refs.exemplarLocationLibrary?.value || '') || compactSpaces(notice?.holder_library || notice?.owner_library || '');
+      const noticeAuthor = compactSpaces(notice?.autor || notice?.author || labelAuthor || '');
+      const previewBatchId = refs.labelBatchPreviewId?.value || '';
+      const previewBatchLabel = getLabelPreviewBatchLabel(previewBatchId);
+      const validatedLabelsCount = Array.isArray(state.labelPreviewItems) ? state.labelPreviewItems.length : 0;
+      const validatedPagesCount = validatedLabelsCount ? getLabelPages(state.labelPreviewItems || []).length : 0;
+      const printCode = getAuthorTrigram(labelAuthor || noticeAuthor || '---');
+      const exemplarStatusLabel = exemplarStatus === 'published'
+        ? 'Exemplar publicado'
+        : (exemplarStatus === 'ready' ? 'Exemplar pronto para publicação' : 'Exemplar em rascunho');
+      const labelStatusLabel = labelStatus === 'ready' ? 'Rótulo validado' : 'Rótulo ainda pendente';
+
+      if (refs.labelStructureStatusPill) {
+        refs.labelStructureStatusPill.textContent = labelStatus === 'ready' ? 'Rótulo validado' : 'Camadas do rótulo';
+        refs.labelStructureStatusPill.className = `pill ${labelStatus === 'ready' ? 'ok' : (labelDraftStableState === 'dirty' ? 'warn' : 'info')}`;
+      }
+
+      refs.labelStructureNoticeTitle.textContent = linked.title || 'Ficha comum ainda não relida';
+      refs.labelStructureNoticeBody.textContent = joinSummaryParts([
+        linked.kind,
+        noticeAuthor ? `Autor relido: ${noticeAuthor}` : '',
+        compactSpaces(notice?.ano || notice?.year || '') ? `Ano relido: ${compactSpaces(notice?.ano || notice?.year || '')}` : ''
+      ]) || 'O rótulo depende primeiro da releitura da ficha comum ligada por este código local legado.';
+
+      refs.labelStructureHoldingTitle.textContent = localLibrary || (bibRef ? `Vínculo local ${bibRef}` : 'Vínculo local ainda não relido');
+      refs.labelStructureHoldingBody.textContent = joinSummaryParts([
+        bibRef ? `Código local legado: ${bibRef}` : '',
+        localLibrary ? `Biblioteca: ${localLibrary}` : '',
+        batchLabel ? `Lote do exemplar: ${batchLabel}` : ''
+      ]) || 'Biblioteca, lote e apoio legado ainda não bastam para resumir a camada local desta rotulagem.';
+
+      refs.labelStructureCopyTitle.textContent = tombo ? `Tombo ${tombo}` : 'Exemplar local ainda não relido';
+      refs.labelStructureCopyBody.textContent = joinSummaryParts([
+        exemplarStatusLabel,
+        shelfDisplay ? `Localização: ${shelfDisplay}` : '',
+        refs.labelCurrentShelf?.textContent && refs.labelCurrentShelf.textContent !== '—' ? `Leitura local: ${refs.labelCurrentShelf.textContent}` : ''
+      ]) || 'Tombo, localização e estado do exemplar ainda não foram resumidos nesta etapa.';
+
+      refs.labelStructurePrintTitle.textContent = labelTitle || 'Rótulo ainda não consolidado';
+      refs.labelStructurePrintBody.textContent = joinSummaryParts([
+        printCode ? `Código: ${printCode}` : '',
+        labelAuthor ? `Autor: ${labelAuthor}` : (noticeAuthor ? `Autor relido: ${noticeAuthor}` : ''),
+        labelCDD ? `CDD: ${labelCDD}` : '',
+        labelNote ? `Nota curta: ${truncatePreviewText(labelNote, 72)}` : '',
+        labelStatusLabel
+      ]) || 'Autor, título, CDD e nota curta ainda não bastam para uma leitura impressa estável.';
+
+      refs.labelStructureSheetTitle.textContent = labelStatus === 'ready'
+        ? (validatedLabelsCount ? `${validatedLabelsCount} rótulo(s) já na plancha` : 'Plancha habilitada para este rótulo')
+        : 'Plancha ainda não habilitada';
+      refs.labelStructureSheetBody.textContent = joinSummaryParts([
+        previewBatchLabel ? `Recorte da plancha: ${previewBatchLabel}` : '',
+        validatedLabelsCount ? `${validatedLabelsCount} rótulo(s) validado(s)` : '',
+        validatedPagesCount ? `${validatedPagesCount} página(s) de PDF` : '',
+        labelStatus === 'ready'
+          ? 'Próximo gesto: atualizar a plancha ou abrir o PDF.'
+          : 'Próximo gesto: validar o rótulo local antes de gerar plancha/PDF.'
+      ]) || 'A plancha A4 e o PDF só entram plenamente em cena quando o rótulo local já foi validado.';
+    }
+
     function truncatePreviewText(value = '', maxLength = 80) {
       const clean = String(value || '').trim();
       if (!clean) return '';
@@ -11045,6 +11169,7 @@
       refs.labelPrevTitle.textContent = el('labelTitleInput')?.value || 'Título';
       refs.labelPrevNote.textContent = el('labelNoteInput')?.value || 'Sem nota de rótulo.';
       renderLabelSuggestion();
+      updateLabelStructurePreview();
       updateExemplarContextPreview();
       updateExemplarStructurePreview();
     }
@@ -13688,7 +13813,7 @@
         refs.labelBatchFilterSummary.textContent = 'Nenhuma fila de rótulos carregada ainda.';
         return;
       }
-      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila; ${visible} visível(is) com os filtros atuais.`;
+      refs.labelBatchFilterSummary.textContent = `${totalPending} rótulo(s) pendente(s) nesta fila de exemplares locais; ${visible} visível(is) com os filtros atuais para revisão e validação local.`;
     }
 
     async function validateLabelDraftIds(ids = []) {
@@ -15732,6 +15857,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       if (!labels.length) {
         refs.labelSheetSummary.textContent = batchId ? `${batchLabel} — nenhum rótulo validado disponível para prévia.` : '';
         refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote com exemplares validados para ver a prévia dos rótulos em folha A4.</div>';
+        updateLabelStructurePreview();
         return;
       }
 
@@ -15764,6 +15890,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
           }
         });
       });
+      updateLabelStructurePreview();
     }
 
     async function loadLabelSheetPreview() {
@@ -15771,6 +15898,9 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       if (!batchId) {
         refs.labelSheetSummary.textContent = '';
         refs.labelSheetWrap.innerHTML = '<div class="empty">Escolha um lote ou selecione “Sem lote” para ver a prévia dos rótulos validados em folha A4 3 × 9.</div>';
+        state.labelPreviewItems = [];
+        state.labelPreviewBatchId = '';
+        updateLabelStructurePreview();
         return;
       }
 
