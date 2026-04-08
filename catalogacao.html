@@ -3925,6 +3925,46 @@
         </div>
       </div>
       <div class="panel-body">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="book-public-preview">
+            <div class="book-public-preview-top">
+              <div>
+                <h4 class="autofill-panel-title">Arquitetura desta cooperação documental</h4>
+                <div class="hint">Esta leitura separa a recepção artesanal, a governança política, a comparação local, a preparação local de importação e a saída normal para lotes e rascunhos, sem confundir nenhuma dessas camadas com mutualização automática.</div>
+              </div>
+              <span id="partnerArchitecturePill" class="pill info">Camadas da cooperação</span>
+            </div>
+            <div id="partnerArchitectureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura estrutural:</strong> ainda não atualizada.</div>
+            <div class="book-public-preview-grid">
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Recepção artesanal</div>
+                <div id="partnerArchitectureIncomingTitle" class="book-public-preview-title">Sem recepção ativa</div>
+                <div id="partnerArchitectureIncomingBody" class="book-public-preview-line is-muted">Arquivo, identificação local da biblioteca e tratamento inicial ainda não foram relidos como cadeia própria.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Governança política</div>
+                <div id="partnerArchitectureGovernanceTitle" class="book-public-preview-title">Parceira ainda não consolidada</div>
+                <div id="partnerArchitectureGovernanceBody" class="book-public-preview-line is-muted">Acordos, situação relacional e limites documentários ainda não foram relidos como camada explícita.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Comparação local</div>
+                <div id="partnerArchitectureCompareTitle" class="book-public-preview-title">Comparação ainda não aberta</div>
+                <div id="partnerArchitectureCompareBody" class="book-public-preview-line is-muted">A comparação documental local continua separada e só escreve na camada local quando estiver autorizada e suficientemente descrita.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Preparação local de importação</div>
+                <div id="partnerArchitectureImportTitle" class="book-public-preview-title">Preparação ainda não aberta</div>
+                <div id="partnerArchitectureImportBody" class="book-public-preview-line is-muted">Formato, modo, retomadas e proveniência ainda não foram relidos como preparação local distinta.</div>
+              </div>
+              <div class="book-public-preview-card">
+                <div class="book-public-preview-eyebrow">Saída normal</div>
+                <div id="partnerArchitectureOutputTitle" class="book-public-preview-title">Sem saída normal em curso</div>
+                <div id="partnerArchitectureOutputBody" class="book-public-preview-line is-muted">Lote normal e rascunhos normais continuam separados da leitura política, da comparação e da preparação local.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card" id="partnerIncomingCatalogCard" style="margin-bottom:16px;">
           <h4>Recepção artesanal de catálogos externos</h4>
           <p class="hint" style="margin:0 0 12px;">
@@ -16948,6 +16988,17 @@ function initPartnerProbeUi() {
   const partnerIncomingSurfaceSummaryEl = document.getElementById('partnerIncomingSurfaceSummary');
   const partnerIncomingWorkflowSummaryEl = document.getElementById('partnerIncomingWorkflowSummary');
   const partnerFocusSurfaceSummaryEl = document.getElementById('partnerFocusSurfaceSummary');
+  const partnerArchitectureSummaryEl = document.getElementById('partnerArchitectureSummary');
+  const partnerArchitectureIncomingTitleEl = document.getElementById('partnerArchitectureIncomingTitle');
+  const partnerArchitectureIncomingBodyEl = document.getElementById('partnerArchitectureIncomingBody');
+  const partnerArchitectureGovernanceTitleEl = document.getElementById('partnerArchitectureGovernanceTitle');
+  const partnerArchitectureGovernanceBodyEl = document.getElementById('partnerArchitectureGovernanceBody');
+  const partnerArchitectureCompareTitleEl = document.getElementById('partnerArchitectureCompareTitle');
+  const partnerArchitectureCompareBodyEl = document.getElementById('partnerArchitectureCompareBody');
+  const partnerArchitectureImportTitleEl = document.getElementById('partnerArchitectureImportTitle');
+  const partnerArchitectureImportBodyEl = document.getElementById('partnerArchitectureImportBody');
+  const partnerArchitectureOutputTitleEl = document.getElementById('partnerArchitectureOutputTitle');
+  const partnerArchitectureOutputBodyEl = document.getElementById('partnerArchitectureOutputBody');
   const partnerMetadataTraceSummaryEl = document.getElementById('partnerMetadataTraceSummary');
   const partnerTraceImportedValueEl = document.getElementById('partnerTraceImportedValue');
   const partnerTraceImportedNoteEl = document.getElementById('partnerTraceImportedNote');
@@ -17040,6 +17091,11 @@ function initPartnerProbeUi() {
     !partnerImportStateValueEl || !partnerImportStateNoteEl || !partnerImportWriteValueEl || !partnerImportWriteNoteEl ||
     !partnerImportProtectedValueEl || !partnerImportProtectedNoteEl || !partnerImportBlockersValueEl || !partnerImportBlockersNoteEl ||
     !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl ||
+    !partnerArchitectureSummaryEl || !partnerArchitectureIncomingTitleEl || !partnerArchitectureIncomingBodyEl ||
+    !partnerArchitectureGovernanceTitleEl || !partnerArchitectureGovernanceBodyEl ||
+    !partnerArchitectureCompareTitleEl || !partnerArchitectureCompareBodyEl ||
+    !partnerArchitectureImportTitleEl || !partnerArchitectureImportBodyEl ||
+    !partnerArchitectureOutputTitleEl || !partnerArchitectureOutputBodyEl ||
     !partnerMetadataTraceSummaryEl || !partnerTraceImportedValueEl || !partnerTraceImportedNoteEl ||
     !partnerTraceReviewedValueEl || !partnerTraceReviewedNoteEl || !partnerTraceKeptValueEl ||
     !partnerTraceKeptNoteEl || !partnerTraceRefusedValueEl || !partnerTraceRefusedNoteEl
@@ -20390,6 +20446,136 @@ ${decisionSummary}` : '',
     partnerIncomingSurfaceSummaryEl.innerHTML = '<strong>Leitura da recepção:</strong> a identificação local da biblioteca já foi preparada manualmente, mas ainda sem arquivo artesanal ativo nesta etapa.';
   }
 
+  function renderPartnerArchitectureSummary() {
+    if (
+      !partnerArchitectureSummaryEl ||
+      !partnerArchitectureIncomingTitleEl || !partnerArchitectureIncomingBodyEl ||
+      !partnerArchitectureGovernanceTitleEl || !partnerArchitectureGovernanceBodyEl ||
+      !partnerArchitectureCompareTitleEl || !partnerArchitectureCompareBodyEl ||
+      !partnerArchitectureImportTitleEl || !partnerArchitectureImportBodyEl ||
+      !partnerArchitectureOutputTitleEl || !partnerArchitectureOutputBodyEl
+    ) return;
+
+    const currentLabel = normalizeInlineWhitespace(getCurrentPartnerLabel());
+    const currentSlug = normalizePartnerSlug(slugEl?.value || '');
+    const sourceLabel = getPartnerFocusSourceLabel();
+    const relationship = normalizeInlineWhitespace(relationshipStatusEl?.value || '');
+    const agreement = normalizeInlineWhitespace(agreementStatusEl?.value || '');
+    const compareReadiness = getComparisonReadinessState();
+    const importReadiness = getImportReadinessState();
+    const incomingFile = incomingCatalogFileEl?.files?.[0] || null;
+    const hasIncomingAnalysis = !!incomingCatalogFileAnalysis;
+    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
+    syncIncomingCatalogDraftCreationRun(runId);
+    const eligibleItems = runId ? getIncomingCatalogDraftEligibleItems() : [];
+    const lockedCount = runId
+      ? (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : []).filter((item) => isIncomingPartnerRowLockedForEditorialDecision(item)).length
+      : 0;
+
+    if (runId) {
+      partnerArchitectureIncomingTitleEl.textContent = `Tratamento #${runId} em revisão`;
+      partnerArchitectureIncomingBodyEl.textContent = incomingCatalogImportState.lastError
+        ? `O tratamento já foi lançado, mas há um erro ativo: ${incomingCatalogImportState.lastError}`
+        : 'Arquivo recebido, formato reconhecido e linhas em revisão já formam uma cadeia própria antes de qualquer saída normal.';
+    } else if (incomingFile && hasIncomingAnalysis) {
+      const fileKind = getIncomingCatalogFileKind(incomingFile.name).toUpperCase();
+      partnerArchitectureIncomingTitleEl.textContent = `Recepção ${fileKind} já relida`;
+      partnerArchitectureIncomingBodyEl.textContent = 'A leitura local do arquivo já existe, mas a recepção ainda não virou tratamento em revisão.';
+    } else if (incomingFile) {
+      partnerArchitectureIncomingTitleEl.textContent = 'Arquivo recebido, sem leitura local';
+      partnerArchitectureIncomingBodyEl.textContent = 'O arquivo já foi escolhido, mas ainda falta executar a leitura local antes do tratamento inicial.';
+    } else {
+      partnerArchitectureIncomingTitleEl.textContent = 'Sem recepção ativa';
+      partnerArchitectureIncomingBodyEl.textContent = 'Arquivo, identificação local da biblioteca e tratamento inicial ainda não foram relidos como cadeia própria.';
+    }
+
+    if (!currentLabel && !currentSlug) {
+      partnerArchitectureGovernanceTitleEl.textContent = 'Parceira ainda não consolidada';
+      partnerArchitectureGovernanceBodyEl.textContent = 'Recepção, ajuda por URL e preenchimento manual continuam separados enquanto a identidade local da parceira não for consolidada.';
+    } else if (partnerDocumentActionState.catalogacaoGateBlocked) {
+      partnerArchitectureGovernanceTitleEl.textContent = 'Leitura política sem escrita';
+      partnerArchitectureGovernanceBodyEl.textContent = agreement
+        ? `${agreement} A leitura política continua possível, mas a escrita local sobre ficha comum/vínculo local segue bloqueada nesta etapa.`
+        : 'Sem acordo explícito ativo para abrir escrita local assistida nesta etapa.';
+    } else if (partnerDocumentActionState.importAllowed || partnerDocumentActionState.compareAllowed) {
+      partnerArchitectureGovernanceTitleEl.textContent = 'Uso documental local autorizado';
+      partnerArchitectureGovernanceBodyEl.textContent = relationship
+        ? `${relationship} A escrita local assistida já pode ser preparada, mas mutualização e camada comum continuam separadas.`
+        : `Parceira em foco via ${sourceLabel}: a política já abriu uso documental local assistido, sem liberar mutualização automática.`;
+    } else {
+      partnerArchitectureGovernanceTitleEl.textContent = currentLabel || currentSlug;
+      partnerArchitectureGovernanceBodyEl.textContent = `Parceira em foco via ${sourceLabel}. ${relationship || 'A situação relacional ainda não abriu comparação nem preparação local.'}`;
+    }
+
+    if (!partnerDocumentActionState.compareAllowed) {
+      partnerArchitectureCompareTitleEl.textContent = 'Comparação ainda bloqueada';
+      partnerArchitectureCompareBodyEl.textContent = 'A comparação documental local continua no plano político/técnico; nenhuma escrita local assistida pode sair daqui agora.';
+    } else if (!partnerDocumentActionState.workspaceOpen) {
+      partnerArchitectureCompareTitleEl.textContent = 'Comparação autorizada, mas fechada';
+      partnerArchitectureCompareBodyEl.textContent = 'A política já permite comparação local, mas o microfluxo ainda não foi aberto nesta tela.';
+    } else if (compareReadiness.canWrite) {
+      partnerArchitectureCompareTitleEl.textContent = 'Comparação aberta e estável';
+      partnerArchitectureCompareBodyEl.textContent = 'A comparação já está suficientemente descrita para escrever apenas na camada local e na nota de proveniência.';
+    } else {
+      partnerArchitectureCompareTitleEl.textContent = 'Comparação em montagem';
+      partnerArchitectureCompareBodyEl.textContent = formatPartnerMissingItems(compareReadiness.missing, 'Ainda falta para estabilizar a comparação:');
+    }
+
+    if (!partnerDocumentActionState.importAllowed) {
+      partnerArchitectureImportTitleEl.textContent = 'Preparação ainda bloqueada';
+      partnerArchitectureImportBodyEl.textContent = 'A preparação local de importação continua bloqueada pela política atual desta parceira.';
+    } else if (!partnerDocumentActionState.importWorkspaceOpen) {
+      partnerArchitectureImportTitleEl.textContent = 'Preparação autorizada, mas fechada';
+      partnerArchitectureImportBodyEl.textContent = 'A política já permite preparação local, mas o microfluxo ainda não foi aberto nesta tela.';
+    } else if (importReadiness.canWrite) {
+      partnerArchitectureImportTitleEl.textContent = 'Preparação aberta e estável';
+      partnerArchitectureImportBodyEl.textContent = 'Formato, modo, retomadas, proveniência e decisão local já estão suficientemente descritos para escrita assistida na camada local.';
+    } else {
+      partnerArchitectureImportTitleEl.textContent = 'Preparação em montagem';
+      partnerArchitectureImportBodyEl.textContent = formatPartnerMissingItems(importReadiness.missing, 'Ainda falta para estabilizar a preparação:');
+    }
+
+    if (!runId) {
+      partnerArchitectureOutputTitleEl.textContent = 'Sem saída normal em curso';
+      partnerArchitectureOutputBodyEl.textContent = 'Lote normal e rascunhos normais só entram em cena depois que um tratamento estiver aberto e as decisões editoriais estiverem relidas.';
+    } else if (incomingCatalogDraftCreationState.batchId) {
+      partnerArchitectureOutputTitleEl.textContent = `Lote normal #${incomingCatalogDraftCreationState.batchId} já criado`;
+      partnerArchitectureOutputBodyEl.textContent = `${incomingCatalogDraftCreationState.rowsPassed || 0} linha(s) já passaram ao fluxo normal e ${incomingCatalogDraftCreationState.draftsCreated || 0} rascunho(s) foram gerados.`;
+    } else if (eligibleItems.length) {
+      partnerArchitectureOutputTitleEl.textContent = 'Saída normal pronta';
+      partnerArchitectureOutputBodyEl.textContent = `${eligibleItems.length} linha(s) já podem gerar lote normal e rascunhos; a fila editorial continua sendo o passo seguinte.`;
+    } else if (lockedCount) {
+      partnerArchitectureOutputTitleEl.textContent = 'Saída normal já iniciada';
+      partnerArchitectureOutputBodyEl.textContent = `${lockedCount} linha(s) já saíram desta estação para o fluxo normal, mas não há nova linha elegível agora.`;
+    } else {
+      partnerArchitectureOutputTitleEl.textContent = 'Saída normal ainda não pronta';
+      partnerArchitectureOutputBodyEl.textContent = 'Ainda falta fechar decisões editoriais suficientes antes de gerar lote normal e rascunhos.';
+    }
+
+    const governanceState = (!currentLabel && !currentSlug)
+      ? 'sem parceira consolidada'
+      : (partnerDocumentActionState.catalogacaoGateBlocked
+        ? 'governança ainda em leitura política'
+        : 'governança já relida para uso documental local');
+    const compareState = !partnerDocumentActionState.compareAllowed
+      ? 'comparação bloqueada'
+      : (partnerDocumentActionState.workspaceOpen
+        ? (compareReadiness.canWrite ? 'comparação aberta e estável' : 'comparação aberta, ainda incompleta')
+        : 'comparação autorizada, mas fechada');
+    const importState = !partnerDocumentActionState.importAllowed
+      ? 'preparação bloqueada'
+      : (partnerDocumentActionState.importWorkspaceOpen
+        ? (importReadiness.canWrite ? 'preparação aberta e estável' : 'preparação aberta, ainda incompleta')
+        : 'preparação autorizada, mas fechada');
+    const outputState = !runId
+      ? 'sem saída normal'
+      : (incomingCatalogDraftCreationState.batchId
+        ? 'saída normal já criada'
+        : (eligibleItems.length ? 'saída normal pronta' : 'saída normal ainda não pronta'));
+
+    partnerArchitectureSummaryEl.innerHTML = `<strong>Leitura estrutural:</strong> recepção ${sanitize(runId ? 'em revisão' : (incomingFile ? (hasIncomingAnalysis ? 'já relida localmente' : 'ainda sem leitura local') : 'ainda não iniciada'))}; ${sanitize(governanceState)}; ${sanitize(compareState)}; ${sanitize(importState)}; ${sanitize(outputState)}.`;
+  }
+
   function renderPartnerFocusSurfaceSummary() {
     if (!partnerFocusSurfaceSummaryEl) return;
     const currentLabel = normalizeInlineWhitespace(getCurrentPartnerLabel());
@@ -20489,6 +20675,7 @@ ${decisionSummary}` : '',
     protectedNowEl.value = getPartnerProtectedNowText();
     blockersNowEl.value = getPartnerBlockersNowText();
     renderPartnerIncomingSurfaceSummary();
+    renderPartnerArchitectureSummary();
     renderPartnerFocusSurfaceSummary();
     renderPartnerGovernanceSummary();
     renderPartnerCompareSurfaceSummary();
