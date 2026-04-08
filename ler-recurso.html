@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-library-slug="default" data-theme-slug="default" data-library-name="AnarBib">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AnarBib – ler recurso</title>
+  <meta name="description" content="Leitor genérico de recursos digitais do AnarBib para PDF, áudio, vídeo, imagem e links externos." />
+  <meta name="theme-color" content="#7a0b14" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="AnarBib" />
+  <meta property="og:title" content="Leitor de recurso digital – AnarBib" />
+  <meta property="og:description" content="Abertura de recursos digitais publicados do AnarBib." />
+  <meta property="og:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <meta property="og:image:alt" content="Logotipo da Biblioteca Libertária Maxwell Ferreira" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Leitor de recurso digital – AnarBib" />
+  <meta name="twitter:description" content="Leitura genérica de recurso digital no AnarBib." />
+  <meta name="twitter:image" content="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="icon" type="image/png" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="shortcut icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="apple-touch-icon" href="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" />
+  <link rel="stylesheet" href="./assets/css/theme-base.css" />
+  <script src="./assets/js/library-context.js" defer></script>
+  <script src="./assets/js/theme-loader.js" defer></script>
+  <style>
+    :root {
+      --bg: var(--brand-color-secondary, #111111);
+      --panel: var(--brand-panel-bg, rgba(10,10,10,.90));
+      --panel-2: var(--brand-panel-bg, rgba(16,16,16,.86));
+      --line: var(--brand-panel-border, rgba(255,255,255,.10));
+      --text: var(--brand-text, #f4f4f4);
+      --muted: var(--brand-muted, #d1d1d1);
+      --red: var(--brand-color-primary, #7a0b14);
+      --red-2: var(--brand-color-primary, #bb1e2c);
+      --shadow: var(--brand-shadow, 0 16px 38px rgba(0,0,0,.42));
+      --green: #15803d;
+      --amber: #b45309;
+      --blue: #1d4ed8;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      color: var(--text);
+      font-family: var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif);
+      background: var(--bg);
+    }
+
+    a { color: inherit; }
+
+    .wrap {
+      --wrap-pad: 24px;
+      width: 100%;
+      margin: 0;
+      padding: var(--wrap-pad);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-width: 0;
+      flex: 1 1 420px;
+    }
+
+    .logo,
+    .topbar-logo {
+      height: 64px;
+      width: auto;
+      max-width: 170px;
+      object-fit: contain;
+      display: block;
+      flex-shrink: 0;
+      filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+    }
+
+    .btn,
+    .button {
+      width: auto;
+      border: 1px solid rgba(255,255,255,.14);
+      background: var(--panel);
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: .95rem;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      font-weight: 700;
+      transition: .18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      line-height: 1.2;
+    }
+
+    .btn:hover,
+    .button:hover,
+    .btn:focus,
+    .button:focus {
+      border-color: rgba(225,29,47,.65);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .btn.primary,
+    .button.primary {
+      background: linear-gradient(135deg, var(--red-2), var(--red));
+      border-color: transparent;
+    }
+
+    .button.secondary {
+      background: var(--panel);
+    }
+
+    .button.success {
+      background: linear-gradient(135deg, #166534, #16a34a);
+      border-color: transparent;
+    }
+
+    .button.ghost {
+      background: rgba(18,18,18,.72);
+    }
+
+    .button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .hero {
+      width: calc(100% + (2 * var(--wrap-pad)));
+      background: linear-gradient(135deg, var(--red-2), var(--bg));
+      border: 1px solid var(--line);
+      border-radius: 0 0 22px 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      margin-left: calc(-1 * var(--wrap-pad));
+      margin-right: calc(-1 * var(--wrap-pad));
+      border-left: none;
+      border-right: none;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 3vw, 3rem);
+      line-height: 1.05;
+      font-family: var(--brand-font-heading, var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif));
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255,255,255,.92);
+      font-size: 1rem;
+      line-height: 1.35;
+      max-width: 980px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
+      margin-top: 10px;
+    }
+
+    .hero-actions-separator {
+      width: 1px;
+      align-self: stretch;
+      min-height: 32px;
+      background: rgba(255,255,255,.14);
+      border-radius: 999px;
+      flex: 0 0 1px;
+    }
+
+    .toolbar {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .toolbar-meta,
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toolbar-actions {
+      justify-content: flex-start;
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(179,0,24,.12), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+    }
+
+    .pill {
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(24,24,24,.92);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: .9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill.ok { background: rgba(21, 128, 61, 0.16); color: #d8ffe4; }
+    .pill.warn { background: rgba(180, 83, 9, 0.16); color: #fde5b6; }
+    .pill.info { background: rgba(29, 78, 216, 0.16); color: #dbeafe; }
+    .pill.danger { background: rgba(127, 29, 29, 0.22); color: #ffe0e0; }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .card,
+    .viewer-shell {
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head,
+    .viewer-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      background: linear-gradient(180deg, rgba(38,6,10,.96), rgba(18,18,18,.96));
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-wrap: wrap;
+    }
+
+    .card-head h2,
+    .viewer-head h2,
+    .card-head h3,
+    .viewer-head h3 {
+      margin: 0 0 6px;
+      font-size: 1.12rem;
+      font-family: var(--brand-font-heading, var(--brand-font-body, Inter, "Segoe UI", Arial, sans-serif));
+    }
+
+    .card-head p,
+    .viewer-head p,
+    .hint,
+    .small {
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+    }
+
+    .card-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .meta-item {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      display: grid;
+      gap: 6px;
+    }
+
+    .meta-item strong {
+      color: #ffe3e7;
+      font-size: .84rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .meta-item div {
+      color: var(--text);
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .viewer-body {
+      min-height: 72vh;
+      max-height: calc(100vh - 240px);
+      background: rgba(0,0,0,.22);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .viewer-stage {
+      width: 100%;
+      min-height: 72vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.28);
+    }
+
+    .viewer-stage iframe,
+    .viewer-stage audio,
+    .viewer-stage video,
+    .viewer-stage img,
+    .viewer-stage embed {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+
+    .viewer-stage audio {
+      height: auto;
+      max-width: min(720px, calc(100% - 48px));
+      margin: 24px;
+      background: transparent;
+    }
+
+    .viewer-stage img {
+      object-fit: contain;
+      background: rgba(0,0,0,.18);
+    }
+
+    .viewer-empty,
+    .viewer-notice {
+      max-width: 760px;
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .viewer-notice strong,
+    .viewer-empty strong {
+      display: block;
+      color: #fff;
+      margin-bottom: 8px;
+      font-size: 1.02rem;
+    }
+
+    .message {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 14px;
+      line-height: 1.45;
+      border: 1px solid rgba(255,255,255,.10);
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(560px, calc(100vw - 28px));
+      max-width: calc(100vw - 28px);
+      margin: 0;
+      z-index: 1400;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .message.show { display: block; }
+    .message.ok { background: rgba(22, 101, 52, 0.18); border-color: rgba(34, 197, 94, 0.25); color: #d8ffe4; }
+    .message.error { background: rgba(127, 29, 29, 0.22); border-color: rgba(248, 113, 113, 0.25); color: #ffe0e0; }
+    .message.info { background: rgba(29, 78, 216, 0.16); border-color: rgba(96, 165, 250, 0.22); color: #dbeafe; }
+
+    code {
+      background: rgba(255,255,255,.10);
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: .88em;
+    }
+
+    @media (max-width: 1080px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .viewer-body,
+      .viewer-stage {
+        min-height: 58vh;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .wrap { --wrap-pad: 14px; padding: var(--wrap-pad); }
+      .hero-actions .btn,
+      .toolbar-actions .button { width: 100%; }
+      .hero-actions-separator { display: none; }
+      .viewer-body,
+      .viewer-stage { min-height: 52vh; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="topbar">
+        <div class="hero-copy">
+          <h1>Ler recurso digital</h1>
+          <p>Abertura genérica de recurso digital do AnarBib para PDF, áudio, vídeo, imagem e links externos.</p>
+        </div>
+        <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
+      </div>
+      <div class="hero-actions">
+        <a class="btn" id="btnCatalogoTop" href="https://cclamazonia-cmd.github.io/anarbib-staging/index.html">Voltar ao catálogo</a>
+        <a class="btn" id="btnLoginTop" href="https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html">Entrar / minha conta</a>
+        <span class="hero-actions-separator" aria-hidden="true"></span>
+        <button class="btn primary" id="openExternalTopBtn" type="button" disabled>Abrir recurso</button>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="toolbar-meta">
+        <div class="toolbar-actions">
+          <span id="userEmail" class="pill info">Sem sessão</span>
+          <span id="accessPill" class="pill warn">Verificando acesso…</span>
+          <span id="viewerKindPill" class="pill info">Leitor</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="refreshBtn" class="button secondary" type="button">Atualizar</button>
+          <button id="copyLinkBtn" class="button ghost" type="button">Copiar link</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="globalMessage" class="message"></div>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2>Leitura do recurso</h2>
+            <p id="resourceSummary">Carregando metadados e acesso do recurso digital.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="meta-list">
+            <div class="meta-item">
+              <strong>Recurso em foco</strong>
+              <div id="assetLabel">—</div>
+            </div>
+            <div class="meta-item">
+              <strong>Tipo / uso</strong>
+              <div id="assetTypeUsage">—</div>
+            </div>
+            <div class="meta-item">
+              <strong>Acesso</strong>
+              <div id="assetAccess">—</div>
+            </div>
+            <div class="meta-item">
+              <strong>Fonte / atribuição</strong>
+              <div id="assetSource">—</div>
+            </div>
+            <div class="meta-item">
+              <strong>Direitos / idioma</strong>
+              <div id="assetRights">—</div>
+            </div>
+            <div class="meta-item">
+              <strong>Identificadores técnicos</strong>
+              <div id="assetTechnical">—</div>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <button id="loginRequiredBtn" class="button success" type="button" style="display:none;">Entrar para acessar</button>
+            <button id="retryBtn" class="button secondary" type="button">Tentar de novo</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="viewer-shell">
+        <div class="viewer-head">
+          <div>
+            <h2 id="viewerTitle">Recurso digital</h2>
+            <p id="viewerMeta">Aguardando leitura da Edge Function <code>read-digital-asset</code>.</p>
+          </div>
+        </div>
+        <div class="viewer-body">
+          <div id="viewerStage" class="viewer-stage">
+            <div class="viewer-empty">
+              <strong>Aguardando carregamento</strong>
+              Esta página abre o recurso quando recebe um <code>asset_id</code> válido na URL.
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/blmf-supabase.js';
+
+    const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
+    const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/read-digital-asset`;
+
+    const ROUTES = {
+      CATALOGO: 'https://cclamazonia-cmd.github.io/anarbib-staging/index.html',
+      CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
+    };
+
+    const els = {
+      userEmail: document.getElementById('userEmail'),
+      accessPill: document.getElementById('accessPill'),
+      viewerKindPill: document.getElementById('viewerKindPill'),
+      resourceSummary: document.getElementById('resourceSummary'),
+      assetLabel: document.getElementById('assetLabel'),
+      assetTypeUsage: document.getElementById('assetTypeUsage'),
+      assetAccess: document.getElementById('assetAccess'),
+      assetSource: document.getElementById('assetSource'),
+      assetRights: document.getElementById('assetRights'),
+      assetTechnical: document.getElementById('assetTechnical'),
+      viewerTitle: document.getElementById('viewerTitle'),
+      viewerMeta: document.getElementById('viewerMeta'),
+      viewerStage: document.getElementById('viewerStage'),
+      globalMessage: document.getElementById('globalMessage'),
+      openExternalTopBtn: document.getElementById('openExternalTopBtn'),
+      btnLoginTop: document.getElementById('btnLoginTop'),
+      loginRequiredBtn: document.getElementById('loginRequiredBtn'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      retryBtn: document.getElementById('retryBtn'),
+      copyLinkBtn: document.getElementById('copyLinkBtn'),
+    };
+
+    const state = {
+      session: null,
+      assetId: null,
+      payload: null,
+    };
+
+    function getAssetIdFromUrl() {
+      const url = new URL(window.location.href);
+      const raw = url.searchParams.get('asset_id')
+        || url.searchParams.get('assetId')
+        || url.searchParams.get('id');
+      if (!raw || !/^\d+$/.test(raw)) return null;
+      return Number(raw);
+    }
+
+    function buildLoginUrl(nextUrl = window.location.href) {
+      const url = new URL(ROUTES.CADASTRO, window.location.href);
+      url.searchParams.set('next', nextUrl);
+      return url.toString();
+    }
+
+    function showMessage(text, variant = 'info', timeout = 5000) {
+      els.globalMessage.textContent = text;
+      els.globalMessage.className = `message show ${variant}`;
+      window.clearTimeout(showMessage._timer);
+      showMessage._timer = window.setTimeout(() => {
+        els.globalMessage.className = 'message';
+        els.globalMessage.textContent = '';
+      }, timeout);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatLabel(value, fallback = '—') {
+      const text = String(value ?? '').trim();
+      return text || fallback;
+    }
+
+    function setPill(el, text, variant = 'info') {
+      el.textContent = text;
+      el.className = `pill ${variant}`;
+    }
+
+    function clearViewer(title = 'Recurso digital', meta = 'Nenhum conteúdo disponível.') {
+      els.viewerTitle.textContent = title;
+      els.viewerMeta.textContent = meta;
+      els.viewerStage.innerHTML = `
+        <div class="viewer-empty">
+          <strong>Sem conteúdo para mostrar</strong>
+          ${escapeHtml(meta)}
+        </div>
+      `;
+      els.openExternalTopBtn.disabled = true;
+      els.openExternalTopBtn.removeAttribute('data-url');
+    }
+
+    function setExternalButton(url) {
+      if (url) {
+        els.openExternalTopBtn.disabled = false;
+        els.openExternalTopBtn.dataset.url = url;
+      } else {
+        els.openExternalTopBtn.disabled = true;
+        els.openExternalTopBtn.removeAttribute('data-url');
+      }
+    }
+
+    function renderViewer(payload) {
+      const accessUrl = payload?.access_url || null;
+      const viewerKind = payload?.viewer_kind || 'generic';
+      const asset = payload?.asset || {};
+      const mimeType = String(asset.mime_type || '').toLowerCase();
+
+      setPill(els.viewerKindPill, `Leitor: ${viewerKind}`, 'info');
+      setExternalButton(accessUrl);
+
+      els.viewerTitle.textContent = formatLabel(asset.label, 'Recurso digital');
+      els.viewerMeta.textContent = `Tipo ${formatLabel(asset.resource_type)} · uso ${formatLabel(asset.usage_type)} · acesso ${formatLabel(asset.access_scope)}`;
+
+      if (!accessUrl) {
+        clearViewer(formatLabel(asset.label, 'Recurso digital'), 'Este recurso não retornou URL de acesso.');
+        return;
+      }
+
+      if (viewerKind === 'pdf') {
+        els.viewerStage.innerHTML = `<iframe src="${escapeHtml(accessUrl)}" title="PDF"></iframe>`;
+        return;
+      }
+
+      if (viewerKind === 'audio') {
+        els.viewerStage.innerHTML = `<audio controls preload="metadata" src="${escapeHtml(accessUrl)}"></audio>`;
+        return;
+      }
+
+      if (viewerKind === 'video') {
+        els.viewerStage.innerHTML = `<video controls preload="metadata" src="${escapeHtml(accessUrl)}"></video>`;
+        return;
+      }
+
+      if (viewerKind === 'image') {
+        els.viewerStage.innerHTML = `<img src="${escapeHtml(accessUrl)}" alt="Imagem do recurso digital" />`;
+        return;
+      }
+
+      if (viewerKind === 'external_link') {
+        els.viewerStage.innerHTML = `
+          <div class="viewer-notice">
+            <strong>Link externo</strong>
+            Este recurso abre fora do AnarBib. Usa o botão <em>Abrir recurso</em> para continuar.
+          </div>
+        `;
+        return;
+      }
+
+      const probablyEmbeddable = mimeType.startsWith('text/')
+        || mimeType.startsWith('image/')
+        || mimeType.startsWith('audio/')
+        || mimeType.startsWith('video/')
+        || mimeType === 'application/pdf';
+
+      if (probablyEmbeddable) {
+        els.viewerStage.innerHTML = `<iframe src="${escapeHtml(accessUrl)}" title="Recurso digital"></iframe>`;
+        return;
+      }
+
+      els.viewerStage.innerHTML = `
+        <div class="viewer-notice">
+          <strong>Formato sem renderização local segura</strong>
+          O recurso está acessível, mas este formato abre melhor numa nova aba ou por download controlado.
+        </div>
+      `;
+    }
+
+    function renderMeta(payload) {
+      const asset = payload?.asset || {};
+      const accessMode = formatLabel(payload?.access_mode);
+      const accessUrl = payload?.access_url || '';
+      const expires = payload?.expires_in_seconds ? `${payload.expires_in_seconds}s` : '—';
+      const sourceBits = [asset.source_name, asset.source_url, asset.attribution_text].filter(Boolean);
+      const rightsBits = [asset.rights_status, asset.language_code, asset.mime_type].filter(Boolean);
+
+      els.resourceSummary.textContent = asset.access_granted
+        ? 'Recurso carregado com acesso liberado nesta sessão.'
+        : 'Recurso encontrado, mas sem acesso liberado nesta sessão.';
+      els.assetLabel.textContent = formatLabel(asset.label, `Asset #${formatLabel(asset.asset_id)}`);
+      els.assetTypeUsage.textContent = `${formatLabel(asset.resource_type)} · ${formatLabel(asset.usage_type)}`;
+      els.assetAccess.textContent = `${formatLabel(asset.access_scope)} · ${accessMode} · URL temporária: ${expires}`;
+      els.assetSource.textContent = sourceBits.length ? sourceBits.join(' · ') : 'Sem fonte ou atribuição informada.';
+      els.assetRights.textContent = rightsBits.length ? rightsBits.join(' · ') : 'Sem direitos, idioma ou MIME informados.';
+      els.assetTechnical.textContent = `asset_id=${formatLabel(asset.asset_id)} · book_id=${formatLabel(asset.book_id)} · primário=${asset.is_primary ? 'sim' : 'não'}${accessUrl ? ' · URL pronta' : ''}`;
+
+      if (asset.access_granted) {
+        setPill(els.accessPill, 'Acesso liberado', 'ok');
+        els.loginRequiredBtn.style.display = 'none';
+      } else if (asset.requires_active_account) {
+        setPill(els.accessPill, 'Conta ativa necessária', 'warn');
+        els.loginRequiredBtn.style.display = 'inline-flex';
+      } else {
+        setPill(els.accessPill, 'Acesso indisponível', 'danger');
+        els.loginRequiredBtn.style.display = 'none';
+      }
+    }
+
+    async function loadSession() {
+      const { data } = await supabase.auth.getSession();
+      state.session = data?.session || null;
+      if (state.session?.user?.email) {
+        setPill(els.userEmail, state.session.user.email, 'ok');
+      } else {
+        setPill(els.userEmail, 'Sem sessão', 'info');
+      }
+      els.btnLoginTop.href = buildLoginUrl();
+      els.loginRequiredBtn.onclick = () => {
+        window.location.href = buildLoginUrl();
+      };
+    }
+
+    async function fetchAsset() {
+      state.assetId = getAssetIdFromUrl();
+      if (!state.assetId) {
+        setPill(els.accessPill, 'Asset inválido', 'danger');
+        clearViewer('Recurso digital', 'Falta um parâmetro asset_id válido na URL.');
+        els.resourceSummary.textContent = 'Use esta página com ?asset_id=123.';
+        els.assetTechnical.textContent = 'Parâmetro esperado: asset_id, assetId ou id.';
+        return;
+      }
+
+      setPill(els.accessPill, 'Carregando recurso…', 'info');
+      els.resourceSummary.textContent = `Lendo o recurso #${state.assetId} pela Edge Function.`;
+      clearViewer('Recurso digital', 'Carregando o conteúdo solicitado.');
+
+      const headers = {
+        'content-type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+      };
+      if (state.session?.access_token) {
+        headers.authorization = `Bearer ${state.session.access_token}`;
+      }
+
+      const response = await fetch(`${EDGE_FUNCTION_URL}?asset_id=${state.assetId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok || !payload?.ok) {
+        state.payload = payload;
+        const errorMessage = payload?.error || `Falha ao abrir o recurso (HTTP ${response.status})`;
+        if (/not accessible|conta|access/i.test(errorMessage)) {
+          setPill(els.accessPill, 'Acesso bloqueado', 'warn');
+          els.loginRequiredBtn.style.display = 'inline-flex';
+        } else {
+          setPill(els.accessPill, 'Falha de leitura', 'danger');
+          els.loginRequiredBtn.style.display = 'none';
+        }
+        els.resourceSummary.textContent = errorMessage;
+        els.assetLabel.textContent = `Asset #${state.assetId}`;
+        els.assetTypeUsage.textContent = '—';
+        els.assetAccess.textContent = 'Sem acesso útil retornado.';
+        els.assetSource.textContent = '—';
+        els.assetRights.textContent = '—';
+        els.assetTechnical.textContent = `asset_id=${state.assetId}`;
+        clearViewer('Recurso digital', errorMessage);
+        showMessage(errorMessage, 'error', 6500);
+        return;
+      }
+
+      state.payload = payload;
+      renderMeta(payload);
+      renderViewer(payload);
+    }
+
+    els.openExternalTopBtn.addEventListener('click', () => {
+      const url = els.openExternalTopBtn.dataset.url;
+      if (!url) return;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+
+    els.refreshBtn.addEventListener('click', async () => {
+      await loadSession();
+      await fetchAsset();
+      showMessage('Leitura do recurso atualizada.', 'ok', 3500);
+    });
+
+    els.retryBtn.addEventListener('click', async () => {
+      await loadSession();
+      await fetchAsset();
+    });
+
+    els.copyLinkBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showMessage('Link copiado.', 'ok', 2500);
+      } catch {
+        showMessage('Não foi possível copiar o link.', 'error', 3500);
+      }
+    });
+
+    await loadSession();
+    await fetchAsset();
+  </script>
+</body>
+</html>
