@@ -522,16 +522,42 @@
   <script type="module">
     import { supabase } from './js/blmf-supabase.js';
 
-    const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-    const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/read-digital-asset`;
+    const FALLBACK_CONFIG = {
+      SUPABASE_URL: 'https://uflwmikiyjfnikiphtcp.supabase.co',
+      SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+      FUNCTIONS_BASE_URL: 'https://uflwmikiyjfnikiphtcp.supabase.co/functions/v1',
+      ROUTES: {
+        CATALOGO: 'https://cclamazonia-cmd.github.io/anarbib-staging/index.html',
+        CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
+      }
+    };
+
+    let CONFIG = FALLBACK_CONFIG;
+    try {
+      const mod = await import('./shared/config.js').catch(() => import('./config.js'));
+      if (mod?.CONFIG) {
+        CONFIG = {
+          ...FALLBACK_CONFIG,
+          ...mod.CONFIG,
+          ROUTES: {
+            CATALOGO: mod.CONFIG?.ROUTES?.catalogo || FALLBACK_CONFIG.ROUTES.CATALOGO,
+            CADASTRO: mod.CONFIG?.ROUTES?.cadastro || FALLBACK_CONFIG.ROUTES.CADASTRO,
+          }
+        };
+      }
+    } catch (_error) {}
+
+    const SUPABASE_URL = CONFIG.SUPABASE_URL || FALLBACK_CONFIG.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY || FALLBACK_CONFIG.SUPABASE_ANON_KEY;
+    const EDGE_FUNCTION_URL = `${String(CONFIG.FUNCTIONS_BASE_URL || FALLBACK_CONFIG.FUNCTIONS_BASE_URL).replace(/\/$/, '')}/read-digital-asset`;
 
     const ROUTES = {
-      CATALOGO: 'https://cclamazonia-cmd.github.io/anarbib-staging/index.html',
-      CADASTRO: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/cadastro.html',
+      CATALOGO: CONFIG.ROUTES?.CATALOGO || FALLBACK_CONFIG.ROUTES.CATALOGO,
+      CADASTRO: CONFIG.ROUTES?.CADASTRO || FALLBACK_CONFIG.ROUTES.CADASTRO,
     };
 
     const els = {
+      btnCatalogoTop: document.getElementById('btnCatalogoTop'),
       userEmail: document.getElementById('userEmail'),
       accessPill: document.getElementById('accessPill'),
       viewerKindPill: document.getElementById('viewerKindPill'),
