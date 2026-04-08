@@ -2169,7 +2169,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Código local legado do vínculo local</label>
               <input id="bookBibRef" type="text" placeholder="Código local legado do vínculo local" />
-              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_vínculos.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
+              <small>Apoio legado desta ficha. No backend atual, o código local publicado se ancora sobretudo em <code>book_holdings.local_bib_ref</code>; este campo continua útil como ponte legada, mas não substitui a camada de vínculo local nem o exemplar.</small>
             </div>
 
             <div class="field">
@@ -2665,7 +2665,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Arquitetura documental desta ficha</h4>
-                    <div class="hint">Esta leitura estrutural separa o que já pertence à ficha comum, o que fica na camada de identificadores e referências, o que já está descrito como vínculo local, o que ainda depende da aba Exemplares e o que já existe como recurso digital.</div>
+                    <div class="hint">Esta leitura estrutural separa o que já pertence à ficha comum, o que fica na camada de identificadores e referências, o que já existe apenas como sinais locais no rascunho, o que continua dependente da cadeia vínculo local + exemplar e o que já existe como recurso digital.</div>
                   </div>
                   <span id="bookLayerArchitecturePill" class="pill info">Leitura por camadas</span>
                 </div>
@@ -2682,13 +2682,13 @@
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Vínculo local</div>
-                    <div id="bookLayerHoldingTitle" class="book-public-preview-title">Vínculo local ainda não descrito</div>
-                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Aquisição, pertencimento, biblioteca detentora e situação de rede ainda não bastam para ler a camada local.</div>
+                    <div id="bookLayerHoldingTitle" class="book-public-preview-title">Sinais locais do vínculo ainda não preparados</div>
+                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Exemplar material local</div>
-                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Trabalhado depois, na aba Exemplares</div>
-                    <div id="bookLayerExemplarBody" class="book-public-preview-line is-muted">A ficha comum não cria sozinha o exemplar material: tombo, localização, estado físico e rótulo continuam separados.</div>
+                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Holding e exemplar material continuam fora desta aba</div>
+                    <div id="bookLayerExemplarBody" class="book-public-preview-line is-muted">A ficha comum não cria sozinha nem o vínculo local publicado nem o exemplar material: holding, tombo, localização, estado físico e rótulo continuam separados.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Recurso digital</div>
@@ -2696,6 +2696,7 @@
                     <div id="bookLayerDigitalBody" class="book-public-preview-line is-muted">Vínculos digitais, acesso e restrições ainda não foram relidos como camada própria.</div>
                   </div>
                 </div>
+                <div id="bookBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento backend:</strong> esta aba já sustenta a ficha comum e a camada digital do rascunho, mas ainda não materializa sozinha o vínculo local publicado.</div>
               </div>
             </div>
 
@@ -2825,7 +2826,7 @@
                   <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
                   <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
                   <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha comum: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Camada local: ainda não descrita.</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais do vínculo: ainda não preparados.</div>
                   <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação / recurso digital: —</div>
                   <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos comuns: —</div>
                 </div>
@@ -2837,7 +2838,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Leitura mínima do que esta ficha já deixaria sair como linha de catálogo a partir da ficha comum, do que ela já sustentaria na abertura da ficha e do que continua apenas como camada local ou preparação editorial.</div>
+                    <div class="hint">Leitura mínima do que esta ficha já sustenta como ficha comum e camada digital. Os sinais locais aqui abaixo continuam preparatórios: a camada local publicada ainda depende da cadeia vínculo local + exemplar.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2851,7 +2852,7 @@
                     <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum visível na linha: —</div>
                     <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Saída mínima da linha pública ainda não relida.</div>
-                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Vínculo local publicável: —</div>
+                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
                     <div id="bookPublicCatalogResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
                     <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local público mínimo: —</div>
                   </div>
@@ -2860,9 +2861,9 @@
                     <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Abertura da ficha comum: —</div>
                     <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha pública ainda não relido.</div>
-                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Vínculo local tornável público: —</div>
+                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
                     <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital tornável público: —</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Camada local tornada pública: —</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Passo restante da camada local: —</div>
                     <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos comuns publicáveis: —</div>
                   </div>
                 </div>
@@ -5288,6 +5289,7 @@
       bookLayerExemplarBody: el('bookLayerExemplarBody'),
       bookLayerDigitalTitle: el('bookLayerDigitalTitle'),
       bookLayerDigitalBody: el('bookLayerDigitalBody'),
+      bookBackendAlignmentSummary: el('bookBackendAlignmentSummary'),
       catalogRightsSurfaceSummary: el('catalogRightsSurfaceSummary'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
@@ -10443,7 +10445,7 @@
       const localContext = localLayerParts.filter(Boolean).join(' · ');
       const combinedContextParts = [];
       if (documentContext) combinedContextParts.push(`Contexto documental: ${documentContext}`);
-      if (localContext) combinedContextParts.push(`Camada local: ${localContext}`);
+      if (localContext) combinedContextParts.push(`Sinais locais do vínculo: ${localContext}`);
 
       const commonMetaParts = [];
       const commonLayer = commonLayerParts.filter(Boolean).join(' · ');
@@ -10454,8 +10456,8 @@
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
         meta: `Ficha comum: ${commonMetaParts.join(' — ') || 'núcleo comum ainda incompleto'}`,
-        context: combinedContextParts.join(' — ') || 'Camada local: ainda não descrita.',
-        derivedContext: localContext ? `Camada local: ${localContext}` : 'Camada local: ainda não descrita.',
+        context: combinedContextParts.join(' — ') || 'Sinais locais do vínculo: ainda não preparados.',
+        derivedContext: localContext ? `Sinais locais do vínculo: ${localContext}` : 'Sinais locais do vínculo: ainda não preparados.',
         access: accessParts.join(' · ') || '—',
         subjects: subjects || '—',
       };
@@ -10530,13 +10532,15 @@
       if (acquisitionModeLabel) holdingParts.push(`entrada: ${acquisitionModeLabel}`);
       if (acquisitionSourceLabel) holdingParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) holdingParts.push(`rede: ${mutualizationStatusLabel}`);
-      const holdingTitle = holdingParts.length ? 'Vínculo local já descrito' : 'Vínculo local ainda não descrito';
-      const holdingBody = holdingParts.length ? holdingParts.join(' · ') : 'Aquisição, pertencimento, biblioteca detentora e situação de rede ainda não bastam para ler a camada local.';
+      const holdingTitle = holdingParts.length ? 'Sinais locais do vínculo já preparados' : 'Vínculo local ainda não materializado';
+      const holdingBody = holdingParts.length
+        ? `${holdingParts.join(' · ')} · estes sinais ainda dependem de holding e exemplar para virar camada local publicada.`
+        : 'Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.';
 
-      const exemplarTitle = 'Trabalhado depois, na aba Exemplares';
+      const exemplarTitle = 'Holding e exemplar material continuam fora desta aba';
       const exemplarBody = joinSummaryParts([
         loanable ? 'circulação padrão: empréstimo local possível' : 'circulação padrão: consulta local / restrição',
-        'tombo, localização, estado físico e rótulo continuam separados desta aba',
+        'holding, tombo, localização, estado físico e rótulo continuam separados desta aba',
       ]);
 
       let digitalTitle = 'Nenhum recurso digital relido';
@@ -10581,6 +10585,44 @@
       };
     }
 
+    function renderBookBackendAlignmentSummary() {
+      const target = refs.bookBackendAlignmentSummary;
+      if (!target) return;
+
+      const publishedBookId = Number(el('bookPublishedId')?.value || 0);
+      const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
+      const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
+      const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
+      const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
+      const legacyBibRef = compactSpaces(el('bookBibRef')?.value || '');
+      const localSignals = [holderLibrary, ownerLibrary, acquisitionModeLabel, mutualizationStatusLabel, legacyBibRef].filter(Boolean);
+      const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
+      const hasDigitalDraftLayer = linkedDigitalResources.length > 0;
+      const hasDigitalNative = [
+        compactSpaces(el('bookDigitalNativeUrl')?.value || ''),
+        compactSpaces(el('bookDigitalNativeAccess')?.value || ''),
+        compactSpaces(el('bookDigitalNativeRestriction')?.value || ''),
+        compactSpaces(el('bookDigitalNativeUsage')?.value || ''),
+      ].some(Boolean);
+
+      const parts = [];
+      parts.push('a ficha comum deste formulário já grava e publica a notice comum');
+      if (hasDigitalDraftLayer || hasDigitalNative) {
+        parts.push(hasDigitalDraftLayer
+          ? 'a camada digital deste rascunho já se apoia na trilha rascunho → publicado'
+          : 'a descrição digital nativa já acompanha a notice comum publicada');
+      } else {
+        parts.push('a camada digital continua opcional nesta aba');
+      }
+      parts.push(localSignals.length
+        ? 'os sinais locais já podem ser preparados aqui, mas ainda não substituem o vínculo local publicado'
+        : 'a camada local publicada ainda não começa nesta aba');
+      parts.push('o vínculo local publicado continua dependendo de holdings e exemplares');
+      if (publishedBookId) parts.push(`esta ficha já está ligada ao publicado #${publishedBookId}`);
+
+      target.innerHTML = `<strong>Alinhamento backend:</strong> ${sanitize(parts.join(' · '))}.`;
+    }
+
     function updateBookLayerArchitecturePreview() {
       if (!refs.bookLayerNoticeTitle) return;
       const preview = buildBookLayerArchitecturePreview();
@@ -10598,6 +10640,7 @@
       refs.bookLayerExemplarBody.textContent = preview.exemplarBody;
       refs.bookLayerDigitalTitle.textContent = preview.digitalTitle;
       refs.bookLayerDigitalBody.textContent = preview.digitalBody;
+      renderBookBackendAlignmentSummary();
     }
 
     function updateBookDerivedSummaryPreview() {
@@ -10644,16 +10687,16 @@
       const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
 
       const holdingCatalog = joinSummaryParts([
-        displayLibrary !== 'Biblioteca não definida' ? `biblioteca: ${displayLibrary}` : '',
-        mutualizationStatusLabel ? `vínculo: ${mutualizationStatusLabel}` : '',
+        displayLibrary !== 'Biblioteca não definida' ? `biblioteca prevista: ${displayLibrary}` : '',
+        mutualizationStatusLabel ? `situação de rede: ${mutualizationStatusLabel}` : '',
         acquisitionModeLabel ? `entrada: ${acquisitionModeLabel}` : '',
-      ]) || 'camada de vínculo local ainda não relida nesta saída';
+      ]) || 'nenhum sinal local do vínculo foi preparado nesta saída';
 
       const holdingFicha = joinSummaryParts([
-        displayLibrary !== 'Biblioteca não definida' ? `biblioteca pública: ${displayLibrary}` : '',
-        mutualizationStatusLabel ? `situação do vínculo: ${mutualizationStatusLabel}` : '',
+        displayLibrary !== 'Biblioteca não definida' ? `biblioteca prevista: ${displayLibrary}` : '',
+        mutualizationStatusLabel ? `situação de rede: ${mutualizationStatusLabel}` : '',
         acquisitionSourceLabel ? `origem imediata: ${acquisitionSourceLabel}` : '',
-      ]) || 'camada de vínculo local ainda não detalhada nesta abertura';
+      ]) || 'nenhum sinal local do vínculo foi preparado nesta abertura';
 
       let resourceCatalog = 'nenhum recurso digital vinculado aparece nesta leitura mínima';
       let resourceFicha = 'nenhum recurso digital relido para a abertura desta ficha';
@@ -10772,15 +10815,15 @@
       if (materialType === 'dossie' && dossierOrganizations) snippetParts.push(`Vínculos organizativos relidos: ${dossierOrganizations}`);
 
       const catalogAccessParts = [];
-      catalogAccessParts.push(loanable ? 'linha pública pode sinalizar empréstimo local' : 'linha pública deve sinalizar consulta local / restrição');
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') catalogAccessParts.push(`biblioteca exibível: ${displayLibrary}`);
+      catalogAccessParts.push(loanable ? 'a notice comum já carrega orientação de empréstimo local' : 'a notice comum já carrega orientação de consulta local / restrição');
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') catalogAccessParts.push(`biblioteca prevista: ${displayLibrary}`);
       if (materialType === 'recurso_digital' && digitalNativeRestriction) catalogAccessParts.push(`restrição digital: ${digitalNativeRestriction}`);
       if (materialType === 'recurso_digital' && digitalNativeAccess) catalogAccessParts.push(`acesso digital: ${digitalNativeAccess}`);
 
       const fichaMetaParts = [];
       fichaMetaParts.push(`Abertura da ficha comum: ${summary.kindLabel}`);
       if (publicNoticeParts.length) fichaMetaParts.push(joinSummaryParts(publicNoticeParts));
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') fichaMetaParts.push(`camada local pública: ${displayLibrary}`);
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') fichaMetaParts.push(`sinais locais preparados: ${displayLibrary}`);
 
       const fichaBodyParts = [];
       if (summary.context) fichaBodyParts.push(summary.context);
@@ -10952,7 +10995,7 @@
       if (localReserveParts.length) publicLineNarrativeParts.push(`Permanece local / editorial: ${joinSummaryParts(localReserveParts)}`);
       const publicCatalogHoldingText = localSignalParts.length
         ? joinSummaryParts(localSignalParts)
-        : 'nenhum vínculo local suficiente para leitura pública mínima agora';
+        : 'nenhum sinal local preparado para o vínculo aparece nesta leitura mínima';
       let publicCatalogResourceText = 'nenhum recurso digital publicável aparece nesta linha mínima';
       if (publicDigitalResources.length) {
         publicCatalogResourceText = joinSummaryParts([
@@ -10970,32 +11013,33 @@
 
       const publicFichaBodyParts = [...fichaBodyParts];
       if (localReserveParts.length) publicFichaBodyParts.push(`Continua local / preparatório: ${joinSummaryParts(localReserveParts)}`);
-      const publicFichaHoldingText = layerPreview.holdingFicha || 'camada de vínculo local ainda não relida';
+      const publicFichaHoldingText = layerPreview.holdingFicha || 'nenhum sinal local do vínculo foi relido nesta abertura';
       let publicFichaResourceText = layerPreview.resourceFicha || 'nenhum recurso digital relido para a abertura desta ficha';
       if (!publicDigitalResources.length && !digitalNativeLooksPublic) {
         publicFichaResourceText = 'nenhum recurso digital claramente publicável foi relido nesta abertura';
       }
 
       const publishedLayerAccessParts = [];
-      publishedLayerAccessParts.push(loanable ? 'circulação pública relida como empréstimo local possível' : 'circulação pública relida como consulta local / restrição');
+      publishedLayerAccessParts.push(loanable ? 'a notice comum já pode sair com circulação padrão de empréstimo local' : 'a notice comum já pode sair com circulação padrão de consulta local / restrição');
       if (supportText) publishedLayerAccessParts.push(`suporte relido: ${supportText}`);
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') publishedLayerAccessParts.push(`biblioteca pública: ${displayLibrary}`);
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') publishedLayerAccessParts.push(`biblioteca prevista: ${displayLibrary}`);
+      publishedLayerAccessParts.push('a camada local publicada ainda depende de holding e exemplar');
 
       return {
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinal local mínimo: ${publicLineSignal}`,
+        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinais locais preparados: ${publicLineSignal}`,
         catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
         catalogHolding: publicCatalogHoldingText,
         catalogResource: publicCatalogResourceText,
-        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Sinal local público mínimo ainda não definido.',
+        catalogAccess: joinSummaryParts(catalogAccessParts) || 'nenhum sinal local do vínculo foi preparado ainda.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
         fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
         fichaHolding: publicFichaHoldingText,
         fichaResource: publicFichaResourceText,
-        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Camada local tornada pública ainda não definida.',
+        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'o vínculo local publicado ainda depende de holding e exemplar.',
         fichaSubjects: subjects || summary.subjects || '—',
       };
     }
@@ -11012,15 +11056,15 @@
       refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
       refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
       refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
-      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Vínculo local publicável: ${preview.catalogHolding}`;
+      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.catalogHolding}`;
       if (refs.bookPublicCatalogResource) refs.bookPublicCatalogResource.textContent = `Recurso digital publicável: ${preview.catalogResource}`;
-      refs.bookPublicCatalogAccess.textContent = `Sinal local público mínimo: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogAccess.textContent = `Sinal local mínimo já legível: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
       refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
       refs.bookPublicFichaBody.textContent = preview.fichaBody;
-      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Vínculo local tornável público: ${preview.fichaHolding}`;
+      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.fichaHolding}`;
       if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital tornável público: ${preview.fichaResource}`;
-      refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
+      refs.bookPublicFichaAccess.textContent = `Passo restante da camada local: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
       renderBookMetadataTraceSummary();
