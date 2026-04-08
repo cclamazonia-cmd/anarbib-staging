@@ -2039,7 +2039,7 @@
     <section class="hero">
       <div class="topbar">
         <div class="hero-copy">
-          <h1>Catalogação - AnarBib</h1>
+          <h1>Catalogação - ANARBIB</h1>
           <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
         </div>
         <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
@@ -3597,7 +3597,7 @@
             <div class="book-derived-summary-top">
               <div>
                 <h4 class="autofill-panel-title">Leitura do lote nesta etapa</h4>
-                <div class="hint">Nesta passe 19, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinção entre rascunho, pronto e publicação por lote.</div>
+                <div class="hint">Nesta passe, o lote deixa de ser apenas um recipiente genérico: ele é relido como composição de fichas comuns, autoridades e exemplares locais, com distinction entre rascunho, pronto, type de lote, recorte d'origine et gesto dominante.</div>
               </div>
               <span id="batchFlowStatusPill" class="pill info">Lotes em leitura</span>
             </div>
@@ -3611,6 +3611,8 @@
           </div>
         </div>
 
+        <div id="batchStructureSummary" class="catalog-surface-summary" style="margin-bottom:16px;"><strong>Arquitetura do lote:</strong> ainda não relida.</div>
+
         <div class="split">
           <div class="card">
             <h4>Novo lote de trabalho</h4>
@@ -3621,8 +3623,33 @@
                 <input id="batchName" type="text" placeholder="Lote março 2026" required />
               </div>
               <div class="field">
+                <label for="batchPurpose">Tipo de lote</label>
+                <select id="batchPurpose">
+                  <option value="editorial">Lote editorial</option>
+                  <option value="importacao">Lote de importação</option>
+                  <option value="retomada">Lote de retomada</option>
+                  <option value="normalizacao">Lote de normalização</option>
+                  <option value="aquisicao">Lote de aquisição</option>
+                </select>
+                <small>Este tipo não muda o backend de publicação, mas torna explícito o recorte documental que o lote está carregando nesta interface.</small>
+              </div>
+              <div class="field">
+                <label for="batchOrigin">Origem / recorte de trabalho</label>
+                <input id="batchOrigin" type="text" placeholder="Ex.: revisão local de fichas comuns, lote parceiro, normalização de exemplares, aquisição solidária…" />
+              </div>
+              <div class="field">
+                <label for="batchIntent">Gesto dominante nesta etapa</label>
+                <select id="batchIntent">
+                  <option value="preparacao">Preparação local</option>
+                  <option value="publicacao">Publicação por lote</option>
+                  <option value="revisao">Revisão / maturação</option>
+                  <option value="misto">Uso misto</option>
+                </select>
+              </div>
+              <div class="field">
                 <label for="batchNotes">Observações</label>
                 <textarea id="batchNotes" placeholder="Composição prevista do lote, recorte editorial, revisão local em curso, etiquetas já verificadas…"></textarea>
+                <small>Os metadados estruturais do lote serão preservados automaticamente junto destas observações, sans rouvrir le backend.</small>
               </div>
               <div class="actions">
                 <button class="button primary" type="submit">Criar lote</button>
@@ -4862,8 +4889,12 @@
       batchFlowScope: el('batchFlowScope'),
       batchFlowWork: el('batchFlowWork'),
       batchFlowNext: el('batchFlowNext'),
+      batchStructureSummary: el('batchStructureSummary'),
       batchListSummary: el('batchListSummary'),
       publishBatchSummary: el('publishBatchSummary'),
+      batchPurpose: el('batchPurpose'),
+      batchOrigin: el('batchOrigin'),
+      batchIntent: el('batchIntent'),
       queueFlowStatusPill: el('queueFlowStatusPill'),
       queueFlowKind: el('queueFlowKind'),
       queueFlowTitle: el('queueFlowTitle'),
@@ -13906,6 +13937,117 @@
       renderPublishBatchSummary();
     }
 
+
+    function parseBatchStructuredMeta(batch) {
+      const notes = String(batch?.notes || '');
+      const match = notes.match(/\[ANARBIB_LOTE\]([\s\S]*?)\[\/ANARBIB_LOTE\]/i);
+      const meta = { purpose: '', origin: '', intent: '', userNotes: notes.trim() };
+      if (!match) return meta;
+      const block = match[1] || '';
+      for (const rawLine of block.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || !line.includes('=')) continue;
+        const [key, ...rest] = line.split('=');
+        const value = rest.join('=').trim();
+        if (key.trim() === 'tipo') meta.purpose = value;
+        if (key.trim() === 'origem') meta.origin = value;
+        if (key.trim() === 'uso') meta.intent = value;
+      }
+      meta.userNotes = notes.replace(match[0], '').trim();
+      return meta;
+    }
+
+    function buildBatchStructuredNotes(rawNotes = '') {
+      const purpose = String(refs.batchPurpose?.value || 'editorial').trim();
+      const origin = String(refs.batchOrigin?.value || '').trim();
+      const intent = String(refs.batchIntent?.value || 'preparacao').trim();
+      const metaLines = ['[ANARBIB_LOTE]', `tipo=${purpose}`];
+      if (origin) metaLines.push(`origem=${origin}`);
+      if (intent) metaLines.push(`uso=${intent}`);
+      metaLines.push('[/ANARBIB_LOTE]');
+      const userNotes = String(rawNotes || '').trim();
+      return [metaLines.join('\n'), userNotes].filter(Boolean).join('\n\n');
+    }
+
+    function getBatchPurposeLabel(purpose = '') {
+      switch (String(purpose || '').trim()) {
+        case 'editorial': return 'Lote editorial';
+        case 'importacao': return 'Lote de importação';
+        case 'retomada': return 'Lote de retomada';
+        case 'normalizacao': return 'Lote de normalização';
+        case 'aquisicao': return 'Lote de aquisição';
+        default: return 'Tipo não relido';
+      }
+    }
+
+    function getBatchIntentLabel(intent = '') {
+      switch (String(intent || '').trim()) {
+        case 'publicacao': return 'Publicação por lote';
+        case 'revisao': return 'Revisão / maturação';
+        case 'misto': return 'Uso misto';
+        case 'preparacao':
+        default:
+          return 'Preparação local';
+      }
+    }
+
+    function getBatchPurposeStats(batches = []) {
+      const stats = { editorial: 0, importacao: 0, retomada: 0, normalizacao: 0, aquisicao: 0, unknown: 0 };
+      const intents = { preparacao: 0, publicacao: 0, revisao: 0, misto: 0, unknown: 0 };
+      for (const batch of batches) {
+        const meta = parseBatchStructuredMeta(batch);
+        const purpose = String(meta.purpose || '').trim();
+        const intent = String(meta.intent || '').trim();
+        if (Object.prototype.hasOwnProperty.call(stats, purpose)) stats[purpose] += 1;
+        else stats.unknown += 1;
+        if (Object.prototype.hasOwnProperty.call(intents, intent)) intents[intent] += 1;
+        else intents.unknown += 1;
+      }
+      return { stats, intents };
+    }
+
+    function formatBatchPurposeSummary(stats = {}) {
+      return [
+        `${stats.editorial || 0} editoriais`,
+        `${stats.importacao || 0} de importação`,
+        `${stats.retomada || 0} de retomada`,
+        `${stats.normalizacao || 0} de normalização`,
+        `${stats.aquisicao || 0} de aquisição`
+      ].join(' · ');
+    }
+
+    function formatBatchIntentSummary(intents = {}) {
+      return [
+        `${intents.preparacao || 0} em preparação`,
+        `${intents.publicacao || 0} orientados à publicação`,
+        `${intents.revisao || 0} em revisão`,
+        `${intents.misto || 0} de uso misto`
+      ].join(' · ');
+    }
+
+    function renderBatchIdentityCell(batch) {
+      const meta = parseBatchStructuredMeta(batch);
+      const originLine = meta.origin
+        ? meta.origin
+        : 'Origem / recorte ainda não explicitado neste lote.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">${sanitize(getBatchPurposeLabel(meta.purpose))}</div>
+          <div class="catalog-layer-title">${sanitize(getBatchIntentLabel(meta.intent))}</div>
+          <div class="catalog-layer-line is-muted">${sanitize(originLine)}</div>
+        </div>`;
+    }
+
+    function renderBatchNotesCell(batch) {
+      const meta = parseBatchStructuredMeta(batch);
+      const note = meta.userNotes || 'Sem observações livres neste lote.';
+      return `
+        <div class="catalog-layer-stack">
+          <div class="catalog-layer-eyebrow">Observações livres</div>
+          <div class="catalog-layer-line">${sanitize(note)}</div>
+        </div>`;
+    }
+
     function getBatchCompositionMap() {
       const openBatchIds = new Set(state.batches.filter(batch => batch.status === 'open').map(batch => Number(batch.id)).filter(Number.isFinite));
       const map = new Map();
@@ -13941,11 +14083,14 @@
     }
 
     function renderBatchCompositionCell(batch, composition) {
+      const meta = parseBatchStructuredMeta(batch);
+      const structuralLine = [getBatchPurposeLabel(meta.purpose), getBatchIntentLabel(meta.intent)].filter(Boolean).join(' · ');
       return `
         <div class="catalog-layer-stack">
           <div class="catalog-layer-eyebrow">Composição do lote</div>
           <div class="catalog-layer-title">${sanitize(formatBatchCompositionSummary(composition))}</div>
           <div class="catalog-layer-line is-muted">Lote #${sanitize(batch.id)} · ${composition.total || 0} item(ns) ativo(s) neste recorte.</div>
+          <div class="catalog-layer-line is-muted">${sanitize(structuralLine || 'Tipo e gesto do lote ainda não relidos.')}</div>
         </div>`;
     }
 
@@ -13994,6 +14139,7 @@
         totals.create += composition.create;
         totals.update += composition.update;
       }
+      const { stats, intents } = getBatchPurposeStats(openBatches);
       if (!openBatches.length) {
         refs.batchFlowKind.textContent = 'Sem lotes abertos';
         refs.batchFlowTitle.textContent = 'Nenhum lote aberto neste recorte';
@@ -14001,6 +14147,7 @@
         refs.batchFlowWork.textContent = 'Não há composição ativa de fichas comuns, autoridades ou exemplares locais em lotes abertos.';
         refs.batchFlowNext.textContent = 'Próximo gesto local: criar um lote apenas quando houver um recorte real de trabalho a agrupar.';
         refs.batchListSummary.innerHTML = '<strong>Leitura da lista:</strong> não há lotes abertos neste recorte.';
+        if (refs.batchStructureSummary) refs.batchStructureSummary.innerHTML = '<strong>Arquitetura do lote:</strong> nenhum tipo de lote está ativo neste recorte.';
         return;
       }
       refs.batchFlowKind.textContent = 'Lotes de trabalho abertos';
@@ -14011,6 +14158,9 @@
         ? 'Próximo gesto local: reler a composição dos lotes com itens prontos e publicar só o que já estiver editorialmente maduro.'
         : 'Próximo gesto local: continuar a compor o lote com fichas comuns, autoridades e exemplares locais antes de publicar.';
       refs.batchListSummary.innerHTML = `<strong>Leitura da lista:</strong> ${sanitize(formatBatchCompositionSummary(totals))}. ${sanitize(formatBatchWorkSummary(totals))}.`;
+      if (refs.batchStructureSummary) {
+        refs.batchStructureSummary.innerHTML = `<strong>Arquitetura do lote:</strong> ${sanitize(formatBatchPurposeSummary(stats))}. ${sanitize(formatBatchIntentSummary(intents))}.`;
+      }
     }
 
     function renderPublishBatchSummary() {
@@ -14022,10 +14172,12 @@
         return;
       }
       const composition = getBatchComposition(selectedBatch.id);
+      const meta = parseBatchStructuredMeta(selectedBatch);
       const statusLine = composition.ready > 0
         ? `Há ${composition.ready} item(ns) pronto(s) neste lote.`
         : 'Ainda não há itens prontos visíveis neste lote.';
-      refs.publishBatchSummary.innerHTML = `<strong>Publicação por lote:</strong> ${sanitize(selectedBatch.name)} (#${selectedBatch.id}). ${sanitize(formatBatchCompositionSummary(composition))}. ${sanitize(statusLine)}`;
+      const structureLine = [getBatchPurposeLabel(meta.purpose), getBatchIntentLabel(meta.intent), meta.origin].filter(Boolean).join(' · ');
+      refs.publishBatchSummary.innerHTML = `<strong>Publicação por lote:</strong> ${sanitize(selectedBatch.name)} (#${selectedBatch.id}). ${sanitize(formatBatchCompositionSummary(composition))}. ${sanitize(statusLine)} ${sanitize(structureLine || 'Estrutura do lote ainda não relida.')}`;
     }
 
     function renderBatchList() {
@@ -14041,6 +14193,7 @@
             <tr>
               <th>ID</th>
               <th>Lote</th>
+              <th>Tipo / recorte</th>
               <th>Composição do lote</th>
               <th>Estado de trabalho</th>
               <th>Publicação por lote</th>
@@ -14062,10 +14215,11 @@
                     <div class="catalog-layer-line is-muted">${composition.total > 0 ? sanitize(`${composition.total} item(ns) ativo(s) neste lote.`) : 'Ainda sem itens ativos visíveis neste recorte.'}</div>
                   </div>
                 </td>
+                <td>${renderBatchIdentityCell(batch)}</td>
                 <td>${renderBatchCompositionCell(batch, composition)}</td>
                 <td>${renderBatchWorkCell(composition)}</td>
                 <td>${renderBatchPublishCell(composition)}</td>
-                <td>${sanitize(batch.notes || '—')}</td>
+                <td>${renderBatchNotesCell(batch)}</td>
                 <td>${sanitize(formatDate(batch.created_at))}</td>
                 <td>
                   <div class="row-actions">
@@ -15985,13 +16139,16 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       try {
         const name = el('batchName').value.trim();
         if (!name) throw new Error('Informe um nome para o lote.');
-        const { error } = await supabase.from('catalog_batches').insert({ name, notes: el('batchNotes').value.trim() || null, created_by: getCurrentActorId() });
+        const notesPayload = buildBatchStructuredNotes(el('batchNotes').value.trim() || '');
+        const { error } = await supabase.from('catalog_batches').insert({ name, notes: notesPayload || null, created_by: getCurrentActorId() });
         if (error) throw error;
         el('batchForm').reset();
+        if (refs.batchPurpose) refs.batchPurpose.value = 'editorial';
+        if (refs.batchIntent) refs.batchIntent.value = 'preparacao';
         await loadBatches();
         setTab(currentTab);
         updateStats();
-        showMessage(refs.batchMessage, 'Lote criado com sucesso.', 'ok');
+        showMessage(refs.batchMessage, 'Lote criado com metadados estruturais de tipo, recorte e gesto dominante.', 'ok');
       } catch (error) {
         showMessage(refs.batchMessage, error.message, 'error');
       }
