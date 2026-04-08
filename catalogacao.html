@@ -2039,7 +2039,7 @@
     <section class="hero">
       <div class="topbar">
         <div class="hero-copy">
-          <h1>Catalogação - ANARBIB</h1>
+          <h1>Catalogação - AnarBib</h1>
           <p>Área bibliotecária para rascunhos, lotes, capas, autores, exemplares, rótulos e publicação editorial de catálogos</p>
         </div>
         <img class="logo topbar-logo" data-brand-logo src="https://cclamazonia.noblogs.org/files/2026/03/AnarBib_logo.png" alt="AnarBib">
@@ -3006,6 +3006,46 @@
             <div class="field" style="grid-column: span 3;">
               <label for="authorAuthorityGuideText">Leitura atual da autoridade</label>
               <div id="authorAuthorityGuideText" class="hint">Autoridade pessoa: use a forma retida, a biografia curta pública e as notas internas para completar o contexto documental.</div>
+            </div>
+
+            <div class="field" style="grid-column: span 3;">
+              <div class="book-public-preview">
+                <div class="book-public-preview-top">
+                  <div>
+                    <h4 class="autofill-panel-title">Arquitetura documental desta autoridade</h4>
+                    <div class="hint">Esta leitura separa a forma retida, o tipo documental da autoridade, a proveniência e os identificadores, a saída pública mínima e o trabalho local ainda em curso nesta ficha.</div>
+                  </div>
+                  <span id="authorStructurePill" class="pill info">Autoridade em leitura</span>
+                </div>
+                <div id="authorStructureSummary" class="catalog-surface-summary"><strong>Leitura da autoridade:</strong> ainda não atualizada.</div>
+                <div class="book-public-preview-grid">
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Forma retida</div>
+                    <div id="authorStructureRetainedTitle" class="book-public-preview-title">Forma retida ainda não definida</div>
+                    <div id="authorStructureRetainedBody" class="book-public-preview-line is-muted">Defina a forma principal e a forma de ordenação para estabilizar esta autoridade.</div>
+                  </div>
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Tipo e sinais documentários</div>
+                    <div id="authorStructureTypeTitle" class="book-public-preview-title">Tipologia ainda não relida</div>
+                    <div id="authorStructureTypeBody" class="book-public-preview-line is-muted">Sigla, variantes, pseudônimos, período e contexto ainda não bastam para ler esta autoridade.</div>
+                  </div>
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Proveniência e identificadores</div>
+                    <div id="authorStructureSourceTitle" class="book-public-preview-title">Fonte ainda não relida</div>
+                    <div id="authorStructureSourceBody" class="book-public-preview-line is-muted">Tipo de fonte, URL e identificadores ainda não foram resumidos nesta ficha.</div>
+                  </div>
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Saída pública mínima</div>
+                    <div id="authorStructurePublicTitle" class="book-public-preview-title">Apresentação pública ainda não escrita</div>
+                    <div id="authorStructurePublicBody" class="book-public-preview-line is-muted">A biografia curta ainda não sustenta a abertura pública desta autoridade.</div>
+                  </div>
+                  <div class="book-public-preview-card">
+                    <div class="book-public-preview-eyebrow">Trabalho local em curso</div>
+                    <div id="authorStructureWorkTitle" class="book-public-preview-title">Rascunho local ainda não consolidado</div>
+                    <div id="authorStructureWorkBody" class="book-public-preview-line is-muted">Lote, nota interna e situação editorial ainda não foram relidos como gesto local desta autoridade.</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="form-flow-break">
@@ -5061,6 +5101,18 @@
       authorNotesLabel: el('authorNotesLabel'),
       authorNotesHint: el('authorNotesHint'),
       authorAuthorityGuideText: el('authorAuthorityGuideText'),
+      authorStructurePill: el('authorStructurePill'),
+      authorStructureSummary: el('authorStructureSummary'),
+      authorStructureRetainedTitle: el('authorStructureRetainedTitle'),
+      authorStructureRetainedBody: el('authorStructureRetainedBody'),
+      authorStructureTypeTitle: el('authorStructureTypeTitle'),
+      authorStructureTypeBody: el('authorStructureTypeBody'),
+      authorStructureSourceTitle: el('authorStructureSourceTitle'),
+      authorStructureSourceBody: el('authorStructureSourceBody'),
+      authorStructurePublicTitle: el('authorStructurePublicTitle'),
+      authorStructurePublicBody: el('authorStructurePublicBody'),
+      authorStructureWorkTitle: el('authorStructureWorkTitle'),
+      authorStructureWorkBody: el('authorStructureWorkBody'),
       authorAuthorityType: el('authorAuthorityType'),
       authorAcronym: el('authorAcronym'),
       authorActivityPeriod: el('authorActivityPeriod'),
@@ -7931,6 +7983,111 @@
       }
     }
 
+
+    function getAuthorAuthorityTypeLabel(type = '') {
+      const map = {
+        person: 'Pessoa',
+        collective: 'Coletivo / organização',
+        publisher_series: 'Editora / série / revista',
+        place_campaign_theme: 'Lugar / campanha / tema',
+        other: 'Outra autoridade',
+      };
+      return map[normalizeAuthorAuthorityType(type)] || 'Autoridade';
+    }
+
+    function getSelectedOptionLabel(selectId = '') {
+      const node = el(selectId);
+      if (!node) return '';
+      const option = node.selectedOptions && node.selectedOptions[0];
+      return compactSpaces(option?.textContent || '');
+    }
+
+    function updateAuthorStructurePreview() {
+      const preferredName = compactSpaces(el('authorPreferredName')?.value || '');
+      const sortName = compactSpaces(el('authorSortName')?.value || '');
+      const biography = compactSpaces(el('authorBiography')?.value || '');
+      const notes = compactSpaces(el('authorNotes')?.value || '');
+      const type = getCurrentAuthorAuthorityType();
+      const typeLabel = getAuthorAuthorityTypeLabel(type);
+      const acronym = compactSpaces(refs.authorAcronym?.value || '');
+      const activityPeriod = compactSpaces(refs.authorActivityPeriod?.value || '');
+      const variantNames = compactSpaces(refs.authorVariantNames?.value || '');
+      const pseudonyms = compactSpaces(refs.authorPseudonyms?.value || '');
+      const activityPlace = compactSpaces(refs.authorActivityPlace?.value || '');
+      const contextLinks = compactSpaces(refs.authorContextLinks?.value || '');
+      const birthYear = compactSpaces(el('authorBirthYear')?.value || '');
+      const deathYear = compactSpaces(el('authorDeathYear')?.value || '');
+      const country = compactSpaces(el('authorCountry')?.value || '');
+      const sourceKind = compactSpaces(getCatalogOptionLabel(el('authorSourceKind')?.value || '', AUTHOR_SOURCE_KIND_OPTIONS) || '');
+      const sourceLabel = compactSpaces(el('authorSourceLabel')?.value || '');
+      const sourceUrl = compactSpaces(el('authorSourceUrl')?.value || '');
+      const viaf = compactSpaces(el('authorVIAF')?.value || '');
+      const isni = compactSpaces(el('authorISNI')?.value || '');
+      const wikidata = compactSpaces(el('authorWikidata')?.value || '');
+      const batchLabel = getSelectedOptionLabel('authorBatchId');
+      const publishedId = compactSpaces(el('authorPublishedId')?.value || '');
+      const draftId = compactSpaces(el('authorDraftId')?.value || '');
+
+      const retainedBits = [];
+      if (sortName) retainedBits.push(`Ordenação: ${sortName}.`);
+      if (birthYear || deathYear) retainedBits.push(`Cronologia: ${birthYear || '—'}–${deathYear || '—'}.`);
+      if (country) retainedBits.push(`Território principal: ${country}.`);
+      if (refs.authorStructureRetainedTitle) refs.authorStructureRetainedTitle.textContent = preferredName || 'Forma retida ainda não definida';
+      if (refs.authorStructureRetainedBody) refs.authorStructureRetainedBody.textContent = retainedBits.join(' ') || 'Defina a forma principal e a forma de ordenação para estabilizar esta autoridade.';
+
+      const typeBits = [];
+      if (acronym) typeBits.push(`Sigla: ${acronym}.`);
+      if (activityPeriod) typeBits.push(`Período: ${activityPeriod}.`);
+      if (activityPlace) typeBits.push(`Ancoragem: ${activityPlace}.`);
+      if (variantNames) typeBits.push(`Variantes: ${truncatePreviewText(variantNames, 110)}.`);
+      if (pseudonyms) typeBits.push(`Pseudônimos: ${truncatePreviewText(pseudonyms, 110)}.`);
+      if (contextLinks) typeBits.push(`Vínculos: ${truncatePreviewText(contextLinks, 110)}.`);
+      if (refs.authorStructureTypeTitle) refs.authorStructureTypeTitle.textContent = acronym ? `${typeLabel} · ${acronym}` : typeLabel;
+      if (refs.authorStructureTypeBody) refs.authorStructureTypeBody.textContent = typeBits.join(' ') || 'Sigla, variantes, pseudônimos, período e contexto ainda não bastam para ler esta autoridade.';
+
+      const sourceBits = [];
+      if (sourceKind) sourceBits.push(`Tipo de fonte: ${sourceKind}.`);
+      if (sourceLabel) sourceBits.push(`Fonte: ${sourceLabel}.`);
+      if (sourceUrl) sourceBits.push(`Link: ${truncatePreviewText(sourceUrl, 88)}.`);
+      if (viaf || isni || wikidata) {
+        const ids = [];
+        if (viaf) ids.push(`VIAF ${viaf}`);
+        if (isni) ids.push(`ISNI ${isni}`);
+        if (wikidata) ids.push(`Wikidata ${wikidata}`);
+        sourceBits.push(`Identificadores: ${ids.join(' · ')}.`);
+      }
+      if (refs.authorStructureSourceTitle) refs.authorStructureSourceTitle.textContent = sourceBits.length ? 'Fonte e identificadores já relidos' : 'Fonte ainda não relida';
+      if (refs.authorStructureSourceBody) refs.authorStructureSourceBody.textContent = sourceBits.join(' ') || 'Tipo de fonte, URL e identificadores ainda não foram resumidos nesta ficha.';
+
+      const publicBits = [];
+      if (biography) publicBits.push(truncatePreviewText(biography, 180));
+      if (!biography && preferredName) publicBits.push(`A autoridade ${preferredName} ainda não tem apresentação pública curta.`);
+      if (refs.authorStructurePublicTitle) refs.authorStructurePublicTitle.textContent = biography ? 'Apresentação pública já esboçada' : 'Apresentação pública ainda não escrita';
+      if (refs.authorStructurePublicBody) refs.authorStructurePublicBody.textContent = publicBits.join(' ') || 'A biografia curta ainda não sustenta a abertura pública desta autoridade.';
+
+      const workBits = [];
+      if (publishedId) workBits.push(`Ligada ao publicado: sim.`);
+      else if (draftId) workBits.push(`Rascunho local em curso: sim.`);
+      else workBits.push('Novo rascunho local ainda sem ID.');
+      if (batchLabel && batchLabel !== 'Sem lote') workBits.push(`Lote: ${batchLabel}.`);
+      if (notes) workBits.push(`Nota interna: ${truncatePreviewText(notes, 160)}.`);
+      if (refs.authorStructureWorkTitle) refs.authorStructureWorkTitle.textContent = publishedId ? 'Autoridade já ligada ao publicado' : (draftId ? 'Rascunho local em trabalho' : 'Novo rascunho local');
+      if (refs.authorStructureWorkBody) refs.authorStructureWorkBody.textContent = workBits.join(' ') || 'Lote, nota interna e situação editorial ainda não foram relidos como gesto local desta autoridade.';
+
+      const layerBits = [];
+      if (preferredName) layerBits.push(`forma retida definida`);
+      if (sourceBits.length) layerBits.push(`proveniência/identificadores já relidos`);
+      if (biography) layerBits.push(`saída pública mínima já esboçada`);
+      if (notes) layerBits.push(`nota interna local presente`);
+      setCatalogSurfaceSummary(
+        refs.authorStructureSummary,
+        `<strong>Leitura da autoridade:</strong> ${preferredName ? `a autoridade ${sanitize(preferredName)} já tem forma retida legível como ${sanitize(typeLabel.toLowerCase())}` : 'a forma retida ainda não está estabilizada'}; ${sourceBits.length ? 'a proveniência e os identificadores já podem ser relidos nesta ficha' : 'a proveniência documental ainda não foi relida'}; ${biography ? 'a apresentação pública mínima já está esboçada' : 'a apresentação pública mínima ainda falta'}; ${notes ? 'a nota interna conserva contexto documental local' : 'a nota interna ainda não conserva contexto local relevante'}.`
+      );
+      if (refs.authorStructurePill) {
+        refs.authorStructurePill.textContent = publishedId ? 'Autoridade ligada ao publicado' : (draftId ? 'Rascunho local de autoridade' : 'Nova autoridade');
+      }
+    }
+
     function extractAuthorStructuredMetaFromNotes(notes = '') {
       const raw = String(notes || '');
       const start = raw.indexOf(AUTHOR_STRUCTURED_META_START);
@@ -7991,6 +8148,7 @@
       if (refs.authorActivityPlace) refs.authorActivityPlace.value = meta.activity_place || '';
       if (refs.authorContextLinks) refs.authorContextLinks.value = meta.context_links || '';
       applyAuthorAuthorityUiProfile();
+    updateAuthorStructurePreview();
     }
 
     function buildAuthorStructuredMetaFromFields() {
@@ -9788,6 +9946,7 @@
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState('new');
       clearMessage(refs.authorMessage);
+      updateAuthorStructurePreview();
     }
 
     function getBatchLabel(batchId) {
@@ -11017,8 +11176,14 @@
     });
 
     Array.from(el('authorForm').querySelectorAll('input, textarea, select')).forEach(node => {
-      node.addEventListener('input', syncAuthorDraftVisualState);
-      node.addEventListener('change', syncAuthorDraftVisualState);
+      node.addEventListener('input', () => {
+        syncAuthorDraftVisualState();
+        updateAuthorStructurePreview();
+      });
+      node.addEventListener('change', () => {
+        syncAuthorDraftVisualState();
+        updateAuthorStructurePreview();
+      });
     });
 
     Array.from(el('exemplarForm').querySelectorAll('input, textarea, select')).forEach(node => {
@@ -12148,6 +12313,7 @@
       if (authorDraftStableState === 'published') showPublishedPopup('author'); else hidePublishedPopup('author');
       authorDraftBaseline = serializeAuthorFormState();
       setAuthorDraftVisualState(authorDraftStableState);
+      updateAuthorStructurePreview();
     }
 
     function fillLabelForm(record, { switchTab = false } = {}) {
@@ -16223,6 +16389,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     if (refs.authorAuthorityType) refs.authorAuthorityType.addEventListener('change', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
+      updateAuthorStructurePreview();
       syncAuthorDraftVisualState();
     });
     ['authorAcronym', 'authorActivityPeriod', 'authorVariantNames', 'authorPseudonyms', 'authorActivityPlace', 'authorContextLinks'].forEach((fieldId) => {
@@ -16238,11 +16405,13 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     el('authorPreferredName').addEventListener('input', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
+      updateAuthorStructurePreview();
       syncAuthorDraftVisualState();
     });
     el('authorPreferredName').addEventListener('change', () => {
       applyAuthorAuthorityUiProfile();
       syncAuthorSortName('', { preservePublished: !!el('authorPublishedId').value });
+      updateAuthorStructurePreview();
       syncAuthorDraftVisualState();
     });
 
