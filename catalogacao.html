@@ -3523,8 +3523,16 @@
             </select>
           </div>
           <div class="field">
+            <label for="queueOriginFilter">Origem do gesto editorial</label>
+            <select id="queueOriginFilter">
+              <option value="">Todos os gestos</option>
+              <option value="create">Novo rascunho local</option>
+              <option value="update">Retomada / edição local</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="queueSearch">Buscar na fila</label>
-            <input id="queueSearch" type="text" placeholder="Ficha comum, autoridade, compatibilidade local, tombo ou localização…" />
+            <input id="queueSearch" type="text" placeholder="Ficha comum, autoridade, código local legado, tombo, localização ou origem do gesto…" />
           </div>
           <div class="field">
             <label for="queueBatchAssign">Atribuir lote</label>
@@ -3551,6 +3559,7 @@
           </div>
         </div>
 
+        <div id="queueStructureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Estrutura desta fila:</strong> ainda não atualizada.</div>
         <div id="queueActionSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Ações nesta fila:</strong> ainda não atualizadas.</div>
         <div id="queueMessage" class="message"></div>
         <div id="queueTableWrap" class="table-wrap"></div>
@@ -3567,6 +3576,7 @@
               <button id="emptyTrashBtn" class="button danger-solid">Esvaziar lixeira</button>
             </div>
           </div>
+          <div id="trashStructureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Estrutura da lixeira:</strong> ainda não atualizada.</div>
           <div id="trashActionSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Ações na lixeira:</strong> ainda não atualizadas.</div>
           <div id="trashMessage" class="message"></div>
           <div id="trashTableWrap" class="table-wrap"></div>
@@ -4842,6 +4852,7 @@
       exemplarMessage: el('exemplarMessage'),
       labelMessage: el('labelMessage'),
       queueMessage: el('queueMessage'),
+      queueStructureSummary: el('queueStructureSummary'),
       queueActionSummary: el('queueActionSummary'),
       batchMessage: el('batchMessage'),
       catalogMessage: el('catalogMessage'),
@@ -4955,6 +4966,7 @@
       labelSheetSummary: el('labelSheetSummary'),
       labelSheetWrap: el('labelSheetWrap'),
       trashMessage: el('trashMessage'),
+      trashStructureSummary: el('trashStructureSummary'),
       trashActionSummary: el('trashActionSummary'),
       trashTableWrap: el('trashTableWrap'),
       refreshTrashBtn: el('refreshTrashBtn'),
@@ -8146,6 +8158,7 @@
     const CATALOGACAO_PERSISTED_FILTER_IDS = [
       'queueTypeFilter',
       'queueStatusFilter',
+      'queueOriginFilter',
       'queueSearch',
       'catalogSearch',
       'catalogAuthorAuthorityFilter',
@@ -8301,6 +8314,7 @@
       state.showOnlyActiveDrafts = true;
       el('queueTypeFilter').value = '';
       el('queueStatusFilter').value = '';
+      el('queueOriginFilter').value = '';
       el('queueSearch').value = '';
       persistCatalogacaoFilters();
       setTab('queuePanel');
@@ -12331,6 +12345,14 @@
       return map[action] || (action || '—');
     }
 
+    function getQueueOriginLabel(action = '') {
+      const map = {
+        create: 'Novo rascunho local',
+        update: 'Retomada / edição local',
+      };
+      return map[action] || 'Gesto não relido';
+    }
+
     function getDraftTableName(type = '') {
       const map = {
         book: 'book_drafts',
@@ -12411,7 +12433,8 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Ficha comum:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
+          `<div><strong>Código local legado / referência:</strong> ${reference}${batch}</div>`,
+          `<div><strong>Origem do gesto:</strong> ${sanitize(getQueueOriginLabel(item.action))}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -12421,7 +12444,8 @@
         const subtitle = sanitize(getQueueSecondaryDisplay(item));
         const parts = [
           `<div><strong>Autoridade:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-          `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
+          `<div><strong>Código local legado / referência:</strong> ${reference}${batch}</div>`,
+          `<div><strong>Origem do gesto:</strong> ${sanitize(getQueueOriginLabel(item.action))}</div>`
         ];
         if (subtitle && subtitle !== '—') parts.push(`<div><strong>Leitura curta:</strong> ${subtitle}</div>`);
         parts.push(`<div>${sanitize(getQueueWorkHintText(item))}</div>`);
@@ -12432,7 +12456,8 @@
       const exemplar = getQueueExemplarRecord(item);
       const parts = [
         `<div><strong>Exemplar local:</strong> ${sanitize(getQueuePrimaryDisplay(item))}</div>`,
-        `<div><strong>Compatibilidade local / referência:</strong> ${reference}${batch}</div>`
+        `<div><strong>Código local legado / referência:</strong> ${reference}${batch}</div>`,
+        `<div><strong>Origem do gesto:</strong> ${sanitize(getQueueOriginLabel(item.action))}</div>`
       ];
       if (secondary && secondary !== '—') parts.push(`<div><strong>Autor no rótulo local:</strong> ${secondary}</div>`);
       if (exemplar?.tombo) parts.push(`<div><strong>Tombo:</strong> ${sanitize(exemplar.tombo)}</div>`);
@@ -12450,6 +12475,7 @@
         getQueuePrimaryDisplay(item),
         getQueueSecondaryDisplay(item),
         getQueueLayerKindLabel(item.item_type),
+        getQueueOriginLabel(item.action),
         getQueueWorkHintText(item),
         exemplar?.tombo,
         exemplar?.bib_ref,
@@ -12463,6 +12489,7 @@
       if (!refs.queueFlowStatusPill) return;
       const typeFilter = el('queueTypeFilter')?.value || '';
       const statusFilter = el('queueStatusFilter')?.value || '';
+      const originFilter = el('queueOriginFilter')?.value || '';
       const search = normalizeInlineWhitespace(el('queueSearch')?.value || '');
       const books = items.filter(item => item.item_type === 'book').length;
       const authors = items.filter(item => item.item_type === 'author').length;
@@ -12480,6 +12507,7 @@
         : statusFilter === 'draft'
           ? 'somente em rascunho'
           : 'rascunhos ativos e prontos';
+      const originText = originFilter ? getQueueOriginLabel(originFilter).toLowerCase() : 'novos rascunhos locais e retomadas / edições locais';
       const nextText = ready
         ? 'Próximo gesto local: revisar os itens prontos deste recorte, conferir lote e publicar apenas o que já estiver maduro.'
         : items.length
@@ -12491,9 +12519,9 @@
       refs.queueFlowTitle.textContent = items.length
         ? `${items.length} camada${items.length > 1 ? 's' : ''} de trabalho neste recorte editorial`
         : 'Nenhuma camada ativa neste recorte da fila';
-      refs.queueFlowScope.textContent = `Camadas visíveis: ${scopeParts.length ? scopeParts.join(' · ') : '—'}. Situação filtrada: ${statusText}.${search ? ` Busca ativa: ${search}.` : ''}`;
+      refs.queueFlowScope.textContent = `Camadas visíveis: ${scopeParts.length ? scopeParts.join(' · ') : '—'}. Situação filtrada: ${statusText}. Origem do gesto: ${originText}.${search ? ` Busca ativa: ${search}.` : ''}`;
       refs.queueFlowWork.textContent = items.length
-        ? `Em rascunho: ${drafts} · Prontos: ${ready} · Com lote atribuído: ${withBatch}. A fila continua separando ficha comum, autoridade e exemplar local sem misturar publicação, lixeira e catálogo publicado.`
+        ? `Em rascunho: ${drafts} · Prontos: ${ready} · Com lote atribuído: ${withBatch}. Esta fila continua separando ficha comum, autoridade e exemplar local, sem misturar fila ativa, lixeira e catálogo já publicado.`
         : 'Nenhum item ativo permanece neste recorte. A fila segue separando publicação, lixeira e catálogo já publicado.';
       refs.queueFlowNext.textContent = nextText;
     }
@@ -12549,6 +12577,41 @@
       return `Operação concluída para ${contextLabel}.`;
     }
 
+    function updateQueueStructureSummary(items = []) {
+      if (!refs.queueStructureSummary) return;
+      const typeFilter = el('queueTypeFilter')?.value || '';
+      const statusFilter = el('queueStatusFilter')?.value || '';
+      const originFilter = el('queueOriginFilter')?.value || '';
+      const search = normalizeInlineWhitespace(el('queueSearch')?.value || '');
+      const books = items.filter(item => item.item_type === 'book').length;
+      const authors = items.filter(item => item.item_type === 'author').length;
+      const exemplars = items.filter(item => item.item_type === 'exemplar').length;
+      const creates = items.filter(item => item.action === 'create').length;
+      const updates = items.filter(item => item.action === 'update').length;
+      const recorteParts = [];
+      if (typeFilter) recorteParts.push(`camada em foco: ${getQueueLayerKindLabel(typeFilter).toLowerCase()}`);
+      if (statusFilter === 'draft') recorteParts.push('situação: somente em rascunho');
+      else if (statusFilter === 'ready') recorteParts.push('situação: somente prontos');
+      if (originFilter) recorteParts.push(`origem do gesto: ${getQueueOriginLabel(originFilter).toLowerCase()}`);
+      if (search) recorteParts.push(`busca ativa: ${search}`);
+      const recorte = recorteParts.length ? recorteParts.join(' · ') : 'sem filtro específico além das camadas ativas';
+      refs.queueStructureSummary.innerHTML = items.length
+        ? `<strong>Estrutura desta fila:</strong> ${books} ficha${books !== 1 ? 's comuns' : ' comum'}, ${authors} autoridade${authors !== 1 ? 's' : ''} e ${exemplars} exemplar${exemplars !== 1 ? 'es locais' : ' local'} neste recorte. Origem do gesto: ${creates} novo${creates !== 1 ? 's rascunhos locais' : ' rascunho local'} · ${updates} retomada${updates !== 1 ? 's / edições locais' : ' / edição local'}. Recorte atual: ${recorte}. A fila continua separada do catálogo já publicado e da lixeira.`
+        : '<strong>Estrutura desta fila:</strong> nenhuma camada ativa neste recorte. A fila permanece distinta do catálogo publicado e da lixeira.';
+    }
+
+    function updateTrashStructureSummary(items = []) {
+      if (!refs.trashStructureSummary) return;
+      const books = items.filter(item => item.item_type === 'book').length;
+      const authors = items.filter(item => item.item_type === 'author').length;
+      const exemplars = items.filter(item => item.item_type === 'exemplar').length;
+      const creates = items.filter(item => item.action === 'create').length;
+      const updates = items.filter(item => item.action === 'update').length;
+      refs.trashStructureSummary.innerHTML = items.length
+        ? `<strong>Estrutura da lixeira:</strong> ${books} ficha${books !== 1 ? 's comuns descartadas' : ' comum descartada'}, ${authors} autoridade${authors !== 1 ? 's descartadas' : ' descartada'} e ${exemplars} exemplar${exemplars !== 1 ? 'es locais descartados' : ' local descartado'}. Origem do gesto antes do descarte: ${creates} novo${creates !== 1 ? 's rascunhos locais' : ' rascunho local'} · ${updates} retomada${updates !== 1 ? 's / edições locais' : ' / edição local'}. Esta área continua separada da fila ativa e só trata restauração ou apagamento definitivo.`
+        : '<strong>Estrutura da lixeira:</strong> não há rascunhos descartados neste momento.';
+    }
+
     function updateQueueActionSummary(items = []) {
       if (!refs.queueActionSummary) return;
       const targetBatchId = el('queueBatchAssign')?.value || '';
@@ -12557,11 +12620,13 @@
       const selectionBreakdown = formatQueueTypeBreakdown(selectedEntries);
       const typeFilter = el('queueTypeFilter')?.value || '';
       const statusFilter = el('queueStatusFilter')?.value || '';
+      const originFilter = el('queueOriginFilter')?.value || '';
       const search = normalizeInlineWhitespace(el('queueSearch')?.value || '');
       const filterParts = [];
       if (typeFilter) filterParts.push(`camada em foco: ${getQueueLayerKindLabel(typeFilter).toLowerCase()}`);
       if (statusFilter === 'draft') filterParts.push('situação: somente em rascunho');
       else if (statusFilter === 'ready') filterParts.push('situação: somente prontos');
+      if (originFilter) filterParts.push(`origem do gesto: ${getQueueOriginLabel(originFilter).toLowerCase()}`);
       if (search) filterParts.push(`busca ativa: ${search}`);
       const filterText = filterParts.length ? `Recorte atual: ${filterParts.join(' · ')}.` : 'Recorte atual: sem filtro específico além das camadas ativas.';
       const batchText = targetBatchId
@@ -12650,6 +12715,7 @@
 
       if (!items.length) {
         clearTrashSelection();
+        updateTrashStructureSummary([]);
         updateTrashActionSummary([]);
         refs.trashTableWrap.innerHTML = '<div class="empty">A lixeira está vazia no momento.</div>';
         return;
@@ -12770,6 +12836,7 @@
         });
       });
 
+      updateTrashStructureSummary(items);
       updateTrashActionSummary(items);
     }
 
@@ -13659,6 +13726,7 @@
     function renderQueue() {
       const typeFilter = el('queueTypeFilter').value;
       const statusFilter = el('queueStatusFilter').value;
+      const originFilter = el('queueOriginFilter').value;
       const search = el('queueSearch').value.trim().toLowerCase();
       const targetBatchId = el('queueBatchAssign').value;
       let items = [...state.queueItems].filter(item => isActiveQueueItem(item));
@@ -13667,12 +13735,14 @@
       }
       if (typeFilter) items = items.filter(item => item.item_type === typeFilter);
       if (statusFilter) items = items.filter(item => item.status === statusFilter);
+      if (originFilter) items = items.filter(item => String(item.action || '') === originFilter);
       if (search) {
         items = items.filter(item => getQueueSearchIndex(item).includes(search));
       }
 
       if (!items.length) {
         updateQueueFlowSummary([]);
+        updateQueueStructureSummary([]);
         updateQueueActionSummary([]);
         refs.queueTableWrap.innerHTML = '<div class="empty">Nenhum rascunho ativo encontrado com os filtros atuais.</div>';
         renderTrash();
@@ -13698,8 +13768,9 @@
               <th style="width:52px; text-align:center;"><input id="queueSelectAllVisible" type="checkbox" ${allVisibleSelected ? 'checked' : ''} aria-label="Selecionar linhas visíveis" style="width:18px; height:18px; cursor:pointer; accent-color:#d15757;" /></th>
               <th>Camada de trabalho</th>
               <th>Situação</th>
+              <th>Origem do gesto</th>
               <th>Gesto</th>
-              <th>Compatibilidade / referência</th>
+              <th>Código local legado / referência</th>
               <th>Ficha comum / autoridade / exemplar local</th>
               <th>Leitura local da camada</th>
               <th>Lote</th>
@@ -13715,6 +13786,7 @@
                 <td style="text-align:center;"><input class="queue-row-select" type="checkbox" data-type="${sanitize(item.item_type)}" data-id="${item.draft_id}" ${state.queueSelection.has(selectionKey) ? 'checked' : ''} aria-label="Selecionar rascunho" /></td>
                 <td>${sanitize(getItemTypeLabel(item.item_type))}</td>
                 <td>${getQueueStatusBadge(item.status)}</td>
+                <td>${sanitize(getQueueOriginLabel(item.action))}</td>
                 <td>${sanitize(getQueueActionLabel(item.action))}</td>
                 <td>${sanitize(item.reference_code || '—')}</td>
                 <td>${item.item_type === 'book' ? renderBookTitleStackHtml(getQueuePrimaryDisplay(item), getQueueSecondaryDisplay(item)) : sanitize(getQueuePrimaryDisplay(item))}</td>
@@ -13827,6 +13899,7 @@
       });
 
       updateQueueFlowSummary(items);
+      updateQueueStructureSummary(items);
       updateQueueActionSummary(items);
       renderTrash();
       renderBatchesPanelSummary();
@@ -15965,7 +16038,17 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         updateRefreshButton(false);
       }
     });
-    el('refreshQueueBtn').addEventListener('click', loadQueue);
+    el('refreshQueueBtn').addEventListener('click', async () => {
+      clearMessage(refs.queueMessage);
+      try {
+        await loadQueue();
+        const activeItems = state.queueItems.filter(item => isActiveQueueItem(item));
+        const breakdown = formatQueueTypeBreakdown(activeItems.map(item => ({ type: item.item_type, id: Number(item.draft_id) })));
+        showMessage(refs.queueMessage, activeItems.length ? `Fila atualizada com ${activeItems.length} rascunho${activeItems.length > 1 ? 's ativos' : ' ativo'} (${breakdown || 'sem detalhamento por camada'}).` : 'Fila atualizada: nenhum rascunho ativo neste momento.', 'ok');
+      } catch (error) {
+        showMessage(refs.queueMessage, error.message || 'Não foi possível atualizar a fila.', 'error');
+      }
+    });
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
     el('bookDraftResetBtn').addEventListener('click', resetBookForm);
     el('authorDraftResetBtn').addEventListener('click', resetAuthorForm);
@@ -16075,7 +16158,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       }
     });
 
-    ['queueTypeFilter', 'queueStatusFilter', 'queueSearch'].forEach(id => {
+    ['queueTypeFilter', 'queueStatusFilter', 'queueOriginFilter', 'queueSearch'].forEach(id => {
       el(id).addEventListener('input', () => {
         state.showOnlyActiveDrafts = false;
         clearQueueSelection();
@@ -16089,6 +16172,9 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     });
     if (!['', 'draft', 'ready'].includes(el('queueStatusFilter').value)) {
       el('queueStatusFilter').value = '';
+    }
+    if (!['', 'create', 'update'].includes(el('queueOriginFilter').value)) {
+      el('queueOriginFilter').value = '';
     }
     el('queueBatchAssign').addEventListener('change', renderQueue);
     el('statOpenBatches').addEventListener('click', async () => {
