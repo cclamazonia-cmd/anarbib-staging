@@ -3141,6 +3141,8 @@
           <input type="hidden" id="exemplarAction" value="create" />
           <input type="hidden" id="exemplarCurrentStatus" value="draft" />
           <input type="hidden" id="exemplarLabelStatus" value="pending" />
+          <input type="hidden" id="exemplarTargetLibraryId" value="" />
+          <input type="hidden" id="exemplarTargetHoldingId" value="" />
 
           <div class="field">
             <label for="exemplarBatchId">Lote</label>
@@ -7898,6 +7900,8 @@
         shelf: syncExemplarStructuredLocation(),
         legacyShelfRaw: refs.exemplarShelfLegacyRaw?.value.trim() || '',
         notes: el('exemplarNotes').value.trim(),
+        targetLibraryId: el('exemplarTargetLibraryId')?.value || '',
+        targetHoldingId: el('exemplarTargetHoldingId')?.value || '',
       });
     }
 
@@ -9429,9 +9433,77 @@
       syncExemplarStructuredLocation();
     }
 
+    function getPublishedHoldingsForExemplarBibRef(bibRef = '') {
+      const normalizedBibRef = compactSpaces(String(bibRef || ''));
+      if (!normalizedBibRef) return { notice: null, holdings: [] };
+      const notice = getPublishedBookForBibRef(normalizedBibRef);
+      return {
+        notice: notice || null,
+        holdings: parseCatalogHoldingEntries(notice?.holding_libraries_json),
+      };
+    }
+
+    function resolveExemplarHoldingBridge({ bibRef = '', preferredLibraryId = '', currentHoldingId = '' } = {}) {
+      const normalizedBibRef = compactSpaces(String(bibRef || ''));
+      const normalizedLibraryId = compactSpaces(String(preferredLibraryId || ''));
+      const normalizedHoldingId = String(currentHoldingId || '').trim();
+      const { notice, holdings } = getPublishedHoldingsForExemplarBibRef(normalizedBibRef);
+
+      let matchedHolding = null;
+      if (normalizedHoldingId) {
+        matchedHolding = holdings.find((entry) => String(entry?.holding_id || '').trim() === normalizedHoldingId) || null;
+      }
+      if (!matchedHolding && normalizedLibraryId) {
+        matchedHolding = holdings.find((entry) => compactSpaces(entry?.library_id || '') === normalizedLibraryId) || null;
+      }
+      if (!matchedHolding && holdings.length === 1) {
+        matchedHolding = holdings[0];
+      }
+
+      return {
+        notice,
+        holdings,
+        matchedHolding,
+        libraryId: compactSpaces(matchedHolding?.library_id || normalizedLibraryId),
+        holdingId: matchedHolding?.holding_id !== undefined && matchedHolding?.holding_id !== null
+          ? String(matchedHolding.holding_id).trim()
+          : '',
+        localBibRef: compactSpaces(matchedHolding?.local_bib_ref || normalizedBibRef),
+      };
+    }
+
+    function syncExemplarHoldingBridgeFields(options = {}) {
+      const profileLibrary = getProfileDefaultLibraryContext();
+      const currentLibraryId = compactSpaces(el('exemplarTargetLibraryId')?.value || '');
+      const currentHoldingId = String(el('exemplarTargetHoldingId')?.value || '').trim();
+      const bibRef = options.bibRef !== undefined
+        ? compactSpaces(options.bibRef)
+        : compactSpaces(el('exemplarBibRef')?.value || '');
+      const preferredLibraryId = compactSpaces(options.libraryId || currentLibraryId || profileLibrary.libraryId || '');
+      const explicitHoldingId = options.holdingId !== undefined
+        ? String(options.holdingId || '').trim()
+        : currentHoldingId;
+      const resolved = resolveExemplarHoldingBridge({
+        bibRef,
+        preferredLibraryId,
+        currentHoldingId: options.forceResolve ? '' : explicitHoldingId,
+      });
+      const nextLibraryId = compactSpaces(resolved.libraryId || preferredLibraryId || '');
+      const nextHoldingId = String(options.forceResolve ? (resolved.holdingId || '') : (explicitHoldingId || resolved.holdingId || '')).trim();
+      if (el('exemplarTargetLibraryId')) el('exemplarTargetLibraryId').value = nextLibraryId || '';
+      if (el('exemplarTargetHoldingId')) el('exemplarTargetHoldingId').value = nextHoldingId || '';
+      return {
+        targetLibraryId: nextLibraryId || '',
+        targetHoldingId: nextHoldingId || '',
+        matchedHolding: resolved.matchedHolding || null,
+        notice: resolved.notice || null,
+      };
+    }
+
     function getExemplarDraftPayload(statusOverride = '', labelStatusOverride = '') {
       const resolvedStatus = statusOverride || getCurrentExemplarStatus() || 'draft';
       const resolvedLabelStatus = labelStatusOverride || getCurrentLabelStatus() || 'pending';
+      const bridge = syncExemplarHoldingBridgeFields({ forceResolve: true });
       return {
         id: el('exemplarDraftId').value || undefined,
         published_exemplar_id: el('exemplarPublishedId').value || null,
@@ -9440,6 +9512,8 @@
         status: resolvedStatus,
         label_status: resolvedLabelStatus,
         target_bib_ref: el('exemplarBibRef').value.trim(),
+        target_library_id: bridge.targetLibraryId || null,
+        target_holding_id: bridge.targetHoldingId ? Number(bridge.targetHoldingId) : null,
         tombo: el('exemplarTombo').value.trim(),
         shelf_location: syncExemplarStructuredLocation().trim() || null,
         label_title_override: el('labelTitleInput')?.value.trim() || null,
@@ -10371,9 +10445,12 @@
       el('exemplarAction').value = 'create';
       el('exemplarCurrentStatus').value = 'draft';
       el('exemplarLabelStatus').value = 'pending';
+      el('exemplarTargetLibraryId').value = '';
+      el('exemplarTargetHoldingId').value = '';
       if (refs.exemplarShelfLegacyRaw) refs.exemplarShelfLegacyRaw.value = '';
       seedExemplarLocationLibrary(false);
       syncExemplarStructuredLocation();
+      syncExemplarHoldingBridgeFields({ forceResolve: true });
       hidePublishedPopup('exemplar');
       exemplarDraftStableState = 'new';
       exemplarDraftBaseline = serializeExemplarFormState();
@@ -10509,8 +10586,8 @@
     }
 
     ['exemplarTombo','exemplarBibRef','exemplarShelf','exemplarBatchId'].forEach(id => {
-      el(id).addEventListener('input', () => { updateLabelPreview(); syncLabelDraftVisualState(); });
-      el(id).addEventListener('change', () => { updateLabelPreview(); syncLabelDraftVisualState(); });
+      el(id).addEventListener('input', () => { if (id === 'exemplarBibRef') syncExemplarHoldingBridgeFields({ forceResolve: true }); updateLabelPreview(); syncLabelDraftVisualState(); });
+      el(id).addEventListener('change', () => { if (id === 'exemplarBibRef') syncExemplarHoldingBridgeFields({ forceResolve: true }); updateLabelPreview(); syncLabelDraftVisualState(); });
     });
 
     ['exemplarLocationLibrary','exemplarLocationSector','exemplarLocationShelfUnit','exemplarLocationLevel','exemplarLocationNote'].forEach(id => {
@@ -11770,10 +11847,17 @@
       el('exemplarAction').value = record.action || 'create';
       el('exemplarCurrentStatus').value = record.status || 'draft';
       el('exemplarLabelStatus').value = record.label_status || 'pending';
+      el('exemplarTargetLibraryId').value = record.target_library_id || '';
+      el('exemplarTargetHoldingId').value = record.target_holding_id || '';
       el('exemplarBatchId').value = record.batch_id || '';
       el('exemplarBibRef').value = record.target_bib_ref || '';
       el('exemplarTombo').value = record.tombo || '';
       fillExemplarStructuredLocation(record.shelf_location || '');
+      syncExemplarHoldingBridgeFields({
+        bibRef: record.target_bib_ref || '',
+        libraryId: record.target_library_id || '',
+        holdingId: record.target_holding_id || '',
+      });
       el('exemplarNotes').value = record.notes || '';
       updateLabelPreview();
       if (refs.labelBatchPreviewId) {
@@ -12521,6 +12605,10 @@
     function buildImportedExemplarBookItem(bookDraft, exemplarDrafts = []) {
       const published = getPublishedBookForBibRef(bookDraft.bib_ref);
       const publishedCount = countPublishedExemplarsForBibRef(bookDraft.bib_ref);
+      const baseBridge = resolveExemplarHoldingBridge({
+        bibRef: bookDraft.bib_ref,
+        preferredLibraryId: getProfileDefaultLibraryContext().libraryId || '',
+      });
       const activeDrafts = [...(exemplarDrafts || [])]
         .filter(item => item && item.status !== 'cancelled')
         .sort((a, b) => String(a.created_at || a.updated_at || '').localeCompare(String(b.created_at || b.updated_at || '')));
@@ -12529,11 +12617,18 @@
 
       for (let index = 0; index < requestedCopies; index += 1) {
         const existingDraft = activeDrafts[index] || null;
+        const copyBridge = resolveExemplarHoldingBridge({
+          bibRef: bookDraft.bib_ref,
+          preferredLibraryId: existingDraft?.target_library_id || baseBridge.libraryId || '',
+          currentHoldingId: existingDraft?.target_holding_id || '',
+        });
         copies.push({
           slotIndex: index + 1,
           draftId: existingDraft?.id || null,
           batchId: bookDraft.batch_id || '',
           bibRef: bookDraft.bib_ref || '',
+          targetLibraryId: existingDraft?.target_library_id || copyBridge.libraryId || '',
+          targetHoldingId: existingDraft?.target_holding_id || copyBridge.holdingId || '',
           title: existingDraft?.label_title_override || bookDraft.titulo || published?.titulo || '—',
           subtitle: bookDraft.subtitulo || published?.subtitulo || '',
           author: existingDraft?.label_author_override || bookDraft.autor || published?.autor || '',
@@ -12646,6 +12741,11 @@
     }
 
     async function persistImportedExemplarCopy(copy, status = 'ready') {
+      const resolvedBridge = resolveExemplarHoldingBridge({
+        bibRef: copy?.bibRef || '',
+        preferredLibraryId: copy?.targetLibraryId || getProfileDefaultLibraryContext().libraryId || '',
+        currentHoldingId: copy?.targetHoldingId || '',
+      });
       const payload = {
         id: copy.draftId || undefined,
         published_exemplar_id: null,
@@ -12654,6 +12754,8 @@
         status,
         label_status: 'pending',
         target_bib_ref: copy.bibRef || '',
+        target_library_id: copy?.targetLibraryId || resolvedBridge.libraryId || null,
+        target_holding_id: (copy?.targetHoldingId || resolvedBridge.holdingId) ? Number(copy?.targetHoldingId || resolvedBridge.holdingId) : null,
         tombo: copy.tombo || '',
         shelf_location: copy.shelf || null,
         label_title_override: copy.title || null,
@@ -12744,7 +12846,7 @@
         .order('updated_at', { ascending: true });
       let exemplarDraftsQuery = supabase
         .from('exemplar_drafts')
-        .select('id, batch_id, status, target_bib_ref, tombo, shelf_location, label_title_override, label_author_override, label_cdd_override, label_note, notes, created_at, updated_at')
+        .select('id, batch_id, status, target_bib_ref, target_library_id, target_holding_id, tombo, shelf_location, label_title_override, label_author_override, label_cdd_override, label_note, notes, created_at, updated_at')
         .order('created_at', { ascending: true });
 
       if (sourceId !== '__all__') {
@@ -12900,6 +13002,8 @@
             action: copy.draftId ? 'update' : 'create',
             batch_id: copy.batchId || '',
             target_bib_ref: copy.bibRef || '',
+            target_library_id: copy.targetLibraryId || '',
+            target_holding_id: copy.targetHoldingId || '',
             tombo: copy.tombo || '',
             shelf_location: copy.shelf || '',
             label_title_override: copy.title || '',
