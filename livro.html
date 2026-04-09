@@ -137,6 +137,22 @@
       box-shadow:var(--shadow);
     }
     .contentbox{min-width:0}
+    .detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .detail-header .section-title{margin:0}
+    .info-mode-toggle{margin-left:auto}
+    .info-panel-current{display:block}
+    .isbd-panel{display:none;flex-direction:column;gap:14px;margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(255,255,255,.03)}
+    .isbd-panel.show{display:flex}
+    .isbd-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .isbd-panel-title{margin:0;font-size:1rem}
+    .isbd-panel-note{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45}
+    .isbd-statement{margin:0;padding:12px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(10,10,10,.44);color:#fff;line-height:1.55;word-break:break-word;overflow-wrap:anywhere}
+    .isbd-zone-list{display:grid;grid-template-columns:1fr;gap:10px}
+    .isbd-zone-item{padding:12px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.02)}
+    .isbd-zone-item strong{display:block;margin-bottom:6px;color:#fff;font-size:.9rem}
+    .isbd-zone-item span{display:block;color:var(--muted);font-size:.86rem;line-height:1.45;word-break:break-word;overflow-wrap:anywhere}
+    .isbd-empty{padding:12px 14px;border-radius:16px;border:1px dashed rgba(255,255,255,.16);color:var(--muted);background:rgba(255,255,255,.02)}
+    @media (max-width:720px){.detail-header{flex-direction:column}.info-mode-toggle{margin-left:0}}
 
     .author-inline-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
     .author-card-link,
@@ -188,33 +204,49 @@
         </div>
 
         <div class="contentbox">
-          <h2 class="section-title" id="detailSectionTitle">Detalhes da edição</h2>
-
-          <div class="meta" style="margin-top:12px">
-            <div class="pill" id="bibRefPill">ref: —</div>
-            <div class="pill" id="tomboPill">tombo: —</div>
-            <div class="pill" id="exemplaresPill" style="display:none"></div>
-            <div class="pill" id="yearPill">ano: —</div>
-            <div class="pill" id="pubPill">editora: —</div>
-            <div class="pill" id="placePill" style="display:none"></div>
-            <div class="pill" id="editionPill" style="display:none"></div>
-            <div class="pill" id="isbnPill" style="display:none"></div>
-            <div class="pill" id="issnPill" style="display:none"></div>
-            <div class="pill" id="langPill" style="display:none"></div>
-            <div class="pill" id="pagesPill" style="display:none"></div>
-            <div class="pill" id="typePill" style="display:none"></div>
-            <div class="pill" id="collectionPill" style="display:none"></div>
-            <div class="pill" id="volumePill" style="display:none"></div>
-            <div class="pill" id="translatorPill" style="display:none"></div>
-            <div class="pill" id="organizerPill" style="display:none"></div>
-            <div class="pill" id="secondaryAuthorsPill" style="display:none"></div>
-            <div class="pill" id="subjectsPill" style="display:none"></div>
-            <div class="pill" id="cddPill">CDD: —</div>
+          <div class="detail-header">
+            <h2 class="section-title" id="detailSectionTitle" data-standard-title="Detalhes da edição" data-isbd-title="Descrição bibliográfica ISBD">Detalhes da edição</h2>
+            <button class="btn mini info-mode-toggle" id="btnToggleIsbdInfo" type="button" aria-pressed="false">Ver visão ISBD</button>
           </div>
 
-          <div class="hr"></div>
+          <div id="bookInfoCurrentPanel" class="info-panel-current">
+            <div class="meta" style="margin-top:12px">
+              <div class="pill" id="bibRefPill">ref: —</div>
+              <div class="pill" id="tomboPill">tombo: —</div>
+              <div class="pill" id="exemplaresPill" style="display:none"></div>
+              <div class="pill" id="yearPill">ano: —</div>
+              <div class="pill" id="pubPill">editora: —</div>
+              <div class="pill" id="placePill" style="display:none"></div>
+              <div class="pill" id="editionPill" style="display:none"></div>
+              <div class="pill" id="isbnPill" style="display:none"></div>
+              <div class="pill" id="issnPill" style="display:none"></div>
+              <div class="pill" id="langPill" style="display:none"></div>
+              <div class="pill" id="pagesPill" style="display:none"></div>
+              <div class="pill" id="typePill" style="display:none"></div>
+              <div class="pill" id="collectionPill" style="display:none"></div>
+              <div class="pill" id="volumePill" style="display:none"></div>
+              <div class="pill" id="translatorPill" style="display:none"></div>
+              <div class="pill" id="organizerPill" style="display:none"></div>
+              <div class="pill" id="secondaryAuthorsPill" style="display:none"></div>
+              <div class="pill" id="subjectsPill" style="display:none"></div>
+              <div class="pill" id="cddPill">CDD: —</div>
+            </div>
 
-          <div class="muted" id="desc">—</div>
+            <div class="hr"></div>
+
+            <div class="muted" id="desc">—</div>
+          </div>
+
+          <div class="isbd-panel" id="bookIsbdPanel" aria-hidden="true">
+            <div class="isbd-panel-head">
+              <div>
+                <h3 class="isbd-panel-title">Leitura bibliográfica em zonas ISBD</h3>
+                <p class="isbd-panel-note" id="bookIsbdNote">Leitura preparada a partir da ficha pública atual.</p>
+              </div>
+            </div>
+            <p class="isbd-statement" id="bookIsbdStatement">—</p>
+            <div class="isbd-zone-list" id="bookIsbdZones"></div>
+          </div>
 
           <div class="pill" id="serviceModePill" style="display:none;margin-top:12px"></div>
           <div class="muted" id="serviceMessageLine" style="display:none;margin-top:10px"></div>
@@ -651,6 +683,7 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
     };
 
     let publicServiceState = null;
+    let currentBookInfoMode = "standard";
     let currentActiveReservationBibRefs = new Set();
     let currentActiveLoanBibRefs = new Set();
     let currentActiveReservationDebugRows = [];
@@ -2030,6 +2063,15 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       return {};
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     function normalizeMaterialType(value) {
       return String(value || "").trim().toLowerCase();
     }
@@ -2043,6 +2085,172 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const marc = parseJsonObject(marcJson);
       const detail = marc?.anarbib_material_detail;
       return detail && typeof detail === "object" && !Array.isArray(detail) ? detail : {};
+    }
+
+    function getBookIsbdBridge(marcJson) {
+      const marc = parseJsonObject(marcJson);
+      const value = marc?.anarbib_isbd;
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    }
+
+    function buildBookIsbdZone0FromPublic(tipoMaterial = "") {
+      const typeKey = normalizeMaterialType(tipoMaterial);
+      if (typeKey === "cartaz") return "Imagem (fixa ; bidimensional ; visual) : imediato";
+      if (typeKey === "audio") return "Som : áudio";
+      if (typeKey === "audiovisual") return "Imagem (animada ; bidimensional ; visual) : vídeo";
+      if (typeKey === "recurso_digital") return "Texto (visual) : eletrônico";
+      return "Texto (visual) : imediato";
+    }
+
+    function buildBookIsbdFallbackFromPublic(payload = {}) {
+      const tipoMaterial = payload?.tipoMaterial || "";
+      const materialTypeKey = normalizeMaterialType(tipoMaterial);
+      const zoneMap = {
+        "0": { label: "Forma do conteúdo e tipo de mediação", value: buildBookIsbdZone0FromPublic(tipoMaterial) },
+        "1": {
+          label: "Título e menção de responsabilidade",
+          value: [
+            String(payload?.titulo || "").trim(),
+            String(payload?.subtitulo || "").trim() ? ` : ${String(payload?.subtitulo || "").trim()}` : "",
+            String(payload?.autor || "").trim() ? ` / ${String(payload?.autor || "").trim()}` : ""
+          ].join("")
+        },
+        "2": { label: "Edição", value: String(payload?.edicao || "").trim() },
+        "3": {
+          label: "Dados específicos de recurso",
+          value: [
+            String(payload?.tituloPeriodico || "").trim(),
+            [
+              String(payload?.volume || "").trim() ? `vol. ${String(payload?.volume || "").trim()}` : "",
+              String(payload?.numero || "").trim() ? `n. ${String(payload?.numero || "").trim()}` : "",
+              String(payload?.fasciculo || "").trim() ? `fasc. ${String(payload?.fasciculo || "").trim()}` : ""
+            ].filter(Boolean).join(', '),
+            String(payload?.dataEdicao || "").trim() ? `(${String(payload?.dataEdicao || "").trim()})` : "",
+            String(payload?.periodicidade || "").trim() ? `periodicidade: ${String(payload?.periodicidade || "").trim()}` : ""
+          ].filter(Boolean).join(' ; ')
+        },
+        "4": {
+          label: "Publicação / produção / distribuição",
+          value: [
+            String(payload?.localPublicacao || "").trim(),
+            String(payload?.editora || "").trim() ? `${String(payload?.localPublicacao || "").trim() ? ' : ' : ''}${String(payload?.editora || "").trim()}` : "",
+            String(payload?.ano || "").trim() ? `${(String(payload?.localPublicacao || "").trim() || String(payload?.editora || "").trim()) ? ', ' : ''}${String(payload?.ano || "").trim()}` : ""
+          ].join("")
+        },
+        "5": {
+          label: "Descrição material",
+          value: (() => {
+            const pages = String(payload?.paginas || "").trim();
+            if (materialTypeKey === "audio") return "1 recurso sonoro";
+            if (materialTypeKey === "audiovisual") return "1 recurso audiovisual";
+            if (materialTypeKey === "recurso_digital") return "1 recurso eletrônico online";
+            if (materialTypeKey === "cartaz" || materialTypeKey === "tract") return "1 item";
+            if (!pages) return "";
+            return `${pages} p.`;
+          })()
+        },
+        "6": {
+          label: "Coleção",
+          value: String(payload?.colecao || "").trim() ? `(${String(payload?.colecao || "").trim()})` : ""
+        },
+        "7": {
+          label: "Notas",
+          value: [String(payload?.resumo || "").trim(), String(payload?.tradutor || "").trim() ? `Tradutor: ${String(payload?.tradutor || "").trim()}` : "", String(payload?.organizador || "").trim() ? `Organizador: ${String(payload?.organizador || "").trim()}` : ""].filter(Boolean).join(' . - ')
+        },
+        "8": {
+          label: "Identificadores e aquisição",
+          value: [String(payload?.isbn || "").trim() ? `ISBN ${String(payload?.isbn || "").trim()}` : "", String(payload?.issn || "").trim() ? `ISSN ${String(payload?.issn || "").trim()}` : ""].filter(Boolean).join(' ; ')
+        }
+      };
+      const order = ["0","1","2","3","4","5","6","7","8"];
+      const zones = Object.fromEntries(order.map((key) => [key, { label: zoneMap[key].label, value: zoneMap[key].value || null }]));
+      const statement = order.map((key) => zoneMap[key].value).filter(Boolean).join('. - ');
+      const filled = order.filter((key) => zoneMap[key].value);
+      return {
+        enabled: filled.length > 0,
+        prepared: false,
+        sourceLabel: "Leitura local montada na página do livro a partir dos campos públicos atuais.",
+        statement,
+        zones,
+        nonEmptyZones: filled
+      };
+    }
+
+    function getBookIsbdDisplayData(payload = {}) {
+      const bridge = getBookIsbdBridge(payload?.marcJson);
+      const bridgeZones = bridge?.zones && typeof bridge.zones === "object" ? bridge.zones : {};
+      const hasBridgeStatement = String(bridge?.statement || "").trim();
+      const hasBridgeZones = Object.values(bridgeZones).some((zone) => String(zone?.value || "").trim());
+      if (bridge?.enabled && (hasBridgeStatement || hasBridgeZones)) {
+        const zones = {};
+        ["0","1","2","3","4","5","6","7","8"].forEach((key) => {
+          const zone = bridgeZones?.[key];
+          zones[key] = {
+            label: String(zone?.label || `Zona ${key}`).trim(),
+            value: String(zone?.value || "").trim() || null
+          };
+        });
+        const nonEmptyZones = Object.keys(zones).filter((key) => String(zones[key]?.value || "").trim());
+        return {
+          enabled: true,
+          prepared: true,
+          sourceLabel: "Pacote técnico reutilizado de marc_json.anarbib_isbd.",
+          statement: String(bridge?.statement || "").trim(),
+          zones,
+          nonEmptyZones
+        };
+      }
+      return buildBookIsbdFallbackFromPublic(payload);
+    }
+
+    function renderBookIsbdPanel(isbdData = null) {
+      const statementEl = $("bookIsbdStatement");
+      const zonesEl = $("bookIsbdZones");
+      const noteEl = $("bookIsbdNote");
+      if (!statementEl || !zonesEl || !noteEl) return;
+      zonesEl.innerHTML = "";
+      const statement = String(isbdData?.statement || "").trim();
+      const nonEmptyZones = Array.isArray(isbdData?.nonEmptyZones) ? isbdData.nonEmptyZones : [];
+      noteEl.textContent = String(isbdData?.sourceLabel || "Leitura preparada a partir da ficha pública atual.").trim() || "Leitura preparada a partir da ficha pública atual.";
+      statementEl.textContent = statement || "Nenhuma descrição ISBD pôde ser montada com os dados públicos disponíveis.";
+      if (!nonEmptyZones.length) {
+        const empty = document.createElement("div");
+        empty.className = "isbd-empty";
+        empty.textContent = "Ainda não há zonas ISBD suficientes para exibição nesta página.";
+        zonesEl.appendChild(empty);
+        return;
+      }
+      nonEmptyZones.forEach((key) => {
+        const zone = isbdData?.zones?.[key];
+        if (!zone || !String(zone?.value || "").trim()) return;
+        const item = document.createElement("div");
+        item.className = "isbd-zone-item";
+        item.innerHTML = `<strong>Zona ${key} — ${escapeHtml(zone.label || `Zona ${key}`)}</strong><span>${escapeHtml(zone.value || "")}</span>`;
+        zonesEl.appendChild(item);
+      });
+    }
+
+    function setBookInfoMode(mode = "standard") {
+      currentBookInfoMode = mode === "isbd" ? "isbd" : "standard";
+      const currentPanel = $("bookInfoCurrentPanel");
+      const isbdPanel = $("bookIsbdPanel");
+      const toggleBtn = $("btnToggleIsbdInfo");
+      const sectionTitle = $("detailSectionTitle");
+      if (currentPanel) currentPanel.style.display = currentBookInfoMode === "isbd" ? "none" : "block";
+      if (isbdPanel) {
+        isbdPanel.classList.toggle("show", currentBookInfoMode === "isbd");
+        isbdPanel.setAttribute("aria-hidden", currentBookInfoMode === "isbd" ? "false" : "true");
+      }
+      if (toggleBtn) {
+        const pressed = currentBookInfoMode === "isbd";
+        toggleBtn.setAttribute("aria-pressed", pressed ? "true" : "false");
+        toggleBtn.textContent = pressed ? "Ver ficha usual" : "Ver visão ISBD";
+      }
+      if (sectionTitle) {
+        const standardTitle = sectionTitle.getAttribute("data-standard-title") || "Detalhes da edição";
+        const isbdTitle = sectionTitle.getAttribute("data-isbd-title") || "Descrição bibliográfica ISBD";
+        sectionTitle.textContent = currentBookInfoMode === "isbd" ? isbdTitle : standardTitle;
+      }
     }
 
     function joinContextParts(parts = []) {
@@ -3125,6 +3333,32 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       setPill("cddPill", "CDD", cdd, true);
 
       $("desc").textContent = descValue;
+      const isbdDisplayData = getBookIsbdDisplayData({
+        marcJson,
+        tipoMaterial,
+        titulo,
+        subtitulo,
+        autor,
+        edicao,
+        tituloPeriodico,
+        volume,
+        numero,
+        fasciculo,
+        dataEdicao,
+        periodicidade,
+        localPublicacao,
+        editora,
+        ano,
+        paginas,
+        colecao,
+        resumo: descValue,
+        tradutor,
+        organizador,
+        isbn,
+        issn
+      });
+      renderBookIsbdPanel(isbdDisplayData);
+      setBookInfoMode("standard");
 
       async function loadTombosForBook(bookRow, bib_ref, libraryContext = {}) {
         const matchedHolding = findHoldingForLibraryContext(bookRow?.holding_libraries_json, libraryContext);
@@ -3239,6 +3473,10 @@ async function fetchBookSessionContextForCurrentUser(bookRow = {}, bibRef = "") 
       const accessState = computeBookAccessState(data, libraryContext);
       setStatus(accessState.label, accessState.cls);
       setReserveButtonState(accessState);
+
+      $("btnToggleIsbdInfo").addEventListener("click", () => {
+        setBookInfoMode(currentBookInfoMode === "isbd" ? "standard" : "isbd");
+      });
 
       $("btnLer").addEventListener("click", async () => {
         const compatBibRef = firstNonEmptyString(bib_ref, data?.bib_ref);
