@@ -2084,7 +2084,7 @@
           <button id="catalogModeSimpleBtn" type="button" class="button small secondary" aria-pressed="false">Interface simples</button>
           <button id="catalogModeCompleteBtn" type="button" class="button small secondary" aria-pressed="false">Interface completa</button>
         </div>
-        <span id="catalogModeHint" class="small">Neste primeiro passo, este seletor atua sobre Fichas de livros e Fichas de autores sem alterar dados já salvos.</span>
+        <span id="catalogModeHint" class="small">Este seletor muda só a profundidade das fichas. Não altera dados já salvos.</span>
       </div>
     </section>
 
@@ -2124,11 +2124,11 @@
       <div class="panel-header">
         <div>
           <h3>Fichas de livros</h3>
-          <p>Trabalhe aqui a ficha comum como porta de entrada da ficha comum, separando com clareza identificadores, vínculo local, recurso digital e o que só será materializado depois na aba Exemplares.</p>
+          <p>Cadastre aqui a ficha comum. Separe identificadores, sinais locais, recursos digitais e o que só será criado depois em Exemplares.</p>
         </div>
         <div class="inline">
           <span id="bookDraftModePill" class="pill info">Novo rascunho</span>
-          <span id="bookIsbdStatusPill" class="pill warn">ISBD não preparado</span>
+          <span id="bookIsbdStatusPill" class="pill warn">ISBD não gerado</span>
           <button id="prepareBookIsbdBtn" type="button" class="button secondary">Preparar ISBD</button>
           <button id="bookDraftResetBtn" class="button ghost">Limpar formulário</button>
         </div>
@@ -2138,7 +2138,7 @@
 
         <div class="split">
           <div class="card">
-            <h4>Imagem de capa / frente</h4>
+            <h4>Capa</h4>
             <div class="cover-preview-frame is-empty" data-preview-kind="book">
               <img id="bookCoverPreview" class="cover-preview" alt="Pré-visualização da capa" />
               <div class="cover-preview-placeholder" aria-hidden="true">
@@ -2153,7 +2153,7 @@
                 <label for="bookCoverFile" class="file-button">Escolher arquivo</label>
                 <span id="bookCoverFileName" class="file-status">Nenhum arquivo selecionado</span>
               </div>
-              <small>O envio vai para a pasta <code>covers</code> do armazenamento. Você pode salvar o rascunho sem imagem e enviar depois.</small>
+              <small>O arquivo vai para a pasta <code>covers</code>. Você pode salvar a ficha sem imagem e enviar depois.</small>
             </div>
             <div class="actions">
               <button id="uploadBookCoverBtn" class="button secondary">Enviar capa</button>
@@ -2174,7 +2174,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Código local legado do vínculo local</label>
               <input id="bookBibRef" type="text" placeholder="Código local legado do vínculo local" />
-              <small>Apoio legado desta ficha. No backend atual, o código local publicado se ancora sobretudo em <code>book_holdings.local_bib_ref</code>; este campo continua útil como ponte legada, mas não substitui a camada de vínculo local nem o exemplar.</small>
+              <small>Campo legado. Hoje o código local publicado depende sobretudo de <code>book_holdings.local_bib_ref</code>. Este campo ajuda na retomada, mas não substitui o vínculo local nem o exemplar.</small>
             </div>
 
             <div class="field">
@@ -2200,15 +2200,15 @@
                   <h4 id="bookTypeGuideTitle" class="material-guide-title">Livro / brochura</h4>
                   <span id="bookTypeGuideModePill" class="pill info">Modo simples</span>
                 </div>
-                <div id="bookTypeGuideSummary" class="hint">Use o núcleo bibliográfico comum e abra a interface completa apenas quando precisar de mais detalhes editoriais e materiais.</div>
+                <div id="bookTypeGuideSummary" class="hint">Use o núcleo da ficha. Abra a interface completa só quando precisar de mais detalhe.</div>
                 <div class="material-guide-columns">
                   <div class="material-guide-block">
                     <strong>Foque agora</strong>
-                    <div id="bookTypeGuideSimple">Título, responsabilidades principais, editora, local, data, idioma e assuntos.</div>
+                    <div id="bookTypeGuideSimple">Título, autoria, editora, local, data, idioma e assuntos.</div>
                   </div>
                   <div class="material-guide-block mode-complete-only">
                     <strong>Abra na completa se precisar</strong>
-                    <div id="bookTypeGuideComplete">Coleção, detalhes materiais, observações detalhadas, identificadores detalhados e campos especializados.</div>
+                    <div id="bookTypeGuideComplete">Coleção, detalhes materiais, notas, identificadores e campos especiais.</div>
                   </div>
                 </div>
               </div>
@@ -2229,7 +2229,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Autores e outras responsabilidades</h4>
-                    <div class="hint">Use esta área para autor(a), coautor(a), coletivo, tradução, ilustração, prefácio e outras funções.</div>
+                    <div class="hint">Use aqui autor(a), coautor(a), coletivo, tradução, ilustração, prefácio e outras funções.</div>
                   </div>
                   <div class="row-actions">
                     <button id="addAuthorContributorBtn" type="button" class="button secondary small">Adicionar autor(a)</button>
@@ -2271,12 +2271,12 @@
               <div class="section-block">
                 <div>
                   <h4 class="section-title">Identificadores e publicações seriadas</h4>
-                  <div class="hint">Use ISBN para livros e brochuras. Use ISSN e os dados abaixo quando se tratar de periódico ou outra publicação seriada.</div>
+                  <div class="hint">Use ISBN para livros e brochuras. Use ISSN e os campos abaixo para periódicos e seriados.</div>
                 </div>
                 <div class="grid cols-3">
                   <div id="bookISBNField" class="field">
                     <label for="bookISBN">ISBN</label>
-                    <input id="bookISBN" type="text" placeholder="8527100053 ou 9788527409453" />
+                    <input id="bookISBN" type="text" placeholder="978-2-347-00368-5 ou 3-87061-077-8" />
                     <div class="row-actions">
                       <button id="openIsbnBnBtn" type="button" class="btn-inline small primary">Biblioteca Nacional</button>
                       <button id="openIsbnCblBtn" type="button" class="btn-inline small secondary">WorldCat</button>
@@ -2292,7 +2292,7 @@
                     <div class="row-actions">
                       <button id="openIssnPortalBtn" type="button" class="btn-inline small secondary">Buscar ISSN no Portal ISSN</button>
                     </div>
-                    <small>Para periódicos e outras publicações seriadas.</small>
+                    <small>Para periódicos e seriados.</small>
                   </div>
                 </div>
 
@@ -2300,7 +2300,7 @@
                   <div class="section-block">
                     <div>
                       <h4 class="section-title">Dados do periódico / boletim</h4>
-                      <div class="hint">Preencha aqui os dados específicos de revista, periódico ou boletim seriado: título-mãe, volume, número, fascículo, data e periodicidade.</div>
+                      <div class="hint">Preencha aqui título, volume, número, fascículo, data e periodicidade do seriado.</div>
                     </div>
                     <div class="grid cols-3">
                       <div class="field" style="padding:0; background:none; border:none;">
@@ -2567,7 +2567,7 @@
 
             <div class="form-flow-break">
               <strong>Vínculo local: aquisição, proveniência, pertencimento e alcance</strong>
-              <span>Registre aqui a camada local ligada à ficha comum: entrada, origem dos metadados, pertencimento, situação de rede e sinais de alcance local, sem confundir isso com o exemplar material nem com a ficha comum.</span>
+              <span>Registre aqui os sinais locais da ficha: entrada, origem, pertencimento e situação na rede, sem confundir isso com o exemplar.</span>
             </div>
 
             <div class="field">
@@ -2629,38 +2629,38 @@
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookProvenanceNote">Nota de proveniência</label>
               <textarea id="bookProvenanceNote" placeholder="Ex.: registro retomado do CSL Milano, corrigido localmente a partir do exemplar em mãos; lote de doação; importação semi-automática validada pela biblioteca."></textarea>
-              <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
-              <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
-              <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
+              <small>Os campos principais já ficam salvos. Use esta nota para registrar contexto, origem e revisão local.</small>
+              <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Nenhuma parceira selecionada.</div>
+              <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos entre bibliotecas:</strong> ainda não lidos nesta ficha.</div>
               <div id="bookRightsActionStrip" class="action-state-strip" aria-live="polite">
-                <span id="bookRightComparePill" class="pill warn">Comparação: não relida</span>
-                <span id="bookRightDraftPill" class="pill warn">Retomada local: não relida</span>
-                <span id="bookRightEnrichPill" class="pill warn">Camada local: não relida</span>
-                <span id="bookRightPublishPill" class="pill info">Publicação local: não relida</span>
-                <span id="bookRightSharedPill" class="pill warn">Camada comum: não relida</span>
-                <span id="bookRightMutualizePill" class="pill warn">Mutualização: não relida</span>
+                <span id="bookRightComparePill" class="pill warn">Comparação: pendente</span>
+                <span id="bookRightDraftPill" class="pill warn">Retomada local: pendente</span>
+                <span id="bookRightEnrichPill" class="pill warn">Camada local: pendente</span>
+                <span id="bookRightPublishPill" class="pill info">Publicação local: pendente</span>
+                <span id="bookRightSharedPill" class="pill warn">Camada comum: pendente</span>
+                <span id="bookRightMutualizePill" class="pill warn">Mutualização: pendente</span>
               </div>
-              <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida nesta ficha.</div>
+              <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Rastro dos metadados:</strong> ainda não lido nesta ficha.</div>
               <div class="catalog-layer-summary" style="margin-top:12px; margin-bottom:0;">
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Importado / retomado</div>
                   <div id="bookTraceImportedValue" class="catalog-layer-card-value">—</div>
-                  <div id="bookTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="bookTraceImportedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Relido localmente</div>
                   <div id="bookTraceReviewedValue" class="catalog-layer-card-value">—</div>
-                  <div id="bookTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="bookTraceReviewedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Conservado / levado</div>
                   <div id="bookTraceKeptValue" class="catalog-layer-card-value">—</div>
-                  <div id="bookTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="bookTraceKeptNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Recusado / bloqueado</div>
                   <div id="bookTraceRefusedValue" class="catalog-layer-card-value">—</div>
-                  <div id="bookTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="bookTraceRefusedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
               </div>
             </div>
@@ -2670,9 +2670,9 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Arquitetura documental desta ficha</h4>
-                    <div class="hint">Esta leitura estrutural separa o que já pertence à ficha comum, o que fica na camada de identificadores e referências, o que já existe apenas como sinais locais no rascunho, o que continua dependente da cadeia vínculo local + exemplar e o que já existe como recurso digital.</div>
+                    <div class="hint">Este quadro separa o que já é ficha comum, o que é identificador, o que já aparece como sinal local, o que ainda depende de vínculo + exemplar e o que já existe como recurso digital.</div>
                   </div>
-                  <span id="bookLayerArchitecturePill" class="pill info">Leitura por camadas</span>
+                  <span id="bookLayerArchitecturePill" class="pill info">Camadas</span>
                 </div>
                 <div class="book-public-preview-grid">
                   <div class="book-public-preview-card">
@@ -2683,31 +2683,31 @@
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Identificadores e referências</div>
                     <div id="bookLayerRefsTitle" class="book-public-preview-title">Sem leitura de identificadores ainda</div>
-                    <div id="bookLayerRefsBody" class="book-public-preview-line is-muted">ISBN, ISSN, periódico, origem externa e código local legado ainda não foram relidos como camada própria.</div>
+                    <div id="bookLayerRefsBody" class="book-public-preview-line is-muted">ISBN, ISSN, dados de periódico, origem externa e código local legado ainda não foram resumidos.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Vínculo local</div>
                     <div id="bookLayerHoldingTitle" class="book-public-preview-title">Sinais locais do vínculo ainda não preparados</div>
-                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.</div>
+                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Nesta aba, a ficha só prepara sinais locais. A camada publicada do vínculo ainda depende de holdings e exemplares.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Exemplar material local</div>
-                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Holding e exemplar material continuam fora desta aba</div>
+                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Holding e exemplar continuam fora desta aba</div>
                     <div id="bookLayerExemplarBody" class="book-public-preview-line is-muted">A ficha comum não cria sozinha nem o vínculo local publicado nem o exemplar material: holding, tombo, localização, estado físico e rótulo continuam separados.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Recurso digital</div>
                     <div id="bookLayerDigitalTitle" class="book-public-preview-title">Nenhum recurso digital relido</div>
-                    <div id="bookLayerDigitalBody" class="book-public-preview-line is-muted">Vínculos digitais, acesso e restrições ainda não foram relidos como camada própria.</div>
+                    <div id="bookLayerDigitalBody" class="book-public-preview-line is-muted">Recursos digitais, acesso e restrições ainda não foram resumidos.</div>
                   </div>
                 </div>
-                <div id="bookBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento backend:</strong> esta aba já sustenta a ficha comum e a camada digital do rascunho, mas ainda não materializa sozinha o vínculo local publicado.</div>
+                <div id="bookBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento com o sistema:</strong> esta aba já sustenta a ficha comum e a camada digital do rascunho, mas ainda não cria sozinha o vínculo local publicado.</div>
               </div>
             </div>
 
             <div class="form-flow-break">
               <strong>Recurso digital / leitura</strong>
-              <span>Vincule aqui um recurso digital já presente no armazenamento. Este bloco trata leitura e consulta digital, sem misturar isso com exemplares físicos.</span>
+              <span>Vincule aqui um recurso digital. Este bloco trata leitura e acesso digital, sem misturar isso com exemplares físicos.</span>
             </div>
 
             <input type="hidden" id="bookDigitalDraftResourceId" value="" />
@@ -2717,7 +2717,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Recurso digital em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Agora, além de alternar o recurso em edição, você já pode abrir cada vínculo na sua ação adequada: leitor interno para PDF/texto quando houver contexto suficiente, leitura integrada para áudio, vídeo e imagem, e abertura direta para fontes externas.</div>
+                    <div class="hint">A lista abaixo mostra todos os recursos digitais desta ficha. Você pode alternar o recurso em edição e abrir cada vínculo no modo mais adequado.</div>
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
@@ -2730,11 +2730,11 @@
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
-                    <div class="hint">Superfície visível multi-recursos: aqui aparecem todos os vínculos digitais já ligados ao rascunho, separados por famílias previstas, com abertura contextualizada e leitura coerente com o tipo de recurso.</div>
+                    <div class="hint">Aqui aparecem todos os vínculos digitais já ligados ao rascunho, por tipo de recurso e com a abertura adequada.</div>
                   </div>
                   <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
-                  <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
-                  <div id="bookDigitalBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento do sistema:</strong> ainda não relido.</div>
+                  <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da área:</strong> ainda não atualizada.</div>
+                  <div id="bookDigitalBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento com o sistema:</strong> ainda não lido.</div>
                   <div id="bookDigitalStatePills" class="stats" style="margin:12px 0 0;"></div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
@@ -2815,7 +2815,7 @@
             <div class="field" style="grid-column: span 3;">
               <label id="bookSubjectsLabel" for="bookSubjects">Assuntos</label>
               <textarea id="bookSubjects" placeholder="Trabalho ; sindicalismo ; história social"></textarea>
-              <small>Preencha manualmente ou aplique abaixo as sugestões da BN. Nada é gravado automaticamente sem sua ação.</small>
+              <small>Preencha manualmente ou aplique as sugestões da BN. Nada é gravado sem sua ação.</small>
             </div>
 
 
@@ -2825,17 +2825,17 @@
                 <div class="book-derived-summary-top">
                   <div>
                     <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Leitura curta do que esta ficha já define como ficha comum, do que ela já registra como camada local e do que ela já permite reler como acesso local.</div>
+                    <div class="hint">Resumo curto do que a ficha já define, do que já existe como sinal local e do que já pode ser lido como acesso.</div>
                   </div>
                   <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                 </div>
                 <div class="book-derived-summary-card">
                   <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
                   <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
-                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha comum: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais do vínculo: ainda não preparados.</div>
-                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação / recurso digital: —</div>
-                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos comuns: —</div>
+                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha: —</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais: ainda não preparados.</div>
+                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Acesso: —</div>
+                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
                 </div>
               </div>
             </div>
@@ -2845,7 +2845,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Leitura mínima do que esta ficha já sustenta como ficha comum e camada digital. Os sinais locais aqui abaixo continuam preparatórios: a camada local publicada ainda depende da cadeia vínculo local + exemplar.</div>
+                    <div class="hint">Prévia do que esta ficha já pode sustentar como ficha comum e camada digital. Os sinais locais abaixo ainda são preparatórios.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2858,20 +2858,20 @@
                     </div>
                     <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum visível na linha: —</div>
-                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Saída mínima da linha pública ainda não relida.</div>
-                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
+                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">A linha pública ainda não foi resumida.</div>
+                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
                     <div id="bookPublicCatalogResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
-                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local público mínimo: —</div>
+                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local mínimo: —</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Abertura da ficha</div>
                     <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Abertura da ficha comum: —</div>
-                    <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha pública ainda não relido.</div>
-                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
-                    <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital tornável público: —</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Passo restante da camada local: —</div>
-                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos comuns publicáveis: —</div>
+                    <div id="bookPublicFichaBody" class="book-public-preview-line">O corpo mínimo da ficha pública ainda não foi resumido.</div>
+                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
+                    <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Próximo passo da camada local: —</div>
+                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos publicáveis: —</div>
                   </div>
                 </div>
               </div>
@@ -2881,16 +2881,16 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Preparação ISBD para a página de índice</h4>
-                    <div class="hint">Este bloco não substitui a catalogação habitual. O botão “Preparar ISBD” relê a ficha atual segundo a ordem das zonas ISBD, gera uma descrição orientada pelo documento de referência e grava no <code>marc_json</code> um pacote técnico reutilizável pela página <code>index</code>.</div>
+                    <div class="hint">Este bloco não substitui o catalogação normal. O botão “Preparar ISBD” relê a ficha na ordem das zonas ISBD e grava no <code>marc_json</code> um pacote técnico que poderá ser usado pela página <code>index</code>.</div>
                   </div>
-                  <span id="bookIsbdModePill" class="pill warn">ISBD inativo</span>
+                  <span id="bookIsbdModePill" class="pill warn">ISBD desligado</span>
                 </div>
-                <div id="bookIsbdSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura ISBD:</strong> ainda não preparada neste rascunho.</div>
+                <div id="bookIsbdSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>ISBD:</strong> ainda não gerado neste rascunho.</div>
                 <div class="grid cols-3" style="margin-top:12px;">
                   <div class="field" style="grid-column: span 3;">
                     <label for="bookIsbdStatement">Descrição ISBD preparada</label>
-                    <textarea id="bookIsbdStatement" readonly placeholder="Clique em ‘Preparar ISBD’ para gerar a leitura ISBD desta ficha."></textarea>
-                    <small>Leitura de trabalho em zonas ISBD para reaproveitamento pela página de índice. Você pode continuar catalogando normalmente nesta aba.</small>
+                    <textarea id="bookIsbdStatement" readonly placeholder="Clique em “Preparar ISBD” para gerar a leitura desta ficha."></textarea>
+                    <small>Leitura de trabalho em zonas ISBD para uso futuro na página de índice. Você pode continuar catalogando normalmente nesta aba.</small>
                   </div>
                   <div class="field">
                     <label for="bookIsbdZone0">Zona 0 - forma do conteúdo e tipo de mediação</label>
@@ -2933,9 +2933,9 @@
             </div>
 
             <div class="field mode-complete-only" style="grid-column: span 3;">
-              <label for="bookMarcJson">Dados técnicos complementares (JSON, avançado)</label>
+              <label for="bookMarcJson">Dados técnicos complementares (JSON)</label>
               <textarea id="bookMarcJson" placeholder='{"245":{"a":"Título"},"100":{"a":"Autor"}}'></textarea>
-              <small>Opcional. Use apenas para complemento técnico avançado; a ficha principal continua no formulário em português claro.</small>
+              <small>Opcional. Use só para complemento técnico. A ficha principal continua neste formulário.</small>
             </div>
 
             <div class="field" style="grid-column: span 3;">
@@ -3102,7 +3102,7 @@
                   </div>
                   <span id="authorStructurePill" class="pill info">Autoridade em leitura</span>
                 </div>
-                <div id="authorStructureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura estrutural:</strong> ainda não atualizada.</div>
+                <div id="authorStructureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Camadas:</strong> ainda não atualizada.</div>
                 <div class="book-public-preview-grid">
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Forma retida</div>
@@ -3256,7 +3256,7 @@
               </div>
               <span id="exemplarActiveDraftsPill" class="pill info">Exemplares em curso</span>
             </div>
-            <div id="exemplarActiveDraftsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="exemplarActiveDraftsSummary" class="catalog-surface-summary"><strong>Leitura da área:</strong> ainda não atualizada.</div>
             <div id="exemplarActiveDraftsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -3948,14 +3948,14 @@
         <div class="catalog-published-grid">
           <div class="card catalog-published-card">
             <h4>Livros, brochuras e publicações seriadas</h4>
-            <div id="catalogBooksSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="catalogBooksSummary" class="catalog-surface-summary"><strong>Leitura da área:</strong> ainda não atualizada.</div>
             <div id="catalogBooksWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Documentos não-livro e materiais especiais</h4>
             <p class="hint" style="margin:0 0 12px;">Leitura visual separada para tractos, cartazes, áudios, audiovisuais, recursos digitais, dossiês e outros materiais especiais.</p>
-            <div id="catalogOtherDocsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="catalogOtherDocsSummary" class="catalog-surface-summary"><strong>Leitura da área:</strong> ainda não atualizada.</div>
             <div id="catalogOtherDocsWrap" class="table-wrap"></div>
           </div>
 
@@ -3989,13 +3989,13 @@
                 <div id="catalogAuthorsFilterSummary" class="hint">Sem filtro específico nos autores publicados.</div>
               </div>
             </div>
-            <div id="catalogAuthorsSurfaceSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="catalogAuthorsSurfaceSummary" class="catalog-surface-summary"><strong>Leitura da área:</strong> ainda não atualizada.</div>
             <div id="catalogAuthorsWrap" class="table-wrap"></div>
           </div>
 
           <div class="card catalog-published-card">
             <h4>Exemplares publicados</h4>
-            <div id="catalogExemplarsSummary" class="catalog-surface-summary"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+            <div id="catalogExemplarsSummary" class="catalog-surface-summary"><strong>Leitura da área:</strong> ainda não atualizada.</div>
             <div id="catalogExemplarsWrap" class="table-wrap"></div>
           </div>
         </div>
@@ -4019,7 +4019,7 @@
               </div>
               <span id="partnerArchitecturePill" class="pill info">Camadas da cooperação</span>
             </div>
-            <div id="partnerArchitectureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Leitura estrutural:</strong> ainda não atualizada.</div>
+            <div id="partnerArchitectureSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Camadas:</strong> ainda não atualizada.</div>
             <div class="book-public-preview-grid">
               <div class="book-public-preview-card">
                 <div class="book-public-preview-eyebrow">Recepção artesanal</div>
@@ -4304,22 +4304,22 @@
             <div class="catalog-layer-card">
               <div class="catalog-layer-card-title">Importado / retomado</div>
               <div id="partnerTraceImportedValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerTraceImportedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+              <div id="partnerTraceImportedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
             </div>
             <div class="catalog-layer-card">
               <div class="catalog-layer-card-title">Relido localmente</div>
               <div id="partnerTraceReviewedValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerTraceReviewedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+              <div id="partnerTraceReviewedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
             </div>
             <div class="catalog-layer-card">
               <div class="catalog-layer-card-title">Conservado / levado</div>
               <div id="partnerTraceKeptValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerTraceKeptNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+              <div id="partnerTraceKeptNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
             </div>
             <div class="catalog-layer-card">
               <div class="catalog-layer-card-title">Recusado / bloqueado</div>
               <div id="partnerTraceRefusedValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerTraceRefusedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+              <div id="partnerTraceRefusedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
             </div>
           </div>
 
@@ -4589,22 +4589,22 @@
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Estado da comparação</div>
                   <div id="partnerCompareStateValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerCompareStateNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerCompareStateNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Escrita local</div>
                   <div id="partnerCompareWriteValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerCompareWriteNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerCompareWriteNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Camada protegida</div>
                   <div id="partnerCompareProtectedValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerCompareProtectedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerCompareProtectedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Bloqueios atuais</div>
                   <div id="partnerCompareBlockersValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerCompareBlockersNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerCompareBlockersNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -4686,22 +4686,22 @@
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Estado da preparação</div>
                   <div id="partnerImportStateValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerImportStateNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerImportStateNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Escrita local</div>
                   <div id="partnerImportWriteValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerImportWriteNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerImportWriteNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Camada protegida</div>
                   <div id="partnerImportProtectedValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerImportProtectedNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerImportProtectedNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
                 <div class="catalog-layer-card">
                   <div class="catalog-layer-card-title">Bloqueios atuais</div>
                   <div id="partnerImportBlockersValue" class="catalog-layer-card-value">—</div>
-                  <div id="partnerImportBlockersNote" class="catalog-layer-card-note">Sem releitura local ainda.</div>
+                  <div id="partnerImportBlockersNote" class="catalog-layer-card-note">Ainda sem revisão local.</div>
                 </div>
               </div>
               <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -5931,11 +5931,11 @@
     function setBookIsbdStatusUi(enabled = false, prepared = false) {
       if (refs.bookIsbdStatusPill) {
         refs.bookIsbdStatusPill.className = `pill ${enabled ? (prepared ? 'ok' : 'info') : 'warn'}`;
-        refs.bookIsbdStatusPill.textContent = enabled ? (prepared ? 'ISBD preparado' : 'ISBD em preparo') : 'ISBD não preparado';
+        refs.bookIsbdStatusPill.textContent = enabled ? (prepared ? 'ISBD preparado' : 'ISBD em preparo') : 'ISBD não gerado';
       }
       if (refs.bookIsbdModePill) {
         refs.bookIsbdModePill.className = `pill ${enabled ? (prepared ? 'ok' : 'info') : 'warn'}`;
-        refs.bookIsbdModePill.textContent = enabled ? (prepared ? 'Pacote ISBD ativo' : 'Pacote ISBD parcial') : 'ISBD inativo';
+        refs.bookIsbdModePill.textContent = enabled ? (prepared ? 'Pacote ISBD ativo' : 'Pacote ISBD parcial') : 'ISBD desligado';
       }
       const trigger = el('prepareBookIsbdBtn');
       if (trigger) trigger.textContent = enabled ? 'Atualizar ISBD' : 'Preparar ISBD';
@@ -5944,7 +5944,7 @@
     function clearBookIsbdPreparationUi() {
       el('bookIsbdEnabled').value = '';
       setBookIsbdStatusUi(false, false);
-      if (refs.bookIsbdSummary) refs.bookIsbdSummary.innerHTML = '<strong>Leitura ISBD:</strong> ainda não preparada neste rascunho.';
+      if (refs.bookIsbdSummary) refs.bookIsbdSummary.innerHTML = '<strong>ISBD:</strong> ainda não gerado neste rascunho.';
       if (refs.bookIsbdStatement) refs.bookIsbdStatement.value = '';
       ['0','1','2','3','4','5','6','7','8'].forEach(zone => {
         const node = refs[`bookIsbdZone${zone}`];
@@ -6141,7 +6141,7 @@
       });
       const count = preparation.nonEmptyZones?.length || 0;
       if (refs.bookIsbdSummary) {
-        refs.bookIsbdSummary.innerHTML = `<strong>Leitura ISBD:</strong> ${count} zona(s) preenchida(s) nesta preparação. A ordem segue a estrutura ISBD e o pacote técnico será mantido em <code>marc_json.anarbib_isbd</code> para reaproveitamento pela página <code>index</code>.`;
+        refs.bookIsbdSummary.innerHTML = `<strong>ISBD:</strong> ${count} zona(s) preenchida(s). A ordem segue a estrutura ISBD e o pacote técnico fica salvo em <code>marc_json.anarbib_isbd</code> para uso futuro na página <code>index</code>.`;
       }
     }
 
@@ -6159,7 +6159,7 @@
       renderBookIsbdPreparation(preparation, { enable: true });
       const merged = applyBookIsbdPreparationToMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), preparation, true);
       el('bookMarcJson').value = JSON.stringify(merged, null, 2);
-      if (announce) showMessage(refs.bookMessage, 'Preparação ISBD atualizada a partir da ficha atual.', 'ok');
+      if (announce) showMessage(refs.bookMessage, 'ISBD atualizado a partir da ficha.', 'ok');
       return preparation;
     }
 
@@ -7656,7 +7656,7 @@
       if (!summaryNode || !pillsNode) return;
       const safeRecords = Array.isArray(records) ? records : [];
       if (!safeRecords.length) {
-        summaryNode.innerHTML = '<strong>Alinhamento do sistema:</strong> esta ficha ainda não prepara nenhuma camada digital ativa. Quando houver vínculos, esta área relerá separadamente o que fica só no rascunho, o que pode sustentar leitura pública e o que permanece restrito à conta ativa.';
+        summaryNode.innerHTML = '<strong>Alinhamento com o sistema:</strong> esta ficha ainda não tem camada digital ativa. Quando houver vínculos, esta área mostrará o que fica só no rascunho, o que pode sair ao público e o que continua restrito.';
         pillsNode.innerHTML = '';
         return;
       }
@@ -7676,24 +7676,24 @@
       });
 
       const actionParts = [];
-      if (familyCounts.pdf) actionParts.push(`${familyCounts.pdf} PDF/texto com leitura pelo leitor interno quando houver arquivo local e contexto suficiente`);
+      if (familyCounts.pdf) actionParts.push(`${familyCounts.pdf} PDF/texto com leitor interno quando possível`);
       if (familyCounts.audio || familyCounts.video || familyCounts.image) {
-        actionParts.push(`${familyCounts.audio + familyCounts.video + familyCounts.image} áudio/vídeo/imagem com leitura integrada nesta tela`);
+        actionParts.push(`${familyCounts.audio + familyCounts.video + familyCounts.image} áudio/vídeo/imagem com leitura nesta tela`);
       }
       if (familyCounts.external) actionParts.push(`${familyCounts.external} link(s) externo(s) com abertura direta`);
       if (familyCounts.generic) actionParts.push(`${familyCounts.generic} recurso(s) genérico(s) com abertura contextual`);
 
       const publicationParts = [];
-      if (publicCount) publicationParts.push(`${publicCount} vínculo(s) já pode(m) sustentar saída pública quando validado(s)`);
-      if (restrictedCount) publicationParts.push(`${restrictedCount} vínculo(s) permanece(m) restrito(s) à conta ativa ou à preparação local`);
-      if (validatedCount) publicationParts.push(`${validatedCount} já marcado(s) com correspondência bibliográfica validada`);
-      if (primaryCount) publicationParts.push(`${primaryCount} principal(is) na camada digital ativa`);
+      if (publicCount) publicationParts.push(`${publicCount} vínculo(s) já pode(m) sustentar saída pública quando validados`);
+      if (restrictedCount) publicationParts.push(`${restrictedCount} vínculo(s) continuam restritos à conta ativa ou à preparação local`);
+      if (validatedCount) publicationParts.push(`${validatedCount} já marcado(s) como validados`);
+      if (primaryCount) publicationParts.push(`${primaryCount} principal(is) na camada digital`);
 
       const currentLabel = currentRecord?.id
-        ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
-        : 'nenhum recurso específico aberto agora';
+        ? `recurso #${sanitize(String(currentRecord.id))} aberto no formulário`
+        : 'nenhum recurso aberto agora';
 
-      summaryNode.innerHTML = `<strong>Alinhamento do sistema:</strong> a camada digital deste rascunho já diferencia leitura local, leitura pública validada e abertura contextual por família. ${sanitize(actionParts.join(' · ') || 'Sem ação relida.')} · ${sanitize(publicationParts.join(' · ') || 'Sem estado de publicação relido.')} · ${sanitize(currentLabel)}.`;
+      summaryNode.innerHTML = `<strong>Alinhamento com o sistema:</strong> a camada digital deste rascunho já separa leitura local, leitura pública e abertura por tipo. ${sanitize(actionParts.join(' · ') || 'Sem ação lida.')} · ${sanitize(publicationParts.join(' · ') || 'Sem estado de publicação lido.')} · ${sanitize(currentLabel)}.`;
 
       pillsNode.innerHTML = [
         `<span class="pill info">${safeRecords.length} ativo(s)</span>`,
@@ -7709,7 +7709,7 @@
       if (!summaryNode) return;
       const safeRecords = Array.isArray(records) ? records : [];
       if (!safeRecords.length) {
-        summaryNode.innerHTML = '<strong>Leitura da superfície:</strong> esta ficha comum ainda não tem recursos digitais vinculados.';
+        summaryNode.innerHTML = '<strong>Leitura da área:</strong> esta ficha ainda não tem recursos digitais vinculados.';
         renderBookDigitalBackendAlignmentSummary([], null);
         return;
       }
@@ -7728,9 +7728,9 @@
       const publicCount = safeRecords.filter((record) => isBookDigitalResourcePublic(record)).length;
       const restrictedCount = Math.max(safeRecords.length - publicCount, 0);
       const currentLabel = currentRecord?.id
-        ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
-        : 'nenhum recurso específico aberto agora; o formulário está pronto para outro vínculo';
-      summaryNode.innerHTML = `<strong>Leitura da superfície:</strong> ${safeRecords.length} recurso(s) digital(is) já ligados a esta ficha comum · famílias visíveis: ${sanitize(familySummary)} · ${primaryCount} principal(is) · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${validatedCount} com correspondência validada · ${currentLabel}.`;
+        ? `recurso #${sanitize(String(currentRecord.id))} aberto no formulário`
+        : 'nenhum recurso aberto agora; o formulário está pronto para outro vínculo';
+      summaryNode.innerHTML = `<strong>Leitura da área:</strong> ${safeRecords.length} recurso(s) digital(is) nesta ficha · tipos: ${sanitize(familySummary)} · ${primaryCount} principal(is) · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${validatedCount} validado(s) · ${currentLabel}.`;
       renderBookDigitalBackendAlignmentSummary(safeRecords, currentRecord);
     }
 
@@ -8556,7 +8556,7 @@
       summaryBits.push(hasSource ? 'Há proveniência ou identificadores mínimos nesta autoridade.' : 'Ainda não há proveniência nem identificadores relidos.');
       summaryBits.push(publicBits.length ? 'A saída pública mínima já pode ser relida.' : 'A saída pública mínima ainda está incompleta.');
       summaryBits.push(batchId ? `Esta autoridade está ligada a ${batchLabel}.` : 'Esta autoridade ainda não está ligada a lote.');
-      refs.authorStructureSummary.innerHTML = `<strong>Leitura estrutural:</strong> ${sanitize(summaryBits.join(' '))}`;
+      refs.authorStructureSummary.innerHTML = `<strong>Camadas:</strong> ${sanitize(summaryBits.join(' '))}`;
     }
 
     function extractAuthorStructuredMetaFromNotes(notes = '') {
@@ -10773,18 +10773,18 @@
       }
 
       const notes = compactSpaces(el('bookNotes')?.value || '');
-      if (notes) documentContextParts.push(`Nota documental: ${truncatePreviewText(notes, 110)}`);
+      if (notes) documentContextParts.push(`Nota: ${truncatePreviewText(notes, 110)}`);
 
       const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
       const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
       const legacyBibRef = compactSpaces(el('bookBibRef')?.value || '');
-      if (holderLibrary) localLayerParts.push(`detida em ${holderLibrary}`);
+      if (holderLibrary) localLayerParts.push(`em ${holderLibrary}`);
       if (ownerLibrary && ownerLibrary !== holderLibrary) localLayerParts.push(`propriedade: ${ownerLibrary}`);
       if (acquisitionModeLabel) localLayerParts.push(`entrada: ${acquisitionModeLabel}`);
       if (acquisitionDate) localLayerParts.push(`data: ${acquisitionDate}`);
       if (acquisitionSourceLabel) localLayerParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) localLayerParts.push(`rede: ${mutualizationStatusLabel}`);
-      if (legacyBibRef) localLayerParts.push(`código local legado do vínculo: ${legacyBibRef}`);
+      if (legacyBibRef) localLayerParts.push(`código local legado: ${legacyBibRef}`);
       if (provenanceNote) localLayerParts.push(`proveniência: ${truncatePreviewText(provenanceNote, 100)}`);
 
       const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
@@ -10800,7 +10800,7 @@
       const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
 
       const accessParts = [];
-      accessParts.push(loanable ? 'empréstimo local possível' : 'consulta local / circulação restrita');
+      accessParts.push(loanable ? 'empréstimo local' : 'consulta local / restrita');
       if (linkedDigitalResources.length) {
         const digitalParts = [`${linkedDigitalResources.length} vínculo(s) digital(is)`];
         if (familySummary) digitalParts.push(`famílias: ${familySummary}`);
@@ -10808,7 +10808,7 @@
         if (linkedDigitalRestrictedCount) digitalParts.push(`${linkedDigitalRestrictedCount} restrito(s)`);
         accessParts.push(joinSummaryParts(digitalParts));
       } else if (digitalLinked) {
-        accessParts.push(digitalPublic ? 'recurso digital público vinculado' : 'recurso digital restrito vinculado');
+        accessParts.push(digitalPublic ? 'recurso digital público' : 'recurso digital restrito');
       } else if (materialType === 'recurso_digital' && (digitalNativeAccess || digitalNativeRestriction || digitalNativeUsage)) {
         accessParts.push(joinSummaryParts([
           digitalNativeUsage ? `uso: ${digitalNativeUsage}` : '',
@@ -10816,13 +10816,13 @@
           digitalNativeRestriction ? `restrição: ${digitalNativeRestriction}` : '',
         ]));
       }
-      if (holderLibrary || ownerLibrary) accessParts.push(`biblioteca de uso: ${holderLibrary || ownerLibrary}`);
+      if (holderLibrary || ownerLibrary) accessParts.push(`biblioteca: ${holderLibrary || ownerLibrary}`);
 
       const documentContext = documentContextParts.filter(Boolean).join(' — ');
       const localContext = localLayerParts.filter(Boolean).join(' · ');
       const combinedContextParts = [];
-      if (documentContext) combinedContextParts.push(`Contexto documental: ${documentContext}`);
-      if (localContext) combinedContextParts.push(`Sinais locais do vínculo: ${localContext}`);
+      if (documentContext) combinedContextParts.push(`Contexto: ${documentContext}`);
+      if (localContext) combinedContextParts.push(`Sinais locais: ${localContext}`);
 
       const commonMetaParts = [];
       const commonLayer = commonLayerParts.filter(Boolean).join(' · ');
@@ -10832,9 +10832,9 @@
       return {
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
-        meta: `Ficha comum: ${commonMetaParts.join(' — ') || 'núcleo comum ainda incompleto'}`,
-        context: combinedContextParts.join(' — ') || 'Sinais locais do vínculo: ainda não preparados.',
-        derivedContext: localContext ? `Sinais locais do vínculo: ${localContext}` : 'Sinais locais do vínculo: ainda não preparados.',
+        meta: `Ficha: ${commonMetaParts.join(' — ') || 'núcleo comum ainda incompleto'}`,
+        context: combinedContextParts.join(' — ') || 'Sinais locais: ainda não preparados.',
+        derivedContext: localContext ? `Sinais locais: ${localContext}` : 'Sinais locais: ainda não preparados.',
         access: accessParts.join(' · ') || '—',
         subjects: subjects || '—',
       };
@@ -10901,27 +10901,27 @@
       if (importMethodLabel) refParts.push(`método: ${importMethodLabel}`);
       if (sourceRecordUrl) refParts.push(`URL-fonte: ${truncatePreviewText(sourceRecordUrl, 90)}`);
       const refsTitle = refParts.length ? 'Identificadores e referências já relidos' : 'Sem leitura de identificadores ainda';
-      const refsBody = refParts.length ? refParts.join(' · ') : 'ISBN, ISSN, periódico, origem externa e código local legado ainda não foram relidos como camada própria.';
+      const refsBody = refParts.length ? refParts.join(' · ') : 'ISBN, ISSN, dados de periódico, origem externa e código local legado ainda não foram resumidos.';
 
       const holdingParts = [];
-      if (holderLibrary) holdingParts.push(`detida em ${holderLibrary}`);
+      if (holderLibrary) holdingParts.push(`em ${holderLibrary}`);
       if (ownerLibrary && ownerLibrary !== holderLibrary) holdingParts.push(`propriedade: ${ownerLibrary}`);
       if (acquisitionModeLabel) holdingParts.push(`entrada: ${acquisitionModeLabel}`);
       if (acquisitionSourceLabel) holdingParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) holdingParts.push(`rede: ${mutualizationStatusLabel}`);
-      const holdingTitle = holdingParts.length ? 'Sinais locais do vínculo já preparados' : 'Vínculo local ainda não materializado';
+      const holdingTitle = holdingParts.length ? 'Sinais locais do vínculo já preparados' : 'Sinais locais ainda não preparados';
       const holdingBody = holdingParts.length
         ? `${holdingParts.join(' · ')} · estes sinais ainda dependem de holding e exemplar para virar camada local publicada.`
-        : 'Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.';
+        : 'Nesta aba, a ficha só prepara sinais locais. A camada publicada do vínculo ainda depende de holdings e exemplares.';
 
-      const exemplarTitle = 'Holding e exemplar material continuam fora desta aba';
+      const exemplarTitle = 'Holding e exemplar continuam fora desta aba';
       const exemplarBody = joinSummaryParts([
-        loanable ? 'circulação padrão: empréstimo local possível' : 'circulação padrão: consulta local / restrição',
-        'holding, tombo, localização, estado físico e rótulo continuam separados desta aba',
+        loanable ? 'circulação padrão: empréstimo local' : 'circulação padrão: consulta local / restrita',
+        'holding, tombo, localização, estado físico e rótulo continuam fora desta aba',
       ]);
 
       let digitalTitle = 'Nenhum recurso digital relido';
-      let digitalBody = 'Vínculos digitais, acesso e restrições ainda não foram relidos como camada própria.';
+      let digitalBody = 'Recursos digitais, acesso e restrições ainda não foram resumidos.';
       if (linkedDigitalResources.length) {
         const familyMap = new Map();
         linkedDigitalResources.forEach((record) => {
@@ -10983,18 +10983,18 @@
       ].some(Boolean);
 
       const parts = [];
-      parts.push('a ficha comum deste formulário já grava e publica a notice comum');
+      parts.push('esta aba já grava e publica a ficha comum');
       if (hasDigitalDraftLayer || hasDigitalNative) {
         parts.push(hasDigitalDraftLayer
-          ? 'a camada digital deste rascunho já se apoia na trilha rascunho → publicado'
-          : 'a descrição digital nativa já acompanha a notice comum publicada');
+          ? 'a camada digital deste rascunho já segue a trilha rascunho → publicado'
+          : 'a descrição digital nativa já acompanha a ficha comum publicada');
       } else {
         parts.push('a camada digital continua opcional nesta aba');
       }
       parts.push(localSignals.length
         ? 'os sinais locais já podem ser preparados aqui, mas ainda não substituem o vínculo local publicado'
-        : 'a camada local publicada ainda não começa nesta aba');
-      parts.push('o vínculo local publicado continua dependendo de holdings e exemplares');
+        : 'a camada local publicada ainda não começa aqui');
+      parts.push('o vínculo local publicado ainda depende de holdings e exemplares');
       if (publishedBookId) parts.push(`esta ficha já está ligada ao publicado #${publishedBookId}`);
 
       target.innerHTML = `<strong>Alinhamento backend:</strong> ${sanitize(parts.join(' · '))}.`;
@@ -11004,7 +11004,7 @@
       if (!refs.bookLayerNoticeTitle) return;
       const preview = buildBookLayerArchitecturePreview();
       if (refs.bookLayerArchitecturePill) {
-        refs.bookLayerArchitecturePill.textContent = state.catalogacaoMode === 'complete' ? 'Leitura estrutural completa' : 'Leitura estrutural';
+        refs.bookLayerArchitecturePill.textContent = state.catalogacaoMode === 'complete' ? 'Leitura completa' : 'Camadas';
         refs.bookLayerArchitecturePill.className = `pill ${state.catalogacaoMode === 'complete' ? 'warning' : 'info'}`;
       }
       refs.bookLayerNoticeTitle.textContent = preview.noticeTitle;
@@ -11031,8 +11031,8 @@
       refs.bookDerivedSummaryTitle.textContent = summary.title;
       refs.bookDerivedSummaryMeta.textContent = summary.meta;
       refs.bookDerivedSummaryContext.textContent = summary.derivedContext || summary.context;
-      refs.bookDerivedSummaryAccess.textContent = `Circulação / recurso digital: ${summary.access}`;
-      refs.bookDerivedSummarySubjects.textContent = `Assuntos comuns: ${summary.subjects}`;
+      refs.bookDerivedSummaryAccess.textContent = `Acesso: ${summary.access}`;
+      refs.bookDerivedSummarySubjects.textContent = `Assuntos: ${summary.subjects}`;
       updateBookLayerArchitecturePreview();
     }
 
@@ -11407,13 +11407,13 @@
         displayLibrary,
         catalogTitle: summary.title,
         catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinais locais preparados: ${publicLineSignal}`,
-        catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
+        catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'A linha pública ainda não foi resumida.',
         catalogHolding: publicCatalogHoldingText,
         catalogResource: publicCatalogResourceText,
         catalogAccess: joinSummaryParts(catalogAccessParts) || 'nenhum sinal local do vínculo foi preparado ainda.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
-        fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
+        fichaBody: joinSummaryParts(publicFichaBodyParts) || 'O corpo mínimo da ficha pública ainda não foi resumido.',
         fichaHolding: publicFichaHoldingText,
         fichaResource: publicFichaResourceText,
         fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'o vínculo local publicado ainda depende de holding e exemplar.',
@@ -11433,16 +11433,16 @@
       refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
       refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
       refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
-      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.catalogHolding}`;
+      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Sinais locais preparados: ${preview.catalogHolding}`;
       if (refs.bookPublicCatalogResource) refs.bookPublicCatalogResource.textContent = `Recurso digital publicável: ${preview.catalogResource}`;
-      refs.bookPublicCatalogAccess.textContent = `Sinal local mínimo já legível: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogAccess.textContent = `Sinal local mínimo: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
       refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
       refs.bookPublicFichaBody.textContent = preview.fichaBody;
-      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.fichaHolding}`;
-      if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital tornável público: ${preview.fichaResource}`;
-      refs.bookPublicFichaAccess.textContent = `Passo restante da camada local: ${preview.fichaAccess}`;
-      refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
+      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Sinais locais preparados: ${preview.fichaHolding}`;
+      if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital publicável: ${preview.fichaResource}`;
+      refs.bookPublicFichaAccess.textContent = `Próximo passo da camada local: ${preview.fichaAccess}`;
+      refs.bookPublicFichaSubjects.textContent = `Assuntos publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
       renderBookMetadataTraceSummary();
     }
@@ -20111,16 +20111,16 @@ function initPartnerProbeUi() {
 
     return {
       heading,
-      layerLine: 'Esta leitura continua no nível ficha comum + vínculo local; exemplares locais e rótulos ficam em superfícies próprias.',
+      layerLine: 'Esta leitura fica no nível ficha comum + vínculo local. Exemplares e rótulos aparecem em áreas próprias.',
       sourceLine: sourceParts.join(' '),
-      policyLine: policyHint || 'Sem leitura documental específica desta parceira nesta ficha.',
+      policyLine: policyHint || 'Sem leitura específica desta parceira nesta ficha.',
     };
   }
 
   function updateBookInterlibraryRightsSummary() {
     if (!refs.bookInterlibraryRightsSummary) return;
     const meta = getBookCurrentInterlibraryRightsMeta();
-    refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos interbibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.layerLine)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
+    refs.bookInterlibraryRightsSummary.innerHTML = `<strong>Direitos entre bibliotecas:</strong> ${sanitize(meta.heading)} ${sanitize(meta.layerLine)} ${sanitize(meta.sourceLine)} ${sanitize(meta.policyLine)}`;
     renderBookMetadataTraceSummary();
   }
 
@@ -20157,24 +20157,24 @@ function initPartnerProbeUi() {
       keptCount,
       refusedCount,
       importedNote: importedCount
-        ? `Camada de proveniência já identifica ${importedCount} marcador(es) estruturados de origem, formato ou modo de retomada.`
-        : 'Ainda sem marcador estruturado de origem ou importação nesta ficha.',
+        ? `A proveniência já mostra ${importedCount} marcador(es) de origem, formato ou modo de retomada.`
+        : 'Ainda sem marcador estruturado de origem ou importação.',
       reviewedNote: reviewedCount
-        ? `A nota de proveniência já traz ${reviewedCount} linha(s) de releitura humana local.`
-        : 'Ainda sem releitura humana visível na nota de proveniência.',
+        ? `A nota de proveniência já traz ${reviewedCount} linha(s) de revisão local.`
+        : 'Ainda sem revisão local visível na nota de proveniência.',
       keptNote: keptCount
-        ? `${keptCount} gesto(s) de conservação, retomada ou validação local já ficaram legíveis nesta ficha.`
-        : 'Ainda sem gesto explícito de conservação ou retomada local legível nesta ficha.',
+        ? `${keptCount} gesto(s) de conservação, retomada ou validação já aparecem nesta ficha.`
+        : 'Ainda sem gesto claro de conservação ou retomada nesta ficha.',
       refusedNote: refusedCount
-        ? `${refusedCount} recusa(s), bloqueio(s) ou exclusão(ões) já ficaram legíveis nesta ficha.`
-        : 'Ainda sem recusa ou bloqueio explícito legível nesta ficha.',
+        ? `${refusedCount} recusa(s), bloqueio(s) ou exclusão(ões) já aparecem nesta ficha.`
+        : 'Ainda sem recusa ou bloqueio explícito nesta ficha.',
     };
   }
 
   function renderBookMetadataTraceSummary() {
     if (!refs.bookMetadataTraceSummary) return;
     const meta = getBookMetadataTraceState();
-    refs.bookMetadataTraceSummary.innerHTML = `<strong>Traçabilidade dos metadados:</strong> origem/importação ${sanitize(String(meta.importedCount))}, releitura local ${sanitize(String(meta.reviewedCount))}, conservação ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
+    refs.bookMetadataTraceSummary.innerHTML = `<strong>Rastro dos metadados:</strong> origem/importação ${sanitize(String(meta.importedCount))}, revisão local ${sanitize(String(meta.reviewedCount))}, conservação ${sanitize(String(meta.keptCount))} e recusas/bloqueios ${sanitize(String(meta.refusedCount))}.`;
     if (refs.bookTraceImportedValue) refs.bookTraceImportedValue.textContent = String(meta.importedCount);
     if (refs.bookTraceImportedNote) refs.bookTraceImportedNote.textContent = meta.importedNote;
     if (refs.bookTraceReviewedValue) refs.bookTraceReviewedValue.textContent = String(meta.reviewedCount);
@@ -21063,7 +21063,7 @@ ${decisionSummary}` : '',
         ? 'saída normal já criada'
         : (eligibleItems.length ? 'saída normal pronta' : 'saída normal ainda não pronta'));
 
-    partnerArchitectureSummaryEl.innerHTML = `<strong>Leitura estrutural:</strong> recepção ${sanitize(runId ? 'em revisão' : (incomingFile ? (hasIncomingAnalysis ? 'já relida localmente' : 'ainda sem leitura local') : 'ainda não iniciada'))}; ${sanitize(governanceState)}; ${sanitize(compareState)}; ${sanitize(importState)}; ${sanitize(outputState)}.`;
+    partnerArchitectureSummaryEl.innerHTML = `<strong>Camadas:</strong> recepção ${sanitize(runId ? 'em revisão' : (incomingFile ? (hasIncomingAnalysis ? 'já relida localmente' : 'ainda sem leitura local') : 'ainda não iniciada'))}; ${sanitize(governanceState)}; ${sanitize(compareState)}; ${sanitize(importState)}; ${sanitize(outputState)}.`;
   }
 
   function renderPartnerFocusSurfaceSummary() {
@@ -22441,7 +22441,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     if (mode === 'free') {
       compareNodes.forEach((node) => { node.disabled = false; });
       importNodes.forEach((node) => { node.disabled = false; });
-      bookPartnerPolicyHintEl.textContent = 'Sem fonte de parceira selecionada para governança documental específica.';
+      bookPartnerPolicyHintEl.textContent = 'Nenhuma parceira selecionada.';
       renderBookPartnerActionStrip('free', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
