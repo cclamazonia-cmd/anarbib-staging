@@ -359,6 +359,19 @@
     .pill.info { background: rgba(29, 78, 216, 0.16); color: #dbeafe; }
     .pill.danger { background: rgba(127, 29, 29, 0.22); color: #ffe0e0; }
 
+    .action-state-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .action-state-strip .pill {
+      min-height: 38px;
+      line-height: 1.2;
+    }
+
     .statusbar {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2156,7 +2169,7 @@
             <div class="field mode-complete-only">
               <label for="bookBibRef">Código local legado do vínculo local</label>
               <input id="bookBibRef" type="text" placeholder="Código local legado do vínculo local" />
-              <small>Apoio legado desta ficha. No backend atual, a camada local publicada nasce sobretudo de <code>book_vínculos.local_bib_ref</code>; este campo continua útil, mas não é o pivô principal da ficha comum.</small>
+              <small>Apoio legado desta ficha. No backend atual, o código local publicado se ancora sobretudo em <code>book_holdings.local_bib_ref</code>; este campo continua útil como ponte legada, mas não substitui a camada de vínculo local nem o exemplar.</small>
             </div>
 
             <div class="field">
@@ -2258,7 +2271,7 @@
                 <div class="grid cols-3">
                   <div id="bookISBNField" class="field">
                     <label for="bookISBN">ISBN</label>
-                    <input id="bookISBN" type="text" placeholder="978-2-347-00368-5 ou 3-87061-077-8" />
+                    <input id="bookISBN" type="text" placeholder="8527100053 ou 9788527409453" />
                     <div class="row-actions">
                       <button id="openIsbnBnBtn" type="button" class="btn-inline small primary">Biblioteca Nacional</button>
                       <button id="openIsbnCblBtn" type="button" class="btn-inline small secondary">WorldCat</button>
@@ -2614,6 +2627,14 @@
               <small>Os campos principais deste bloco já são salvos em campos próprios. Use esta nota para registrar contexto, origem e revisão local sem se preocupar com a camada técnica.</small>
               <div id="bookPartnerPolicyHint" class="hint" style="margin-top:8px;">Sem fonte de parceira selecionada para governança documental específica.</div>
               <div id="bookInterlibraryRightsSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Direitos interbibliotecas:</strong> ainda não relidos nesta ficha.</div>
+              <div id="bookRightsActionStrip" class="action-state-strip" aria-live="polite">
+                <span id="bookRightComparePill" class="pill warn">Comparação: não relida</span>
+                <span id="bookRightDraftPill" class="pill warn">Retomada local: não relida</span>
+                <span id="bookRightEnrichPill" class="pill warn">Camada local: não relida</span>
+                <span id="bookRightPublishPill" class="pill info">Publicação local: não relida</span>
+                <span id="bookRightSharedPill" class="pill warn">Camada comum: não relida</span>
+                <span id="bookRightMutualizePill" class="pill warn">Mutualização: não relida</span>
+              </div>
               <div id="bookMetadataTraceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Traçabilidade dos metadados:</strong> ainda não relida nesta ficha.</div>
               <div class="catalog-layer-summary" style="margin-top:12px; margin-bottom:0;">
                 <div class="catalog-layer-card">
@@ -2644,7 +2665,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Arquitetura documental desta ficha</h4>
-                    <div class="hint">Esta leitura estrutural separa o que já pertence à ficha comum, o que fica na camada de identificadores e referências, o que já está descrito como vínculo local, o que ainda depende da aba Exemplares e o que já existe como recurso digital.</div>
+                    <div class="hint">Esta leitura estrutural separa o que já pertence à ficha comum, o que fica na camada de identificadores e referências, o que já existe apenas como sinais locais no rascunho, o que continua dependente da cadeia vínculo local + exemplar e o que já existe como recurso digital.</div>
                   </div>
                   <span id="bookLayerArchitecturePill" class="pill info">Leitura por camadas</span>
                 </div>
@@ -2661,13 +2682,13 @@
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Vínculo local</div>
-                    <div id="bookLayerHoldingTitle" class="book-public-preview-title">Vínculo local ainda não descrito</div>
-                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Aquisição, pertencimento, biblioteca detentora e situação de rede ainda não bastam para ler a camada local.</div>
+                    <div id="bookLayerHoldingTitle" class="book-public-preview-title">Sinais locais do vínculo ainda não preparados</div>
+                    <div id="bookLayerHoldingBody" class="book-public-preview-line is-muted">Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Exemplar material local</div>
-                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Trabalhado depois, na aba Exemplares</div>
-                    <div id="bookLayerExemplarBody" class="book-public-preview-line is-muted">A ficha comum não cria sozinha o exemplar material: tombo, localização, estado físico e rótulo continuam separados.</div>
+                    <div id="bookLayerExemplarTitle" class="book-public-preview-title">Holding e exemplar material continuam fora desta aba</div>
+                    <div id="bookLayerExemplarBody" class="book-public-preview-line is-muted">A ficha comum não cria sozinha nem o vínculo local publicado nem o exemplar material: holding, tombo, localização, estado físico e rótulo continuam separados.</div>
                   </div>
                   <div class="book-public-preview-card">
                     <div class="book-public-preview-eyebrow">Recurso digital</div>
@@ -2675,6 +2696,7 @@
                     <div id="bookLayerDigitalBody" class="book-public-preview-line is-muted">Vínculos digitais, acesso e restrições ainda não foram relidos como camada própria.</div>
                   </div>
                 </div>
+                <div id="bookBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento backend:</strong> esta aba já sustenta a ficha comum e a camada digital do rascunho, mas ainda não materializa sozinha o vínculo local publicado.</div>
               </div>
             </div>
 
@@ -2690,7 +2712,7 @@
                 <div class="inline">
                   <div>
                     <h4 class="section-title">Recurso digital em edição</h4>
-                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Nesta passe, você já pode abrir qualquer vínculo no formulário, alternar o recurso em edição e preparar outro vínculo local sem sair da ficha comum.</div>
+                    <div class="hint">A lista abaixo já mostra todos os recursos digitais vinculados a esta ficha. Agora, além de alternar o recurso em edição, você já pode abrir cada vínculo na sua ação adequada: leitor interno para PDF/texto quando houver contexto suficiente, leitura integrada para áudio, vídeo e imagem, e abertura direta para fontes externas.</div>
                   </div>
                   <div class="row-actions">
                     <button id="bookDigitalNewEntryBtn" type="button" class="button secondary small">Preparar novo recurso</button>
@@ -2703,10 +2725,12 @@
                 <div class="card" style="padding:12px; margin-top:12px;">
                   <div>
                     <h4 class="section-title" style="margin:0 0 6px;">Recursos digitais vinculados à ficha</h4>
-                    <div class="hint">Superfície visível multi-recursos: aqui já aparecem todos os vínculos encontrados neste rascunho. Nesta passe, você já pode alternar o recurso em edição e preparar outro vínculo; o multi-CRUD fino virá depois.</div>
+                    <div class="hint">Superfície visível multi-recursos: aqui aparecem todos os vínculos digitais já ligados ao rascunho, separados por famílias previstas, com abertura contextualizada e leitura coerente com o tipo de recurso.</div>
                   </div>
                   <div id="bookDigitalListSummary" class="hint" style="margin-top:10px;">Nenhum recurso digital vinculado a esta ficha ainda.</div>
                   <div id="bookDigitalWorkspaceSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura da superfície:</strong> ainda não atualizada.</div>
+                  <div id="bookDigitalBackendAlignmentSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Alinhamento do sistema:</strong> ainda não relido.</div>
+                  <div id="bookDigitalStatePills" class="stats" style="margin:12px 0 0;"></div>
                   <div id="bookDigitalListWrap" class="book-digital-list-wrap"></div>
                 </div>
 
@@ -2804,7 +2828,7 @@
                   <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
                   <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
                   <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha comum: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Camada local: ainda não descrita.</div>
+                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais do vínculo: ainda não preparados.</div>
                   <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Circulação / recurso digital: —</div>
                   <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos comuns: —</div>
                 </div>
@@ -2816,7 +2840,7 @@
                 <div class="book-public-preview-top">
                   <div>
                     <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Leitura mínima do que esta ficha já deixaria sair como linha de catálogo a partir da ficha comum, do que ela já sustentaria na abertura da ficha e do que continua apenas como camada local ou preparação editorial.</div>
+                    <div class="hint">Leitura mínima do que esta ficha já sustenta como ficha comum e camada digital. Os sinais locais aqui abaixo continuam preparatórios: a camada local publicada ainda depende da cadeia vínculo local + exemplar.</div>
                   </div>
                   <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
                 </div>
@@ -2830,7 +2854,7 @@
                     <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum visível na linha: —</div>
                     <div id="bookPublicCatalogSnippet" class="book-public-preview-line">Saída mínima da linha pública ainda não relida.</div>
-                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Vínculo local publicável: —</div>
+                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
                     <div id="bookPublicCatalogResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
                     <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local público mínimo: —</div>
                   </div>
@@ -2839,9 +2863,9 @@
                     <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
                     <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Abertura da ficha comum: —</div>
                     <div id="bookPublicFichaBody" class="book-public-preview-line">Corpo mínimo da ficha pública ainda não relido.</div>
-                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Vínculo local tornável público: —</div>
+                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados para o vínculo: —</div>
                     <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital tornável público: —</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Camada local tornada pública: —</div>
+                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Passo restante da camada local: —</div>
                     <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos comuns publicáveis: —</div>
                   </div>
                 </div>
@@ -4164,39 +4188,6 @@
             </div>
           </div>
           <div id="partnerRunDetailSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.</div>
-          <div id="partnerRunStationSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Estação do tratamento:</strong> escolha ou abra um tratamento para reler recepção, lançamento explícito, leitura do arquivo, correspondência, revisão humana e saída normal.</div>
-          <div class="catalog-layer-summary" id="partnerRunStationStages" style="margin-bottom:12px;">
-            <div class="catalog-layer-card" id="partnerRunStageUploadCard">
-              <div class="catalog-layer-card-title">Recepção</div>
-              <div id="partnerRunStageUploadValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageUploadNote" class="catalog-layer-card-note">Nenhum arquivo ou tratamento em foco ainda.</div>
-            </div>
-            <div class="catalog-layer-card" id="partnerRunStageDispatchCard">
-              <div class="catalog-layer-card-title">Lançamento explícito</div>
-              <div id="partnerRunStageDispatchValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageDispatchNote" class="catalog-layer-card-note">O tratamento ainda não foi registrado nesta superfície.</div>
-            </div>
-            <div class="catalog-layer-card" id="partnerRunStageParseCard">
-              <div class="catalog-layer-card-title">Leitura do arquivo</div>
-              <div id="partnerRunStageParseValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageParseNote" class="catalog-layer-card-note">A leitura técnica do arquivo ainda não está confirmada.</div>
-            </div>
-            <div class="catalog-layer-card" id="partnerRunStageMatchCard">
-              <div class="catalog-layer-card-title">Correspondência</div>
-              <div id="partnerRunStageMatchValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageMatchNote" class="catalog-layer-card-note">A comparação automática ainda não está relida.</div>
-            </div>
-            <div class="catalog-layer-card" id="partnerRunStageReviewCard">
-              <div class="catalog-layer-card-title">Revisão humana</div>
-              <div id="partnerRunStageReviewValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageReviewNote" class="catalog-layer-card-note">Nenhuma decisão editorial relida ainda.</div>
-            </div>
-            <div class="catalog-layer-card" id="partnerRunStageOutputCard">
-              <div class="catalog-layer-card-title">Saída normal</div>
-              <div id="partnerRunStageOutputValue" class="catalog-layer-card-value">—</div>
-              <div id="partnerRunStageOutputNote" class="catalog-layer-card-note">Lote normal e rascunhos normais ainda não foram relidos.</div>
-            </div>
-          </div>
           <div id="partnerRunReviewFlowSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Quadro do tratamento:</strong> ainda não atualizado.</div>
           <div id="partnerRunDetailBulkSummary" class="catalog-surface-summary" style="margin-bottom:12px;"><strong>Decisões em lote:</strong> nenhuma linha selecionada ainda.</div>
           <div class="row-actions" style="margin-bottom:12px;">
@@ -4463,6 +4454,14 @@
               <button id="partnerImportActionBtn" class="button secondary" type="button" disabled>Importação controlada</button>
             </div>
             <small id="partnerActionHint">Sem acordos aplicados ainda. As ações documentárias ficam bloqueadas por padrão, e uma verificação de conexão isolada não basta para liberá-las.</small>
+            <div id="partnerActionStateStrip" class="action-state-strip" aria-live="polite">
+              <span id="partnerActionComparePill" class="pill warn">Comparação: bloqueada</span>
+              <span id="partnerActionDraftPill" class="pill warn">Retomada local: bloqueada</span>
+              <span id="partnerActionEnrichPill" class="pill warn">Camada local: bloqueada</span>
+              <span id="partnerActionPublishPill" class="pill info">Publicação local: não aplicável</span>
+              <span id="partnerActionSharedPill" class="pill warn">Camada comum: bloqueada</span>
+              <span id="partnerActionMutualizePill" class="pill warn">Mutualização: bloqueada</span>
+            </div>
           </div>
 
           <div class="field" style="margin-top:12px;">
@@ -5120,6 +5119,8 @@
       bookDigitalLinkedSummary: el('bookDigitalLinkedSummary'),
       bookDigitalListSummary: el('bookDigitalListSummary'),
       bookDigitalWorkspaceSummary: el('bookDigitalWorkspaceSummary'),
+      bookDigitalBackendAlignmentSummary: el('bookDigitalBackendAlignmentSummary'),
+      bookDigitalStatePills: el('bookDigitalStatePills'),
       bookDigitalListWrap: el('bookDigitalListWrap'),
       bookDigitalNewEntryBtn: el('bookDigitalNewEntryBtn'),
       bookCoverFileName: el('bookCoverFileName'),
@@ -5292,6 +5293,7 @@
       bookLayerExemplarBody: el('bookLayerExemplarBody'),
       bookLayerDigitalTitle: el('bookLayerDigitalTitle'),
       bookLayerDigitalBody: el('bookLayerDigitalBody'),
+      bookBackendAlignmentSummary: el('bookBackendAlignmentSummary'),
       catalogRightsSurfaceSummary: el('catalogRightsSurfaceSummary'),
       labelAssistBox: el('labelAssistBox'),
       labelSuggestionPreview: el('labelSuggestionPreview'),
@@ -7211,18 +7213,19 @@
       const familyKey = getBookDigitalPlannedFamilyMeta(resolved).key;
       const hasLocal = !!(String(resolved?.storage_bucket || '').trim() && String(resolved?.storage_path || '').trim());
       const hasExternal = !!String(resolved?.source_url || '').trim();
-      const viewerLabels = {
-        pdf_texto: 'Ler aqui',
-        audio: 'Ouvir aqui',
-        video: 'Ver aqui',
-        image: 'Ver aqui',
-        link_externo: 'Abrir aqui',
-        recurso_digital: 'Abrir aqui',
-      };
+      const canInternalReader = canOpenBookDigitalReaderInternally(resolved);
+      if (familyKey === 'audio') return { label: 'Ouvir aqui', canOpen: !!(hasLocal || hasExternal), mode: 'viewer' };
+      if (familyKey === 'video' || familyKey === 'image') return { label: 'Ver aqui', canOpen: !!(hasLocal || hasExternal), mode: 'viewer' };
+      if (familyKey === 'link_externo') return { label: 'Abrir fonte', canOpen: !!(hasLocal || hasExternal), mode: hasExternal ? 'direct' : 'viewer' };
+      if (familyKey === 'pdf_texto') {
+        if (canInternalReader) return { label: 'Ler no leitor', canOpen: true, mode: 'reader' };
+        if (hasExternal && !hasLocal) return { label: 'Abrir fonte', canOpen: true, mode: 'direct' };
+        return { label: 'Ler aqui', canOpen: !!(hasLocal || hasExternal), mode: 'viewer' };
+      }
       return {
-        label: viewerLabels[familyKey] || 'Abrir aqui',
+        label: canInternalReader ? 'Abrir no leitor' : 'Abrir aqui',
         canOpen: !!(hasLocal || hasExternal),
-        mode: 'viewer',
+        mode: canInternalReader ? 'reader' : (hasExternal && !hasLocal ? 'direct' : 'viewer'),
       };
     }
 
@@ -7353,12 +7356,67 @@
       return state.bookDigitalDraftResources.find((record) => String(record?.id || '') === normalizedId) || null;
     }
 
+    function renderBookDigitalBackendAlignmentSummary(records = [], currentRecord = null) {
+      const summaryNode = refs.bookDigitalBackendAlignmentSummary;
+      const pillsNode = refs.bookDigitalStatePills;
+      if (!summaryNode || !pillsNode) return;
+      const safeRecords = Array.isArray(records) ? records : [];
+      if (!safeRecords.length) {
+        summaryNode.innerHTML = '<strong>Alinhamento do sistema:</strong> esta ficha ainda não prepara nenhuma camada digital ativa. Quando houver vínculos, esta área relerá separadamente o que fica só no rascunho, o que pode sustentar leitura pública e o que permanece restrito à conta ativa.';
+        pillsNode.innerHTML = '';
+        return;
+      }
+      const publicCount = safeRecords.filter((record) => isBookDigitalResourcePublic(record)).length;
+      const restrictedCount = Math.max(safeRecords.length - publicCount, 0);
+      const validatedCount = safeRecords.filter((record) => !!record?.bibliographic_match_validated).length;
+      const primaryCount = safeRecords.filter((record) => !!record?.is_primary).length;
+      const familyCounts = { pdf: 0, audio: 0, video: 0, image: 0, external: 0, generic: 0 };
+      safeRecords.forEach((record) => {
+        const familyKey = getBookDigitalPlannedFamilyMeta(record).key;
+        if (familyKey === 'pdf_texto') familyCounts.pdf += 1;
+        else if (familyKey === 'audio') familyCounts.audio += 1;
+        else if (familyKey === 'video') familyCounts.video += 1;
+        else if (familyKey === 'image') familyCounts.image += 1;
+        else if (familyKey === 'link_externo') familyCounts.external += 1;
+        else familyCounts.generic += 1;
+      });
+
+      const actionParts = [];
+      if (familyCounts.pdf) actionParts.push(`${familyCounts.pdf} PDF/texto com leitura pelo leitor interno quando houver arquivo local e contexto suficiente`);
+      if (familyCounts.audio || familyCounts.video || familyCounts.image) {
+        actionParts.push(`${familyCounts.audio + familyCounts.video + familyCounts.image} áudio/vídeo/imagem com leitura integrada nesta tela`);
+      }
+      if (familyCounts.external) actionParts.push(`${familyCounts.external} link(s) externo(s) com abertura direta`);
+      if (familyCounts.generic) actionParts.push(`${familyCounts.generic} recurso(s) genérico(s) com abertura contextual`);
+
+      const publicationParts = [];
+      if (publicCount) publicationParts.push(`${publicCount} vínculo(s) já pode(m) sustentar saída pública quando validado(s)`);
+      if (restrictedCount) publicationParts.push(`${restrictedCount} vínculo(s) permanece(m) restrito(s) à conta ativa ou à preparação local`);
+      if (validatedCount) publicationParts.push(`${validatedCount} já marcado(s) com correspondência bibliográfica validada`);
+      if (primaryCount) publicationParts.push(`${primaryCount} principal(is) na camada digital ativa`);
+
+      const currentLabel = currentRecord?.id
+        ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
+        : 'nenhum recurso específico aberto agora';
+
+      summaryNode.innerHTML = `<strong>Alinhamento do sistema:</strong> a camada digital deste rascunho já diferencia leitura local, leitura pública validada e abertura contextual por família. ${sanitize(actionParts.join(' · ') || 'Sem ação relida.')} · ${sanitize(publicationParts.join(' · ') || 'Sem estado de publicação relido.')} · ${sanitize(currentLabel)}.`;
+
+      pillsNode.innerHTML = [
+        `<span class="pill info">${safeRecords.length} ativo(s)</span>`,
+        publicCount ? `<span class="pill ok">${publicCount} público(s)</span>` : `<span class="pill">${publicCount} público(s)</span>`,
+        restrictedCount ? `<span class="pill warn">${restrictedCount} restrito(s)</span>` : `<span class="pill">${restrictedCount} restrito(s)</span>`,
+        validatedCount ? `<span class="pill ok">${validatedCount} validado(s)</span>` : `<span class="pill">${validatedCount} validado(s)</span>`,
+        primaryCount ? `<span class="pill info">${primaryCount} principal(is)</span>` : `<span class="pill">${primaryCount} principal(is)</span>`,
+      ].join('');
+    }
+
     function updateBookDigitalWorkspaceSummary(records = [], currentRecord = null) {
       const summaryNode = refs.bookDigitalWorkspaceSummary;
       if (!summaryNode) return;
       const safeRecords = Array.isArray(records) ? records : [];
       if (!safeRecords.length) {
         summaryNode.innerHTML = '<strong>Leitura da superfície:</strong> esta ficha comum ainda não tem recursos digitais vinculados.';
+        renderBookDigitalBackendAlignmentSummary([], null);
         return;
       }
       const familyMap = new Map();
@@ -7379,6 +7437,7 @@
         ? `recurso #${sanitize(String(currentRecord.id))} aberto agora no formulário`
         : 'nenhum recurso específico aberto agora; o formulário está pronto para outro vínculo';
       summaryNode.innerHTML = `<strong>Leitura da superfície:</strong> ${safeRecords.length} recurso(s) digital(is) já ligados a esta ficha comum · famílias visíveis: ${sanitize(familySummary)} · ${primaryCount} principal(is) · ${publicCount} público(s) · ${restrictedCount} restrito(s) · ${validatedCount} com correspondência validada · ${currentLabel}.`;
+      renderBookDigitalBackendAlignmentSummary(safeRecords, currentRecord);
     }
 
     function renderBookDigitalResourceList(records = []) {
@@ -7461,6 +7520,8 @@
               <div class="book-digital-list-meta">vínculo: ${linkStatusLine}</div>
               ${sourceLine ? `<div class="book-digital-list-meta">${sourceLine}</div>` : ''}
               <div class="book-digital-list-actions">
+                <button type="button" class="btn-inline small secondary" data-book-digital-action="open" data-book-digital-id="${recordId}">${getBookDigitalOpenPrimaryActionLabel(record)}</button>
+                <button type="button" class="btn-inline small secondary" data-book-digital-action="reader" data-book-digital-id="${recordId}" ${getBookDigitalReaderActionMeta(record).canOpen ? '' : 'disabled'}>${getBookDigitalReaderActionMeta(record).label}</button>
                 <button type="button" class="btn-inline small secondary" data-book-digital-action="edit" data-book-digital-id="${recordId}" ${isCurrent ? 'disabled' : ''}>${isCurrent ? 'Recurso em edição' : 'Abrir este recurso no formulário'}</button>
                 <button type="button" class="btn-inline small ghost" data-book-digital-action="delete" data-book-digital-id="${recordId}">Desvincular este recurso</button>
               </div>
@@ -7524,8 +7585,10 @@
       const familyLabel = getBookDigitalPlannedFamilyLabel(resolved);
       const locationLabel = getBookDigitalResourceLocationStatusLabel(resolved);
       const title = getBookDigitalResourceDisplayTitle(resolved);
+      const readerMeta = getBookDigitalReaderActionMeta(resolved);
       if (!hasLocal && !hasExternal) {
         refs.bookDigitalLinkedSummary.textContent = 'Nenhum recurso digital carregado neste formulário.';
+        renderBookDigitalBackendAlignmentSummary(state.bookDigitalDraftResources || [], null);
         updateBookDigitalActionButtons();
         return;
       }
@@ -7537,10 +7600,12 @@
         `vínculo: ${locationLabel}`,
         language,
         getBookDigitalAccessScopeLabel(isPublic),
+        `ação principal: ${readerMeta.label}`,
         isPrimary ? 'principal' : '',
         isValidated ? 'correspondência validada' : '',
       ].filter(Boolean);
       refs.bookDigitalLinkedSummary.textContent = parts.join(' · ');
+      renderBookDigitalBackendAlignmentSummary(state.bookDigitalDraftResources || [], resolved);
       updateBookDigitalActionButtons();
     }
 
@@ -7824,16 +7889,20 @@
       viewerNode.setAttribute('aria-hidden', 'false');
     }
 
-    async function openBookDigitalPdfFromForm() {
-      const resolvedUrl = await resolveBookDigitalOpenUrl(buildBookDigitalRecordLikeFromForm());
+    async function openBookDigitalFile(record = null) {
+      const resolvedUrl = await resolveBookDigitalOpenUrl(record || buildBookDigitalRecordLikeFromForm());
       window.open(resolvedUrl, '_blank', 'noopener');
     }
 
-    async function openBookDigitalReaderFromForm() {
+    async function openBookDigitalPdfFromForm() {
+      await openBookDigitalFile(buildBookDigitalRecordLikeFromForm());
+    }
+
+    async function openBookDigitalReader(record = null) {
       const viewerUrl = new URL('ler.html', location.href);
       const publishedBookId = Number(el('bookPublishedId').value || 0);
       const bibRef = getCurrentBookCompatRef();
-      const recordLike = buildBookDigitalRecordLikeFromForm();
+      const recordLike = record || buildBookDigitalRecordLikeFromForm();
       const bucket = normalizeBookDigitalBucket(recordLike.storage_bucket || '');
       const path = String(recordLike.storage_path || '').trim();
       const sourceName = String(recordLike.source_name || '').trim();
@@ -7875,7 +7944,7 @@
         }
 
         if (publishedBookId) {
-          const { data, error } = await supabase.rpc('get_book_primary_public_digital_asset', { p_book_id: publishedBookId });
+          const { data, error } = await supabase.rpc('get_book_primary_public_digital_asset_v2', { p_book_id: publishedBookId });
           if (error) throw error;
           const row = Array.isArray(data) ? data[0] : data;
           if (row?.asset_id) {
@@ -10447,7 +10516,7 @@
       const localContext = localLayerParts.filter(Boolean).join(' · ');
       const combinedContextParts = [];
       if (documentContext) combinedContextParts.push(`Contexto documental: ${documentContext}`);
-      if (localContext) combinedContextParts.push(`Camada local: ${localContext}`);
+      if (localContext) combinedContextParts.push(`Sinais locais do vínculo: ${localContext}`);
 
       const commonMetaParts = [];
       const commonLayer = commonLayerParts.filter(Boolean).join(' · ');
@@ -10458,8 +10527,8 @@
         kindLabel,
         title: displayTitle || 'Título ainda não informado',
         meta: `Ficha comum: ${commonMetaParts.join(' — ') || 'núcleo comum ainda incompleto'}`,
-        context: combinedContextParts.join(' — ') || 'Camada local: ainda não descrita.',
-        derivedContext: localContext ? `Camada local: ${localContext}` : 'Camada local: ainda não descrita.',
+        context: combinedContextParts.join(' — ') || 'Sinais locais do vínculo: ainda não preparados.',
+        derivedContext: localContext ? `Sinais locais do vínculo: ${localContext}` : 'Sinais locais do vínculo: ainda não preparados.',
         access: accessParts.join(' · ') || '—',
         subjects: subjects || '—',
       };
@@ -10534,13 +10603,15 @@
       if (acquisitionModeLabel) holdingParts.push(`entrada: ${acquisitionModeLabel}`);
       if (acquisitionSourceLabel) holdingParts.push(`origem: ${acquisitionSourceLabel}`);
       if (mutualizationStatusLabel) holdingParts.push(`rede: ${mutualizationStatusLabel}`);
-      const holdingTitle = holdingParts.length ? 'Vínculo local já descrito' : 'Vínculo local ainda não descrito';
-      const holdingBody = holdingParts.length ? holdingParts.join(' · ') : 'Aquisição, pertencimento, biblioteca detentora e situação de rede ainda não bastam para ler a camada local.';
+      const holdingTitle = holdingParts.length ? 'Sinais locais do vínculo já preparados' : 'Vínculo local ainda não materializado';
+      const holdingBody = holdingParts.length
+        ? `${holdingParts.join(' · ')} · estes sinais ainda dependem de holding e exemplar para virar camada local publicada.`
+        : 'Nesta aba, a ficha comum só prepara sinais locais. A camada publicada do vínculo continua dependente de holdings e exemplares.';
 
-      const exemplarTitle = 'Trabalhado depois, na aba Exemplares';
+      const exemplarTitle = 'Holding e exemplar material continuam fora desta aba';
       const exemplarBody = joinSummaryParts([
         loanable ? 'circulação padrão: empréstimo local possível' : 'circulação padrão: consulta local / restrição',
-        'tombo, localização, estado físico e rótulo continuam separados desta aba',
+        'holding, tombo, localização, estado físico e rótulo continuam separados desta aba',
       ]);
 
       let digitalTitle = 'Nenhum recurso digital relido';
@@ -10585,6 +10656,44 @@
       };
     }
 
+    function renderBookBackendAlignmentSummary() {
+      const target = refs.bookBackendAlignmentSummary;
+      if (!target) return;
+
+      const publishedBookId = Number(el('bookPublishedId')?.value || 0);
+      const holderLibrary = compactSpaces(el('bookHolderLibrary')?.value || '');
+      const ownerLibrary = compactSpaces(el('bookOwnerLibrary')?.value || '');
+      const acquisitionModeLabel = getSelectedOptionLabel(el('bookAcquisitionMode'));
+      const mutualizationStatusLabel = getSelectedOptionLabel(el('bookMutualizationStatus'));
+      const legacyBibRef = compactSpaces(el('bookBibRef')?.value || '');
+      const localSignals = [holderLibrary, ownerLibrary, acquisitionModeLabel, mutualizationStatusLabel, legacyBibRef].filter(Boolean);
+      const linkedDigitalResources = Array.isArray(state.bookDigitalDraftResources) ? state.bookDigitalDraftResources : [];
+      const hasDigitalDraftLayer = linkedDigitalResources.length > 0;
+      const hasDigitalNative = [
+        compactSpaces(el('bookDigitalNativeUrl')?.value || ''),
+        compactSpaces(el('bookDigitalNativeAccess')?.value || ''),
+        compactSpaces(el('bookDigitalNativeRestriction')?.value || ''),
+        compactSpaces(el('bookDigitalNativeUsage')?.value || ''),
+      ].some(Boolean);
+
+      const parts = [];
+      parts.push('a ficha comum deste formulário já grava e publica a notice comum');
+      if (hasDigitalDraftLayer || hasDigitalNative) {
+        parts.push(hasDigitalDraftLayer
+          ? 'a camada digital deste rascunho já se apoia na trilha rascunho → publicado'
+          : 'a descrição digital nativa já acompanha a notice comum publicada');
+      } else {
+        parts.push('a camada digital continua opcional nesta aba');
+      }
+      parts.push(localSignals.length
+        ? 'os sinais locais já podem ser preparados aqui, mas ainda não substituem o vínculo local publicado'
+        : 'a camada local publicada ainda não começa nesta aba');
+      parts.push('o vínculo local publicado continua dependendo de holdings e exemplares');
+      if (publishedBookId) parts.push(`esta ficha já está ligada ao publicado #${publishedBookId}`);
+
+      target.innerHTML = `<strong>Alinhamento backend:</strong> ${sanitize(parts.join(' · '))}.`;
+    }
+
     function updateBookLayerArchitecturePreview() {
       if (!refs.bookLayerNoticeTitle) return;
       const preview = buildBookLayerArchitecturePreview();
@@ -10602,6 +10711,7 @@
       refs.bookLayerExemplarBody.textContent = preview.exemplarBody;
       refs.bookLayerDigitalTitle.textContent = preview.digitalTitle;
       refs.bookLayerDigitalBody.textContent = preview.digitalBody;
+      renderBookBackendAlignmentSummary();
     }
 
     function updateBookDerivedSummaryPreview() {
@@ -10648,16 +10758,16 @@
       const familySummary = Array.from(familyMap.values()).map((entry) => `${entry.label} (${entry.count})`).join(' · ');
 
       const holdingCatalog = joinSummaryParts([
-        displayLibrary !== 'Biblioteca não definida' ? `biblioteca: ${displayLibrary}` : '',
-        mutualizationStatusLabel ? `vínculo: ${mutualizationStatusLabel}` : '',
+        displayLibrary !== 'Biblioteca não definida' ? `biblioteca prevista: ${displayLibrary}` : '',
+        mutualizationStatusLabel ? `situação de rede: ${mutualizationStatusLabel}` : '',
         acquisitionModeLabel ? `entrada: ${acquisitionModeLabel}` : '',
-      ]) || 'camada de vínculo local ainda não relida nesta saída';
+      ]) || 'nenhum sinal local do vínculo foi preparado nesta saída';
 
       const holdingFicha = joinSummaryParts([
-        displayLibrary !== 'Biblioteca não definida' ? `biblioteca pública: ${displayLibrary}` : '',
-        mutualizationStatusLabel ? `situação do vínculo: ${mutualizationStatusLabel}` : '',
+        displayLibrary !== 'Biblioteca não definida' ? `biblioteca prevista: ${displayLibrary}` : '',
+        mutualizationStatusLabel ? `situação de rede: ${mutualizationStatusLabel}` : '',
         acquisitionSourceLabel ? `origem imediata: ${acquisitionSourceLabel}` : '',
-      ]) || 'camada de vínculo local ainda não detalhada nesta abertura';
+      ]) || 'nenhum sinal local do vínculo foi preparado nesta abertura';
 
       let resourceCatalog = 'nenhum recurso digital vinculado aparece nesta leitura mínima';
       let resourceFicha = 'nenhum recurso digital relido para a abertura desta ficha';
@@ -10776,15 +10886,15 @@
       if (materialType === 'dossie' && dossierOrganizations) snippetParts.push(`Vínculos organizativos relidos: ${dossierOrganizations}`);
 
       const catalogAccessParts = [];
-      catalogAccessParts.push(loanable ? 'linha pública pode sinalizar empréstimo local' : 'linha pública deve sinalizar consulta local / restrição');
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') catalogAccessParts.push(`biblioteca exibível: ${displayLibrary}`);
+      catalogAccessParts.push(loanable ? 'a notice comum já carrega orientação de empréstimo local' : 'a notice comum já carrega orientação de consulta local / restrição');
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') catalogAccessParts.push(`biblioteca prevista: ${displayLibrary}`);
       if (materialType === 'recurso_digital' && digitalNativeRestriction) catalogAccessParts.push(`restrição digital: ${digitalNativeRestriction}`);
       if (materialType === 'recurso_digital' && digitalNativeAccess) catalogAccessParts.push(`acesso digital: ${digitalNativeAccess}`);
 
       const fichaMetaParts = [];
       fichaMetaParts.push(`Abertura da ficha comum: ${summary.kindLabel}`);
       if (publicNoticeParts.length) fichaMetaParts.push(joinSummaryParts(publicNoticeParts));
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') fichaMetaParts.push(`camada local pública: ${displayLibrary}`);
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') fichaMetaParts.push(`sinais locais preparados: ${displayLibrary}`);
 
       const fichaBodyParts = [];
       if (summary.context) fichaBodyParts.push(summary.context);
@@ -10956,7 +11066,7 @@
       if (localReserveParts.length) publicLineNarrativeParts.push(`Permanece local / editorial: ${joinSummaryParts(localReserveParts)}`);
       const publicCatalogHoldingText = localSignalParts.length
         ? joinSummaryParts(localSignalParts)
-        : 'nenhum vínculo local suficiente para leitura pública mínima agora';
+        : 'nenhum sinal local preparado para o vínculo aparece nesta leitura mínima';
       let publicCatalogResourceText = 'nenhum recurso digital publicável aparece nesta linha mínima';
       if (publicDigitalResources.length) {
         publicCatalogResourceText = joinSummaryParts([
@@ -10974,32 +11084,33 @@
 
       const publicFichaBodyParts = [...fichaBodyParts];
       if (localReserveParts.length) publicFichaBodyParts.push(`Continua local / preparatório: ${joinSummaryParts(localReserveParts)}`);
-      const publicFichaHoldingText = layerPreview.holdingFicha || 'camada de vínculo local ainda não relida';
+      const publicFichaHoldingText = layerPreview.holdingFicha || 'nenhum sinal local do vínculo foi relido nesta abertura';
       let publicFichaResourceText = layerPreview.resourceFicha || 'nenhum recurso digital relido para a abertura desta ficha';
       if (!publicDigitalResources.length && !digitalNativeLooksPublic) {
         publicFichaResourceText = 'nenhum recurso digital claramente publicável foi relido nesta abertura';
       }
 
       const publishedLayerAccessParts = [];
-      publishedLayerAccessParts.push(loanable ? 'circulação pública relida como empréstimo local possível' : 'circulação pública relida como consulta local / restrição');
+      publishedLayerAccessParts.push(loanable ? 'a notice comum já pode sair com circulação padrão de empréstimo local' : 'a notice comum já pode sair com circulação padrão de consulta local / restrição');
       if (supportText) publishedLayerAccessParts.push(`suporte relido: ${supportText}`);
-      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') publishedLayerAccessParts.push(`biblioteca pública: ${displayLibrary}`);
+      if (displayLibrary && displayLibrary !== 'Biblioteca não definida') publishedLayerAccessParts.push(`biblioteca prevista: ${displayLibrary}`);
+      publishedLayerAccessParts.push('a camada local publicada ainda depende de holding e exemplar');
 
       return {
         kindLabel: summary.kindLabel,
         displayLibrary,
         catalogTitle: summary.title,
-        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinal local mínimo: ${publicLineSignal}`,
+        catalogMeta: `Ficha comum visível na linha: ${publicLineNotice} · Sinais locais preparados: ${publicLineSignal}`,
         catalogSnippet: joinSummaryParts(publicLineNarrativeParts) || 'Saída mínima da linha pública ainda não relida.',
         catalogHolding: publicCatalogHoldingText,
         catalogResource: publicCatalogResourceText,
-        catalogAccess: joinSummaryParts(catalogAccessParts) || 'Sinal local público mínimo ainda não definido.',
+        catalogAccess: joinSummaryParts(catalogAccessParts) || 'nenhum sinal local do vínculo foi preparado ainda.',
         fichaTitle: summary.title,
         fichaMeta: joinSummaryParts(fichaMetaParts) || 'Abertura da ficha comum: —',
         fichaBody: joinSummaryParts(publicFichaBodyParts) || 'Corpo mínimo da ficha pública ainda não relido.',
         fichaHolding: publicFichaHoldingText,
         fichaResource: publicFichaResourceText,
-        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'Camada local tornada pública ainda não definida.',
+        fichaAccess: joinSummaryParts(publishedLayerAccessParts) || 'o vínculo local publicado ainda depende de holding e exemplar.',
         fichaSubjects: subjects || summary.subjects || '—',
       };
     }
@@ -11016,15 +11127,15 @@
       refs.bookPublicCatalogTitle.textContent = preview.catalogTitle;
       refs.bookPublicCatalogMeta.textContent = preview.catalogMeta;
       refs.bookPublicCatalogSnippet.textContent = preview.catalogSnippet;
-      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Vínculo local publicável: ${preview.catalogHolding}`;
+      if (refs.bookPublicCatalogHolding) refs.bookPublicCatalogHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.catalogHolding}`;
       if (refs.bookPublicCatalogResource) refs.bookPublicCatalogResource.textContent = `Recurso digital publicável: ${preview.catalogResource}`;
-      refs.bookPublicCatalogAccess.textContent = `Sinal local público mínimo: ${preview.catalogAccess}`;
+      refs.bookPublicCatalogAccess.textContent = `Sinal local mínimo já legível: ${preview.catalogAccess}`;
       refs.bookPublicFichaTitle.textContent = preview.fichaTitle;
       refs.bookPublicFichaMeta.textContent = preview.fichaMeta;
       refs.bookPublicFichaBody.textContent = preview.fichaBody;
-      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Vínculo local tornável público: ${preview.fichaHolding}`;
+      if (refs.bookPublicFichaHolding) refs.bookPublicFichaHolding.textContent = `Sinais locais preparados para o vínculo: ${preview.fichaHolding}`;
       if (refs.bookPublicFichaResource) refs.bookPublicFichaResource.textContent = `Recurso digital tornável público: ${preview.fichaResource}`;
-      refs.bookPublicFichaAccess.textContent = `Camada local tornada pública: ${preview.fichaAccess}`;
+      refs.bookPublicFichaAccess.textContent = `Passo restante da camada local: ${preview.fichaAccess}`;
       refs.bookPublicFichaSubjects.textContent = `Assuntos comuns publicáveis: ${preview.fichaSubjects}`;
       updateBookInterlibraryRightsSummary();
       renderBookMetadataTraceSummary();
@@ -11306,6 +11417,22 @@
       const resourceId = String(trigger.dataset.bookDigitalId || '').trim();
       const record = findBookDigitalResourceById(resourceId);
       if (!record) return;
+      if (action === 'open') {
+        try {
+          await openBookDigitalFile(record);
+        } catch (error) {
+          showMessage(refs.bookMessage, error.message, 'error');
+        }
+        return;
+      }
+      if (action === 'reader') {
+        try {
+          await openBookDigitalReader(record);
+        } catch (error) {
+          showMessage(refs.bookMessage, error.message, 'error');
+        }
+        return;
+      }
       if (action === 'edit') {
         fillBookDigitalResourceFields(record);
         return;
@@ -16059,7 +16186,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
 
     el('openBookDigitalReaderBtn').addEventListener('click', async () => {
       try {
-        await openBookDigitalReaderFromForm();
+        await openBookDigitalReader();
       } catch (error) {
         showMessage(refs.bookMessage, error.message, 'error');
       }
@@ -16946,6 +17073,18 @@ function initPartnerProbeUi() {
   const compareActionBtn = document.getElementById('partnerCompareActionBtn');
   const importActionBtn = document.getElementById('partnerImportActionBtn');
   const actionHintEl = document.getElementById('partnerActionHint');
+  const partnerActionComparePillEl = document.getElementById('partnerActionComparePill');
+  const partnerActionDraftPillEl = document.getElementById('partnerActionDraftPill');
+  const partnerActionEnrichPillEl = document.getElementById('partnerActionEnrichPill');
+  const partnerActionPublishPillEl = document.getElementById('partnerActionPublishPill');
+  const partnerActionSharedPillEl = document.getElementById('partnerActionSharedPill');
+  const partnerActionMutualizePillEl = document.getElementById('partnerActionMutualizePill');
+  const bookRightComparePillEl = document.getElementById('bookRightComparePill');
+  const bookRightDraftPillEl = document.getElementById('bookRightDraftPill');
+  const bookRightEnrichPillEl = document.getElementById('bookRightEnrichPill');
+  const bookRightPublishPillEl = document.getElementById('bookRightPublishPill');
+  const bookRightSharedPillEl = document.getElementById('bookRightSharedPill');
+  const bookRightMutualizePillEl = document.getElementById('bookRightMutualizePill');
   const compareWorkspaceEl = document.getElementById('partnerCompareWorkspace');
   const compareWorkspaceStatusEl = document.getElementById('partnerCompareWorkspaceStatus');
   const localDraftSummaryEl = document.getElementById('partnerLocalDraftSummary');
@@ -17084,19 +17223,6 @@ function initPartnerProbeUi() {
   const partnerRefreshRunHistoryBtn = document.getElementById('partnerRefreshRunHistoryBtn');
   const partnerRunDetailWrapEl = document.getElementById('partnerRunDetailWrap');
   const partnerRunDetailSummaryEl = document.getElementById('partnerRunDetailSummary');
-  const partnerRunStationSummaryEl = document.getElementById('partnerRunStationSummary');
-  const partnerRunStageUploadValueEl = document.getElementById('partnerRunStageUploadValue');
-  const partnerRunStageUploadNoteEl = document.getElementById('partnerRunStageUploadNote');
-  const partnerRunStageDispatchValueEl = document.getElementById('partnerRunStageDispatchValue');
-  const partnerRunStageDispatchNoteEl = document.getElementById('partnerRunStageDispatchNote');
-  const partnerRunStageParseValueEl = document.getElementById('partnerRunStageParseValue');
-  const partnerRunStageParseNoteEl = document.getElementById('partnerRunStageParseNote');
-  const partnerRunStageMatchValueEl = document.getElementById('partnerRunStageMatchValue');
-  const partnerRunStageMatchNoteEl = document.getElementById('partnerRunStageMatchNote');
-  const partnerRunStageReviewValueEl = document.getElementById('partnerRunStageReviewValue');
-  const partnerRunStageReviewNoteEl = document.getElementById('partnerRunStageReviewNote');
-  const partnerRunStageOutputValueEl = document.getElementById('partnerRunStageOutputValue');
-  const partnerRunStageOutputNoteEl = document.getElementById('partnerRunStageOutputNote');
   const partnerRunReviewFlowSummaryEl = document.getElementById('partnerRunReviewFlowSummary');
   const partnerRefreshRunDetailBtn = document.getElementById('partnerRefreshRunDetailBtn');
   const partnerRunDetailBulkSummaryEl = document.getElementById('partnerRunDetailBulkSummary');
@@ -17137,10 +17263,6 @@ function initPartnerProbeUi() {
     !partnerImportStateValueEl || !partnerImportStateNoteEl || !partnerImportWriteValueEl || !partnerImportWriteNoteEl ||
     !partnerImportProtectedValueEl || !partnerImportProtectedNoteEl || !partnerImportBlockersValueEl || !partnerImportBlockersNoteEl ||
     !partnerIncomingSurfaceSummaryEl || !partnerFocusSurfaceSummaryEl ||
-    !partnerRunStationSummaryEl || !partnerRunStageUploadValueEl || !partnerRunStageUploadNoteEl ||
-    !partnerRunStageDispatchValueEl || !partnerRunStageDispatchNoteEl || !partnerRunStageParseValueEl || !partnerRunStageParseNoteEl ||
-    !partnerRunStageMatchValueEl || !partnerRunStageMatchNoteEl || !partnerRunStageReviewValueEl || !partnerRunStageReviewNoteEl ||
-    !partnerRunStageOutputValueEl || !partnerRunStageOutputNoteEl ||
     !partnerArchitectureSummaryEl || !partnerArchitectureIncomingTitleEl || !partnerArchitectureIncomingBodyEl ||
     !partnerArchitectureGovernanceTitleEl || !partnerArchitectureGovernanceBodyEl ||
     !partnerArchitectureCompareTitleEl || !partnerArchitectureCompareBodyEl ||
@@ -18092,7 +18214,6 @@ function initPartnerProbeUi() {
       incomingCatalogRunSelectionState.selectedRowIds = new Set();
       renderIncomingCatalogRunBulkSummary();
       renderIncomingCatalogRunReviewFlowSummary();
-      renderIncomingCatalogRunStationSummary();
       return;
     }
     const eligibleIds = (Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [])
@@ -18400,202 +18521,6 @@ function initPartnerProbeUi() {
     renderIncomingCatalogDraftOutputFlowSummary();
   }
 
-  /*
-   * Estação de tratamento parceiro
-   * ------------------------------
-   * Esta leitura não inventa estados novos no backend.
-   * Ela recompõe, de forma visível para a equipe,
-   * as etapas já sustentadas pelo schema atual:
-   * 1. recepção artesanal do arquivo
-   * 2. registro explícito do run
-   * 3. leitura técnica do arquivo
-   * 4. correspondência automática da base
-   * 5. revisão editorial humana
-   * 6. saída normal para lote e rascunhos
-   *
-   * Objetivo: tornar a estação local mais traçável,
-   * sem confundir comparação/importação com mutualização.
-   */
-  function getCurrentIncomingCatalogRunSummary() {
-    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
-    if (!runId) return null;
-    const numericRunId = Number(runId);
-    if (!Number.isFinite(numericRunId) || numericRunId <= 0) return null;
-    const historyMatch = (Array.isArray(incomingCatalogRunHistoryState.items) ? incomingCatalogRunHistoryState.items : []).find((item) => Number(item?.run_id || item?.id || 0) === numericRunId) || null;
-    const lastSummary = Number(incomingCatalogImportState.lastSummary?.run_id || incomingCatalogImportState.lastSummary?.id || 0) === numericRunId
-      ? incomingCatalogImportState.lastSummary
-      : null;
-    return historyMatch || lastSummary || { run_id: numericRunId, id: numericRunId };
-  }
-
-  function getIncomingCatalogRunDecisionCounts(items = []) {
-    const counts = {
-      pending: 0,
-      acceptNew: 0,
-      acceptDuplicate: 0,
-      reject: 0,
-      approved: 0,
-      rejected: 0,
-      draftCreated: 0,
-      eligible: 0,
-      locked: 0,
-    };
-    (Array.isArray(items) ? items : []).forEach((item) => {
-      const editorialDecision = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['editorial_decision'])).toLowerCase();
-      const reviewStatus = normalizeInlineWhitespace(pickIncomingPartnerValue(item, ['review_status'])).toLowerCase();
-      if (editorialDecision === 'accept_new') counts.acceptNew += 1;
-      else if (editorialDecision === 'accept_duplicate') counts.acceptDuplicate += 1;
-      else if (editorialDecision === 'reject') counts.reject += 1;
-      else counts.pending += 1;
-      if (reviewStatus === 'approved') counts.approved += 1;
-      if (reviewStatus === 'rejected') counts.rejected += 1;
-      if (reviewStatus === 'draft_created' || isIncomingPartnerRowLockedForEditorialDecision(item)) counts.draftCreated += 1;
-      if (isIncomingPartnerRowLockedForEditorialDecision(item)) counts.locked += 1;
-      const rowId = getIncomingPartnerRowId(item);
-      if (Number.isFinite(rowId) && rowId > 0 && !isIncomingPartnerRowLockedForEditorialDecision(item)) counts.eligible += 1;
-    });
-    return counts;
-  }
-
-  function renderIncomingCatalogRunStationSummary() {
-    if (
-      !partnerRunStationSummaryEl ||
-      !partnerRunStageUploadValueEl || !partnerRunStageUploadNoteEl ||
-      !partnerRunStageDispatchValueEl || !partnerRunStageDispatchNoteEl ||
-      !partnerRunStageParseValueEl || !partnerRunStageParseNoteEl ||
-      !partnerRunStageMatchValueEl || !partnerRunStageMatchNoteEl ||
-      !partnerRunStageReviewValueEl || !partnerRunStageReviewNoteEl ||
-      !partnerRunStageOutputValueEl || !partnerRunStageOutputNoteEl
-    ) return;
-
-    const runId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
-    const summary = getCurrentIncomingCatalogRunSummary();
-    const items = Array.isArray(incomingCatalogRunDetailState.items) ? incomingCatalogRunDetailState.items : [];
-    const counts = getIncomingCatalogRunDecisionCounts(items);
-    const rawStatus = normalizeInlineWhitespace(summary?.run_status || summary?.status || '').toLowerCase();
-    const rowsValue = extractIncomingRunRowsValue(summary);
-    const file = incomingCatalogFileEl?.files?.[0] || null;
-    const fileLabel = file?.name || (summary ? extractIncomingRunFileLabel(summary) : 'Arquivo sem nome visível');
-    const sourceLabel = summary ? extractIncomingRunSourceLabel(summary) : getIncomingCatalogSelectedSourceLabel();
-    const batchId = Number(incomingCatalogDraftCreationState.batchId || 0);
-    const dispatchConfirmed = !!incomingCatalogImportState.lastDispatchResult || ['parsing', 'parsed', 'matched', 'ready_for_review', 'draft_created', 'drafts_created', 'failed'].includes(rawStatus);
-    const parseReady = ['parsed', 'matched', 'ready_for_review', 'draft_created', 'drafts_created'].includes(rawStatus);
-    const parseBusy = rawStatus === 'parsing';
-    const matchReady = ['matched', 'ready_for_review', 'draft_created', 'drafts_created'].includes(rawStatus);
-    const reviewOpen = items.length > 0 || ['ready_for_review', 'draft_created', 'drafts_created'].includes(rawStatus);
-    const outputReady = counts.eligible > 0;
-    const outputStarted = counts.locked > 0 || batchId > 0 || ['draft_created', 'drafts_created'].includes(rawStatus);
-
-    if (!runId && !file) {
-      partnerRunStationSummaryEl.innerHTML = '<strong>Estação do tratamento:</strong> nenhuma estação ativa ainda. A recepção artesanal, o lançamento explícito do tratamento, a leitura do arquivo, a correspondência, a revisão humana e a saída normal continuam fechados.';
-      partnerRunStageUploadValueEl.textContent = '—';
-      partnerRunStageUploadNoteEl.textContent = 'Nenhum arquivo ou tratamento em foco ainda.';
-      partnerRunStageDispatchValueEl.textContent = '—';
-      partnerRunStageDispatchNoteEl.textContent = 'O tratamento ainda não foi registrado nesta superfície.';
-      partnerRunStageParseValueEl.textContent = '—';
-      partnerRunStageParseNoteEl.textContent = 'A leitura técnica do arquivo ainda não está confirmada.';
-      partnerRunStageMatchValueEl.textContent = '—';
-      partnerRunStageMatchNoteEl.textContent = 'A comparação automática ainda não está relida.';
-      partnerRunStageReviewValueEl.textContent = '—';
-      partnerRunStageReviewNoteEl.textContent = 'Nenhuma decisão editorial relida ainda.';
-      partnerRunStageOutputValueEl.textContent = '—';
-      partnerRunStageOutputNoteEl.textContent = 'Lote normal e rascunhos normais ainda não foram relidos.';
-      return;
-    }
-
-    if (!runId && file) {
-      const kind = getIncomingCatalogFileKind(file.name).toUpperCase();
-      partnerRunStationSummaryEl.innerHTML = `<strong>Estação do tratamento:</strong> recepção local de um arquivo ${sanitize(kind)} já aberta nesta sessão, mas o tratamento ainda não foi lançado explicitamente; leitura técnica, correspondência, revisão humana e saída normal seguem pendentes.`;
-      partnerRunStageUploadValueEl.textContent = 'Local';
-      partnerRunStageUploadNoteEl.textContent = `Arquivo ${file.name} recebido apenas nesta sessão local.`;
-      partnerRunStageDispatchValueEl.textContent = 'Pendente';
-      partnerRunStageDispatchNoteEl.textContent = 'Falta registrar explicitamente o tratamento antes de pedir leitura e correspondência.';
-      partnerRunStageParseValueEl.textContent = incomingCatalogFileAnalysis ? 'Prévia' : 'Pendente';
-      partnerRunStageParseNoteEl.textContent = incomingCatalogFileAnalysis ? 'A prévia local já foi lida, mas isso ainda não substitui a leitura técnica do tratamento.' : 'Só a recepção local existe por enquanto.';
-      partnerRunStageMatchValueEl.textContent = 'Pendente';
-      partnerRunStageMatchNoteEl.textContent = 'Sem tratamento lançado, não há correspondência automática relida.';
-      partnerRunStageReviewValueEl.textContent = 'Fechada';
-      partnerRunStageReviewNoteEl.textContent = 'A revisão humana só abre depois da leitura técnica e da correspondência.';
-      partnerRunStageOutputValueEl.textContent = 'Fechada';
-      partnerRunStageOutputNoteEl.textContent = 'A saída normal continua fora de cena até a revisão editorial.';
-      return;
-    }
-
-    partnerRunStageUploadValueEl.textContent = 'Registrada';
-    partnerRunStageUploadNoteEl.textContent = `${fileLabel || 'Arquivo sem nome visível'}${rowsValue != null ? ` · ${rowsValue} linha(s) relida(s) no run.` : ''}`;
-
-    if (dispatchConfirmed) {
-      partnerRunStageDispatchValueEl.textContent = 'Feito';
-      partnerRunStageDispatchNoteEl.textContent = 'O tratamento já passou do simples registro bruto para uma execução explícita de leitura nesta estação.';
-    } else if (rawStatus === 'uploaded' || rawStatus === 'queued') {
-      partnerRunStageDispatchValueEl.textContent = 'Aguardando';
-      partnerRunStageDispatchNoteEl.textContent = 'O run existe, mas a releitura explícita do arquivo bruto ainda não ficou confirmada por esta superfície.';
-    } else {
-      partnerRunStageDispatchValueEl.textContent = 'Em curso';
-      partnerRunStageDispatchNoteEl.textContent = 'O lançamento explícito já aconteceu, mas o estado devolvido pela base ainda não estabilizou a etapa seguinte.';
-    }
-
-    if (parseReady) {
-      partnerRunStageParseValueEl.textContent = 'Lido';
-      partnerRunStageParseNoteEl.textContent = `Leitura técnica concluída pela base${rawStatus ? ` (${formatIncomingCatalogRunStatusLabel(rawStatus)})` : ''}.`;
-    } else if (parseBusy) {
-      partnerRunStageParseValueEl.textContent = 'Lendo';
-      partnerRunStageParseNoteEl.textContent = 'A base ainda está lendo o arquivo bruto desta estação.';
-    } else {
-      partnerRunStageParseValueEl.textContent = 'Aguardando';
-      partnerRunStageParseNoteEl.textContent = 'A leitura técnica do arquivo ainda não foi confirmada pela base.';
-    }
-
-    if (matchReady) {
-      partnerRunStageMatchValueEl.textContent = 'Concluída';
-      partnerRunStageMatchNoteEl.textContent = `Correspondência automática relida${rowsValue != null ? ` sobre ${rowsValue} linha(s)` : ''}; a revisão humana já pode trabalhar esta saída com prudência.`;
-    } else if (parseReady || parseBusy) {
-      partnerRunStageMatchValueEl.textContent = 'Aguardando';
-      partnerRunStageMatchNoteEl.textContent = 'A leitura do arquivo já existe, mas a correspondência automática ainda não está estabilizada nesta estação.';
-    } else {
-      partnerRunStageMatchValueEl.textContent = 'Pendente';
-      partnerRunStageMatchNoteEl.textContent = 'Sem leitura técnica suficiente, a correspondência automática permanece pendente.';
-    }
-
-    if (incomingCatalogRunDetailState.loading) {
-      partnerRunStageReviewValueEl.textContent = 'Carregando';
-      partnerRunStageReviewNoteEl.textContent = 'A superfície ainda está relendo as linhas e as decisões editoriais deste tratamento.';
-    } else if (!reviewOpen) {
-      partnerRunStageReviewValueEl.textContent = 'Aguardando';
-      partnerRunStageReviewNoteEl.textContent = 'A revisão humana ainda não se abriu nesta estação.';
-    } else if (counts.pending > 0 || counts.eligible > 0) {
-      partnerRunStageReviewValueEl.textContent = 'Em curso';
-      partnerRunStageReviewNoteEl.textContent = `${counts.acceptNew} novo(s), ${counts.acceptDuplicate} duplicado(s) aceito(s), ${counts.reject} rejeitada(s) e ${counts.pending} pendente(s) nesta releitura humana.`;
-    } else {
-      partnerRunStageReviewValueEl.textContent = 'Fechada';
-      partnerRunStageReviewNoteEl.textContent = `${counts.draftCreated || counts.locked} linha(s) já saiu(saíram) da revisão para o fluxo normal ou não restam decisões abertas.`;
-    }
-
-    if (batchId > 0) {
-      partnerRunStageOutputValueEl.textContent = 'Gerada';
-      partnerRunStageOutputNoteEl.textContent = `Lote #${batchId} já criado com ${incomingCatalogDraftCreationState.draftsCreated || 0} rascunho(s) normal(is).`;
-    } else if (outputReady) {
-      partnerRunStageOutputValueEl.textContent = 'Pronta';
-      partnerRunStageOutputNoteEl.textContent = `${counts.eligible} linha(s) já podem virar lote normal e rascunhos normais nesta estação.`;
-    } else if (outputStarted) {
-      partnerRunStageOutputValueEl.textContent = 'Parcial';
-      partnerRunStageOutputNoteEl.textContent = `${counts.locked} linha(s) já saíram para o fluxo normal, mas não há nova saída pronta agora.`;
-    } else {
-      partnerRunStageOutputValueEl.textContent = 'Aguardando';
-      partnerRunStageOutputNoteEl.textContent = 'A saída normal continua fechada enquanto a revisão humana não estabilizar decisões suficientes.';
-    }
-
-    const summaryBits = [
-      `recepção registrada para ${fileLabel || 'arquivo sem nome visível'}`,
-      dispatchConfirmed ? 'lançamento explícito já confirmado' : 'lançamento explícito ainda não confirmado',
-      parseReady ? 'arquivo já lido pela base' : (parseBusy ? 'leitura técnica em curso' : 'leitura técnica pendente'),
-      matchReady ? 'correspondência automática já relida' : 'correspondência automática ainda pendente',
-      reviewOpen ? (counts.pending > 0 || counts.eligible > 0 ? 'revisão humana em curso' : 'revisão humana já fechada nesta estação') : 'revisão humana ainda não aberta',
-      batchId > 0 ? `saída normal já gerada no lote #${batchId}` : (outputReady ? 'saída normal pronta' : 'saída normal ainda não pronta'),
-    ];
-    partnerRunStationSummaryEl.innerHTML = `<strong>Estação do tratamento #${sanitize(runId)}:</strong> ${sanitize(summaryBits.join('; '))}. Fonte em foco: ${sanitize(sourceLabel || 'não relida')}.`;
-  }
-
   function renderIncomingCatalogRunDetail() {
     if (!partnerRunDetailWrapEl || !partnerRunDetailSummaryEl) return;
     syncIncomingCatalogRunSelection();
@@ -18606,7 +18531,6 @@ function initPartnerProbeUi() {
       partnerRunDetailSummaryEl.innerHTML = '<strong>Detalhe do tratamento:</strong> escolha ou abra um tratamento para começar a revisão.';
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Abra um tratamento acima para ler suas linhas importadas nesta superfície.</div>';
       renderIncomingCatalogRunBulkSummary();
-      renderIncomingCatalogRunStationSummary();
       return;
     }
 
@@ -18615,7 +18539,6 @@ function initPartnerProbeUi() {
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Carregando o detalhe deste tratamento…</div>';
       renderIncomingCatalogRunBulkSummary();
       renderIncomingCatalogRunReviewFlowSummary();
-      renderIncomingCatalogRunStationSummary();
       return;
     }
 
@@ -18624,7 +18547,6 @@ function initPartnerProbeUi() {
       partnerRunDetailWrapEl.innerHTML = '<div class="empty">Detalhe indisponível por enquanto. Tente atualizar novamente.</div>';
       renderIncomingCatalogRunBulkSummary();
       renderIncomingCatalogRunReviewFlowSummary();
-      renderIncomingCatalogRunStationSummary();
       return;
     }
 
@@ -18647,7 +18569,6 @@ function initPartnerProbeUi() {
 
     partnerRunDetailSummaryEl.innerHTML = `<strong>Detalhe do tratamento #${sanitize(runId)}:</strong> ${items.length} linha(s) relida(s). ${counts.novo} novo(s), ${counts.forte} duplicado(s) forte(s), ${counts.edicao} outra(s) edição(ões) provável(is) e ${counts.ambiguo} caso(s) ambíguo(s).`;
     renderIncomingCatalogRunBulkSummary();
-    renderIncomingCatalogRunStationSummary();
 
     const rowsHtml = items.map((item) => {
       const rowNumber = getIncomingPartnerRowNumber(item);
@@ -18794,18 +18715,15 @@ function initPartnerProbeUi() {
       if (incomingCatalogRunHistoryState.lastError) {
         partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ainda não consegui reler a lista recente. ${sanitize(incomingCatalogRunHistoryState.lastError)}`;
         partnerRunHistoryWrapEl.innerHTML = '<div class="empty">Lista indisponível por enquanto. Tente atualizar novamente.</div>';
-        renderIncomingCatalogRunStationSummary();
       } else {
         partnerRunHistorySummaryEl.innerHTML = '<strong>Leitura dos tratamentos:</strong> nenhum tratamento recente encontrado ainda nesta superfície.';
         partnerRunHistoryWrapEl.innerHTML = '<div class="empty">Nenhum tratamento recente encontrado ainda.</div>';
       }
-      renderIncomingCatalogRunStationSummary();
       return;
     }
     const readyCount = items.filter((item) => String(item?.run_status || item?.status || '').trim().toLowerCase() === 'ready_for_review').length;
     const openRunId = normalizeInlineWhitespace(incomingCatalogRunDetailState.runId || incomingCatalogImportState.runId || '');
     partnerRunHistorySummaryEl.innerHTML = `<strong>Leitura dos tratamentos:</strong> ${items.length} tratamento(s) recente(s) relido(s) nesta superfície. ${readyCount} já pronto(s) para revisão.${openRunId ? ` O tratamento #${sanitize(openRunId)} já está aberto nesta leitura.` : ''}`;
-    renderIncomingCatalogRunStationSummary();
     const rows = items.map((item) => {
       const runId = Number(item?.run_id || item?.id || 0);
       const statusLabel = formatIncomingCatalogRunStatusLabel(item?.run_status || item?.status || '');
@@ -18815,11 +18733,6 @@ function initPartnerProbeUi() {
       const rowsLabel = formatIncomingRunRowsLabel(item);
       const dateLabel = formatIncomingRunHistoryDate(item?.requested_at || item?.created_at || item?.updated_at || item?.started_at);
       const isCurrentRun = openRunId && String(runId) === openRunId;
-      const actionLabel = isCurrentRun
-        ? 'Reler'
-        : (['ready_for_review', 'matched', 'parsed', 'draft_created', 'drafts_created'].includes(String(item?.run_status || item?.status || '').trim().toLowerCase())
-          ? 'Abrir revisão'
-          : 'Abrir tratamento');
       return `
         <tr>
           <td><strong>#${sanitize(runId || '—')}</strong>${isCurrentRun ? '<div class="small">Aberto nesta superfície</div>' : ''}<div class="small">${sanitize(fileLabel)}</div></td>
@@ -18828,7 +18741,7 @@ function initPartnerProbeUi() {
           <td>${sanitize(formatLabel)}</td>
           <td>${sanitize(rowsLabel)}</td>
           <td>${sanitize(sourceLabel)}</td>
-          <td><button class="button small secondary" type="button" data-open-partner-run="${sanitize(runId || '')}">${actionLabel}</button></td>
+          <td><button class="button small secondary" type="button" data-open-partner-run="${sanitize(runId || '')}">${isCurrentRun ? 'Reler' : 'Abrir'}</button></td>
         </tr>`;
     }).join('');
     partnerRunHistoryWrapEl.innerHTML = `
@@ -19221,7 +19134,6 @@ function initPartnerProbeUi() {
     renderIncomingCatalogRunReviewFlowSummary();
     renderIncomingCatalogDraftCreationSummary();
     renderIncomingCatalogDraftOutputFlowSummary();
-    renderIncomingCatalogRunStationSummary();
     refreshIncomingCatalogWorkflowSummary();
     const identityReady = hasIncomingCatalogIdentityReady();
     const disableCreate = incomingCatalogImportState.busy || !file || !hasIncomingCatalogSelectedSourceChoice();
@@ -21708,6 +21620,144 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     return parsed.toLocaleString('pt-BR');
   }
 
+  function setInterlibraryActionPill(node, label, state = 'empty', detail = '') {
+    if (!node) return;
+    const states = {
+      empty: { text: 'não relida', kind: 'warn' },
+      allowed: { text: 'liberada', kind: 'ok' },
+      blocked: { text: 'bloqueada', kind: 'danger' },
+      conditional: { text: 'condicionada', kind: 'warn' },
+      local_only: { text: 'só local', kind: 'info' },
+      agreement: { text: 'sob acordo', kind: 'info' },
+      not_applicable: { text: 'não aplicável', kind: 'info' },
+    };
+    const meta = states[state] || states.empty;
+    node.className = `pill ${meta.kind}`;
+    node.textContent = `${label}: ${meta.text}`;
+    if (detail) {
+      node.title = detail;
+      node.setAttribute('aria-label', `${label}: ${meta.text}. ${detail}`);
+    } else {
+      node.removeAttribute('title');
+      node.setAttribute('aria-label', `${label}: ${meta.text}`);
+    }
+  }
+
+  function renderPartnerActionStateStrip(mode = 'empty', row = null, gateState = null) {
+    const nextGateState = gateState || getPartnerAgreementGateState(getCurrentPartnerSlug(), null);
+    const registered = !!row;
+    const hasContext = registered || !!normalizePartnerSlug(getCurrentPartnerSlug() || '');
+    const gateBlocked = !!nextGateState.catalogacaoGateBlocked;
+    const compareAllowed = !!row?.compare_allowed && !gateBlocked;
+    const importAllowed = !!row?.import_allowed && !gateBlocked;
+    const mutualizeAllowed = !!row?.mutualize_allowed && !gateBlocked;
+    const agreementMessage = String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.').trim();
+
+    if (!hasContext) {
+      setInterlibraryActionPill(partnerActionComparePillEl, 'Comparação', 'empty', 'Sem parceira em foco nesta etapa.');
+      setInterlibraryActionPill(partnerActionDraftPillEl, 'Retomada local', 'empty', 'Sem parceira em foco nesta etapa.');
+      setInterlibraryActionPill(partnerActionEnrichPillEl, 'Camada local', 'empty', 'Sem parceira em foco nesta etapa.');
+      setInterlibraryActionPill(partnerActionPublishPillEl, 'Publicação local', 'not_applicable', 'Ainda não há parceira formalizada para esta leitura.');
+      setInterlibraryActionPill(partnerActionSharedPillEl, 'Camada comum', 'empty', 'Nada relido ainda para a camada comum da rede.');
+      setInterlibraryActionPill(partnerActionMutualizePillEl, 'Mutualização', 'empty', 'Nada relido ainda para mutualização.');
+      return;
+    }
+
+    if (!registered) {
+      setInterlibraryActionPill(partnerActionComparePillEl, 'Comparação', 'blocked', 'A parceira ainda não foi formalizada na base.');
+      setInterlibraryActionPill(partnerActionDraftPillEl, 'Retomada local', 'blocked', 'A parceira ainda não foi formalizada na base.');
+      setInterlibraryActionPill(partnerActionEnrichPillEl, 'Camada local', 'local_only', 'Só cabe leitura e identificação locais antes da formalização.');
+      setInterlibraryActionPill(partnerActionPublishPillEl, 'Publicação local', 'not_applicable', 'Formaliza primeiro a parceira antes de usar esta matriz como gesto documental.');
+      setInterlibraryActionPill(partnerActionSharedPillEl, 'Camada comum', 'blocked', 'Nenhuma ação sobre a camada comum aparece autorizada.');
+      setInterlibraryActionPill(partnerActionMutualizePillEl, 'Mutualização', 'blocked', 'Sem formalização, não há mutualização possível.');
+      return;
+    }
+
+    if (gateBlocked) {
+      setInterlibraryActionPill(partnerActionComparePillEl, 'Comparação', 'blocked', agreementMessage);
+      setInterlibraryActionPill(partnerActionDraftPillEl, 'Retomada local', 'blocked', agreementMessage);
+      setInterlibraryActionPill(partnerActionEnrichPillEl, 'Camada local', 'blocked', agreementMessage);
+      setInterlibraryActionPill(partnerActionPublishPillEl, 'Publicação local', 'local_only', 'A publicação segue local à tua biblioteca, mas o uso documental desta parceira fica travado.');
+      setInterlibraryActionPill(partnerActionSharedPillEl, 'Camada comum', 'blocked', agreementMessage);
+      setInterlibraryActionPill(partnerActionMutualizePillEl, 'Mutualização', 'blocked', agreementMessage);
+      return;
+    }
+
+    setInterlibraryActionPill(partnerActionComparePillEl, 'Comparação', compareAllowed ? 'allowed' : 'blocked', compareAllowed ? 'A comparação documental local pode ser aberta agora.' : 'A política atual não libera comparação nesta etapa.');
+    setInterlibraryActionPill(partnerActionDraftPillEl, 'Retomada local', importAllowed ? 'allowed' : (compareAllowed ? 'conditional' : 'blocked'), importAllowed ? 'A preparação local de retomada pode ser aberta com revisão humana.' : (compareAllowed ? 'A comparação pode preparar a retomada, mas a preparação local ainda não está liberada.' : 'A política atual não libera preparação local nesta etapa.'));
+    setInterlibraryActionPill(partnerActionEnrichPillEl, 'Camada local', (compareAllowed || importAllowed) ? 'allowed' : 'local_only', (compareAllowed || importAllowed) ? 'A camada local pode ser enriquecida com proveniência explícita.' : 'Só cabe leitura local prudente nesta etapa.');
+    setInterlibraryActionPill(partnerActionPublishPillEl, 'Publicação local', 'local_only', 'A publicação continua restrita à tua biblioteca.');
+    setInterlibraryActionPill(partnerActionSharedPillEl, 'Camada comum', mutualizeAllowed ? 'agreement' : 'blocked', mutualizeAllowed ? 'Há autorização política, mas sem modificação livre da camada comum da rede.' : 'A camada comum da rede continua protegida nesta etapa.');
+    setInterlibraryActionPill(partnerActionMutualizePillEl, 'Mutualização', mutualizeAllowed ? 'agreement' : 'blocked', mutualizeAllowed ? 'A mutualização aparece autorizada politicamente, sempre sob acordo e revisão.' : 'A mutualização não aparece autorizada nesta etapa.');
+  }
+
+  function renderBookPartnerActionStrip(mode = 'free', row = null, gateState = null) {
+    const nextGateState = gateState || getPartnerAgreementGateState(getGovernedBookPartnerSlug(), null);
+    const sourceValue = String(bookPartnerSourceEl?.value || '').trim();
+    const hasSource = !!sourceValue;
+    const compareAllowed = !!row?.compare_allowed && !nextGateState.catalogacaoGateBlocked;
+    const importAllowed = !!row?.import_allowed && !nextGateState.catalogacaoGateBlocked;
+    const mutualizeAllowed = !!row?.mutualize_allowed && !nextGateState.catalogacaoGateBlocked;
+    const agreementMessage = String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.').trim();
+
+    if (!hasSource || mode === 'free') {
+      setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', 'not_applicable', 'Sem fonte parceira governada nesta ficha.');
+      setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', 'not_applicable', 'Sem fonte parceira governada nesta ficha.');
+      setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', 'local_only', 'A ficha local continua editável dentro da tua biblioteca.');
+      setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+      setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', 'not_applicable', 'Sem parceira governada, este ponto não se aplica nesta ficha.');
+      setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', 'not_applicable', 'Sem parceira governada, este ponto não se aplica nesta ficha.');
+      return;
+    }
+
+    if (mode === 'ungoverned_source') {
+      setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', 'not_applicable', 'Esta fonte só alimenta proveniência local nesta etapa.');
+      setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', 'not_applicable', 'Esta fonte não usa a governança de parceiras nesta etapa.');
+      setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', 'local_only', 'Só a camada local da tua biblioteca pode ser enriquecida aqui.');
+      setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+      setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', 'blocked', 'Esta fonte não abre gesto sobre a camada comum da rede.');
+      setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', 'blocked', 'Esta fonte não abre mutualização nesta etapa.');
+      return;
+    }
+
+    if (mode === 'needs_partner_slug') {
+      setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', 'conditional', 'Lê primeiro a parceira na aba de catálogos externos para aplicar a governança aqui.');
+      setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', 'conditional', 'O slug da parceira precisa ser definido antes de liberar a preparação local.');
+      setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', 'local_only', 'Só a edição local genérica segue aberta por enquanto.');
+      setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+      setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', 'blocked', 'Sem parceira lida, a camada comum da rede continua protegida.');
+      setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', 'blocked', 'Sem parceira lida, a mutualização continua bloqueada.');
+      return;
+    }
+
+    if (mode === 'missing_policy') {
+      setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', 'blocked', 'A parceira ainda não foi formalizada na base de governança.');
+      setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', 'blocked', 'A parceira ainda não foi formalizada na base de governança.');
+      setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', 'blocked', 'Os campos documentários desta ficha ficam bloqueados por segurança.');
+      setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+      setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', 'blocked', 'Sem política da parceira, a camada comum da rede continua protegida.');
+      setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', 'blocked', 'Sem política da parceira, a mutualização continua bloqueada.');
+      return;
+    }
+
+    if (mode === 'agreement_blocked') {
+      setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', 'blocked', agreementMessage);
+      setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', 'blocked', agreementMessage);
+      setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', 'blocked', agreementMessage);
+      setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+      setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', 'blocked', agreementMessage);
+      setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', 'blocked', agreementMessage);
+      return;
+    }
+
+    setInterlibraryActionPill(bookRightComparePillEl, 'Comparação', compareAllowed ? 'allowed' : 'blocked', compareAllowed ? 'A comparação documental desta parceira já pode sustentar esta ficha.' : 'A política atual não libera comparação ativa nesta ficha.');
+    setInterlibraryActionPill(bookRightDraftPillEl, 'Retomada local', importAllowed ? 'allowed' : (compareAllowed ? 'conditional' : 'blocked'), importAllowed ? 'A preparação local desta retomada pode ser definida nesta ficha.' : (compareAllowed ? 'A comparação está liberada, mas a preparação local ainda não.' : 'A preparação local permanece bloqueada nesta etapa.'));
+    setInterlibraryActionPill(bookRightEnrichPillEl, 'Camada local', (compareAllowed || importAllowed) ? 'allowed' : 'local_only', (compareAllowed || importAllowed) ? 'A camada local desta ficha pode ser enriquecida com proveniência explícita.' : 'Só a edição local prudente permanece aberta.');
+    setInterlibraryActionPill(bookRightPublishPillEl, 'Publicação local', 'local_only', 'A publicação desta ficha continua local à tua biblioteca.');
+    setInterlibraryActionPill(bookRightSharedPillEl, 'Camada comum', mutualizeAllowed ? 'agreement' : 'blocked', mutualizeAllowed ? 'Há autorização política, mas sem modificação livre da camada comum da rede.' : 'A camada comum da rede continua protegida nesta ficha.');
+    setInterlibraryActionPill(bookRightMutualizePillEl, 'Mutualização', mutualizeAllowed ? 'agreement' : 'blocked', mutualizeAllowed ? 'A mutualização aparece autorizada politicamente, sempre sob acordo e revisão.' : 'A mutualização não aparece autorizada para esta ficha nesta etapa.');
+  }
+
   function setPartnerRightsMatrixReadout(row = null, gateState = null) {
     if (!partnerRightReadEl || !partnerRightCompareEl || !partnerRightDraftEl || !partnerRightEnrichEl || !partnerRightSharedEl || !partnerRightPublishEl || !partnerRightsSummaryEl) return;
 
@@ -21891,10 +21941,36 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     partnerDocumentActionState.mutualizeAllowed = mutualizeAllowedByPolicy && !gateBlocked;
     compareActionBtn.disabled = !partnerDocumentActionState.compareAllowed;
     importActionBtn.disabled = !partnerDocumentActionState.importAllowed;
-    importActionBtn.textContent = partnerDocumentActionState.importAllowed && partnerDocumentActionState.mutualizeAllowed
-      ? 'Preparação local de importação / mutualização'
-      : 'Preparação local de importação';
+    compareActionBtn.textContent = partnerDocumentActionState.compareAllowed
+      ? 'Abrir comparação documental'
+      : 'Comparação documental bloqueada';
+    importActionBtn.textContent = partnerDocumentActionState.importAllowed
+      ? (partnerDocumentActionState.mutualizeAllowed
+          ? 'Abrir preparação local / mutualização'
+          : 'Abrir preparação local de importação')
+      : 'Preparação local bloqueada';
+    const compareButtonHint = partnerDocumentActionState.compareAllowed
+      ? 'A comparação documental local pode ser aberta agora.'
+      : (gateBlocked
+          ? String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.').trim()
+          : (compareAllowedByPolicy
+              ? 'A política autoriza comparação, mas a etapa atual permanece bloqueada.'
+              : 'A política atual não libera comparação documental nesta etapa.'));
+    const importButtonHint = partnerDocumentActionState.importAllowed
+      ? (partnerDocumentActionState.mutualizeAllowed
+          ? 'A preparação local está aberta e a mutualização aparece autorizada politicamente, sempre sem modificação livre do registro da parceira.'
+          : 'A preparação local está aberta com revisão humana e proveniência explícita.')
+      : (gateBlocked
+          ? String(nextGateState.noAgreementMessage || 'Sem acordo explícito ativo.').trim()
+          : (importAllowedByPolicy
+              ? 'A política autoriza a importação, mas a etapa atual permanece bloqueada.'
+              : 'A política atual não libera preparação local de importação nesta etapa.'));
+    compareActionBtn.title = compareButtonHint;
+    importActionBtn.title = importButtonHint;
+    compareActionBtn.setAttribute('aria-label', `${compareActionBtn.textContent}. ${compareButtonHint}`);
+    importActionBtn.setAttribute('aria-label', `${importActionBtn.textContent}. ${importButtonHint}`);
     setPartnerWorkspaceInputsDisabled(gateBlocked);
+    renderPartnerActionStateStrip(mode, row, nextGateState);
 
     if (!partnerDocumentActionState.compareAllowed) {
       closeCompareWorkspace({ reset: false });
@@ -22048,6 +22124,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       compareNodes.forEach((node) => { node.disabled = false; });
       importNodes.forEach((node) => { node.disabled = false; });
       bookPartnerPolicyHintEl.textContent = 'Sem fonte de parceira selecionada para governança documental específica.';
+      renderBookPartnerActionStrip('free', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
@@ -22056,6 +22133,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       compareNodes.forEach((node) => { node.disabled = false; });
       importNodes.forEach((node) => { node.disabled = false; });
       bookPartnerPolicyHintEl.textContent = 'Esta fonte usa a camada de proveniência, mas não depende da governança de catálogos parceiros nesta etapa.';
+      renderBookPartnerActionStrip('ungoverned_source', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
@@ -22064,6 +22142,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = 'Seleciona e lê primeiro a parceira na aba “Catálogos de parceiras externas” para liberar comparação documental aqui.';
+      renderBookPartnerActionStrip('needs_partner_slug', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
@@ -22072,6 +22151,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = 'Esta parceira ainda não foi formalizada na base de governança. Comparação e importação ficam bloqueadas.';
+      renderBookPartnerActionStrip('missing_policy', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
@@ -22080,6 +22160,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       compareNodes.forEach((node) => { node.disabled = true; });
       importNodes.forEach((node) => { node.disabled = true; });
       bookPartnerPolicyHintEl.textContent = `${nextGateState.noAgreementMessage} Os campos documentários desta ficha ficaram bloqueados até os acordos serem definidos no painel.`;
+      renderBookPartnerActionStrip('agreement_blocked', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
@@ -22091,17 +22172,20 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       bookPartnerPolicyHintEl.textContent = row?.mutualize_allowed
         ? 'Comparação, importação e mutualização autorizadas para esta parceira. A revisão bibliográfica local continua obrigatória e não há modificação livre do registro da parceira.'
         : 'Comparação e importação autorizadas para esta parceira. A revisão bibliográfica local continua obrigatória e isso não vale como mutualização.';
+      renderBookPartnerActionStrip('governed', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
 
     if (compareAllowed) {
       bookPartnerPolicyHintEl.textContent = 'Comparação autorizada para esta parceira. Importação e mutualização continuam bloqueadas nesta etapa.';
+      renderBookPartnerActionStrip('governed', row, nextGateState);
       updateBookInterlibraryRightsSummary();
       return;
     }
 
     bookPartnerPolicyHintEl.textContent = 'Sem autorização para comparação ativa nem importação desta parceira nesta etapa.';
+    renderBookPartnerActionStrip('governed', row, nextGateState);
     updateBookInterlibraryRightsSummary();
   }
 
