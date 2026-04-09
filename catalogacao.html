@@ -2126,6 +2126,8 @@
         </div>
         <div class="inline">
           <span id="bookDraftModePill" class="pill info">Novo rascunho</span>
+          <span id="bookIsbdStatusPill" class="pill warn">ISBD não preparado</span>
+          <button id="prepareBookIsbdBtn" type="button" class="button secondary">Preparar ISBD</button>
           <button id="bookDraftResetBtn" class="button ghost">Limpar formulário</button>
         </div>
       </div>
@@ -2165,6 +2167,7 @@
             <input type="hidden" id="bookDraftId" />
             <input type="hidden" id="bookPublishedId" />
             <input type="hidden" id="bookAction" value="create" />
+            <input type="hidden" id="bookIsbdEnabled" value="" />
 
             <div class="field mode-complete-only">
               <label for="bookBibRef">Código local legado do vínculo local</label>
@@ -2871,6 +2874,62 @@
                 </div>
               </div>
             </div>
+            <div class="field" style="grid-column: span 3;">
+              <div class="book-public-preview">
+                <div class="book-public-preview-top">
+                  <div>
+                    <h4 class="autofill-panel-title">Preparação ISBD para a página de índice</h4>
+                    <div class="hint">Este bloco não substitui a catalogação habitual. O botão “Preparar ISBD” relê a ficha atual segundo a ordem das zonas ISBD, gera uma descrição orientada pelo documento de referência e grava no <code>marc_json</code> um pacote técnico reutilizável pela página <code>index</code>.</div>
+                  </div>
+                  <span id="bookIsbdModePill" class="pill warn">ISBD inativo</span>
+                </div>
+                <div id="bookIsbdSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>Leitura ISBD:</strong> ainda não preparada neste rascunho.</div>
+                <div class="grid cols-3" style="margin-top:12px;">
+                  <div class="field" style="grid-column: span 3;">
+                    <label for="bookIsbdStatement">Descrição ISBD preparada</label>
+                    <textarea id="bookIsbdStatement" readonly placeholder="Clique em ‘Preparar ISBD’ para gerar a leitura ISBD desta ficha."></textarea>
+                    <small>Leitura de trabalho em zonas ISBD para reaproveitamento pela página de índice. Você pode continuar catalogando normalmente nesta aba.</small>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone0">Zona 0 - forma do conteúdo e tipo de mediação</label>
+                    <textarea id="bookIsbdZone0" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone1">Zona 1 - título e responsabilidade</label>
+                    <textarea id="bookIsbdZone1" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone2">Zona 2 - edição</label>
+                    <textarea id="bookIsbdZone2" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone3">Zona 3 - dados específicos</label>
+                    <textarea id="bookIsbdZone3" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone4">Zona 4 - publicação / produção / distribuição</label>
+                    <textarea id="bookIsbdZone4" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone5">Zona 5 - descrição material</label>
+                    <textarea id="bookIsbdZone5" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone6">Zona 6 - coleção</label>
+                    <textarea id="bookIsbdZone6" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone7">Zona 7 - notas</label>
+                    <textarea id="bookIsbdZone7" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="bookIsbdZone8">Zona 8 - identificadores e aquisição</label>
+                    <textarea id="bookIsbdZone8" readonly placeholder="Ainda não preparada."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="field mode-complete-only" style="grid-column: span 3;">
               <label for="bookMarcJson">Dados técnicos complementares (JSON, avançado)</label>
               <textarea id="bookMarcJson" placeholder='{"245":{"a":"Título"},"100":{"a":"Autor"}}'></textarea>
@@ -5065,6 +5124,19 @@
       labelPrevTitle: el('labelPrevTitle'),
       labelPrevNote: el('labelPrevNote'),
       bookDraftModePill: el('bookDraftModePill'),
+      bookIsbdStatusPill: el('bookIsbdStatusPill'),
+      bookIsbdModePill: el('bookIsbdModePill'),
+      bookIsbdSummary: el('bookIsbdSummary'),
+      bookIsbdStatement: el('bookIsbdStatement'),
+      bookIsbdZone0: el('bookIsbdZone0'),
+      bookIsbdZone1: el('bookIsbdZone1'),
+      bookIsbdZone2: el('bookIsbdZone2'),
+      bookIsbdZone3: el('bookIsbdZone3'),
+      bookIsbdZone4: el('bookIsbdZone4'),
+      bookIsbdZone5: el('bookIsbdZone5'),
+      bookIsbdZone6: el('bookIsbdZone6'),
+      bookIsbdZone7: el('bookIsbdZone7'),
+      bookIsbdZone8: el('bookIsbdZone8'),
       authorDraftModePill: el('authorDraftModePill'),
       exemplarDraftModePill: el('exemplarDraftModePill'),
       labelDraftModePill: el('labelDraftModePill'),
@@ -5869,6 +5941,245 @@
 
     function getBookMaterialDetailBridge(record = {}) {
       return getMarcJsonBridgeBlock(record, 'anarbib_material_detail');
+    }
+
+    function getBookIsbdBridge(record = {}) {
+      return getMarcJsonBridgeBlock(record, 'anarbib_isbd');
+    }
+
+    function setBookIsbdStatusUi(enabled = false, prepared = false) {
+      if (refs.bookIsbdStatusPill) {
+        refs.bookIsbdStatusPill.className = `pill ${enabled ? (prepared ? 'ok' : 'info') : 'warn'}`;
+        refs.bookIsbdStatusPill.textContent = enabled ? (prepared ? 'ISBD preparado' : 'ISBD em preparo') : 'ISBD não preparado';
+      }
+      if (refs.bookIsbdModePill) {
+        refs.bookIsbdModePill.className = `pill ${enabled ? (prepared ? 'ok' : 'info') : 'warn'}`;
+        refs.bookIsbdModePill.textContent = enabled ? (prepared ? 'Pacote ISBD ativo' : 'Pacote ISBD parcial') : 'ISBD inativo';
+      }
+      const trigger = el('prepareBookIsbdBtn');
+      if (trigger) trigger.textContent = enabled ? 'Atualizar ISBD' : 'Preparar ISBD';
+    }
+
+    function clearBookIsbdPreparationUi() {
+      el('bookIsbdEnabled').value = '';
+      setBookIsbdStatusUi(false, false);
+      if (refs.bookIsbdSummary) refs.bookIsbdSummary.innerHTML = '<strong>Leitura ISBD:</strong> ainda não preparada neste rascunho.';
+      if (refs.bookIsbdStatement) refs.bookIsbdStatement.value = '';
+      ['0','1','2','3','4','5','6','7','8'].forEach(zone => {
+        const node = refs[`bookIsbdZone${zone}`];
+        if (node) node.value = '';
+      });
+    }
+
+    function buildBookIsbdZone0(materialType = '') {
+      const usage = normalizeForSearch(el('bookDigitalNativeUsage')?.value || '');
+      if (materialType === 'cartaz') return 'Imagem (fixa ; bidimensional ; visual) : imediato';
+      if (materialType === 'audio') return 'Som : áudio';
+      if (materialType === 'audiovisual') return 'Imagem (animada ; bidimensional ; visual) : vídeo';
+      if (materialType === 'recurso_digital') {
+        if (/program|software/.test(usage)) return 'Programa : eletrônico';
+        if (/dados|dataset|base de dados/.test(usage)) return 'Dados : eletrônico';
+        if (/imagem|foto|cartaz|mapa/.test(usage)) return 'Imagem (fixa ; bidimensional ; visual) : eletrônico';
+        if (/video|vídeo|filme/.test(usage)) return 'Imagem (animada ; bidimensional ; visual) : eletrônico';
+        if (/audio|podcast|entrevista|fala/.test(usage)) return 'Palavra falada : eletrônico';
+        return 'Texto (visual) : eletrônico';
+      }
+      return 'Texto (visual) : imediato';
+    }
+
+    function buildBookIsbdZone1() {
+      const title = compactSpaces(el('bookTitle').value || '');
+      const subtitle = compactSpaces(el('bookSubtitle').value || '');
+      const responsibility = compactSpaces(el('bookAuthor').value || '');
+      if (!title) return '';
+      let value = title;
+      if (subtitle) value += ` : ${subtitle}`;
+      if (responsibility) value += ` / ${responsibility}`;
+      return value;
+    }
+
+    function buildBookIsbdZone2() {
+      return compactSpaces(el('bookEdition').value || '');
+    }
+
+    function buildBookIsbdZone3(materialType = '') {
+      const hasSpecific = SERIAL_MATERIAL_TYPES.has(materialType)
+        || compactSpaces(el('bookPeriodicalTitle').value || '')
+        || compactSpaces(el('bookVolume').value || '')
+        || compactSpaces(el('bookIssueNumber').value || '')
+        || compactSpaces(el('bookFascicle').value || '')
+        || compactSpaces(el('bookIssueDate').value || '')
+        || compactSpaces(el('bookFrequency').value || '');
+      if (!hasSpecific) return '';
+      const parts = [];
+      const periodicalTitle = compactSpaces(el('bookPeriodicalTitle').value || '');
+      if (periodicalTitle) parts.push(periodicalTitle);
+      const numbering = [];
+      const volume = compactSpaces(el('bookVolume').value || '');
+      const issue = compactSpaces(el('bookIssueNumber').value || '');
+      const fascicle = compactSpaces(el('bookFascicle').value || '');
+      if (volume) numbering.push(`vol. ${volume}`);
+      if (issue) numbering.push(`n. ${issue}`);
+      if (fascicle) numbering.push(`fasc. ${fascicle}`);
+      if (numbering.length) parts.push(numbering.join(', '));
+      const issueDate = compactSpaces(el('bookIssueDate').value || '');
+      if (issueDate) parts.push(`(${issueDate})`);
+      const frequency = compactSpaces(el('bookFrequency').value || '');
+      if (frequency) parts.push(`periodicidade: ${frequency}`);
+      return parts.join(' ; ');
+    }
+
+    function buildBookIsbdZone4() {
+      const place = compactSpaces(el('bookPlace').value || '');
+      const publisher = compactSpaces(el('bookPublisher').value || '');
+      const year = compactSpaces(el('bookYear').value || '');
+      let value = '';
+      if (place) value += place;
+      if (publisher) value += `${value ? ' : ' : ''}${publisher}`;
+      if (year) value += `${value ? ', ' : ''}${year}`;
+      return value;
+    }
+
+    function buildBookIsbdZone5(materialType = '') {
+      const pages = compactSpaces(el('bookPages').value || '');
+      const physicalFormat = compactSpaces(el('bookMaterialFormat').value || '');
+      const rectoVerso = compactSpaces(el('bookMaterialRectoVerso').value || '');
+      const audioDuration = compactSpaces(el('bookAudioDuration').value || '');
+      const audioSupport = compactSpaces(el('bookAudioSupport').value || '');
+      const audiovisualDuration = compactSpaces(el('bookAudiovisualDuration').value || '');
+      const audiovisualSupport = compactSpaces(el('bookAudiovisualSupport').value || '');
+      if (materialType === 'audio') {
+        return ['1 recurso sonoro', audioDuration ? `(${audioDuration})` : '', audioSupport ? `: ${audioSupport}` : ''].filter(Boolean).join(' ');
+      }
+      if (materialType === 'audiovisual') {
+        return ['1 recurso audiovisual', audiovisualDuration ? `(${audiovisualDuration})` : '', audiovisualSupport ? `: ${audiovisualSupport}` : ''].filter(Boolean).join(' ');
+      }
+      if (materialType === 'recurso_digital') {
+        return '1 recurso eletrônico online';
+      }
+      if (materialType === 'cartaz' || materialType === 'tract') {
+        const parts = ['1 item'];
+        if (physicalFormat) parts.push(`; ${physicalFormat}`);
+        if (rectoVerso) parts.push(`: ${rectoVerso.replaceAll('_', ' ')}`);
+        return parts.join(' ');
+      }
+      if (materialType === 'dossie') {
+        const parts = ['1 dossiê'];
+        if (pages) parts.push(`(${pages} p.)`);
+        return parts.join(' ');
+      }
+      const parts = [];
+      if (pages) parts.push(`${pages} p.`);
+      if (physicalFormat) parts.push(`; ${physicalFormat}`);
+      return parts.join(' ');
+    }
+
+    function buildBookIsbdZone6() {
+      const collection = compactSpaces(el('bookCollection').value || '');
+      return collection ? `(${collection})` : '';
+    }
+
+    function buildBookIsbdZone7() {
+      const notes = [];
+      const generalNotes = compactSpaces(el('bookNotes').value || '');
+      const provenance = compactSpaces(el('bookProvenanceNote').value || '');
+      const digitalAccess = compactSpaces(el('bookDigitalNativeAccess').value || '');
+      if (generalNotes) notes.push(generalNotes);
+      if (provenance) notes.push(`Proveniência: ${provenance}`);
+      if (digitalAccess) notes.push(`Acesso: ${digitalAccess}`);
+      return notes.join(' . - ');
+    }
+
+    function buildBookIsbdZone8() {
+      const parts = [];
+      const isbn = compactSpaces(el('bookISBN').value || '');
+      const issn = compactSpaces(el('bookISSN').value || '');
+      const acquisitionMode = compactSpaces(el('bookAcquisitionMode').value || '');
+      const sourceLabel = compactSpaces(el('bookAcquisitionSourceLabel').value || '');
+      if (isbn) parts.push(`ISBN ${isbn}`);
+      if (issn) parts.push(`ISSN ${issn}`);
+      if (acquisitionMode) parts.push(`modalidade de aquisição: ${acquisitionMode}`);
+      if (sourceLabel) parts.push(`origem imediata: ${sourceLabel}`);
+      return parts.join(' ; ');
+    }
+
+    function buildBookIsbdPreparation() {
+      const materialType = el('bookType').value || 'livro';
+      const zoneMap = {
+        '0': { label: 'Forma do conteúdo e tipo de mediação', value: buildBookIsbdZone0(materialType) },
+        '1': { label: 'Título e menção de responsabilidade', value: buildBookIsbdZone1() },
+        '2': { label: 'Edição', value: buildBookIsbdZone2() },
+        '3': { label: 'Dados específicos de recurso', value: buildBookIsbdZone3(materialType) },
+        '4': { label: 'Publicação / produção / distribuição', value: buildBookIsbdZone4() },
+        '5': { label: 'Descrição material', value: buildBookIsbdZone5(materialType) },
+        '6': { label: 'Coleção', value: buildBookIsbdZone6() },
+        '7': { label: 'Notas', value: buildBookIsbdZone7() },
+        '8': { label: 'Identificadores e aquisição', value: buildBookIsbdZone8() },
+      };
+      const orderedZones = ['0','1','2','3','4','5','6','7','8'];
+      const statement = orderedZones.map(zone => zoneMap[zone].value).filter(Boolean).join('. - ');
+      const nonEmptyZones = orderedZones.filter(zone => zoneMap[zone].value);
+      const data = {
+        enabled: true,
+        standard: 'IFLA_ISBD_integrada_2011_guided_local',
+        generated_at: new Date().toISOString(),
+        source_form: 'catalogacao.booksPanel',
+        statement,
+        zones: Object.fromEntries(orderedZones.map(zone => [zone, { label: zoneMap[zone].label, value: zoneMap[zone].value || null }])),
+        fields: {
+          material_type: materialType,
+          title_proper: compactSpaces(el('bookTitle').value || ''),
+          other_title_info: compactSpaces(el('bookSubtitle').value || ''),
+          statement_of_responsibility: compactSpaces(el('bookAuthor').value || ''),
+          edition_statement: compactSpaces(el('bookEdition').value || ''),
+          publication_place: compactSpaces(el('bookPlace').value || ''),
+          publisher_name: compactSpaces(el('bookPublisher').value || ''),
+          publication_year: compactSpaces(el('bookYear').value || ''),
+          extent: compactSpaces(el('bookPages').value || ''),
+          series_title: compactSpaces(el('bookCollection').value || ''),
+          notes: compactSpaces(el('bookNotes').value || ''),
+          isbn: compactSpaces(el('bookISBN').value || ''),
+          issn: compactSpaces(el('bookISSN').value || ''),
+        },
+      };
+      return { data, statement, zoneMap, nonEmptyZones };
+    }
+
+    function renderBookIsbdPreparation(preparation = null, { enable = false } = {}) {
+      if (!preparation) {
+        clearBookIsbdPreparationUi();
+        return;
+      }
+      const orderedZones = ['0','1','2','3','4','5','6','7','8'];
+      if (enable) el('bookIsbdEnabled').value = 'true';
+      setBookIsbdStatusUi(true, true);
+      if (refs.bookIsbdStatement) refs.bookIsbdStatement.value = preparation.statement || '';
+      orderedZones.forEach(zone => {
+        const node = refs[`bookIsbdZone${zone}`];
+        if (node) node.value = preparation.zoneMap?.[zone]?.value || '';
+      });
+      const count = preparation.nonEmptyZones?.length || 0;
+      if (refs.bookIsbdSummary) {
+        refs.bookIsbdSummary.innerHTML = `<strong>Leitura ISBD:</strong> ${count} zona(s) preenchida(s) nesta preparação. A ordem segue a estrutura ISBD e o pacote técnico será mantido em <code>marc_json.anarbib_isbd</code> para reaproveitamento pela página <code>index</code>.`;
+      }
+    }
+
+    function applyBookIsbdPreparationToMarcJson(rawValue, preparation = null, enabled = false) {
+      return mergeMarcJsonBridgeBlock(rawValue, 'anarbib_isbd', enabled && preparation ? preparation.data : {});
+    }
+
+    function syncBookIsbdPreparation({ forceEnable = false, announce = false } = {}) {
+      const shouldEnable = forceEnable || el('bookIsbdEnabled').value === 'true';
+      if (!shouldEnable) {
+        clearBookIsbdPreparationUi();
+        return null;
+      }
+      const preparation = buildBookIsbdPreparation();
+      renderBookIsbdPreparation(preparation, { enable: true });
+      const merged = applyBookIsbdPreparationToMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), preparation, true);
+      el('bookMarcJson').value = JSON.stringify(merged, null, 2);
+      if (announce) showMessage(refs.bookMessage, 'Preparação ISBD atualizada a partir da ficha atual.', 'ok');
+      return preparation;
     }
 
     function getBookNativeOrBridgeValue(record = {}, nativeKey = '', bridgeValue = '') {
@@ -7079,6 +7390,8 @@
         subjects: el('bookSubjects').value.trim(),
         coverPath: el('bookCoverPath').value.trim(),
         marcJson: el('bookMarcJson').value.trim(),
+        isbdEnabled: el('bookIsbdEnabled').value === 'true',
+        isbdStatement: el('bookIsbdStatement').value.trim(),
         contributors: getBookContributorsSnapshot({ keepEmpty: true }),
       });
     }
@@ -9474,6 +9787,8 @@
         updateBookQuickLabelPreview();
         updateBookDerivedSummaryPreview();
         updateBookPublicSurfacePreview();
+        if (el('bookIsbdEnabled').value === 'true') syncBookIsbdPreparation({ announce: false });
+        if (el('bookIsbdEnabled').value === 'true') syncBookIsbdPreparation({ announce: false });
         return;
       }
       renderBookResponsibilitySummary(contributors);
@@ -9799,26 +10114,34 @@
         provenance_note: provenanceNoteValue || null,
         mutualization_status: mutualizationStatusValue || null,
         ...materialDetailNativePayload,
-        marc_json: mergeMarcJsonBridgeBlock(
-          mergeMarcJsonBridgeBlock(
+        marc_json: (() => {
+          const rawMarc = parseJsonSafe(el('bookMarcJson').value, {});
+          const currentIsbd = el('bookIsbdEnabled').value === 'true' ? buildBookIsbdPreparation() : null;
+          return applyBookIsbdPreparationToMarcJson(
             mergeMarcJsonBridgeBlock(
               mergeMarcJsonBridgeBlock(
-                mergeBookSubjectsIntoMarcJson(
-                  mergeBookCollectionIntoMarcJson(parseJsonSafe(el('bookMarcJson').value, {}), collectionValue),
-                  subjectsValue
+                mergeMarcJsonBridgeBlock(
+                  mergeMarcJsonBridgeBlock(
+                    mergeBookSubjectsIntoMarcJson(
+                      mergeBookCollectionIntoMarcJson(rawMarc, collectionValue),
+                      subjectsValue
+                    ),
+                    'anarbib_acquisition',
+                    acquisitionBridge
+                  ),
+                  'anarbib_provenance',
+                  provenanceBridge
                 ),
-                'anarbib_acquisition',
-                acquisitionBridge
+                'anarbib_network',
+                {}
               ),
-              'anarbib_provenance',
-              provenanceBridge
+              'anarbib_material_detail',
+              materialDetailBridge
             ),
-            'anarbib_network',
-            {}
-          ),
-          'anarbib_material_detail',
-          materialDetailBridge
-        ),
+            currentIsbd,
+            !!currentIsbd
+          );
+        })(),
         created_by: getCurrentActorId(),
         updated_by: getCurrentActorId(),
       };
@@ -10067,6 +10390,7 @@
       el('bookType').value = 'livro';
       el('bookLoanable').value = 'true';
       el('bookMarcJson').value = '';
+      el('bookIsbdEnabled').value = '';
       el('bookCollection').value = '';
       el('bookSubjects').value = '';
       el('bookAcquisitionMode').value = '';
@@ -10101,6 +10425,7 @@
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
       updateBookPublicSurfacePreview();
+      clearBookIsbdPreparationUi();
       refreshBookPartnerGovernanceUi({ silent: true });
     }
 
@@ -11387,6 +11712,11 @@
       refs.authorPhotoFileName.textContent = file ? file.name : 'Nenhum arquivo selecionado';
     });
 
+    el('prepareBookIsbdBtn').addEventListener('click', () => {
+      syncBookIsbdPreparation({ forceEnable: true, announce: true });
+      syncBookDraftVisualState();
+    });
+
     Array.from(el('bookForm').querySelectorAll('input, textarea, select')).forEach(node => {
       node.addEventListener('input', () => {
         syncBookDraftVisualState();
@@ -12573,6 +12903,8 @@
       el('bookSubjects').value = getBookSubjectsValue(enriched);
       el('bookCoverPath').value = enriched.cover_object_path || '';
       el('bookMarcJson').value = enriched.marc_json ? JSON.stringify(enriched.marc_json, null, 2) : '';
+      const isbdBridge = getBookIsbdBridge(enriched);
+      el('bookIsbdEnabled').value = isbdBridge && Object.keys(isbdBridge).length ? 'true' : '';
       syncBookTypeUI();
       seedBookOwnershipDefaults(false);
       await loadBookContributorsForDraft(enriched.id, enriched.published_book_id, enriched.autor || '');
@@ -12582,6 +12914,11 @@
       updateBookQuickLabelPreview();
       updateBookDerivedSummaryPreview();
       updateBookPublicSurfacePreview();
+      if (el('bookIsbdEnabled').value === 'true') {
+        syncBookIsbdPreparation({ forceEnable: true, announce: false });
+      } else {
+        clearBookIsbdPreparationUi();
+      }
       await refreshBookPartnerGovernanceUi({ silent: true });
     }
 
