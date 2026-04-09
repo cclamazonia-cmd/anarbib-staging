@@ -1081,10 +1081,12 @@
       line-height: 1.45;
       border: 1px solid rgba(255,255,255,.10);
       position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      width: min(560px, calc(100vw - 28px));
+      top: 18px;
+      right: 18px;
+      left: auto;
+      bottom: auto;
+      transform: none;
+      width: min(520px, calc(100vw - 28px));
       max-width: calc(100vw - 28px);
       margin: 0;
       z-index: 1400;
@@ -5492,68 +5494,47 @@
       };
     }
 
-    function positionMessage(target, anchor = null) {
+    function positionMessage(target) {
       if (!(target instanceof Element)) return;
       const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-      const viewportPad = 14;
-      const scope = getMessageScope(anchor || target);
-      const scopeFrame = getMessageScopeFrame(scope, viewportWidth, viewportHeight, viewportPad);
-      const frameLeft = scopeFrame?.left ?? viewportPad;
-      const frameRight = scopeFrame?.right ?? (viewportWidth - viewportPad);
-      const frameWidth = Math.max(280, frameRight - frameLeft);
-      const width = Math.max(280, Math.min(560, frameWidth));
-      target.style.width = `${width}px`;
-      target.style.maxWidth = `${Math.max(280, frameWidth)}px`;
-      target.style.right = 'auto';
-      if (isCenteredViewportMessageTarget(target)) {
-        const centeredLeft = Math.max(viewportPad, (viewportWidth - width) / 2);
-        const centeredTop = Math.max(viewportPad, Math.min((viewportHeight - Math.max(72, target.offsetHeight || 96)) / 2, viewportHeight - Math.max(72, target.offsetHeight || 96) - viewportPad));
-        target.style.left = `${Math.round(centeredLeft)}px`;
-        target.style.top = `${Math.round(centeredTop)}px`;
-        target.style.bottom = 'auto';
-        target.style.transform = 'none';
-        return;
+      const viewportPad = viewportWidth <= 760 ? 10 : 18;
+      const trayTop = viewportWidth <= 760 ? 10 : 18;
+      const trayWidth = Math.max(280, Math.min(520, viewportWidth - (viewportPad * 2)));
+      const visibleMessages = Array.from(document.querySelectorAll('.message.show'));
+      const orderedMessages = visibleMessages
+        .filter((node) => node instanceof Element)
+        .sort((a, b) => {
+          const pos = a.compareDocumentPosition(b);
+          if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+          if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+          return 0;
+        });
+      const stackIndex = Math.max(0, orderedMessages.indexOf(target));
+      const gap = 10;
+      let top = trayTop;
+      for (let i = 0; i < stackIndex; i += 1) {
+        top += Math.max(56, orderedMessages[i]?.offsetHeight || 72) + gap;
       }
-      if (!isVisibleMessageAnchor(anchor)) {
-        const centeredLeft = frameLeft + ((frameRight - frameLeft - width) / 2);
-        target.style.left = `${Math.round(Math.max(viewportPad, centeredLeft))}px`;
-        target.style.top = 'auto';
-        target.style.bottom = '18px';
-        target.style.transform = 'none';
-        return;
-      }
-      const rect = anchor.getBoundingClientRect();
-      const height = Math.max(56, target.offsetHeight || 72);
-      let left = rect.left + (rect.width / 2) - (width / 2);
-      left = Math.max(frameLeft, Math.min(left, frameRight - width));
-      const minTop = scopeFrame ? Math.max(viewportPad, scopeFrame.top) : viewportPad;
-      const maxTop = scopeFrame ? Math.min(viewportHeight - height - viewportPad, scopeFrame.bottom - height) : (viewportHeight - height - viewportPad);
-      let top = rect.bottom + 12;
-      if (top > maxTop) {
-        top = rect.top - height - 12;
-      }
-      if (top < minTop) {
-        top = Math.max(minTop, maxTop);
-      }
-      target.style.left = `${Math.round(left)}px`;
+      target.style.width = `${trayWidth}px`;
+      target.style.maxWidth = `${trayWidth}px`;
+      target.style.left = 'auto';
+      target.style.right = `${viewportPad}px`;
       target.style.top = `${Math.round(top)}px`;
       target.style.bottom = 'auto';
       target.style.transform = 'none';
     }
 
     function repositionVisibleMessages() {
-      document.querySelectorAll('.message.show').forEach((node) => {
-        positionMessage(node, resolveMessageAnchor(node));
+      Array.from(document.querySelectorAll('.message.show')).forEach((node) => {
+        positionMessage(node);
       });
     }
 
     function showMessage(target, text, kind = 'info') {
       target.textContent = text;
       target.className = `message show ${kind}`;
-      const anchor = resolveMessageAnchor(target);
-      target._messageAnchor = anchor || null;
-      window.requestAnimationFrame(() => positionMessage(target, target._messageAnchor));
+      target._messageAnchor = null;
+      window.requestAnimationFrame(() => repositionVisibleMessages());
     }
 
     function clearMessage(target) {
@@ -23366,3 +23347,22 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
