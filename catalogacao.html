@@ -844,6 +844,66 @@
       border-color: rgba(255,255,255,.10);
     }
 
+
+    .book-review-workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(179,0,24,.08));
+    }
+
+    .book-review-workspace-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .book-review-workspace-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .book-review-workspace-tab {
+      min-height: 40px;
+    }
+
+    .book-review-workspace-tab.is-active {
+      background: linear-gradient(135deg, var(--red-2), var(--red));
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .book-review-workspace-panel {
+      display: none;
+    }
+
+    .book-review-workspace-panel.is-active {
+      display: block;
+    }
+
+    .book-review-workspace-panel .book-derived-summary,
+    .book-review-workspace-panel .book-public-preview {
+      margin: 0;
+    }
+
+    @media (max-width: 760px) {
+      .book-review-workspace-tabs {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .book-review-workspace-tab {
+        width: 100%;
+      }
+    }
+
     .material-guide {
       padding: 12px 14px;
       border-radius: 16px;
@@ -2821,112 +2881,130 @@
 
 
             <div class="field" style="grid-column: span 3;">
-              <div class="book-derived-summary">
-                <div class="book-derived-summary-top">
+              <div class="book-review-workspace">
+                <div class="book-review-workspace-top">
                   <div>
-                    <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
-                    <div class="hint">Resumo curto do que a ficha já define, do que já existe como sinal local e do que já pode ser lido como acesso.</div>
+                    <h4 class="autofill-panel-title">Painel de revisão da ficha</h4>
+                    <div class="hint">Use este painel quando quiser reler a ficha já montada, ver a saída pública mínima ou conferir o pacote ISBD sem alongar demais a página principal.</div>
                   </div>
-                  <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
+                  <span id="bookReviewWorkspaceStatePill" class="pill info">Resumo da ficha</span>
                 </div>
-                <div class="book-derived-summary-card">
-                  <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
-                  <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
-                  <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha: —</div>
-                  <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais: ainda não preparados.</div>
-                  <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Acesso: —</div>
-                  <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
+                <div id="bookReviewWorkspaceTabs" class="book-review-workspace-tabs" role="tablist" aria-label="Painel de revisão da ficha">
+                  <button id="bookReviewTabSummary" type="button" class="button small secondary book-review-workspace-tab is-active" data-workspace-tab="summary" role="tab" aria-selected="true" aria-controls="bookReviewPanelSummary">Resumo da ficha</button>
+                  <button id="bookReviewTabPublic" type="button" class="button small secondary book-review-workspace-tab" data-workspace-tab="public" role="tab" aria-selected="false" aria-controls="bookReviewPanelPublic">Saída pública</button>
+                  <button id="bookReviewTabIsbd" type="button" class="button small secondary book-review-workspace-tab" data-workspace-tab="isbd" role="tab" aria-selected="false" aria-controls="bookReviewPanelIsbd">Pacote ISBD</button>
                 </div>
-              </div>
-            </div>
 
-            <div class="field" style="grid-column: span 3;">
-              <div class="book-public-preview">
-                <div class="book-public-preview-top">
-                  <div>
-                    <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
-                    <div class="hint">Prévia do que esta ficha já pode sustentar como ficha comum e camada digital. Os sinais locais abaixo ainda são preparatórios.</div>
-                  </div>
-                  <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
-                </div>
-                <div class="book-public-preview-grid">
-                  <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Linha no catálogo</div>
-                    <div class="book-public-preview-inline">
-                      <span id="bookPublicCatalogKindChip" class="book-public-preview-chip is-strong">Livro / brochura</span>
-                      <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Biblioteca: —</span>
+                <div id="bookReviewPanelSummary" class="book-review-workspace-panel is-active" data-workspace-panel="summary" role="tabpanel" aria-labelledby="bookReviewTabSummary">
+                  <div class="book-derived-summary">
+                    <div class="book-derived-summary-top">
+                      <div>
+                        <h4 class="autofill-panel-title">Resumo derivado da ficha</h4>
+                        <div class="hint">Resumo curto do que a ficha já define, do que já existe como sinal local e do que já pode ser lido como acesso.</div>
+                      </div>
+                      <span id="bookDerivedSummaryModePill" class="pill info">Modo simples</span>
                     </div>
-                    <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum visível na linha: —</div>
-                    <div id="bookPublicCatalogSnippet" class="book-public-preview-line">A linha pública ainda não foi resumida.</div>
-                    <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
-                    <div id="bookPublicCatalogResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
-                    <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local mínimo: —</div>
-                  </div>
-                  <div class="book-public-preview-card">
-                    <div class="book-public-preview-eyebrow">Abertura da ficha</div>
-                    <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
-                    <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Abertura da ficha comum: —</div>
-                    <div id="bookPublicFichaBody" class="book-public-preview-line">O corpo mínimo da ficha pública ainda não foi resumido.</div>
-                    <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
-                    <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
-                    <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Próximo passo da camada local: —</div>
-                    <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos publicáveis: —</div>
+                    <div class="book-derived-summary-card">
+                      <div id="bookDerivedSummaryKind" class="book-derived-summary-kind">Livro / brochura</div>
+                      <div id="bookDerivedSummaryTitle" class="book-derived-summary-title">Título</div>
+                      <div id="bookDerivedSummaryMeta" class="book-derived-summary-line is-muted">Ficha: —</div>
+                      <div id="bookDerivedSummaryContext" class="book-derived-summary-line">Sinais locais: ainda não preparados.</div>
+                      <div id="bookDerivedSummaryAccess" class="book-derived-summary-line is-muted">Acesso: —</div>
+                      <div id="bookDerivedSummarySubjects" class="book-derived-summary-line is-muted">Assuntos: —</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="field" style="grid-column: span 3;">
-              <div class="book-public-preview">
-                <div class="book-public-preview-top">
-                  <div>
-                    <h4 class="autofill-panel-title">Preparação ISBD para a página de índice</h4>
-                    <div class="hint">Este bloco não substitui o catalogação normal. O botão “Preparar ISBD” relê a ficha na ordem das zonas ISBD e grava no <code>marc_json</code> um pacote técnico que poderá ser usado pela página <code>index</code>.</div>
+
+                <div id="bookReviewPanelPublic" class="book-review-workspace-panel" data-workspace-panel="public" role="tabpanel" aria-labelledby="bookReviewTabPublic" aria-hidden="true">
+                  <div class="book-public-preview">
+                    <div class="book-public-preview-top">
+                      <div>
+                        <h4 class="autofill-panel-title">Saída pública mínima prevista</h4>
+                        <div class="hint">Prévia do que esta ficha já pode sustentar como ficha comum e camada digital. Os sinais locais abaixo ainda são preparatórios.</div>
+                      </div>
+                      <span id="bookPublicPreviewModePill" class="pill info">Modo simples</span>
+                    </div>
+                    <div class="book-public-preview-grid">
+                      <div class="book-public-preview-card">
+                        <div class="book-public-preview-eyebrow">Linha no catálogo</div>
+                        <div class="book-public-preview-inline">
+                          <span id="bookPublicCatalogKindChip" class="book-public-preview-chip is-strong">Livro / brochura</span>
+                          <span id="bookPublicCatalogLibraryChip" class="book-public-preview-chip">Biblioteca: —</span>
+                        </div>
+                        <div id="bookPublicCatalogTitle" class="book-public-preview-title">Título</div>
+                        <div id="bookPublicCatalogMeta" class="book-public-preview-line is-muted">Ficha comum visível na linha: —</div>
+                        <div id="bookPublicCatalogSnippet" class="book-public-preview-line">A linha pública ainda não foi resumida.</div>
+                        <div id="bookPublicCatalogHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
+                        <div id="bookPublicCatalogResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
+                        <div id="bookPublicCatalogAccess" class="book-public-preview-line is-muted">Sinal local mínimo: —</div>
+                      </div>
+                      <div class="book-public-preview-card">
+                        <div class="book-public-preview-eyebrow">Abertura da ficha</div>
+                        <div id="bookPublicFichaTitle" class="book-public-preview-title">Título</div>
+                        <div id="bookPublicFichaMeta" class="book-public-preview-line is-muted">Abertura da ficha comum: —</div>
+                        <div id="bookPublicFichaBody" class="book-public-preview-line">O corpo mínimo da ficha pública ainda não foi resumido.</div>
+                        <div id="bookPublicFichaHolding" class="book-public-preview-line is-muted">Sinais locais preparados: —</div>
+                        <div id="bookPublicFichaResource" class="book-public-preview-line is-muted">Recurso digital publicável: —</div>
+                        <div id="bookPublicFichaAccess" class="book-public-preview-line is-muted">Próximo passo da camada local: —</div>
+                        <div id="bookPublicFichaSubjects" class="book-public-preview-line is-muted">Assuntos publicáveis: —</div>
+                      </div>
+                    </div>
                   </div>
-                  <span id="bookIsbdModePill" class="pill warn">ISBD desligado</span>
                 </div>
-                <div id="bookIsbdSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>ISBD:</strong> ainda não gerado neste rascunho.</div>
-                <div class="grid cols-3" style="margin-top:12px;">
-                  <div class="field" style="grid-column: span 3;">
-                    <label for="bookIsbdStatement">Descrição ISBD preparada</label>
-                    <textarea id="bookIsbdStatement" readonly placeholder="Clique em “Preparar ISBD” para gerar a leitura desta ficha."></textarea>
-                    <small>Leitura de trabalho em zonas ISBD para uso futuro na página de índice. Você pode continuar catalogando normalmente nesta aba.</small>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone0">Zona 0 - forma do conteúdo e tipo de mediação</label>
-                    <textarea id="bookIsbdZone0" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone1">Zona 1 - título e responsabilidade</label>
-                    <textarea id="bookIsbdZone1" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone2">Zona 2 - edição</label>
-                    <textarea id="bookIsbdZone2" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone3">Zona 3 - dados específicos</label>
-                    <textarea id="bookIsbdZone3" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone4">Zona 4 - publicação / produção / distribuição</label>
-                    <textarea id="bookIsbdZone4" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone5">Zona 5 - descrição material</label>
-                    <textarea id="bookIsbdZone5" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone6">Zona 6 - coleção</label>
-                    <textarea id="bookIsbdZone6" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone7">Zona 7 - notas</label>
-                    <textarea id="bookIsbdZone7" readonly placeholder="Ainda não preparada."></textarea>
-                  </div>
-                  <div class="field">
-                    <label for="bookIsbdZone8">Zona 8 - identificadores e aquisição</label>
-                    <textarea id="bookIsbdZone8" readonly placeholder="Ainda não preparada."></textarea>
+
+                <div id="bookReviewPanelIsbd" class="book-review-workspace-panel" data-workspace-panel="isbd" role="tabpanel" aria-labelledby="bookReviewTabIsbd" aria-hidden="true">
+                  <div class="book-public-preview">
+                    <div class="book-public-preview-top">
+                      <div>
+                        <h4 class="autofill-panel-title">Preparação ISBD para a página de índice</h4>
+                        <div class="hint">Este bloco não substitui o catalogação normal. O botão “Preparar ISBD” relê a ficha na ordem das zonas ISBD e grava no <code>marc_json</code> um pacote técnico que poderá ser usado pela página <code>index</code>.</div>
+                      </div>
+                      <span id="bookIsbdModePill" class="pill warn">ISBD desligado</span>
+                    </div>
+                    <div id="bookIsbdSummary" class="catalog-surface-summary" style="margin-top:12px;"><strong>ISBD:</strong> ainda não gerado neste rascunho.</div>
+                    <div class="grid cols-3" style="margin-top:12px;">
+                      <div class="field" style="grid-column: span 3;">
+                        <label for="bookIsbdStatement">Descrição ISBD preparada</label>
+                        <textarea id="bookIsbdStatement" readonly placeholder="Clique em “Preparar ISBD” para gerar a leitura desta ficha."></textarea>
+                        <small>Leitura de trabalho em zonas ISBD para uso futuro na página de índice. Você pode continuar catalogando normalmente nesta aba.</small>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone0">Zona 0 - forma do conteúdo e tipo de mediação</label>
+                        <textarea id="bookIsbdZone0" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone1">Zona 1 - título e responsabilidade</label>
+                        <textarea id="bookIsbdZone1" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone2">Zona 2 - edição</label>
+                        <textarea id="bookIsbdZone2" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone3">Zona 3 - dados específicos</label>
+                        <textarea id="bookIsbdZone3" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone4">Zona 4 - publicação / produção / distribuição</label>
+                        <textarea id="bookIsbdZone4" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone5">Zona 5 - descrição material</label>
+                        <textarea id="bookIsbdZone5" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone6">Zona 6 - coleção</label>
+                        <textarea id="bookIsbdZone6" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone7">Zona 7 - notas</label>
+                        <textarea id="bookIsbdZone7" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                      <div class="field">
+                        <label for="bookIsbdZone8">Zona 8 - identificadores e aquisição</label>
+                        <textarea id="bookIsbdZone8" readonly placeholder="Ainda não preparada."></textarea>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -12029,6 +12107,49 @@
       }
     }
 
+    function setBookReviewWorkspaceTab(tab) {
+      const tabsWrap = document.getElementById('bookReviewWorkspaceTabs');
+      if (!tabsWrap) return;
+      const normalized = ['summary', 'public', 'isbd'].includes(String(tab || '').trim()) ? String(tab).trim() : 'summary';
+      const tabs = Array.from(tabsWrap.querySelectorAll('[data-workspace-tab]'));
+      const panels = Array.from(document.querySelectorAll('#bookForm [data-workspace-panel]'));
+      const statePill = document.getElementById('bookReviewWorkspaceStatePill');
+      const labelMap = {
+        summary: 'Resumo da ficha',
+        public: 'Saída pública',
+        isbd: 'Pacote ISBD'
+      };
+      tabs.forEach((node) => {
+        const active = node.dataset.workspaceTab === normalized;
+        node.classList.toggle('is-active', active);
+        node.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach((node) => {
+        const active = node.dataset.workspacePanel === normalized;
+        node.classList.toggle('is-active', active);
+        node.setAttribute('aria-hidden', active ? 'false' : 'true');
+      });
+      if (statePill) {
+        statePill.textContent = labelMap[normalized] || 'Resumo da ficha';
+        statePill.className = `pill ${normalized === 'isbd' ? 'warn' : normalized === 'public' ? 'info' : 'ok'}`;
+      }
+    }
+
+    function initBookReviewWorkspace() {
+      const tabsWrap = document.getElementById('bookReviewWorkspaceTabs');
+      if (!tabsWrap || tabsWrap.dataset.bound === 'true') {
+        setBookReviewWorkspaceTab('summary');
+        return;
+      }
+      tabsWrap.dataset.bound = 'true';
+      tabsWrap.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-workspace-tab]');
+        if (!btn) return;
+        setBookReviewWorkspaceTab(btn.dataset.workspaceTab || 'summary');
+      });
+      setBookReviewWorkspaceTab('summary');
+    }
+
     function updateRefreshButton(isLoading = false) {
       const btn = refs.refreshAllBtn;
       if (!btn) return;
@@ -17002,6 +17123,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     });
     el('refreshBatchesBtn').addEventListener('click', loadBatches);
     el('bookDraftResetBtn').addEventListener('click', resetBookForm);
+    initBookReviewWorkspace();
     el('authorDraftResetBtn').addEventListener('click', resetAuthorForm);
     el('exemplarDraftResetBtn').addEventListener('click', resetExemplarForm);
     el('labelDraftResetBtn').addEventListener('click', resetExemplarForm);
