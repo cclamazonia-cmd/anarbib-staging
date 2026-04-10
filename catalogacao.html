@@ -5002,7 +5002,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { supabase } from './js/blmf-supabase.js';
     import {
       PARTNER_PRESETS,
       buildCapabilityProbe,
@@ -5015,69 +5015,6 @@
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-
-    const CATALOGACAO_AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
-    const CATALOGACAO_LEGACY_AUTH_KEYS = ['anarbib-staging-auth', CATALOGACAO_AUTH_STORAGE_KEY];
-
-    function getCatalogacaoBrowserStorages() {
-      const stores = [];
-      try { if (window?.localStorage) stores.push(window.localStorage); } catch (_) {}
-      try { if (window?.sessionStorage) stores.push(window.sessionStorage); } catch (_) {}
-      return stores;
-    }
-
-    const catalogacaoSupabaseStorage = {
-      getItem(key) {
-        const wantedKey = String(key || '').trim();
-        if (!wantedKey) return null;
-        const fallbackKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
-          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
-          : [wantedKey];
-        for (const store of getCatalogacaoBrowserStorages()) {
-          for (const storageKey of fallbackKeys) {
-            try {
-              const value = store.getItem(storageKey);
-              if (value) return value;
-            } catch (_) {}
-          }
-        }
-        return null;
-      },
-      setItem(key, value) {
-        const wantedKey = String(key || '').trim();
-        if (!wantedKey) return;
-        const mirroredKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
-          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
-          : [wantedKey];
-        for (const store of getCatalogacaoBrowserStorages()) {
-          for (const storageKey of mirroredKeys) {
-            try { store.setItem(storageKey, value); } catch (_) {}
-          }
-        }
-      },
-      removeItem(key) {
-        const wantedKey = String(key || '').trim();
-        if (!wantedKey) return;
-        const mirroredKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
-          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
-          : [wantedKey];
-        for (const store of getCatalogacaoBrowserStorages()) {
-          for (const storageKey of mirroredKeys) {
-            try { store.removeItem(storageKey); } catch (_) {}
-          }
-        }
-      },
-    };
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storageKey: CATALOGACAO_AUTH_STORAGE_KEY,
-        storage: catalogacaoSupabaseStorage,
-      },
-    });
 
     const ROUTES = {
       PAINEL: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html',
@@ -13452,7 +13389,27 @@ ${next}`.trim();
 
       const [profileOutcome, membershipOutcome] = await Promise.allSettled([
         withTimeout(
-          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
+          (async () => {
+            const profileAttempts = [
+              () => supabase.schema('api').from('my_profile').select('id, email, first_name, last_name, is_librarian, is_restricted, default_library_id, default_library_slug, default_library_name, can_access_painel, can_access_catalogacao').limit(1),
+              () => supabase.from('profiles').select('id, email, public_id, first_name, last_name, is_librarian, is_restricted').eq('id', userId).limit(1),
+            ];
+
+            let lastProfileError = null;
+            for (const run of profileAttempts) {
+              try {
+                const res = await run();
+                if (!res?.error) return res;
+                lastProfileError = res.error;
+                console.warn('profiles access read failed:', res.error);
+              } catch (profileError) {
+                lastProfileError = profileError;
+                console.warn('profiles access read exception:', profileError);
+              }
+            }
+
+            return { data: null, error: lastProfileError };
+          })(),
           'profiles access read',
           3200
         ),
