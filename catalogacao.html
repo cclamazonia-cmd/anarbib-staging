@@ -13101,6 +13101,21 @@ ${next}`.trim();
       return role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente';
     }
 
+    function isCatalogacaoActiveStatus(value = '') {
+      const normalized = String(value ?? '').trim().toLowerCase();
+      if (!normalized) return true;
+      return normalized === 'active'
+        || normalized === 'ativo'
+        || normalized === 'ativa'
+        || normalized === 'enabled'
+        || normalized === 'accepted'
+        || normalized === 'approved'
+        || normalized === 'confirmado'
+        || normalized === 'confirmada'
+        || normalized === 'current'
+        || normalized === 'vigente';
+    }
+
     function isCatalogacaoLibrarianRow(row = {}) {
       if (!row || typeof row !== 'object') return false;
       const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
@@ -13117,7 +13132,7 @@ ${next}`.trim();
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
-      const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
+      const activeRows = normalizedRows.filter((row) => isCatalogacaoActiveStatus(row?.status));
       const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
       return librarianRows.find((row) => row?.is_primary === true)
         || librarianRows.find((row) => row?.can_access_catalogacao === true)
@@ -13130,114 +13145,116 @@ ${next}`.trim();
       const user = session?.user || null;
       const appMeta = user?.app_metadata && typeof user.app_metadata === 'object' ? user.app_metadata : {};
       const userMeta = user?.user_metadata && typeof user.user_metadata === 'object' ? user.user_metadata : {};
-      const permissionSources = [
+      const nestedSources = [
         userMeta,
         appMeta,
-        userMeta?.permissions && typeof userMeta.permissions === 'object' ? userMeta.permissions : {},
-        appMeta?.permissions && typeof appMeta.permissions === 'object' ? appMeta.permissions : {},
-        userMeta?.access && typeof userMeta.access === 'object' ? userMeta.access : {},
-        appMeta?.access && typeof appMeta.access === 'object' ? appMeta.access : {},
-        userMeta?.claims && typeof userMeta.claims === 'object' ? userMeta.claims : {},
-        appMeta?.claims && typeof appMeta.claims === 'object' ? appMeta.claims : {},
-      ];
-
-      const flattenValues = (value) => {
-        if (value === undefined || value === null) return [];
-        if (Array.isArray(value)) return value.flatMap((item) => flattenValues(item));
-        if (typeof value === 'object') {
-          return [
-            value?.role,
-            value?.profile_role,
-            value?.membership_role,
-            value?.app_role,
-            value?.primary_role,
-            value?.user_role,
-            value?.staff_role,
-            value?.default_role,
-            value?.library_role,
-            value?.catalog_role,
-            value?.catalogacao_role,
-            value?.roles,
-          ].flatMap((item) => flattenValues(item));
-        }
-        return [value];
-      };
+        userMeta?.claims,
+        appMeta?.claims,
+        userMeta?.permissions,
+        appMeta?.permissions,
+        userMeta?.access,
+        appMeta?.access,
+      ].filter((source) => source && typeof source === 'object');
 
       const pick = (...keys) => {
-        for (const source of permissionSources) {
+        for (const source of nestedSources) {
           for (const key of keys) {
             const value = source?.[key];
             if (value === undefined || value === null) continue;
             if (typeof value === 'string' && !value.trim()) continue;
-            if (Array.isArray(value) && !value.length) continue;
             return value;
           }
         }
         return '';
       };
 
-      const roleCandidates = [
-        pick('role', 'profile_role', 'membership_role', 'app_role', 'primary_role', 'user_role', 'staff_role', 'default_role', 'library_role', 'catalog_role', 'catalogacao_role'),
-        pick('roles'),
-        userMeta?.roles,
-        appMeta?.roles,
-        userMeta?.permissions?.roles,
-        appMeta?.permissions?.roles,
-        userMeta?.access?.roles,
-        appMeta?.access?.roles,
-        userMeta?.claims?.roles,
-        appMeta?.claims?.roles,
-      ]
-        .flatMap((value) => flattenValues(value))
-        .map((value) => normalizeCatalogacaoRole(value))
-        .filter(Boolean);
+      const collectRoleCandidates = () => {
+        const values = [];
+        const seen = new Set();
+        const pushValue = (value) => {
+          if (value === undefined || value === null) return;
+          if (Array.isArray(value)) {
+            value.forEach(pushValue);
+            return;
+          }
+          if (typeof value === 'object') {
+            [
+              value.role,
+              value.profile_role,
+              value.membership_role,
+              value.app_role,
+              value.user_role,
+              value.staff_role,
+              value.default_role,
+              value.library_role,
+              value.catalog_role,
+              value.catalogacao_role,
+              value.name,
+              value.slug,
+              value.code,
+              value.label,
+              value.value,
+            ].forEach(pushValue);
+            if (Array.isArray(value.roles)) value.roles.forEach(pushValue);
+            return;
+          }
+          const normalized = normalizeCatalogacaoRole(String(value || ''));
+          if (!normalized || seen.has(normalized)) return;
+          seen.add(normalized);
+          values.push(normalized);
+        };
 
-      const preferredRole = roleCandidates.find((item) =>
-        item === 'admin'
-        || item === 'manager'
-        || item === 'librarian'
-        || item.startsWith('bibliotec')
-        || item.startsWith('bibliotecari')
-      ) || roleCandidates[0] || '';
+        nestedSources.forEach((source) => {
+          [
+            source?.role,
+            source?.profile_role,
+            source?.membership_role,
+            source?.app_role,
+            source?.user_role,
+            source?.staff_role,
+            source?.default_role,
+            source?.library_role,
+            source?.catalog_role,
+            source?.catalogacao_role,
+            source?.roles,
+            source?.permissions,
+            source?.access,
+            source?.groups,
+            source?.memberships,
+          ].forEach(pushValue);
+        });
+        return values;
+      };
 
+      const roleCandidates = collectRoleCandidates();
+      const role = roleCandidates.find(Boolean)
+        || normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role', 'app_role', 'user_role', 'staff_role', 'default_role', 'library_role', 'catalog_role', 'catalogacao_role'));
       const libraryId = pick('library_id', 'default_library_id', 'active_library_id', 'current_library_id');
       const librarySlug = pick('library_slug', 'default_library_slug', 'active_library_slug', 'current_library_slug');
       const libraryName = pick('library_name', 'default_library_name', 'active_library_name', 'current_library_name');
-
       const canAccessCatalogacao = pick(
         'can_access_catalogacao',
         'can_manage_catalogacao',
-        'can_access_painel',
         'can_manage_catalog',
-        'can_manage_books',
         'can_access_catalog',
+        'can_manage_books',
+        'can_access_books',
+        'can_access_painel',
+        'can_manage_painel',
         'is_admin',
         'is_manager',
         'is_staff',
         'is_librarian'
       );
-
-      const explicitLibrarianFlag = pick(
-        'is_librarian',
-        'is_admin',
-        'is_manager',
-        'is_staff'
-      );
-
-      const roleIndicatesLibrarian = preferredRole === 'admin'
-        || preferredRole === 'manager'
-        || preferredRole === 'librarian'
-        || preferredRole.startsWith('bibliotec')
-        || preferredRole.startsWith('bibliotecari');
-
+      const isLibrarian = pick('is_librarian', 'is_staff', 'is_manager', 'is_admin');
       return {
-        role: preferredRole,
+        role,
         role_candidates: roleCandidates,
         library_id: libraryId,
         library_slug: librarySlug,
         library_name: libraryName,
-        can_access_catalogacao: canAccessCatalogacao || (roleIndicatesLibrarian ? true : ''),
-        is_librarian: explicitLibrarianFlag || (roleIndicatesLibrarian ? true : ''),
+        can_access_catalogacao: canAccessCatalogacao,
+        is_librarian: isLibrarian,
       };
     }
 
@@ -13248,19 +13265,19 @@ ${next}`.trim();
       const meta = getCatalogacaoSessionMeta(session);
       const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
       const baseRow = {
-        ...(preferredRow || {}),
         ...(identityRow || {}),
+        ...(preferredRow || {}),
         id: identityRow?.id || preferredRow?.id || user.id,
         user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
         email: identityRow?.email || preferredRow?.email || user.email || '',
-        role: identityRow?.role || preferredRow?.role || meta.role || '',
-        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
-        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
-        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
-        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
-        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
-        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
-        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || meta.role || '',
+        library_id: preferredRow?.library_id || preferredRow?.default_library_id || identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
+        library_slug: preferredRow?.library_slug || preferredRow?.default_library_slug || identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        library_name: preferredRow?.library_name || preferredRow?.default_library_name || identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
+        default_library_id: preferredRow?.default_library_id || identityRow?.default_library_id || meta.library_id || '',
+        default_library_slug: preferredRow?.default_library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: preferredRow?.default_library_name || identityRow?.default_library_name || meta.library_name || '',
+        status: String(preferredRow?.status || identityRow?.status || 'active').trim() || 'active',
       };
 
       if (hasExplicitCatalogacaoDenial(baseRow)) return null;
@@ -13289,19 +13306,19 @@ ${next}`.trim();
       const meta = getCatalogacaoSessionMeta(session);
       const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (hasCatalogacaoLibrarySignal(row) || isCatalogacaoLibrarianRow(row))) || null;
       const baseRow = {
-        ...(preferredRow || {}),
         ...(identityRow || {}),
+        ...(preferredRow || {}),
         id: identityRow?.id || preferredRow?.id || user.id,
         user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
         email: identityRow?.email || preferredRow?.email || user.email || '',
-        role: identityRow?.role || preferredRow?.role || meta.role || '',
-        library_id: identityRow?.library_id || identityRow?.default_library_id || preferredRow?.library_id || preferredRow?.default_library_id || meta.library_id || '',
-        library_slug: identityRow?.library_slug || identityRow?.default_library_slug || preferredRow?.library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
-        library_name: identityRow?.library_name || identityRow?.default_library_name || preferredRow?.library_name || preferredRow?.default_library_name || meta.library_name || '',
-        default_library_id: identityRow?.default_library_id || preferredRow?.default_library_id || meta.library_id || '',
-        default_library_slug: identityRow?.default_library_slug || preferredRow?.default_library_slug || meta.library_slug || '',
-        default_library_name: identityRow?.default_library_name || preferredRow?.default_library_name || meta.library_name || '',
-        status: String(identityRow?.status || preferredRow?.status || 'active').trim() || 'active',
+        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || meta.role || '',
+        library_id: preferredRow?.library_id || preferredRow?.default_library_id || identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
+        library_slug: preferredRow?.library_slug || preferredRow?.default_library_slug || identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        library_name: preferredRow?.library_name || preferredRow?.default_library_name || identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
+        default_library_id: preferredRow?.default_library_id || identityRow?.default_library_id || meta.library_id || '',
+        default_library_slug: preferredRow?.default_library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: preferredRow?.default_library_name || identityRow?.default_library_name || meta.library_name || '',
+        status: String(preferredRow?.status || identityRow?.status || 'active').trim() || 'active',
       };
 
       if (hasExplicitCatalogacaoDenial(baseRow)) return null;
@@ -13823,6 +13840,40 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    async function refreshCatalogacaoDataAfterAuth(showSuccess = false) {
+      renderBookAcquisitionBridgeOptions();
+      seedBookOwnershipDefaults(false);
+      const currentTab = getActiveCatalogacaoTab();
+      const [batchesResult, queueResult, catalogResult] = await Promise.all([
+        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+      ]);
+      setTab(currentTab);
+      if (refs.labelBatchPreviewId?.value) {
+        try {
+          await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+        } catch (labelError) {
+          console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+        }
+      }
+      updateStats();
+      updateLoginButton();
+
+      const failedSources = [];
+      if (!batchesResult?.ok) failedSources.push('lotes');
+      if (!queueResult?.ok) failedSources.push('fila editorial');
+      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+      if (failedSources.length) {
+        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+      } else if (showSuccess) {
+        showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+      }
+
+      return { ok: failedSources.length === 0, failedSources };
+    }
+
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -13858,35 +13909,7 @@ ${next}`.trim();
           return;
         }
 
-        renderBookAcquisitionBridgeOptions();
-        seedBookOwnershipDefaults(false);
-        const currentTab = getActiveCatalogacaoTab();
-        const [batchesResult, queueResult, catalogResult] = await Promise.all([
-          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
-          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
-        ]);
-        setTab(currentTab);
-        if (refs.labelBatchPreviewId?.value) {
-          try {
-            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
-          } catch (labelError) {
-            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-          }
-        }
-        updateStats();
-        updateLoginButton();
-
-        const failedSources = [];
-        if (!batchesResult?.ok) failedSources.push('lotes');
-        if (!queueResult?.ok) failedSources.push('fila editorial');
-        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
-
-        if (failedSources.length) {
-          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-        } else if (showSuccess) {
-          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-        }
+        await refreshCatalogacaoDataAfterAuth(showSuccess);
       } catch (error) {
         updateLoginButton();
         console.error(error);
@@ -13897,8 +13920,10 @@ ${next}`.trim();
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
+          refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+          refs.rolePill.className = 'pill ok';
+          showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
+          return;
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
@@ -24626,10 +24651,18 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           return false;
         }
 
-        if (reloadData) {
-          await refreshAll(false);
-        } else {
-          await loadProfile();
+        await loadProfile();
+        if (reloadData && state.isLibrarian) {
+          try {
+            await refreshCatalogacaoDataAfterAuth(false);
+          } catch (dataReloadError) {
+            console.warn('A autenticação da catalogação foi confirmada, mas a recarga dos dados falhou.', dataReloadError);
+            if (refs.rolePill) {
+              refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+              refs.rolePill.className = 'pill ok';
+            }
+            showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
+          }
         }
         return true;
       } catch (error) {
