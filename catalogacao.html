@@ -13119,6 +13119,7 @@ ${next}`.trim();
     function isCatalogacaoLibrarianRow(row = {}) {
       if (!row || typeof row !== 'object') return false;
       const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      const source = String(row?.__catalogacao_source || '').trim().toLowerCase();
       if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
       if (row?.is_librarian === true) return true;
       if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
@@ -13127,6 +13128,7 @@ ${next}`.trim();
       if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
       if (role.startsWith('bibliotec')) return true;
       if (role.startsWith('bibliotecari')) return true;
+      if (source === 'user_library_memberships' && isCatalogacaoActiveStatus(row?.status) && hasCatalogacaoLibrarySignal(row)) return true;
       return false;
     }
 
@@ -13518,7 +13520,12 @@ ${next}`.trim();
       if (membershipOutcome.status === 'fulfilled') {
         const membershipRead = membershipOutcome.value;
         if (!membershipRead?.error) {
-          pushRows(membershipRead?.data || []);
+          const membershipRows = Array.isArray(membershipRead?.data)
+            ? membershipRead.data.map((row) => (row && typeof row === 'object'
+              ? { ...row, __catalogacao_source: 'user_library_memberships' }
+              : row))
+            : [];
+          pushRows(membershipRows);
         } else {
           lastError = membershipRead.error;
           console.warn('membership access read failed:', membershipRead.error);
