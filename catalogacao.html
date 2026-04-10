@@ -13351,8 +13351,8 @@ ${next}`.trim();
           if (!row || typeof row !== 'object') continue;
           const key = JSON.stringify([
             String(row?.user_id || row?.id || userId || '').trim(),
-            String(row?.library_id || row?.library_slug || row?.default_library_slug || '').trim(),
-            String(row?.role || '').trim(),
+            String(row?.library_id || row?.default_library_id || row?.library_slug || row?.default_library_slug || '').trim(),
+            String(row?.role || row?.profile_role || row?.membership_role || '').trim(),
             String(row?.status || '').trim(),
           ]);
           if (seenKeys.has(key)) continue;
@@ -13366,6 +13366,7 @@ ${next}`.trim();
         () => supabase.schema('api').from('my_access').select('*'),
         () => supabase.from('my_session_context').select('*').limit(1),
         () => supabase.schema('api').from('my_session_context').select('*').limit(1),
+        () => supabase.schema('api').from('my_profile').select('*').limit(1),
       ];
 
       const directResults = await Promise.allSettled(
@@ -13376,7 +13377,11 @@ ${next}`.trim();
         if (result.status === 'fulfilled') {
           const res = result.value;
           if (!res?.error) {
-            pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
+            const rows = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
+            if (!identityRow && rows.length) {
+              identityRow = rows[0] || identityRow;
+            }
+            pushRows(rows);
             continue;
           }
           lastError = res.error;
@@ -13389,7 +13394,11 @@ ${next}`.trim();
 
       const [profileOutcome, membershipOutcome] = await Promise.allSettled([
         withTimeout(
-          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
+          supabase
+            .from('profiles')
+            .select('id, email, public_id, first_name, last_name, is_librarian, must_change_password, is_restricted, created_at, updated_at')
+            .eq('id', userId)
+            .limit(1),
           'profiles access read',
           3200
         ),
@@ -13403,8 +13412,11 @@ ${next}`.trim();
       if (profileOutcome.status === 'fulfilled') {
         const profileRead = profileOutcome.value;
         if (!profileRead?.error) {
-          identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
-          if (identityRow) pushRows(identityRow);
+          const profileRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
+          if (profileRow) {
+            identityRow = identityRow || profileRow;
+            pushRows(profileRow);
+          }
         } else {
           lastError = profileRead.error;
           console.warn('profiles access read failed:', profileRead.error);
@@ -24563,7 +24575,18 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         }
         return true;
       } catch (error) {
-        if (!allowAnonymousReset && previousUserId) {
+        const errorMessage = String(error?.message || '').toLowerCase();
+        const isAccessStillPending =
+          errorMessage.includes('confirmação de acesso bibliotecário não terminou')
+          || errorMessage.includes('acesso não confirmado');
+
+        if (isAccessStillPending && state.session?.user?.id) {
+          refs.userEmail.textContent = state.session?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+          refs.rolePill.textContent = 'Sessão reconhecida; acesso não confirmado';
+          refs.rolePill.className = 'pill warn';
+          updateLoginButton();
+          scheduleCatalogacaoLateSessionRetry();
+        } else if (!allowAnonymousReset && previousUserId) {
           state.session = previousSession;
           state.profile = previousProfile;
           state.isLibrarian = previousIsLibrarian;
