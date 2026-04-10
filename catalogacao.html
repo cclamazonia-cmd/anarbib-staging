@@ -13164,8 +13164,13 @@ ${next}`.trim();
 
     function hasExplicitCatalogacaoDenial(row = {}) {
       const roles = extractCatalogacaoRoleCandidates(row);
+      const source = String(row?.__catalogacao_source || '').trim();
+      const hasPositiveRole = roles.some((role) => role === 'librarian' || role === 'admin' || role === 'manager' || role.startsWith('bibliotec'));
       if (row?.is_restricted === true) return true;
       if (row?.can_access_catalogacao === false) return true;
+      if (row?.can_manage_catalogacao === false && !row?.is_librarian && !isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
+      if (hasPositiveRole || row?.is_librarian === true || isTruthyAccessFlag(row?.can_access_catalogacao) || isTruthyAccessFlag(row?.can_manage_catalogacao)) return false;
+      if (source === 'profiles') return false;
       return roles.some((role) => role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente');
     }
 
@@ -13350,13 +13355,15 @@ ${next}`.trim();
 
       const meta = getCatalogacaoSessionMeta(session);
       const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
+      const metaRole = String(meta.role || '').trim();
+      const roleSignal = metaRole === 'admin' || metaRole === 'manager' || metaRole === 'librarian' || metaRole.startsWith('bibliotec');
       const baseRow = {
         ...(identityRow || {}),
         ...(preferredRow || {}),
         id: identityRow?.id || preferredRow?.id || user.id,
         user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
         email: identityRow?.email || preferredRow?.email || user.email || '',
-        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || meta.role || '',
+        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || metaRole || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || '',
         library_id: preferredRow?.library_id || preferredRow?.default_library_id || identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
         library_slug: preferredRow?.library_slug || preferredRow?.default_library_slug || identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
         library_name: preferredRow?.library_name || preferredRow?.default_library_name || identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
@@ -13366,9 +13373,8 @@ ${next}`.trim();
         status: String(preferredRow?.status || identityRow?.status || 'active').trim() || 'active',
       };
 
-      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+      if (hasExplicitCatalogacaoDenial(baseRow) && !roleSignal) return null;
 
-      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
       const positiveSignal = isTruthyAccessFlag(meta.is_librarian) || isTruthyAccessFlag(meta.can_access_catalogacao) || roleSignal || isCatalogacaoLibrarianRow(baseRow);
       const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
 
@@ -13377,7 +13383,7 @@ ${next}`.trim();
 
       return {
         ...baseRow,
-        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        role: String(metaRole || baseRow.role || 'librarian').trim() || 'librarian',
         status: String(baseRow.status || 'active').trim() || 'active',
         is_librarian: true,
         can_access_catalogacao: true,
@@ -13391,13 +13397,15 @@ ${next}`.trim();
 
       const meta = getCatalogacaoSessionMeta(session);
       const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (hasCatalogacaoLibrarySignal(row) || isCatalogacaoLibrarianRow(row))) || null;
+      const metaRole = String(meta.role || '').trim();
+      const roleSignal = metaRole === 'admin' || metaRole === 'manager' || metaRole === 'librarian' || metaRole.startsWith('bibliotec');
       const baseRow = {
         ...(identityRow || {}),
         ...(preferredRow || {}),
         id: identityRow?.id || preferredRow?.id || user.id,
         user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
         email: identityRow?.email || preferredRow?.email || user.email || '',
-        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || meta.role || '',
+        role: preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || metaRole || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || '',
         library_id: preferredRow?.library_id || preferredRow?.default_library_id || identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
         library_slug: preferredRow?.library_slug || preferredRow?.default_library_slug || identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
         library_name: preferredRow?.library_name || preferredRow?.default_library_name || identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
@@ -13407,9 +13415,8 @@ ${next}`.trim();
         status: String(preferredRow?.status || identityRow?.status || 'active').trim() || 'active',
       };
 
-      if (hasExplicitCatalogacaoDenial(baseRow)) return null;
+      if (hasExplicitCatalogacaoDenial(baseRow) && !roleSignal) return null;
 
-      const roleSignal = meta.role === 'admin' || meta.role === 'manager' || meta.role === 'librarian' || meta.role.startsWith('bibliotec');
       const librarySignal = hasCatalogacaoLibrarySignal(baseRow);
       const permissiveSignal = isCatalogacaoLibrarianRow(baseRow) || roleSignal || (accessError && librarySignal);
 
@@ -13417,13 +13424,47 @@ ${next}`.trim();
 
       return {
         ...baseRow,
-        role: String(baseRow.role || 'librarian').trim() || 'librarian',
+        role: String(metaRole || baseRow.role || 'librarian').trim() || 'librarian',
         status: String(baseRow.status || 'active').trim() || 'active',
         is_librarian: true,
         can_access_catalogacao: true,
         _catalogacao_access_source: 'no_denial_fallback',
       };
     }
+
+    function buildCatalogacaoMetaConfirmedAccess(session = null, identityRow = null, rows = [], accessError = null) {
+      const user = session?.user || null;
+      if (!user?.id) return null;
+
+      const meta = getCatalogacaoSessionMeta(session);
+      const metaRole = String(meta.role || '').trim();
+      const roleSignal = metaRole === 'admin' || metaRole === 'manager' || metaRole === 'librarian' || metaRole.startsWith('bibliotec');
+      const positiveSignal = isTruthyAccessFlag(meta.is_librarian) || isTruthyAccessFlag(meta.can_access_catalogacao) || roleSignal;
+      if (!positiveSignal) return null;
+
+      const preferredRow = (Array.isArray(rows) ? rows : []).find((row) => row && typeof row === 'object' && !hasExplicitCatalogacaoDenial(row) && (isCatalogacaoLibrarianRow(row) || hasCatalogacaoLibrarySignal(row))) || null;
+      const baseRow = {
+        ...(identityRow || {}),
+        ...(preferredRow || {}),
+        id: identityRow?.id || preferredRow?.id || user.id,
+        user_id: identityRow?.user_id || preferredRow?.user_id || user.id,
+        email: identityRow?.email || preferredRow?.email || user.email || '',
+        role: metaRole || preferredRow?.role || preferredRow?.profile_role || preferredRow?.membership_role || identityRow?.role || identityRow?.profile_role || identityRow?.membership_role || 'librarian',
+        library_id: preferredRow?.library_id || preferredRow?.default_library_id || identityRow?.library_id || identityRow?.default_library_id || meta.library_id || '',
+        library_slug: preferredRow?.library_slug || preferredRow?.default_library_slug || identityRow?.library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        library_name: preferredRow?.library_name || preferredRow?.default_library_name || identityRow?.library_name || identityRow?.default_library_name || meta.library_name || '',
+        default_library_id: preferredRow?.default_library_id || identityRow?.default_library_id || meta.library_id || '',
+        default_library_slug: preferredRow?.default_library_slug || identityRow?.default_library_slug || meta.library_slug || '',
+        default_library_name: preferredRow?.default_library_name || identityRow?.default_library_name || meta.library_name || '',
+        status: String(preferredRow?.status || identityRow?.status || 'active').trim() || 'active',
+        is_librarian: true,
+        can_access_catalogacao: true,
+        _catalogacao_access_source: 'session_meta_confirmed',
+      };
+
+      return baseRow;
+    }
+
 
     function buildProvisionalCatalogacaoAccess(identityRow = null, rows = [], accessError = null) {
       const candidateRows = Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
@@ -13640,6 +13681,7 @@ ${next}`.trim();
       let accessRow = accessRead.record
         || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
         || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+        || buildCatalogacaoMetaConfirmedAccess(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
         || cachedAccess
         || cachedAccessByEmail
         || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
@@ -13651,6 +13693,7 @@ ${next}`.trim();
         accessRow = accessRead.record
           || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
           || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
+          || buildCatalogacaoMetaConfirmedAccess(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
           || cachedAccess
           || cachedAccessByEmail
           || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
