@@ -5002,7 +5002,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { supabase as sharedSupabase } from './js/blmf-supabase.js';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     import {
       PARTNER_PRESETS,
       buildCapabilityProbe,
@@ -5015,71 +5015,112 @@
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-    const CATALOGACAO_SUPABASE_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
-    const CATALOGACAO_LEGACY_AUTH_STORAGE_KEY = 'anarbib-staging-auth';
+    const SUPABASE_PROJECT_REF = 'uflwmikiyjfnikiphtcp';
+    const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
+    const CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS = [
+      'anarbib-staging-auth'
+    ];
 
-    const catalogacaoSupabaseAuthStorage = {
-      getItem(key) {
-        try {
-          const storage = window?.localStorage;
-          if (!storage) return null;
-          const value = storage.getItem(key);
-          if (value) return value;
-          if (key === CATALOGACAO_SUPABASE_STORAGE_KEY) {
-            return storage.getItem(CATALOGACAO_LEGACY_AUTH_STORAGE_KEY) || null;
-          }
-          return null;
-        } catch (error) {
-          console.warn('Falha ao ler o storage de auth da catalogação.', error);
-          return null;
+    function getCatalogacaoAuthStorages() {
+      const storages = [];
+      try { if (window.localStorage) storages.push(window.localStorage); } catch (_) {}
+      try { if (window.sessionStorage) storages.push(window.sessionStorage); } catch (_) {}
+      return storages;
+    }
+
+    function safeParseCatalogacaoAuthPayload(raw) {
+      if (!raw || typeof raw !== 'string') return null;
+      try { return JSON.parse(raw); } catch (_) { return null; }
+    }
+
+    function decodeCatalogacaoJwtPayload(token) {
+      const parts = String(token || '').split('.');
+      if (parts.length < 2) return null;
+      try {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+        return JSON.parse(atob(padded));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function extractCatalogacaoSessionLike(raw) {
+      const parsed = safeParseCatalogacaoAuthPayload(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (parsed?.currentSession && typeof parsed.currentSession === 'object') return parsed.currentSession;
+      if (parsed?.session && typeof parsed.session === 'object') return parsed.session;
+      if (parsed?.access_token) return parsed;
+      return null;
+    }
+
+    function isCatalogacaoExpectedProjectSession(raw) {
+      const sessionLike = extractCatalogacaoSessionLike(raw);
+      const accessToken = String(sessionLike?.access_token || '').trim();
+      if (!accessToken) return false;
+      const payload = decodeCatalogacaoJwtPayload(accessToken);
+      const payloadRef = String(payload?.ref || '').trim();
+      if (payloadRef) return payloadRef === SUPABASE_PROJECT_REF;
+      const iss = String(payload?.iss || '').trim();
+      if (iss.includes(`${SUPABASE_PROJECT_REF}.supabase.co`)) return true;
+      return false;
+    }
+
+    function purgeMismatchedCatalogacaoAuthStorage() {
+      const candidateKeys = [SUPABASE_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS];
+      for (const storage of getCatalogacaoAuthStorages()) {
+        for (const key of candidateKeys) {
+          let raw = null;
+          try { raw = storage.getItem(key); } catch (_) { raw = null; }
+          if (!raw) continue;
+          if (isCatalogacaoExpectedProjectSession(raw)) continue;
+          try { storage.removeItem(key); } catch (_) {}
         }
+      }
+    }
+
+    purgeMismatchedCatalogacaoAuthStorage();
+
+    const catalogacaoSupabaseStorage = {
+      getItem(key) {
+        const candidateKeys = key === SUPABASE_AUTH_STORAGE_KEY
+          ? [SUPABASE_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS]
+          : [key];
+        for (const storage of getCatalogacaoAuthStorages()) {
+          for (const candidateKey of candidateKeys) {
+            let raw = null;
+            try { raw = storage.getItem(candidateKey); } catch (_) { raw = null; }
+            if (!raw) continue;
+            if (candidateKey === SUPABASE_AUTH_STORAGE_KEY || candidateKey === 'anarbib-staging-auth') {
+              if (!isCatalogacaoExpectedProjectSession(raw)) continue;
+            }
+            return raw;
+          }
+        }
+        return null;
       },
       setItem(key, value) {
-        try {
-          const storage = window?.localStorage;
-          if (!storage) return;
-          storage.setItem(key, value);
-          if (key === CATALOGACAO_SUPABASE_STORAGE_KEY) {
-            storage.setItem(CATALOGACAO_LEGACY_AUTH_STORAGE_KEY, value);
-          }
-        } catch (error) {
-          console.warn('Falha ao gravar o storage de auth da catalogação.', error);
+        for (const storage of getCatalogacaoAuthStorages()) {
+          try { storage.setItem(key, value); } catch (_) {}
         }
       },
       removeItem(key) {
-        try {
-          const storage = window?.localStorage;
-          if (!storage) return;
-          storage.removeItem(key);
-          if (key === CATALOGACAO_SUPABASE_STORAGE_KEY) {
-            storage.removeItem(CATALOGACAO_LEGACY_AUTH_STORAGE_KEY);
-          }
-        } catch (error) {
-          console.warn('Falha ao limpar o storage de auth da catalogação.', error);
+        for (const storage of getCatalogacaoAuthStorages()) {
+          try { storage.removeItem(key); } catch (_) {}
         }
       },
     };
 
-    async function createCatalogacaoSupabaseClient() {
-      try {
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-        return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: {
-            storageKey: CATALOGACAO_SUPABASE_STORAGE_KEY,
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            flowType: 'pkce',
-            storage: catalogacaoSupabaseAuthStorage,
-          },
-        });
-      } catch (error) {
-        console.warn('Falha ao criar o client local da catalogação; usando o client compartilhado.', error);
-        return sharedSupabase;
-      }
-    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: SUPABASE_AUTH_STORAGE_KEY,
+        storage: catalogacaoSupabaseStorage,
+      },
+    });
 
-    const supabase = await createCatalogacaoSupabaseClient();
 
     const ROUTES = {
       PAINEL: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html',
@@ -13195,19 +13236,8 @@ ${next}`.trim();
       const user = session?.user || null;
       const appMeta = user?.app_metadata && typeof user.app_metadata === 'object' ? user.app_metadata : {};
       const userMeta = user?.user_metadata && typeof user.user_metadata === 'object' ? user.user_metadata : {};
-      const nestedSources = [
-        userMeta,
-        appMeta,
-        userMeta?.claims,
-        appMeta?.claims,
-        userMeta?.permissions,
-        appMeta?.permissions,
-        userMeta?.access,
-        appMeta?.access,
-      ].filter((source) => source && typeof source === 'object');
-
       const pick = (...keys) => {
-        for (const source of nestedSources) {
+        for (const source of [userMeta, appMeta]) {
           for (const key of keys) {
             const value = source?.[key];
             if (value === undefined || value === null) continue;
@@ -13217,89 +13247,14 @@ ${next}`.trim();
         }
         return '';
       };
-
-      const collectRoleCandidates = () => {
-        const values = [];
-        const seen = new Set();
-        const pushValue = (value) => {
-          if (value === undefined || value === null) return;
-          if (Array.isArray(value)) {
-            value.forEach(pushValue);
-            return;
-          }
-          if (typeof value === 'object') {
-            [
-              value.role,
-              value.profile_role,
-              value.membership_role,
-              value.app_role,
-              value.user_role,
-              value.staff_role,
-              value.default_role,
-              value.library_role,
-              value.catalog_role,
-              value.catalogacao_role,
-              value.name,
-              value.slug,
-              value.code,
-              value.label,
-              value.value,
-            ].forEach(pushValue);
-            if (Array.isArray(value.roles)) value.roles.forEach(pushValue);
-            return;
-          }
-          const normalized = normalizeCatalogacaoRole(String(value || ''));
-          if (!normalized || seen.has(normalized)) return;
-          seen.add(normalized);
-          values.push(normalized);
-        };
-
-        nestedSources.forEach((source) => {
-          [
-            source?.role,
-            source?.profile_role,
-            source?.membership_role,
-            source?.app_role,
-            source?.user_role,
-            source?.staff_role,
-            source?.default_role,
-            source?.library_role,
-            source?.catalog_role,
-            source?.catalogacao_role,
-            source?.roles,
-            source?.permissions,
-            source?.access,
-            source?.groups,
-            source?.memberships,
-          ].forEach(pushValue);
-        });
-        return values;
-      };
-
-      const roleCandidates = collectRoleCandidates();
-      const role = roleCandidates.find(Boolean)
-        || normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role', 'app_role', 'user_role', 'staff_role', 'default_role', 'library_role', 'catalog_role', 'catalogacao_role'));
-      const libraryId = pick('library_id', 'default_library_id', 'active_library_id', 'current_library_id');
-      const librarySlug = pick('library_slug', 'default_library_slug', 'active_library_slug', 'current_library_slug');
-      const libraryName = pick('library_name', 'default_library_name', 'active_library_name', 'current_library_name');
-      const canAccessCatalogacao = pick(
-        'can_access_catalogacao',
-        'can_manage_catalogacao',
-        'can_manage_catalog',
-        'can_access_catalog',
-        'can_manage_books',
-        'can_access_books',
-        'can_access_painel',
-        'can_manage_painel',
-        'is_admin',
-        'is_manager',
-        'is_staff',
-        'is_librarian'
-      );
-      const isLibrarian = pick('is_librarian', 'is_staff', 'is_manager', 'is_admin');
+      const role = normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role'));
+      const libraryId = pick('library_id', 'default_library_id');
+      const librarySlug = pick('library_slug', 'default_library_slug');
+      const libraryName = pick('library_name', 'default_library_name');
+      const canAccessCatalogacao = pick('can_access_catalogacao', 'can_manage_catalogacao');
+      const isLibrarian = pick('is_librarian');
       return {
         role,
-        role_candidates: roleCandidates,
         library_id: libraryId,
         library_slug: librarySlug,
         library_name: libraryName,
@@ -13890,40 +13845,6 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    async function refreshCatalogacaoDataAfterAuth(showSuccess = false) {
-      renderBookAcquisitionBridgeOptions();
-      seedBookOwnershipDefaults(false);
-      const currentTab = getActiveCatalogacaoTab();
-      const [batchesResult, queueResult, catalogResult] = await Promise.all([
-        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
-        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
-      ]);
-      setTab(currentTab);
-      if (refs.labelBatchPreviewId?.value) {
-        try {
-          await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
-        } catch (labelError) {
-          console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-        }
-      }
-      updateStats();
-      updateLoginButton();
-
-      const failedSources = [];
-      if (!batchesResult?.ok) failedSources.push('lotes');
-      if (!queueResult?.ok) failedSources.push('fila editorial');
-      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
-
-      if (failedSources.length) {
-        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-      } else if (showSuccess) {
-        showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-      }
-
-      return { ok: failedSources.length === 0, failedSources };
-    }
-
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -13959,7 +13880,35 @@ ${next}`.trim();
           return;
         }
 
-        await refreshCatalogacaoDataAfterAuth(showSuccess);
+        renderBookAcquisitionBridgeOptions();
+        seedBookOwnershipDefaults(false);
+        const currentTab = getActiveCatalogacaoTab();
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([
+          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+        ]);
+        setTab(currentTab);
+        if (refs.labelBatchPreviewId?.value) {
+          try {
+            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+          } catch (labelError) {
+            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+          }
+        }
+        updateStats();
+        updateLoginButton();
+
+        const failedSources = [];
+        if (!batchesResult?.ok) failedSources.push('lotes');
+        if (!queueResult?.ok) failedSources.push('fila editorial');
+        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+        if (failedSources.length) {
+          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        } else if (showSuccess) {
+          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+        }
       } catch (error) {
         updateLoginButton();
         console.error(error);
@@ -13970,10 +13919,8 @@ ${next}`.trim();
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-          refs.rolePill.className = 'pill ok';
-          showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
-          return;
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
+          refs.rolePill.className = 'pill danger';
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
@@ -24701,18 +24648,10 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           return false;
         }
 
-        await loadProfile();
-        if (reloadData && state.isLibrarian) {
-          try {
-            await refreshCatalogacaoDataAfterAuth(false);
-          } catch (dataReloadError) {
-            console.warn('A autenticação da catalogação foi confirmada, mas a recarga dos dados falhou.', dataReloadError);
-            if (refs.rolePill) {
-              refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-              refs.rolePill.className = 'pill ok';
-            }
-            showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
-          }
+        if (reloadData) {
+          await refreshAll(false);
+        } else {
+          await loadProfile();
         }
         return true;
       } catch (error) {
