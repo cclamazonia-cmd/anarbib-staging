@@ -13082,6 +13082,74 @@ ${next}`.trim();
         .trim();
     }
 
+    function extractCatalogacaoRoleCandidates(row = {}) {
+      const values = [];
+      const seen = new Set();
+      const pushValue = (value) => {
+        if (value === undefined || value === null) return;
+        if (Array.isArray(value)) {
+          value.forEach(pushValue);
+          return;
+        }
+        if (typeof value === 'object') {
+          [
+            value.role,
+            value.profile_role,
+            value.membership_role,
+            value.app_role,
+            value.user_role,
+            value.staff_role,
+            value.default_role,
+            value.library_role,
+            value.catalog_role,
+            value.catalogacao_role,
+            value.member_role,
+            value.membership_type,
+            value.membership_kind,
+            value.access_role,
+            value.type,
+            value.kind,
+            value.name,
+            value.slug,
+            value.code,
+            value.label,
+            value.value,
+          ].forEach(pushValue);
+          if (Array.isArray(value.roles)) value.roles.forEach(pushValue);
+          return;
+        }
+        const normalized = normalizeCatalogacaoRole(String(value || ''));
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        values.push(normalized);
+      };
+
+      [
+        row?.role,
+        row?.profile_role,
+        row?.membership_role,
+        row?.app_role,
+        row?.user_role,
+        row?.staff_role,
+        row?.default_role,
+        row?.library_role,
+        row?.catalog_role,
+        row?.catalogacao_role,
+        row?.member_role,
+        row?.membership_type,
+        row?.membership_kind,
+        row?.access_role,
+        row?.type,
+        row?.kind,
+        row?.roles,
+        row?.permissions,
+        row?.access,
+        row?.claims,
+      ].forEach(pushValue);
+
+      return values;
+    }
+
     function hasCatalogacaoLibrarySignal(row = {}) {
       return !!normalizeInlineWhitespace(
         row?.library_id
@@ -13095,10 +13163,10 @@ ${next}`.trim();
     }
 
     function hasExplicitCatalogacaoDenial(row = {}) {
-      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
+      const roles = extractCatalogacaoRoleCandidates(row);
       if (row?.is_restricted === true) return true;
       if (row?.can_access_catalogacao === false) return true;
-      return role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente';
+      return roles.some((role) => role === 'reader' || role === 'leitor' || role === 'leitora' || role === 'cliente');
     }
 
     function isCatalogacaoActiveStatus(value = '') {
@@ -13113,32 +13181,48 @@ ${next}`.trim();
         || normalized === 'confirmado'
         || normalized === 'confirmada'
         || normalized === 'current'
-        || normalized === 'vigente';
+        || normalized === 'vigente'
+        || normalized === 'valid'
+        || normalized === 'valido'
+        || normalized === 'valida'
+        || normalized === 'grant'
+        || normalized === 'granted';
     }
 
     function isCatalogacaoLibrarianRow(row = {}) {
       if (!row || typeof row !== 'object') return false;
-      const role = normalizeCatalogacaoRole(row?.role || row?.profile_role || row?.membership_role || '');
-      const source = String(row?.__catalogacao_source || '').trim().toLowerCase();
+      const roles = extractCatalogacaoRoleCandidates(row);
+      const source = String(row?.__catalogacao_source || '').trim();
+      const status = row?.status ?? row?.membership_status ?? row?.access_status ?? row?.state ?? row?.invitation_status ?? '';
       if (row?.is_restricted === true || row?.can_access_catalogacao === false) return false;
       if (row?.is_librarian === true) return true;
       if (isTruthyAccessFlag(row?.can_access_catalogacao)) return true;
       if (isTruthyAccessFlag(row?.can_manage_catalogacao)) return true;
       if (isTruthyAccessFlag(row?.can_access_painel)) return true;
-      if (role === 'librarian' || role === 'admin' || role === 'manager') return true;
-      if (role.startsWith('bibliotec')) return true;
-      if (role.startsWith('bibliotecari')) return true;
-      if (source === 'user_library_memberships' && isCatalogacaoActiveStatus(row?.status) && hasCatalogacaoLibrarySignal(row)) return true;
+      if (roles.some((role) => role === 'librarian' || role === 'admin' || role === 'manager')) return true;
+      if (roles.some((role) => role.startsWith('bibliotec'))) return true;
+      if (roles.some((role) => role.startsWith('bibliotecari'))) return true;
+      if (source === 'user_library_memberships' && isCatalogacaoActiveStatus(status) && !hasExplicitCatalogacaoDenial(row)) return true;
+      if ((source === 'my_access' || source === 'api.my_access' || source === 'my_session_context' || source === 'api.my_session_context') && isCatalogacaoActiveStatus(status) && !hasExplicitCatalogacaoDenial(row)) {
+        return hasCatalogacaoLibrarySignal(row) || Object.keys(row || {}).length > 0;
+      }
+      if (row?.is_primary === true && hasCatalogacaoLibrarySignal(row) && isCatalogacaoActiveStatus(status)) return true;
       return false;
     }
 
     function pickCurrentCatalogacaoAccess(rows = []) {
       const normalizedRows = Array.isArray(rows) ? rows : [];
-      const activeRows = normalizedRows.filter((row) => isCatalogacaoActiveStatus(row?.status));
+      const activeRows = normalizedRows.filter((row) => isCatalogacaoActiveStatus(row?.status ?? row?.membership_status ?? row?.access_status ?? row?.state ?? row?.invitation_status));
       const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
       return librarianRows.find((row) => row?.is_primary === true)
         || librarianRows.find((row) => row?.can_access_catalogacao === true)
         || librarianRows.find((row) => row?.is_librarian === true)
+        || librarianRows.find((row) => String(row?.__catalogacao_source || '').trim() === 'my_access')
+        || librarianRows.find((row) => String(row?.__catalogacao_source || '').trim() === 'api.my_access')
+        || librarianRows.find((row) => String(row?.__catalogacao_source || '').trim() === 'my_session_context')
+        || librarianRows.find((row) => String(row?.__catalogacao_source || '').trim() === 'api.my_session_context')
+        || librarianRows.find((row) => String(row?.__catalogacao_source || '').trim() === 'user_library_memberships')
+        || librarianRows.find((row) => hasCatalogacaoLibrarySignal(row))
         || librarianRows[0]
         || null;
     }
@@ -13448,6 +13532,15 @@ ${next}`.trim();
       const seenKeys = new Set();
       let identityRow = null;
 
+      const tagRowsWithCatalogacaoSource = (rows, source) => {
+        const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+        return normalizedRows.map((row) => {
+          if (!row || typeof row !== 'object') return row;
+          if (row.__catalogacao_source) return row;
+          return { ...row, __catalogacao_source: source };
+        });
+      };
+
       const pushRows = (rows) => {
         const normalizedRows = Array.isArray(rows) ? rows : (rows ? [rows] : []);
         for (const row of normalizedRows) {
@@ -13455,8 +13548,9 @@ ${next}`.trim();
           const key = JSON.stringify([
             String(row?.user_id || row?.id || userId || '').trim(),
             String(row?.library_id || row?.library_slug || row?.default_library_slug || '').trim(),
-            String(row?.role || '').trim(),
-            String(row?.status || '').trim(),
+            String(row?.role || row?.membership_role || row?.member_role || row?.membership_type || '').trim(),
+            String(row?.status || row?.membership_status || row?.state || row?.invitation_status || '').trim(),
+            String(row?.__catalogacao_source || '').trim(),
           ]);
           if (seenKeys.has(key)) continue;
           seenKeys.add(key);
@@ -13465,21 +13559,23 @@ ${next}`.trim();
       };
 
       const directAttempts = [
-        () => supabase.from('my_access').select('*'),
-        () => supabase.schema('api').from('my_access').select('*'),
-        () => supabase.from('my_session_context').select('*').limit(1),
-        () => supabase.schema('api').from('my_session_context').select('*').limit(1),
+        { source: 'my_access', run: () => supabase.from('my_access').select('*') },
+        { source: 'api.my_access', run: () => supabase.schema('api').from('my_access').select('*') },
+        { source: 'my_session_context', run: () => supabase.from('my_session_context').select('*').limit(1) },
+        { source: 'api.my_session_context', run: () => supabase.schema('api').from('my_session_context').select('*').limit(1) },
       ];
 
       const directResults = await Promise.allSettled(
-        directAttempts.map((run) => withTimeout(run(), 'catalogação access read', 3200))
+        directAttempts.map(({ run }) => withTimeout(run(), 'catalogação access read', 3200))
       );
 
-      for (const result of directResults) {
+      for (let index = 0; index < directResults.length; index += 1) {
+        const result = directResults[index];
+        const source = directAttempts[index]?.source || 'catalogacao_access';
         if (result.status === 'fulfilled') {
           const res = result.value;
           if (!res?.error) {
-            pushRows(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []));
+            pushRows(tagRowsWithCatalogacaoSource(Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []), source));
             continue;
           }
           lastError = res.error;
@@ -13507,7 +13603,7 @@ ${next}`.trim();
         const profileRead = profileOutcome.value;
         if (!profileRead?.error) {
           identityRow = Array.isArray(profileRead?.data) ? profileRead.data[0] || null : (profileRead?.data || null);
-          if (identityRow) pushRows(identityRow);
+          if (identityRow) pushRows(tagRowsWithCatalogacaoSource(identityRow, 'profiles'));
         } else {
           lastError = profileRead.error;
           console.warn('profiles access read failed:', profileRead.error);
@@ -13520,12 +13616,7 @@ ${next}`.trim();
       if (membershipOutcome.status === 'fulfilled') {
         const membershipRead = membershipOutcome.value;
         if (!membershipRead?.error) {
-          const membershipRows = Array.isArray(membershipRead?.data)
-            ? membershipRead.data.map((row) => (row && typeof row === 'object'
-              ? { ...row, __catalogacao_source: 'user_library_memberships' }
-              : row))
-            : [];
-          pushRows(membershipRows);
+          pushRows(tagRowsWithCatalogacaoSource(membershipRead?.data || [], 'user_library_memberships'));
         } else {
           lastError = membershipRead.error;
           console.warn('membership access read failed:', membershipRead.error);
