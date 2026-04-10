@@ -24609,17 +24609,25 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     }
 
     function scheduleCatalogacaoLateSessionRetry() {
-      if (catalogacaoLateSessionRetryTimer || state.session?.user?.id) return;
+      const sessionExists = !!state.session?.user?.id;
+      const stillNeedsAccessConfirmation = sessionExists && !state.isLibrarian;
+      if (catalogacaoLateSessionRetryTimer || (!stillNeedsAccessConfirmation && sessionExists)) return;
       const nextDelay = CATALOGACAO_LATE_SESSION_RETRY_DELAYS_MS[catalogacaoLateSessionRetryCount] || null;
       if (!nextDelay) return;
       catalogacaoLateSessionRetryCount += 1;
       catalogacaoLateSessionRetryTimer = window.setTimeout(async () => {
         catalogacaoLateSessionRetryTimer = null;
-        if (state.session?.user?.id) return;
+        const hasSessionButNeedsAccess = !!state.session?.user?.id && !state.isLibrarian;
+        if (!!state.session?.user?.id && !hasSessionButNeedsAccess) return;
         try {
-          const lateSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+          const lateSession = hasSessionButNeedsAccess
+            ? state.session
+            : await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
           if (lateSession?.user?.id) {
             await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
+            if (!state.isLibrarian) {
+              scheduleCatalogacaoLateSessionRetry();
+            }
             return;
           }
           scheduleCatalogacaoLateSessionRetry();
