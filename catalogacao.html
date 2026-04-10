@@ -13486,7 +13486,12 @@ ${next}`.trim();
       }
 
       state.profile = accessRow || accessRead.identityRow || { id: userId, user_id: userId, email: sessionEmail || '' };
-      state.isLibrarian = !!accessRow && !hasExplicitCatalogacaoDenial(accessRow) && isCatalogacaoLibrarianRow(accessRow);
+      state.isLibrarian = !!accessRow
+        && !hasExplicitCatalogacaoDenial(accessRow)
+        && (
+          isCatalogacaoLibrarianRow(accessRow)
+          || hasCatalogacaoLibrarySignal(accessRow)
+        );
 
       if (state.isLibrarian && accessRow) {
         writeCatalogacaoAccessCache(userId, accessRow);
