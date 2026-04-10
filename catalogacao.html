@@ -13318,8 +13318,15 @@ ${next}`.trim();
     }
 
     async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
-      const session = await getCurrentSession({ attempts, delayMs });
-      state.session = session;
+      const previousSession = state.session?.user?.id ? state.session : null;
+      const freshSession = await getCurrentSession({ attempts, delayMs });
+      if (freshSession?.user?.id) {
+        state.session = freshSession;
+      } else if (previousSession?.user?.id) {
+        state.session = previousSession;
+      } else {
+        state.session = null;
+      }
       if (!state.session?.user?.id) {
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
