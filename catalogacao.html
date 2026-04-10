@@ -13389,27 +13389,7 @@ ${next}`.trim();
 
       const [profileOutcome, membershipOutcome] = await Promise.allSettled([
         withTimeout(
-          (async () => {
-            const profileAttempts = [
-              () => supabase.schema('api').from('my_profile').select('id, email, first_name, last_name, is_librarian, is_restricted, default_library_id, default_library_slug, default_library_name, can_access_painel, can_access_catalogacao').limit(1),
-              () => supabase.from('profiles').select('id, email, public_id, first_name, last_name, is_librarian, is_restricted').eq('id', userId).limit(1),
-            ];
-
-            let lastProfileError = null;
-            for (const run of profileAttempts) {
-              try {
-                const res = await run();
-                if (!res?.error) return res;
-                lastProfileError = res.error;
-                console.warn('profiles access read failed:', res.error);
-              } catch (profileError) {
-                lastProfileError = profileError;
-                console.warn('profiles access read exception:', profileError);
-              }
-            }
-
-            return { data: null, error: lastProfileError };
-          })(),
+          supabase.from('profiles').select('id, user_id, email, public_id, first_name, last_name, is_librarian, role, library_id, library_slug, library_name, default_library_id, default_library_slug, default_library_name').or(`id.eq.${userId},user_id.eq.${userId}`).limit(1),
           'profiles access read',
           3200
         ),
@@ -24531,7 +24511,10 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
       const syncId = ++catalogacaoAuthSyncSerial;
-      const previousUserId = String(state.session?.user?.id || '').trim();
+      const previousSession = state.session || null;
+      const previousProfile = state.profile || null;
+      const previousIsLibrarian = !!state.isLibrarian;
+      const previousUserId = String(previousSession?.user?.id || '').trim();
       catalogacaoAuthSyncInFlight = true;
       updateLoginButton();
 
@@ -24557,6 +24540,17 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         updateLoginButton();
 
         if (!state.session?.user?.id) {
+          if (!allowAnonymousReset && previousUserId) {
+            state.session = previousSession;
+            state.profile = previousProfile;
+            state.isLibrarian = previousIsLibrarian;
+            refs.userEmail.textContent = previousSession?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+            refs.rolePill.textContent = previousIsLibrarian ? 'Sessão reconhecida; reconfirmando acesso…' : 'Sessão reconhecida; reconfirmando…';
+            refs.rolePill.className = 'pill warn';
+            updateLoginButton();
+            scheduleCatalogacaoLateSessionRetry();
+            return false;
+          }
           resetCatalogacaoAuthChrome();
           scheduleCatalogacaoLateSessionRetry();
           return false;
@@ -24569,7 +24563,16 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         }
         return true;
       } catch (error) {
-        if (allowAnonymousReset || !state.session?.user?.id) {
+        if (!allowAnonymousReset && previousUserId) {
+          state.session = previousSession;
+          state.profile = previousProfile;
+          state.isLibrarian = previousIsLibrarian;
+          refs.userEmail.textContent = previousSession?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+          refs.rolePill.textContent = previousIsLibrarian ? 'Sessão reconhecida; reconfirmando acesso…' : 'Sessão reconhecida; reconfirmando…';
+          refs.rolePill.className = 'pill warn';
+          updateLoginButton();
+          scheduleCatalogacaoLateSessionRetry();
+        } else if (allowAnonymousReset || !state.session?.user?.id) {
           resetCatalogacaoAuthChrome();
         }
         console.warn('Não consegui sincronizar a sessão da catalogação.', error);
@@ -24607,6 +24610,14 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
       if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
+      if (eventName !== 'SIGNED_OUT' && !session?.user?.id && state.session?.user?.id) {
+        refs.userEmail.textContent = state.session?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+        refs.rolePill.textContent = state.isLibrarian ? 'Sessão reconhecida; reconfirmando acesso…' : 'Sessão reconhecida; reconfirmando…';
+        refs.rolePill.className = 'pill warn';
+        updateLoginButton();
+        scheduleCatalogacaoLateSessionRetry();
+        return;
+      }
       const allowAnonymousReset = eventName === 'SIGNED_OUT';
       await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset });
     });
