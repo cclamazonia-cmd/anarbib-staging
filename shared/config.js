@@ -21,7 +21,17 @@ const deepMerge = (base, extra) => {
   return out;
 };
 
-export const CONFIG = deepMerge(PRESETS.default, PRESETS[ACTIVE_PRESET] || {});
+const ROUTE_OVERRIDES = {
+  catalogacao: "https://cclamazonia-cmd.github.io/anarbib-staging/catalogacao.html",
+};
+
+export const CONFIG = {
+  ...deepMerge(PRESETS.default, PRESETS[ACTIVE_PRESET] || {}),
+  ROUTES: {
+    ...(deepMerge(PRESETS.default, PRESETS[ACTIVE_PRESET] || {}).ROUTES || {}),
+    ...ROUTE_OVERRIDES,
+  },
+};
 
 export function setDocumentTitle(title) {
   document.title = title;
