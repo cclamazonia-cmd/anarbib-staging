@@ -12897,83 +12897,94 @@ ${next}`.trim();
     const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
     const CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 8;
 
-    function getCatalogacaoAccessCacheStorage() {
+    function getCatalogacaoAccessCacheStorages() {
+      const storages = [];
       try {
-        return window?.sessionStorage || null;
+        if (window?.sessionStorage) storages.push(window.sessionStorage);
       } catch (error) {
         console.warn('sessionStorage indisponível para o cache local de acesso da catalogação.', error);
-        return null;
       }
+      try {
+        if (window?.localStorage) storages.push(window.localStorage);
+      } catch (error) {
+        console.warn('localStorage indisponível para o cache local de acesso da catalogação.', error);
+      }
+      return storages;
     }
 
     function readCatalogacaoAccessCache(userId = '') {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage || !userId) return null;
-      try {
-        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (String(parsed.user_id || '').trim() !== String(userId || '').trim()) return null;
-        if (!parsed.row || typeof parsed.row !== 'object') return null;
-        const savedAt = Number(parsed.saved_at || 0);
-        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
-          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-          return null;
+      const normalizedUserId = String(userId || '').trim();
+      if (!normalizedUserId) return null;
+      for (const storage of getCatalogacaoAccessCacheStorages()) {
+        try {
+          const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') continue;
+          if (String(parsed.user_id || '').trim() !== normalizedUserId) continue;
+          if (!parsed.row || typeof parsed.row !== 'object') continue;
+          const savedAt = Number(parsed.saved_at || 0);
+          if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+            storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+            continue;
+          }
+          return parsed.row;
+        } catch (error) {
+          console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
         }
-        return parsed.row;
-      } catch (error) {
-        console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
-        return null;
       }
+      return null;
     }
 
     function readCatalogacaoAccessCacheByEmail(email = '') {
-      const storage = getCatalogacaoAccessCacheStorage();
       const normalizedEmail = String(email || '').trim().toLowerCase();
-      if (!storage || !normalizedEmail) return null;
-      try {
-        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (!parsed.row || typeof parsed.row !== 'object') return null;
-        const savedAt = Number(parsed.saved_at || 0);
-        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
-          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-          return null;
+      if (!normalizedEmail) return null;
+      for (const storage of getCatalogacaoAccessCacheStorages()) {
+        try {
+          const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') continue;
+          if (!parsed.row || typeof parsed.row !== 'object') continue;
+          const savedAt = Number(parsed.saved_at || 0);
+          if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+            storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+            continue;
+          }
+          const cachedEmail = String(parsed.email || parsed.row?.email || '').trim().toLowerCase();
+          if (!cachedEmail || cachedEmail !== normalizedEmail) continue;
+          return parsed.row;
+        } catch (error) {
+          console.warn('Falha ao ler o cache local de acesso da catalogação por e-mail.', error);
         }
-        const cachedEmail = String(parsed.email || parsed.row?.email || '').trim().toLowerCase();
-        if (!cachedEmail || cachedEmail !== normalizedEmail) return null;
-        return parsed.row;
-      } catch (error) {
-        console.warn('Falha ao ler o cache local de acesso da catalogação por e-mail.', error);
-        return null;
       }
+      return null;
     }
 
     function writeCatalogacaoAccessCache(userId = '', row = null) {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage || !userId || !row || typeof row !== 'object') return;
-      try {
-        storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, JSON.stringify({
-          user_id: String(userId || '').trim(),
-          email: String(row?.email || '').trim().toLowerCase(),
-          saved_at: Date.now(),
-          row,
-        }));
-      } catch (error) {
-        console.warn('Falha ao gravar o cache local de acesso da catalogação.', error);
+      if (!userId || !row || typeof row !== 'object') return;
+      const payload = JSON.stringify({
+        user_id: String(userId || '').trim(),
+        email: String(row?.email || '').trim().toLowerCase(),
+        saved_at: Date.now(),
+        row,
+      });
+      for (const storage of getCatalogacaoAccessCacheStorages()) {
+        try {
+          storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, payload);
+        } catch (error) {
+          console.warn('Falha ao gravar o cache local de acesso da catalogação.', error);
+        }
       }
     }
 
     function clearCatalogacaoAccessCache() {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage) return;
-      try {
-        storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-      } catch (error) {
-        console.warn('Falha ao limpar o cache local de acesso da catalogação.', error);
+      for (const storage of getCatalogacaoAccessCacheStorages()) {
+        try {
+          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+        } catch (error) {
+          console.warn('Falha ao limpar o cache local de acesso da catalogação.', error);
+        }
       }
     }
 
@@ -18209,9 +18220,10 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       } catch (error) {
         console.warn('signOut failed:', error);
       } finally {
+        const reloginUrl = buildCatalogacaoLoginUrl(window.location.href);
         resetCatalogacaoAuthChrome();
         refs.loginBtn.disabled = false;
-        window.location.href = LOGIN_URL;
+        window.location.href = reloginUrl;
       }
     });
     refs.bookContributorsWrap.addEventListener('click', (event) => {
