@@ -5002,7 +5002,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     import {
       PARTNER_PRESETS,
       buildCapabilityProbe,
@@ -5015,98 +5015,56 @@
     const SUPABASE_URL = 'https://uflwmikiyjfnikiphtcp.supabase.co';
     const PROD_SUPABASE_URL = 'https://asptfmokzykwzlshsncw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmbHdtaWtpeWpmbmlraXBodGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzIyNDUsImV4cCI6MjA4OTQwODI0NX0.kCs7nPg08ofjb9CWwRH9xVN6BjanrAC5pj418line1o';
-    const SUPABASE_PROJECT_REF = 'uflwmikiyjfnikiphtcp';
-    const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
-    const CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS = [
-      'anarbib-staging-auth'
-    ];
 
-    function getCatalogacaoAuthStorages() {
-      const storages = [];
-      try { if (window.localStorage) storages.push(window.localStorage); } catch (_) {}
-      try { if (window.sessionStorage) storages.push(window.sessionStorage); } catch (_) {}
-      return storages;
+    const CATALOGACAO_AUTH_STORAGE_KEY = 'sb-uflwmikiyjfnikiphtcp-auth-token';
+    const CATALOGACAO_LEGACY_AUTH_KEYS = ['anarbib-staging-auth', CATALOGACAO_AUTH_STORAGE_KEY];
+
+    function getCatalogacaoBrowserStorages() {
+      const stores = [];
+      try { if (window?.localStorage) stores.push(window.localStorage); } catch (_) {}
+      try { if (window?.sessionStorage) stores.push(window.sessionStorage); } catch (_) {}
+      return stores;
     }
-
-    function safeParseCatalogacaoAuthPayload(raw) {
-      if (!raw || typeof raw !== 'string') return null;
-      try { return JSON.parse(raw); } catch (_) { return null; }
-    }
-
-    function decodeCatalogacaoJwtPayload(token) {
-      const parts = String(token || '').split('.');
-      if (parts.length < 2) return null;
-      try {
-        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-        return JSON.parse(atob(padded));
-      } catch (_) {
-        return null;
-      }
-    }
-
-    function extractCatalogacaoSessionLike(raw) {
-      const parsed = safeParseCatalogacaoAuthPayload(raw);
-      if (!parsed || typeof parsed !== 'object') return null;
-      if (parsed?.currentSession && typeof parsed.currentSession === 'object') return parsed.currentSession;
-      if (parsed?.session && typeof parsed.session === 'object') return parsed.session;
-      if (parsed?.access_token) return parsed;
-      return null;
-    }
-
-    function isCatalogacaoExpectedProjectSession(raw) {
-      const sessionLike = extractCatalogacaoSessionLike(raw);
-      const accessToken = String(sessionLike?.access_token || '').trim();
-      if (!accessToken) return false;
-      const payload = decodeCatalogacaoJwtPayload(accessToken);
-      const payloadRef = String(payload?.ref || '').trim();
-      if (payloadRef) return payloadRef === SUPABASE_PROJECT_REF;
-      const iss = String(payload?.iss || '').trim();
-      if (iss.includes(`${SUPABASE_PROJECT_REF}.supabase.co`)) return true;
-      return false;
-    }
-
-    function purgeMismatchedCatalogacaoAuthStorage() {
-      const candidateKeys = [SUPABASE_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS];
-      for (const storage of getCatalogacaoAuthStorages()) {
-        for (const key of candidateKeys) {
-          let raw = null;
-          try { raw = storage.getItem(key); } catch (_) { raw = null; }
-          if (!raw) continue;
-          if (isCatalogacaoExpectedProjectSession(raw)) continue;
-          try { storage.removeItem(key); } catch (_) {}
-        }
-      }
-    }
-
-    purgeMismatchedCatalogacaoAuthStorage();
 
     const catalogacaoSupabaseStorage = {
       getItem(key) {
-        const candidateKeys = key === SUPABASE_AUTH_STORAGE_KEY
-          ? [SUPABASE_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_STORAGE_KEYS]
-          : [key];
-        for (const storage of getCatalogacaoAuthStorages()) {
-          for (const candidateKey of candidateKeys) {
-            let raw = null;
-            try { raw = storage.getItem(candidateKey); } catch (_) { raw = null; }
-            if (!raw) continue;
-            if (candidateKey === SUPABASE_AUTH_STORAGE_KEY || candidateKey === 'anarbib-staging-auth') {
-              if (!isCatalogacaoExpectedProjectSession(raw)) continue;
-            }
-            return raw;
+        const wantedKey = String(key || '').trim();
+        if (!wantedKey) return null;
+        const fallbackKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
+          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
+          : [wantedKey];
+        for (const store of getCatalogacaoBrowserStorages()) {
+          for (const storageKey of fallbackKeys) {
+            try {
+              const value = store.getItem(storageKey);
+              if (value) return value;
+            } catch (_) {}
           }
         }
         return null;
       },
       setItem(key, value) {
-        for (const storage of getCatalogacaoAuthStorages()) {
-          try { storage.setItem(key, value); } catch (_) {}
+        const wantedKey = String(key || '').trim();
+        if (!wantedKey) return;
+        const mirroredKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
+          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
+          : [wantedKey];
+        for (const store of getCatalogacaoBrowserStorages()) {
+          for (const storageKey of mirroredKeys) {
+            try { store.setItem(storageKey, value); } catch (_) {}
+          }
         }
       },
       removeItem(key) {
-        for (const storage of getCatalogacaoAuthStorages()) {
-          try { storage.removeItem(key); } catch (_) {}
+        const wantedKey = String(key || '').trim();
+        if (!wantedKey) return;
+        const mirroredKeys = wantedKey === CATALOGACAO_AUTH_STORAGE_KEY
+          ? Array.from(new Set([CATALOGACAO_AUTH_STORAGE_KEY, ...CATALOGACAO_LEGACY_AUTH_KEYS]))
+          : [wantedKey];
+        for (const store of getCatalogacaoBrowserStorages()) {
+          for (const storageKey of mirroredKeys) {
+            try { store.removeItem(storageKey); } catch (_) {}
+          }
         }
       },
     };
@@ -5116,11 +5074,10 @@
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storageKey: SUPABASE_AUTH_STORAGE_KEY,
+        storageKey: CATALOGACAO_AUTH_STORAGE_KEY,
         storage: catalogacaoSupabaseStorage,
       },
     });
-
 
     const ROUTES = {
       PAINEL: 'https://cclamazonia-cmd.github.io/anarbib-conta-staging/painel.html',
