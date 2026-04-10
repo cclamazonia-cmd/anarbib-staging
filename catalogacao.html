@@ -13130,56 +13130,111 @@ ${next}`.trim();
       const user = session?.user || null;
       const appMeta = user?.app_metadata && typeof user.app_metadata === 'object' ? user.app_metadata : {};
       const userMeta = user?.user_metadata && typeof user.user_metadata === 'object' ? user.user_metadata : {};
-      const permissionSources = [
+      const nestedSources = [
         userMeta,
         appMeta,
-        userMeta?.permissions && typeof userMeta.permissions === 'object' ? userMeta.permissions : {},
-        appMeta?.permissions && typeof appMeta.permissions === 'object' ? appMeta.permissions : {},
-        userMeta?.access && typeof userMeta.access === 'object' ? userMeta.access : {},
-        appMeta?.access && typeof appMeta.access === 'object' ? appMeta.access : {},
-        userMeta?.claims && typeof userMeta.claims === 'object' ? userMeta.claims : {},
-        appMeta?.claims && typeof appMeta.claims === 'object' ? appMeta.claims : {},
-      ];
+        userMeta?.claims,
+        appMeta?.claims,
+        userMeta?.permissions,
+        appMeta?.permissions,
+        userMeta?.access,
+        appMeta?.access,
+      ].filter((source) => source && typeof source === 'object');
+
       const pick = (...keys) => {
-        for (const source of permissionSources) {
+        for (const source of nestedSources) {
           for (const key of keys) {
             const value = source?.[key];
             if (value === undefined || value === null) continue;
             if (typeof value === 'string' && !value.trim()) continue;
-            if (Array.isArray(value) && !value.length) continue;
             return value;
           }
         }
         return '';
       };
-      const pickRoleFromValue = (value) => {
-        if (Array.isArray(value)) {
-          const normalizedRoles = value
-            .map((item) => normalizeCatalogacaoRole(item))
-            .filter(Boolean);
-          return normalizedRoles.find((item) => item === 'admin' || item === 'manager' || item === 'librarian' || item.startsWith('bibliotec'))
-            || normalizedRoles[0]
-            || '';
-        }
-        return normalizeCatalogacaoRole(value);
+
+      const collectRoleCandidates = () => {
+        const values = [];
+        const seen = new Set();
+        const pushValue = (value) => {
+          if (value === undefined || value === null) return;
+          if (Array.isArray(value)) {
+            value.forEach(pushValue);
+            return;
+          }
+          if (typeof value === 'object') {
+            [
+              value.role,
+              value.profile_role,
+              value.membership_role,
+              value.app_role,
+              value.user_role,
+              value.staff_role,
+              value.default_role,
+              value.library_role,
+              value.catalog_role,
+              value.catalogacao_role,
+              value.name,
+              value.slug,
+              value.code,
+              value.label,
+              value.value,
+            ].forEach(pushValue);
+            if (Array.isArray(value.roles)) value.roles.forEach(pushValue);
+            return;
+          }
+          const normalized = normalizeCatalogacaoRole(String(value || ''));
+          if (!normalized || seen.has(normalized)) return;
+          seen.add(normalized);
+          values.push(normalized);
+        };
+
+        nestedSources.forEach((source) => {
+          [
+            source?.role,
+            source?.profile_role,
+            source?.membership_role,
+            source?.app_role,
+            source?.user_role,
+            source?.staff_role,
+            source?.default_role,
+            source?.library_role,
+            source?.catalog_role,
+            source?.catalogacao_role,
+            source?.roles,
+            source?.permissions,
+            source?.access,
+            source?.groups,
+            source?.memberships,
+          ].forEach(pushValue);
+        });
+        return values;
       };
-      const role = pickRoleFromValue(
-        pick('role', 'profile_role', 'membership_role', 'app_role', 'primary_role', 'roles')
-      );
+
+      const roleCandidates = collectRoleCandidates();
+      const role = roleCandidates.find(Boolean)
+        || normalizeCatalogacaoRole(pick('role', 'profile_role', 'membership_role', 'app_role', 'user_role', 'staff_role', 'default_role', 'library_role', 'catalog_role', 'catalogacao_role'));
       const libraryId = pick('library_id', 'default_library_id', 'active_library_id', 'current_library_id');
       const librarySlug = pick('library_slug', 'default_library_slug', 'active_library_slug', 'current_library_slug');
       const libraryName = pick('library_name', 'default_library_name', 'active_library_name', 'current_library_name');
       const canAccessCatalogacao = pick(
         'can_access_catalogacao',
         'can_manage_catalogacao',
-        'can_access_painel',
         'can_manage_catalog',
+        'can_access_catalog',
         'can_manage_books',
-        'is_admin'
+        'can_access_books',
+        'can_access_painel',
+        'can_manage_painel',
+        'is_admin',
+        'is_manager',
+        'is_staff',
+        'is_librarian'
       );
-      const isLibrarian = pick('is_librarian', 'is_admin', 'is_manager', 'is_staff');
+      const isLibrarian = pick('is_librarian', 'is_staff', 'is_manager', 'is_admin');
       return {
         role,
+        role_candidates: roleCandidates,
         library_id: libraryId,
         library_slug: librarySlug,
         library_name: libraryName,
@@ -13770,6 +13825,40 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    async function refreshCatalogacaoDataAfterAuth(showSuccess = false) {
+      renderBookAcquisitionBridgeOptions();
+      seedBookOwnershipDefaults(false);
+      const currentTab = getActiveCatalogacaoTab();
+      const [batchesResult, queueResult, catalogResult] = await Promise.all([
+        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+      ]);
+      setTab(currentTab);
+      if (refs.labelBatchPreviewId?.value) {
+        try {
+          await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+        } catch (labelError) {
+          console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+        }
+      }
+      updateStats();
+      updateLoginButton();
+
+      const failedSources = [];
+      if (!batchesResult?.ok) failedSources.push('lotes');
+      if (!queueResult?.ok) failedSources.push('fila editorial');
+      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+      if (failedSources.length) {
+        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+      } else if (showSuccess) {
+        showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+      }
+
+      return { ok: failedSources.length === 0, failedSources };
+    }
+
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -13805,35 +13894,7 @@ ${next}`.trim();
           return;
         }
 
-        renderBookAcquisitionBridgeOptions();
-        seedBookOwnershipDefaults(false);
-        const currentTab = getActiveCatalogacaoTab();
-        const [batchesResult, queueResult, catalogResult] = await Promise.all([
-          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
-          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
-        ]);
-        setTab(currentTab);
-        if (refs.labelBatchPreviewId?.value) {
-          try {
-            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
-          } catch (labelError) {
-            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-          }
-        }
-        updateStats();
-        updateLoginButton();
-
-        const failedSources = [];
-        if (!batchesResult?.ok) failedSources.push('lotes');
-        if (!queueResult?.ok) failedSources.push('fila editorial');
-        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
-
-        if (failedSources.length) {
-          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-        } else if (showSuccess) {
-          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-        }
+        await refreshCatalogacaoDataAfterAuth(showSuccess);
       } catch (error) {
         updateLoginButton();
         console.error(error);
@@ -13844,8 +13905,10 @@ ${next}`.trim();
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
-          refs.rolePill.className = 'pill danger';
+          refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+          refs.rolePill.className = 'pill ok';
+          showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
+          return;
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
       } finally {
@@ -24573,10 +24636,18 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           return false;
         }
 
-        if (reloadData) {
-          await refreshAll(false);
-        } else {
-          await loadProfile();
+        await loadProfile();
+        if (reloadData && state.isLibrarian) {
+          try {
+            await refreshCatalogacaoDataAfterAuth(false);
+          } catch (dataReloadError) {
+            console.warn('A autenticação da catalogação foi confirmada, mas a recarga dos dados falhou.', dataReloadError);
+            if (refs.rolePill) {
+              refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+              refs.rolePill.className = 'pill ok';
+            }
+            showMessage(refs.globalMessage, 'Acesso bibliotecário confirmado, mas parte da interface não conseguiu recarregar. Usa Atualizar para tentar novamente.', 'error');
+          }
         }
         return true;
       } catch (error) {
