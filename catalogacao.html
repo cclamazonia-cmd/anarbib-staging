@@ -13119,10 +13119,22 @@ ${next}`.trim();
       const normalizedRows = Array.isArray(rows) ? rows : [];
       const activeRows = normalizedRows.filter((row) => String(row?.status || 'active').trim().toLowerCase() === 'active');
       const librarianRows = activeRows.filter((row) => !hasExplicitCatalogacaoDenial(row) && isCatalogacaoLibrarianRow(row));
-      return librarianRows.find((row) => row?.is_primary === true)
-        || librarianRows.find((row) => row?.can_access_catalogacao === true)
-        || librarianRows.find((row) => row?.is_librarian === true)
-        || librarianRows[0]
+      if (librarianRows.length) {
+        return librarianRows.find((row) => row?.is_primary === true)
+          || librarianRows.find((row) => row?.can_access_catalogacao === true)
+          || librarianRows.find((row) => row?.is_librarian === true)
+          || librarianRows[0]
+          || null;
+      }
+
+      const permissiveLibraryRows = activeRows.filter((row) => {
+        if (!row || typeof row !== 'object') return false;
+        if (hasExplicitCatalogacaoDenial(row)) return false;
+        return hasCatalogacaoLibrarySignal(row);
+      });
+
+      return permissiveLibraryRows.find((row) => row?.is_primary === true)
+        || permissiveLibraryRows[0]
         || null;
     }
 
