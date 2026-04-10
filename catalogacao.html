@@ -12897,83 +12897,118 @@ ${next}`.trim();
     const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
     const CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 8;
 
-    function getCatalogacaoAccessCacheStorage() {
+    function getCatalogacaoAccessCacheStorages() {
+      const storages = [];
+      const seen = new Set();
+      const registerStorage = (storage, label = 'storage') => {
+        if (!storage || seen.has(storage)) return;
+        seen.add(storage);
+        storages.push({ storage, label });
+      };
+
       try {
-        return window?.sessionStorage || null;
+        registerStorage(window?.sessionStorage || null, 'sessionStorage');
       } catch (error) {
         console.warn('sessionStorage indisponível para o cache local de acesso da catalogação.', error);
-        return null;
       }
+
+      try {
+        registerStorage(window?.localStorage || null, 'localStorage');
+      } catch (error) {
+        console.warn('localStorage indisponível para o cache local de acesso da catalogação.', error);
+      }
+
+      return storages;
+    }
+
+    function getCatalogacaoAccessCacheStorage() {
+      return getCatalogacaoAccessCacheStorages()[0]?.storage || null;
     }
 
     function readCatalogacaoAccessCache(userId = '') {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage || !userId) return null;
-      try {
-        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (String(parsed.user_id || '').trim() !== String(userId || '').trim()) return null;
-        if (!parsed.row || typeof parsed.row !== 'object') return null;
-        const savedAt = Number(parsed.saved_at || 0);
-        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
-          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-          return null;
+      const storages = getCatalogacaoAccessCacheStorages();
+      if (!storages.length || !userId) return null;
+      for (const entry of storages) {
+        const storage = entry?.storage;
+        if (!storage) continue;
+        try {
+          const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') continue;
+          if (String(parsed.user_id || '').trim() !== String(userId || '').trim()) continue;
+          if (!parsed.row || typeof parsed.row !== 'object') continue;
+          const savedAt = Number(parsed.saved_at || 0);
+          if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+            storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+            continue;
+          }
+          return parsed.row;
+        } catch (error) {
+          console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
         }
-        return parsed.row;
-      } catch (error) {
-        console.warn('Falha ao ler o cache local de acesso da catalogação.', error);
-        return null;
       }
+      return null;
     }
 
     function readCatalogacaoAccessCacheByEmail(email = '') {
-      const storage = getCatalogacaoAccessCacheStorage();
+      const storages = getCatalogacaoAccessCacheStorages();
       const normalizedEmail = String(email || '').trim().toLowerCase();
-      if (!storage || !normalizedEmail) return null;
-      try {
-        const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (!parsed.row || typeof parsed.row !== 'object') return null;
-        const savedAt = Number(parsed.saved_at || 0);
-        if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
-          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-          return null;
+      if (!storages.length || !normalizedEmail) return null;
+      for (const entry of storages) {
+        const storage = entry?.storage;
+        if (!storage) continue;
+        try {
+          const raw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') continue;
+          if (!parsed.row || typeof parsed.row !== 'object') continue;
+          const savedAt = Number(parsed.saved_at || 0);
+          if (!savedAt || (Date.now() - savedAt) > CATALOGACAO_ACCESS_CACHE_MAX_AGE_MS) {
+            storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+            continue;
+          }
+          const cachedEmail = String(parsed.email || parsed.row?.email || '').trim().toLowerCase();
+          if (!cachedEmail || cachedEmail !== normalizedEmail) continue;
+          return parsed.row;
+        } catch (error) {
+          console.warn('Falha ao ler o cache local de acesso da catalogação por e-mail.', error);
         }
-        const cachedEmail = String(parsed.email || parsed.row?.email || '').trim().toLowerCase();
-        if (!cachedEmail || cachedEmail !== normalizedEmail) return null;
-        return parsed.row;
-      } catch (error) {
-        console.warn('Falha ao ler o cache local de acesso da catalogação por e-mail.', error);
-        return null;
       }
+      return null;
     }
 
     function writeCatalogacaoAccessCache(userId = '', row = null) {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage || !userId || !row || typeof row !== 'object') return;
-      try {
-        storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, JSON.stringify({
-          user_id: String(userId || '').trim(),
-          email: String(row?.email || '').trim().toLowerCase(),
-          saved_at: Date.now(),
-          row,
-        }));
-      } catch (error) {
-        console.warn('Falha ao gravar o cache local de acesso da catalogação.', error);
+      const storages = getCatalogacaoAccessCacheStorages();
+      if (!storages.length || !userId || !row || typeof row !== 'object') return;
+      for (const entry of storages) {
+        const storage = entry?.storage;
+        if (!storage) continue;
+        try {
+          storage.setItem(CATALOGACAO_ACCESS_CACHE_KEY, JSON.stringify({
+            user_id: String(userId || '').trim(),
+            email: String(row?.email || '').trim().toLowerCase(),
+            saved_at: Date.now(),
+            row,
+          }));
+        } catch (error) {
+          console.warn(`Falha ao gravar o cache local de acesso da catalogação em ${entry?.label || 'storage'}.`, error);
+        }
       }
     }
 
     function clearCatalogacaoAccessCache() {
-      const storage = getCatalogacaoAccessCacheStorage();
-      if (!storage) return;
-      try {
-        storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
-      } catch (error) {
-        console.warn('Falha ao limpar o cache local de acesso da catalogação.', error);
+      const storages = getCatalogacaoAccessCacheStorages();
+      if (!storages.length) return;
+      for (const entry of storages) {
+        const storage = entry?.storage;
+        if (!storage) continue;
+        try {
+          storage.removeItem(CATALOGACAO_ACCESS_CACHE_KEY);
+        } catch (error) {
+          console.warn(`Falha ao limpar o cache local de acesso da catalogação em ${entry?.label || 'storage'}.`, error);
+        }
       }
     }
 
@@ -13730,7 +13765,7 @@ ${next}`.trim();
       throw new Error('Usuário sem permissão bibliotecária.');
     }
 
-    function resetCatalogacaoAuthChrome() {
+    function resetCatalogacaoAuthChrome({ preserveAccessCache = true } = {}) {
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
@@ -13740,7 +13775,9 @@ ${next}`.trim();
         window.clearTimeout(catalogacaoLateSessionRetryTimer);
         catalogacaoLateSessionRetryTimer = null;
       }
-      clearCatalogacaoAccessCache();
+      if (!preserveAccessCache) {
+        clearCatalogacaoAccessCache();
+      }
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
@@ -14031,7 +14068,7 @@ ${next}`.trim();
 
         const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
         if (!sessionStep.ok || !state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          resetCatalogacaoAuthChrome({ preserveAccessCache: true });
           showMessage(refs.globalMessage, 'Não foi possível confirmar a sessão agora. Tenta novamente ou entra de novo.', 'error');
           return;
         }
@@ -18426,7 +18463,8 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       } catch (error) {
         console.warn('signOut failed:', error);
       } finally {
-        resetCatalogacaoAuthChrome();
+        clearCatalogacaoAccessCache();
+        resetCatalogacaoAuthChrome({ preserveAccessCache: false });
         refs.loginBtn.disabled = false;
         window.location.href = LOGIN_URL;
       }
@@ -24787,7 +24825,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         updateLoginButton();
 
         if (!state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          resetCatalogacaoAuthChrome({ preserveAccessCache: !allowAnonymousReset });
           scheduleCatalogacaoLateSessionRetry();
           return false;
         }
@@ -24808,7 +24846,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         return true;
       } catch (error) {
         if (allowAnonymousReset || !state.session?.user?.id) {
-          resetCatalogacaoAuthChrome();
+          resetCatalogacaoAuthChrome({ preserveAccessCache: true });
         }
         console.warn('Não consegui sincronizar a sessão da catalogação.', error);
         return false;
