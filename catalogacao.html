@@ -12924,6 +12924,10 @@ ${next}`.trim();
               return true;
             }
           }
+          const cachedAccessRaw = storage.getItem(CATALOGACAO_ACCESS_CACHE_KEY);
+          if (String(cachedAccessRaw || '').trim()) {
+            return true;
+          }
         } catch (error) {
           console.warn('Falha ao ler o indício de sessão armazenada da catalogação.', error);
         }
@@ -13366,14 +13370,24 @@ ${next}`.trim();
     async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
       const previousSession = state.session?.user?.id ? state.session : null;
       const freshSession = await getCurrentSession({ attempts, delayMs });
-      if (freshSession?.user?.id) {
-        state.session = freshSession;
+      const recoveredSession = freshSession?.user?.id
+        ? freshSession
+        : await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+      if (recoveredSession?.user?.id) {
+        state.session = recoveredSession;
       } else if (previousSession?.user?.id) {
         state.session = previousSession;
       } else {
         state.session = null;
       }
       if (!state.session?.user?.id) {
+        if (hasCatalogacaoStoredSessionHint()) {
+          refs.userEmail.textContent = refs.userEmail.textContent || 'Sessão em reconexão';
+          refs.rolePill.textContent = 'Reconectando sessão…';
+          refs.rolePill.className = 'pill warn';
+          updateLoginButton();
+          throw new Error('Sessão em reidratação');
+        }
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
@@ -13555,7 +13569,7 @@ ${next}`.trim();
       throw new Error('Usuário sem permissão bibliotecária.');
     }
 
-    function resetCatalogacaoAuthChrome() {
+    function resetCatalogacaoAuthChrome({ preserveAccessCache = true } = {}) {
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
@@ -13565,7 +13579,9 @@ ${next}`.trim();
         window.clearTimeout(catalogacaoLateSessionRetryTimer);
         catalogacaoLateSessionRetryTimer = null;
       }
-      clearCatalogacaoAccessCache();
+      if (!preserveAccessCache) {
+        clearCatalogacaoAccessCache();
+      }
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
@@ -13823,7 +13839,7 @@ ${next}`.trim();
 
         let sessionStep = { ok: hasKnownSession, value: state.session || null };
         if (!skipSessionCheck && !hasKnownSession) {
-          sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
+          sessionStep = await settleCatalogacaoStep('sessão', () => requireSession({ attempts: 28, delayMs: 220 }), 7600);
         }
         if ((!skipSessionCheck && !sessionStep.ok) || !state.session?.user?.id) {
           if (hasCatalogacaoStoredSessionHint()) {
@@ -18174,11 +18190,17 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
           await refreshAll(true, { skipSessionCheck: true });
           return;
         }
-        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
-        await syncCatalogacaoAuthState(liveSession, {
-          reloadData: !!liveSession?.user?.id,
-          allowAnonymousReset: false,
-        });
+        const liveSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+        if (liveSession?.user?.id) {
+          await syncCatalogacaoAuthState(liveSession, {
+            reloadData: true,
+            allowAnonymousReset: false,
+          });
+          return;
+        }
+        refs.rolePill.textContent = hasCatalogacaoStoredSessionHint() ? 'Reconectando sessão…' : 'Faça login para usar a catalogação';
+        refs.rolePill.className = hasCatalogacaoStoredSessionHint() ? 'pill warn' : 'pill danger';
+        scheduleCatalogacaoLateSessionRetry();
       } finally {
         updateRefreshButton(false);
       }
@@ -18260,7 +18282,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         console.warn('signOut failed:', error);
       } finally {
         const reloginUrl = buildCatalogacaoLoginUrl(window.location.href);
-        resetCatalogacaoAuthChrome();
+        resetCatalogacaoAuthChrome({ preserveAccessCache: false });
         refs.loginBtn.disabled = false;
         window.location.href = reloginUrl;
       }
