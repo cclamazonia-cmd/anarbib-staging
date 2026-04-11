@@ -13785,41 +13785,6 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    async function hydrateCatalogacaoData(showSuccess = false) {
-      renderBookAcquisitionBridgeOptions();
-      seedBookOwnershipDefaults(false);
-      const currentTab = getActiveCatalogacaoTab();
-      const [batchesResult, queueResult, catalogResult] = await Promise.all([
-        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
-        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
-      ]);
-      setTab(currentTab);
-      if (refs.labelBatchPreviewId?.value) {
-        try {
-          await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
-        } catch (labelError) {
-          console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
-        }
-      }
-      state.dataHydrated = true;
-      updateStats();
-      updateLoginButton();
-
-      const failedSources = [];
-      if (!batchesResult?.ok) failedSources.push('lotes');
-      if (!queueResult?.ok) failedSources.push('fila editorial');
-      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
-
-      if (failedSources.length) {
-        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-      } else if (showSuccess) {
-        showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
-      }
-
-      return { batchesResult, queueResult, catalogResult, failedSources };
-    }
-
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -13855,7 +13820,36 @@ ${next}`.trim();
           return;
         }
 
-        await hydrateCatalogacaoData(showSuccess);
+        renderBookAcquisitionBridgeOptions();
+        seedBookOwnershipDefaults(false);
+        const currentTab = getActiveCatalogacaoTab();
+        const [batchesResult, queueResult, catalogResult] = await Promise.all([
+          settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+          settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+          settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+        ]);
+        setTab(currentTab);
+        if (refs.labelBatchPreviewId?.value) {
+          try {
+            await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+          } catch (labelError) {
+            console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+          }
+        }
+        state.dataHydrated = true;
+        updateStats();
+        updateLoginButton();
+
+        const failedSources = [];
+        if (!batchesResult?.ok) failedSources.push('lotes');
+        if (!queueResult?.ok) failedSources.push('fila editorial');
+        if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+        if (failedSources.length) {
+          showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        } else if (showSuccess) {
+          showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
+        }
       } catch (error) {
         updateLoginButton();
         console.error(error);
@@ -13866,7 +13860,7 @@ ${next}`.trim();
           refs.rolePill.textContent = 'Acesso restrito';
           refs.rolePill.className = 'pill danger';
         } else {
-          refs.rolePill.textContent = 'Não foi possível carregar os dados';
+          refs.rolePill.textContent = 'Não foi possível confirmar o acesso';
           refs.rolePill.className = 'pill danger';
         }
         showMessage(refs.globalMessage, error.message || 'Não foi possível atualizar a página.', 'error');
@@ -24614,7 +24608,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         } else {
           await loadProfile();
           if (state.isLibrarian && !state.dataHydrated) {
-            await hydrateCatalogacaoData(false);
+            await refreshAll(false);
           }
         }
         return true;
