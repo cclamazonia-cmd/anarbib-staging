@@ -12935,6 +12935,23 @@ ${next}`.trim();
       return false;
     }
 
+    async function rehydrateCatalogacaoSessionAndData({ reloadData = true, showSuccess = false } = {}) {
+      const cachedAccessRow = readCatalogacaoAccessCacheByEmail(refs.userEmail?.textContent || '') || readCatalogacaoAccessCache(state.session?.user?.id || '') || null;
+      refs.userEmail.textContent = cachedAccessRow?.email || refs.userEmail.textContent || 'Sessão em reconexão';
+      refs.rolePill.textContent = 'Reconectando sessão…';
+      refs.rolePill.className = 'pill warn';
+      updateLoginButton();
+      const recoveredSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
+      if (!recoveredSession?.user?.id) {
+        return false;
+      }
+      await syncCatalogacaoAuthState(recoveredSession, { reloadData, allowAnonymousReset: false });
+      if (showSuccess) {
+        showMessage(refs.globalMessage, 'Sessão e dados da catalogação atualizados.', 'ok');
+      }
+      return true;
+    }
+
     function readCatalogacaoAccessCache(userId = '') {
       const normalizedUserId = String(userId || '').trim();
       if (!normalizedUserId) return null;
@@ -13317,11 +13334,7 @@ ${next}`.trim();
 
     async function getCurrentSession({ attempts = 12, delayMs = 180 } = {}) {
       const hasUrlAuthHint = /(?:[?#].*)(access_token|refresh_token|code|token_hash)=/i.test(`${window.location.search || ''}${window.location.hash || ''}`);
-      const hasStoredSessionHint = hasCatalogacaoStoredSessionHint();
-      const effectiveDelayMs = hasStoredSessionHint ? Math.max(delayMs, 220) : delayMs;
-      const totalAttempts = hasUrlAuthHint
-        ? Math.max(attempts, 20)
-        : (hasStoredSessionHint ? Math.max(attempts, 24) : attempts);
+      const totalAttempts = hasUrlAuthHint ? Math.max(attempts, 20) : attempts;
 
       for (let i = 0; i < totalAttempts; i += 1) {
         try {
@@ -13350,7 +13363,7 @@ ${next}`.trim();
         }
 
         if (i < totalAttempts - 1) {
-          await wait(hasUrlAuthHint ? Math.max(effectiveDelayMs, 240) : effectiveDelayMs);
+          await wait(hasUrlAuthHint ? Math.max(delayMs, 240) : delayMs);
         }
       }
       return null;
@@ -13370,24 +13383,14 @@ ${next}`.trim();
     async function requireSession({ attempts = 16, delayMs = 180 } = {}) {
       const previousSession = state.session?.user?.id ? state.session : null;
       const freshSession = await getCurrentSession({ attempts, delayMs });
-      const recoveredSession = freshSession?.user?.id
-        ? freshSession
-        : await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
-      if (recoveredSession?.user?.id) {
-        state.session = recoveredSession;
+      if (freshSession?.user?.id) {
+        state.session = freshSession;
       } else if (previousSession?.user?.id) {
         state.session = previousSession;
       } else {
         state.session = null;
       }
       if (!state.session?.user?.id) {
-        if (hasCatalogacaoStoredSessionHint()) {
-          refs.userEmail.textContent = refs.userEmail.textContent || 'Sessão em reconexão';
-          refs.rolePill.textContent = 'Reconectando sessão…';
-          refs.rolePill.className = 'pill warn';
-          updateLoginButton();
-          throw new Error('Sessão em reidratação');
-        }
         refs.userEmail.textContent = 'Sem sessão';
         refs.rolePill.textContent = 'Faça login para usar a catalogação';
         refs.rolePill.className = 'pill danger';
@@ -13569,7 +13572,7 @@ ${next}`.trim();
       throw new Error('Usuário sem permissão bibliotecária.');
     }
 
-    function resetCatalogacaoAuthChrome({ preserveAccessCache = true } = {}) {
+    function resetCatalogacaoAuthChrome() {
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
@@ -13579,9 +13582,7 @@ ${next}`.trim();
         window.clearTimeout(catalogacaoLateSessionRetryTimer);
         catalogacaoLateSessionRetryTimer = null;
       }
-      if (!preserveAccessCache) {
-        clearCatalogacaoAccessCache();
-      }
+      clearCatalogacaoAccessCache();
       refs.userEmail.textContent = 'Sem sessão';
       refs.rolePill.textContent = 'Faça login para usar a catalogação';
       refs.rolePill.className = 'pill danger';
@@ -13822,72 +13823,36 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    function catalogacaoDataLooksUnhydrated() {
-      return !state.batches.length && !state.queueItems.length && !state.books.length && !state.authors.length;
-    }
-
-    async function reloadCatalogacaoDataOnly(showSuccess = false) {
-      const currentTab = getActiveCatalogacaoTab();
-      refs.userEmail.textContent = state.session?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
-      refs.rolePill.textContent = 'Atualizando dados…';
-      refs.rolePill.className = 'pill warn';
-
-      const [batchesResult, queueResult, catalogResult] = await Promise.all([
-        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
-        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
-        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
-      ]);
-
-      setTab(currentTab);
-      updateStats();
-      updateLoginButton();
-
-      const failedSources = [];
-      if (!batchesResult?.ok) failedSources.push('lotes');
-      if (!queueResult?.ok) failedSources.push('fila editorial');
-      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
-
-      if (failedSources.length) {
-        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-        refs.rolePill.className = 'pill ok';
-        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
-        return false;
-      }
-
-      refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
-      refs.rolePill.className = 'pill ok';
-      if (showSuccess) {
-        showMessage(refs.globalMessage, 'Dados da catalogação atualizados.', 'ok');
-      }
-      return true;
-    }
-
-    async function refreshAll(showSuccess = false, options = {}) {
+    async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
 
-      const skipSessionCheck = !!options?.skipSessionCheck;
       const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
       const hasKnownSession = !!state.session?.user?.id;
+      const hasStoredSession = hasCatalogacaoStoredSessionHint();
 
-      refs.userEmail.textContent = hasKnownSession ? knownEmail : 'Sem sessão';
-      refs.rolePill.textContent = hasKnownSession ? 'Atualizando dados…' : 'Conferindo sessão…';
+      refs.userEmail.textContent = hasKnownSession ? knownEmail : (hasStoredSession ? (knownEmail || 'Sessão em reconexão') : 'Sem sessão');
+      refs.rolePill.textContent = hasKnownSession ? 'Atualizando dados…' : (hasStoredSession ? 'Reconectando sessão…' : 'Conferindo sessão…');
       refs.rolePill.className = 'pill warn';
 
       try {
         clearMessage(refs.globalMessage);
 
-        let sessionStep = { ok: hasKnownSession, value: state.session || null };
-        if (!skipSessionCheck && !hasKnownSession) {
-          sessionStep = await settleCatalogacaoStep('sessão', () => requireSession({ attempts: 28, delayMs: 220 }), 7600);
+        if (!hasKnownSession && hasStoredSession) {
+          const recovered = await rehydrateCatalogacaoSessionAndData({ reloadData: true, showSuccess });
+          if (!recovered) {
+            showMessage(refs.globalMessage, 'A sessão ainda está se recompondo. Aguarde um instante e tente Atualizar novamente.', 'error');
+          }
+          return;
         }
-        if ((!skipSessionCheck && !sessionStep.ok) || !state.session?.user?.id) {
-          if (hasCatalogacaoStoredSessionHint()) {
+
+        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
+        if (!sessionStep.ok || !state.session?.user?.id) {
+          if (hasStoredSession) {
             refs.userEmail.textContent = knownEmail || refs.userEmail.textContent || 'Sessão em reconexão';
             refs.rolePill.textContent = 'Reconectando sessão…';
             refs.rolePill.className = 'pill warn';
-            scheduleCatalogacaoLateSessionRetry();
-            showMessage(refs.globalMessage, 'A sessão ainda está se recompondo neste refresh. Aguarde um instante e use Atualizar só se necessário.', 'error');
+            showMessage(refs.globalMessage, 'A sessão ainda está se recompondo. Aguarde um instante e tente Atualizar novamente.', 'error');
             return;
           }
           resetCatalogacaoAuthChrome();
@@ -18227,29 +18192,21 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       updateRefreshButton(true);
       try {
         if (state.session?.user?.id) {
-          try {
-            await loadProfile();
-          } catch (profileRefreshError) {
-            console.warn('Atualizar: confirmação de acesso ainda não fechada, tentando recarregar dados mesmo assim.', profileRefreshError);
-          }
-          if (state.isLibrarian) {
-            await reloadCatalogacaoDataOnly(true);
-          } else {
-            await refreshAll(true, { skipSessionCheck: true });
-          }
+          await refreshAll(true);
           return;
         }
-        const liveSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
-        if (liveSession?.user?.id) {
-          await syncCatalogacaoAuthState(liveSession, {
-            reloadData: true,
-            allowAnonymousReset: false,
-          });
+        const recovered = await rehydrateCatalogacaoSessionAndData({ reloadData: true, showSuccess: true });
+        if (!recovered && hasCatalogacaoStoredSessionHint()) {
+          refs.rolePill.textContent = 'Reconectando sessão…';
+          refs.rolePill.className = 'pill warn';
+          showMessage(refs.globalMessage, 'A sessão ainda está se recompondo. Aguarde um instante e tente Atualizar novamente.', 'error');
           return;
         }
-        refs.rolePill.textContent = hasCatalogacaoStoredSessionHint() ? 'Reconectando sessão…' : 'Faça login para usar a catalogação';
-        refs.rolePill.className = hasCatalogacaoStoredSessionHint() ? 'pill warn' : 'pill danger';
-        scheduleCatalogacaoLateSessionRetry();
+        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
+        await syncCatalogacaoAuthState(liveSession, {
+          reloadData: !!liveSession?.user?.id,
+          allowAnonymousReset: !liveSession?.user?.id,
+        });
       } finally {
         updateRefreshButton(false);
       }
@@ -18331,7 +18288,7 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
         console.warn('signOut failed:', error);
       } finally {
         const reloginUrl = buildCatalogacaoLoginUrl(window.location.href);
-        resetCatalogacaoAuthChrome({ preserveAccessCache: false });
+        resetCatalogacaoAuthChrome();
         refs.loginBtn.disabled = false;
         window.location.href = reloginUrl;
       }
@@ -24695,23 +24652,20 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         updateLoginButton();
 
         if (!state.session?.user?.id) {
-          const hasStoredSession = hasCatalogacaoStoredSessionHint();
-          const cachedAccessRow = readCatalogacaoAccessCache(previousUserId) || null;
           if (!allowAnonymousReset && previousUserId) {
             state.session = previousSession;
-            state.profile = previousProfile || cachedAccessRow;
-            state.isLibrarian = previousIsLibrarian || (!!cachedAccessRow && !hasExplicitCatalogacaoDenial(cachedAccessRow));
-            refs.userEmail.textContent = previousSession?.user?.email || cachedAccessRow?.email || refs.userEmail.textContent || 'Usuário autenticado';
-            refs.rolePill.textContent = state.isLibrarian ? 'Acesso bibliotecário confirmado' : 'Sessão reconhecida; acesso não confirmado';
-            refs.rolePill.className = state.isLibrarian ? 'pill ok' : 'pill warn';
+            state.profile = previousProfile;
+            state.isLibrarian = previousIsLibrarian;
+            refs.userEmail.textContent = previousSession?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+            refs.rolePill.textContent = previousIsLibrarian ? 'Acesso bibliotecário confirmado' : 'Sessão reconhecida; acesso não confirmado';
+            refs.rolePill.className = previousIsLibrarian ? 'pill ok' : 'pill warn';
             updateLoginButton();
             return false;
           }
-          if (!allowAnonymousReset && hasStoredSession) {
-            state.profile = cachedAccessRow || state.profile || null;
-            state.isLibrarian = previousIsLibrarian || (!!cachedAccessRow && !hasExplicitCatalogacaoDenial(cachedAccessRow));
+          if (!allowAnonymousReset && hasCatalogacaoStoredSessionHint()) {
+            const cachedAccessRow = readCatalogacaoAccessCacheByEmail(refs.userEmail?.textContent || '') || null;
             refs.userEmail.textContent = cachedAccessRow?.email || refs.userEmail.textContent || 'Sessão em reconexão';
-            refs.rolePill.textContent = state.isLibrarian ? 'Reconectando sessão bibliotecária…' : 'Reconectando sessão…';
+            refs.rolePill.textContent = 'Reconectando sessão…';
             refs.rolePill.className = 'pill warn';
             updateLoginButton();
             scheduleCatalogacaoLateSessionRetry();
@@ -24722,12 +24676,9 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         }
 
         if (reloadData) {
-          await refreshAll(false, { skipSessionCheck: true });
+          await refreshAll(false);
         } else {
           await loadProfile();
-          if (state.isLibrarian && catalogacaoDataLooksUnhydrated()) {
-            await reloadCatalogacaoDataOnly(false);
-          }
         }
         return true;
       } catch (error) {
@@ -24771,10 +24722,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       catalogacaoLateSessionRetryTimer = window.setTimeout(async () => {
         catalogacaoLateSessionRetryTimer = null;
         try {
-          const lateSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
-          if (lateSession?.user?.id) {
-            await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
-          }
+          await rehydrateCatalogacaoSessionAndData({ reloadData: true, showSuccess: false });
         } catch (lateSessionError) {
           console.warn('Tentativa única tardia de sessão na catalogação falhou.', lateSessionError);
         }
