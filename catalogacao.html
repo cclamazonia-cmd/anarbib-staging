@@ -13806,10 +13806,11 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
-    async function refreshAll(showSuccess = false) {
+    async function refreshAll(showSuccess = false, options = {}) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
 
+      const skipSessionCheck = !!options?.skipSessionCheck;
       const knownEmail = state.session?.user?.email || refs.userEmail?.textContent || 'Sem sessão';
       const hasKnownSession = !!state.session?.user?.id;
 
@@ -13820,8 +13821,11 @@ ${next}`.trim();
       try {
         clearMessage(refs.globalMessage);
 
-        const sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
-        if (!sessionStep.ok || !state.session?.user?.id) {
+        let sessionStep = { ok: hasKnownSession, value: state.session || null };
+        if (!skipSessionCheck && !hasKnownSession) {
+          sessionStep = await settleCatalogacaoStep('sessão', () => requireSession(), 3200);
+        }
+        if ((!skipSessionCheck && !sessionStep.ok) || !state.session?.user?.id) {
           if (hasCatalogacaoStoredSessionHint()) {
             refs.userEmail.textContent = knownEmail || refs.userEmail.textContent || 'Sessão em reconexão';
             refs.rolePill.textContent = 'Reconectando sessão…';
@@ -18166,10 +18170,14 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     el('refreshAllBtn').addEventListener('click', async () => {
       updateRefreshButton(true);
       try {
+        if (state.session?.user?.id) {
+          await refreshAll(true, { skipSessionCheck: true });
+          return;
+        }
         const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
         await syncCatalogacaoAuthState(liveSession, {
           reloadData: !!liveSession?.user?.id,
-          allowAnonymousReset: !liveSession?.user?.id,
+          allowAnonymousReset: false,
         });
       } finally {
         updateRefreshButton(false);
@@ -24643,7 +24651,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         }
 
         if (reloadData) {
-          await refreshAll(false);
+          await refreshAll(false, { skipSessionCheck: true });
         } else {
           await loadProfile();
         }
