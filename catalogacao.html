@@ -5038,6 +5038,7 @@
       session: null,
       profile: null,
       isLibrarian: false,
+      dataHydrated: false,
       batches: [],
       queueItems: [],
       books: [],
@@ -13536,6 +13537,7 @@ ${next}`.trim();
       state.session = null;
       state.profile = null;
       state.isLibrarian = false;
+      state.dataHydrated = false;
       catalogacaoLastPassiveSessionProbeAt = 0;
       catalogacaoLateSessionRetryCount = 0;
       if (catalogacaoLateSessionRetryTimer) {
@@ -13834,6 +13836,7 @@ ${next}`.trim();
             console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
           }
         }
+        state.dataHydrated = true;
         updateStats();
         updateLoginButton();
 
@@ -24573,6 +24576,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         const nextUserId = String(state.session?.user?.id || '').trim();
         if (previousUserId && nextUserId && previousUserId !== nextUserId) {
           clearCatalogacaoAccessCache();
+          state.dataHydrated = false;
         }
         if (nextUserId) {
           catalogacaoLastPassiveSessionProbeAt = 0;
@@ -24603,6 +24607,9 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           await refreshAll(false);
         } else {
           await loadProfile();
+          if (state.isLibrarian && !state.dataHydrated) {
+            await refreshAll(false);
+          }
         }
         return true;
       } catch (error) {
