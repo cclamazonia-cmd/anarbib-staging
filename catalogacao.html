@@ -12893,6 +12893,8 @@ ${next}`.trim();
     let catalogacaoAuthBootstrapping = true;
     let catalogacaoLateSessionRetryTimer = null;
     let catalogacaoLateSessionRetryCount = 0;
+    let catalogacaoDataRetryTimer = null;
+    let catalogacaoDataRetryCount = 0;
     const CATALOGACAO_LATE_SESSION_RETRY_DELAYS_MS = [1400, 4200];
     const CATALOGACAO_AUTH_STORAGE_KEYS = new Set(['sb-uflwmikiyjfnikiphtcp-auth-token', 'anarbib-staging-auth']);
     const CATALOGACAO_ACCESS_CACHE_KEY = 'anarbib-catalogacao-access-cache';
@@ -13540,9 +13542,14 @@ ${next}`.trim();
       state.dataHydrated = false;
       catalogacaoLastPassiveSessionProbeAt = 0;
       catalogacaoLateSessionRetryCount = 0;
+      catalogacaoDataRetryCount = 0;
       if (catalogacaoLateSessionRetryTimer) {
         window.clearTimeout(catalogacaoLateSessionRetryTimer);
         catalogacaoLateSessionRetryTimer = null;
+      }
+      if (catalogacaoDataRetryTimer) {
+        window.clearTimeout(catalogacaoDataRetryTimer);
+        catalogacaoDataRetryTimer = null;
       }
       clearCatalogacaoAccessCache();
       refs.userEmail.textContent = 'Sem sessão';
@@ -13785,6 +13792,20 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    function scheduleCatalogacaoDataRetry() {
+      if (!state.session?.user?.id || !state.isLibrarian) return;
+      if (catalogacaoDataRetryTimer || catalogacaoDataRetryCount >= 1) return;
+      catalogacaoDataRetryCount = 1;
+      catalogacaoDataRetryTimer = window.setTimeout(async () => {
+        catalogacaoDataRetryTimer = null;
+        try {
+          await hydrateCatalogacaoData(false);
+        } catch (dataRetryError) {
+          console.warn('Tentativa única tardia de carregamento de dados falhou na catalogação.', dataRetryError);
+        }
+      }, 900);
+    }
+
     async function hydrateCatalogacaoData(showSuccess = false) {
       renderBookAcquisitionBridgeOptions();
       seedBookOwnershipDefaults(false);
@@ -13802,16 +13823,24 @@ ${next}`.trim();
           console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
         }
       }
-      state.dataHydrated = true;
-      updateStats();
-      updateLoginButton();
-
       const failedSources = [];
       if (!batchesResult?.ok) failedSources.push('lotes');
       if (!queueResult?.ok) failedSources.push('fila editorial');
       if (!catalogResult?.ok) failedSources.push('catálogo publicado');
 
+      state.dataHydrated = failedSources.length === 0;
+      if (state.dataHydrated) {
+        catalogacaoDataRetryCount = 0;
+        if (catalogacaoDataRetryTimer) {
+          window.clearTimeout(catalogacaoDataRetryTimer);
+          catalogacaoDataRetryTimer = null;
+        }
+      }
+      updateStats();
+      updateLoginButton();
+
       if (failedSources.length) {
+        scheduleCatalogacaoDataRetry();
         showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
       } else if (showSuccess) {
         showMessage(refs.globalMessage, 'Sessão, perfil e dados atualizados.', 'ok');
@@ -24583,13 +24612,23 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
         if (previousUserId && nextUserId && previousUserId !== nextUserId) {
           clearCatalogacaoAccessCache();
           state.dataHydrated = false;
+          catalogacaoDataRetryCount = 0;
+          if (catalogacaoDataRetryTimer) {
+            window.clearTimeout(catalogacaoDataRetryTimer);
+            catalogacaoDataRetryTimer = null;
+          }
         }
         if (nextUserId) {
           catalogacaoLastPassiveSessionProbeAt = 0;
           catalogacaoLateSessionRetryCount = 0;
+          catalogacaoDataRetryCount = 0;
           if (catalogacaoLateSessionRetryTimer) {
             window.clearTimeout(catalogacaoLateSessionRetryTimer);
             catalogacaoLateSessionRetryTimer = null;
+          }
+          if (catalogacaoDataRetryTimer) {
+            window.clearTimeout(catalogacaoDataRetryTimer);
+            catalogacaoDataRetryTimer = null;
           }
         }
         updateLoginButton();
