@@ -13822,6 +13822,46 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    function catalogacaoDataLooksUnhydrated() {
+      return !state.batches.length && !state.queueItems.length && !state.books.length && !state.authors.length;
+    }
+
+    async function reloadCatalogacaoDataOnly(showSuccess = false) {
+      const currentTab = getActiveCatalogacaoTab();
+      refs.userEmail.textContent = state.session?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
+      refs.rolePill.textContent = 'Atualizando dados…';
+      refs.rolePill.className = 'pill warn';
+
+      const [batchesResult, queueResult, catalogResult] = await Promise.all([
+        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+      ]);
+
+      setTab(currentTab);
+      updateStats();
+      updateLoginButton();
+
+      const failedSources = [];
+      if (!batchesResult?.ok) failedSources.push('lotes');
+      if (!queueResult?.ok) failedSources.push('fila editorial');
+      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+      if (failedSources.length) {
+        refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+        refs.rolePill.className = 'pill ok';
+        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        return false;
+      }
+
+      refs.rolePill.textContent = 'Acesso bibliotecário confirmado';
+      refs.rolePill.className = 'pill ok';
+      if (showSuccess) {
+        showMessage(refs.globalMessage, 'Dados da catalogação atualizados.', 'ok');
+      }
+      return true;
+    }
+
     async function refreshAll(showSuccess = false, options = {}) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -18187,7 +18227,16 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
       updateRefreshButton(true);
       try {
         if (state.session?.user?.id) {
-          await refreshAll(true, { skipSessionCheck: true });
+          try {
+            await loadProfile();
+          } catch (profileRefreshError) {
+            console.warn('Atualizar: confirmação de acesso ainda não fechada, tentando recarregar dados mesmo assim.', profileRefreshError);
+          }
+          if (state.isLibrarian) {
+            await reloadCatalogacaoDataOnly(true);
+          } else {
+            await refreshAll(true, { skipSessionCheck: true });
+          }
           return;
         }
         const liveSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
@@ -24676,6 +24725,9 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           await refreshAll(false, { skipSessionCheck: true });
         } else {
           await loadProfile();
+          if (state.isLibrarian && catalogacaoDataLooksUnhydrated()) {
+            await reloadCatalogacaoDataOnly(false);
+          }
         }
         return true;
       } catch (error) {
