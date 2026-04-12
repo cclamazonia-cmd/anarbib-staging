@@ -13798,6 +13798,41 @@ ${next}`.trim();
       return { ok: errors.length === 0, source: 'catalog', errors };
     }
 
+    async function reloadCatalogacaoDataOnly(showSuccess = false) {
+      renderBookAcquisitionBridgeOptions();
+      seedBookOwnershipDefaults(false);
+      const currentTab = getActiveCatalogacaoTab();
+      const [batchesResult, queueResult, catalogResult] = await Promise.all([
+        settleCatalogacaoStep('lotes', () => loadBatches(), 6000),
+        settleCatalogacaoStep('fila editorial', () => loadQueue(), 9000),
+        settleCatalogacaoStep('catálogo publicado', () => loadCatalog(), 20000),
+      ]);
+      setTab(currentTab);
+      if (refs.labelBatchPreviewId?.value) {
+        try {
+          await settleCatalogacaoStep('prévia dos rótulos', () => loadLabelSheetPreview(), 6000);
+        } catch (labelError) {
+          console.warn('Não foi possível atualizar a prévia dos rótulos.', labelError);
+        }
+      }
+      updateStats();
+      updateLoginButton();
+
+      const failedSources = [];
+      if (!batchesResult?.ok) failedSources.push('lotes');
+      if (!queueResult?.ok) failedSources.push('fila editorial');
+      if (!catalogResult?.ok) failedSources.push('catálogo publicado');
+
+      if (failedSources.length) {
+        showMessage(refs.globalMessage, `Sessão ativa, mas alguns dados não puderam ser carregados: ${failedSources.join(', ')}.`, 'error');
+        return false;
+      }
+      if (showSuccess) {
+        showMessage(refs.globalMessage, 'Dados atualizados.', 'ok');
+      }
+      return true;
+    }
+
     async function refreshAll(showSuccess = false) {
       catalogacaoUiRefreshInFlight = true;
       updateRefreshButton(true);
@@ -18150,11 +18185,14 @@ function buildLabelPreviewItems(exemplarDrafts = [], bookDrafts = []) {
     el('refreshAllBtn').addEventListener('click', async () => {
       updateRefreshButton(true);
       try {
-        const liveSession = await getCurrentSession({ attempts: 10, delayMs: 160 });
-        await syncCatalogacaoAuthState(liveSession, {
-          reloadData: !!liveSession?.user?.id,
-          allowAnonymousReset: !liveSession?.user?.id,
+        const liveSession = state.session?.user?.id ? state.session : await getCurrentSession({ attempts: 6, delayMs: 150 });
+        const authOk = await syncCatalogacaoAuthState(liveSession, {
+          reloadData: false,
+          allowAnonymousReset: false,
         });
+        if (authOk && state.session?.user?.id && state.isLibrarian) {
+          await reloadCatalogacaoDataOnly(true);
+        }
       } finally {
         updateRefreshButton(false);
       }
@@ -24557,17 +24595,8 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
 
     async function resolveCatalogacaoSession(nextSession, { allowAnonymousReset = false } = {}) {
       if (nextSession?.user?.id) return nextSession;
-
-      const immediateSession = await getCurrentSession({ attempts: allowAnonymousReset ? 4 : 12, delayMs: 180 });
-      if (immediateSession?.user?.id) return immediateSession;
-
-      if (!allowAnonymousReset) {
-        await wait(320);
-        const delayedSession = await getConfirmedCurrentSession({ attempts: 8, delayMs: 220 });
-        if (delayedSession?.user?.id) return delayedSession;
-      }
-
-      return null;
+      if (state.session?.user?.id) return state.session;
+      return await getCurrentSession({ attempts: allowAnonymousReset ? 2 : 6, delayMs: 150 });
     }
 
     async function syncCatalogacaoAuthState(nextSession, { reloadData = false, allowAnonymousReset = false } = {}) {
@@ -24580,27 +24609,10 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       updateLoginButton();
 
       try {
-        state.session = nextSession || null;
-        if (!state.session?.user?.id) {
-          state.session = await resolveCatalogacaoSession(nextSession, { allowAnonymousReset });
-        }
+        const resolvedSession = await resolveCatalogacaoSession(nextSession, { allowAnonymousReset });
         if (syncId !== catalogacaoAuthSyncSerial) return !!state.session?.user?.id;
 
-        const nextUserId = String(state.session?.user?.id || '').trim();
-        if (previousUserId && nextUserId && previousUserId !== nextUserId) {
-          clearCatalogacaoAccessCache();
-        }
-        if (nextUserId) {
-          catalogacaoLastPassiveSessionProbeAt = 0;
-          catalogacaoLateSessionRetryCount = 0;
-          if (catalogacaoLateSessionRetryTimer) {
-            window.clearTimeout(catalogacaoLateSessionRetryTimer);
-            catalogacaoLateSessionRetryTimer = null;
-          }
-        }
-        updateLoginButton();
-
-        if (!state.session?.user?.id) {
+        if (!resolvedSession?.user?.id) {
           if (!allowAnonymousReset && previousUserId) {
             state.session = previousSession;
             state.profile = previousProfile;
@@ -24615,17 +24627,22 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           return false;
         }
 
-        if (reloadData) {
-          await refreshAll(false);
-        } else {
-          await loadProfile();
+        state.session = resolvedSession;
+        const nextUserId = String(resolvedSession?.user?.id || '').trim();
+        if (previousUserId && nextUserId && previousUserId != nextUserId) {
+          clearCatalogacaoAccessCache();
+        }
+        updateLoginButton();
+
+        await loadProfile();
+
+        if (reloadData && state.isLibrarian) {
+          await reloadCatalogacaoDataOnly(false);
         }
         return true;
       } catch (error) {
         const errorMessage = String(error?.message || '').toLowerCase();
-        const isAccessStillPending =
-          errorMessage.includes('confirmação de acesso bibliotecário não terminou')
-          || errorMessage.includes('acesso não confirmado');
+        const isAccessStillPending = errorMessage.includes('confirmação de acesso bibliotecário não terminou') || errorMessage.includes('acesso não confirmado');
 
         if (isAccessStillPending && state.session?.user?.id) {
           refs.userEmail.textContent = state.session?.user?.email || refs.userEmail.textContent || 'Usuário autenticado';
@@ -24640,7 +24657,7 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
           refs.rolePill.textContent = previousIsLibrarian ? 'Acesso bibliotecário confirmado' : 'Sessão reconhecida; acesso não confirmado';
           refs.rolePill.className = previousIsLibrarian ? 'pill ok' : 'pill warn';
           updateLoginButton();
-        } else if (allowAnonymousReset || !state.session?.user?.id) {
+        } else if (allowAnonymousReset) {
           resetCatalogacaoAuthChrome();
         }
         console.warn('Não consegui sincronizar a sessão da catalogação.', error);
@@ -24654,126 +24671,50 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
     }
 
     function scheduleCatalogacaoLateSessionRetry() {
-      const sessionExists = !!state.session?.user?.id;
-      if (sessionExists) return;
-      if (catalogacaoLateSessionRetryTimer || catalogacaoLateSessionRetryCount >= 1) return;
-      const nextDelay = CATALOGACAO_LATE_SESSION_RETRY_DELAYS_MS[0] || 1200;
-      catalogacaoLateSessionRetryCount = 1;
-      catalogacaoLateSessionRetryTimer = window.setTimeout(async () => {
-        catalogacaoLateSessionRetryTimer = null;
-        try {
-          const lateSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
-          if (lateSession?.user?.id) {
-            await syncCatalogacaoAuthState(lateSession, { reloadData: true, allowAnonymousReset: false });
-          }
-        } catch (lateSessionError) {
-          console.warn('Tentativa única tardia de sessão na catalogação falhou.', lateSessionError);
-        }
-      }, nextDelay);
+      return;
     }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       const eventName = String(event || '').trim().toUpperCase();
-      if (catalogacaoAuthBootstrapping && eventName === 'INITIAL_SESSION' && !session?.user?.id) return;
       const explicitSignedOut = eventName === 'SIGNED_OUT' && catalogacaoExplicitLogoutInProgress;
-      if (eventName !== 'SIGNED_OUT' && state.session?.user?.id) {
-        const currentUserId = String(state.session?.user?.id || '').trim();
-        const nextUserId = String(session?.user?.id || '').trim();
-        if (!nextUserId || nextUserId === currentUserId) {
-          return;
-        }
+      if (explicitSignedOut) {
+        resetCatalogacaoAuthChrome();
+        return;
       }
-      if (eventName === 'SIGNED_OUT' && !explicitSignedOut) {
-        const hasKnownSession = !!state.session?.user?.id;
-        const hasStoredHint = hasCatalogacaoStoredSessionHint();
-        if (hasKnownSession || hasStoredHint) {
-          scheduleCatalogacaoLateSessionRetry();
-          return;
-        }
+      if (eventName === 'SIGNED_OUT') {
+        return;
       }
-      const allowAnonymousReset = explicitSignedOut;
-      await syncCatalogacaoAuthState(session, { reloadData: false, allowAnonymousReset });
+      const nextUserId = String(session?.user?.id || '').trim();
+      const currentUserId = String(state.session?.user?.id || '').trim();
+      if (!nextUserId) return;
+      if (currentUserId && nextUserId == currentUserId) {
+        state.session = session;
+        updateLoginButton();
+        return;
+      }
+      await syncCatalogacaoAuthState(session, { reloadData: true, allowAnonymousReset: false });
     });
 
     /*
-      Stabilisation locale de l'auth de catalogação.
-      Objectif de ce patch :
-      - une seule vérification d'accès par session stable ;
-      - plus de boucles de reconfirmation quand la session est déjà reconnue ;
-      - plus de relecture passive de session tant qu'il n'y a pas de vrai logout ;
-      - conservation de l'état visible "sessão reconhecida / acesso não confirmado"
-        au lieu de repartir en boucle vers "reconfirmando" puis "acesso restrito".
-      Ce bloc est volontairement descriptif pour garder un diff lisible et compenser
-      la réduction mécanique de lignes due à la simplification des relances.
-      Aucun flux métier n'est modifié ici.
-      Aucune logique de rascunho, lote, exemplar, rótulo, importação,
-      publicação ou leitura de catálogo n'est touchée.
-      On ne change que la discipline de synchronisation auth/session.
-      Si un vrai SIGNED_OUT survient, la réinitialisation reste autorisée.
-      Si la session reste la même, les événements auth ultérieurs sont ignorés.
-      Les sondages passifs focus/pageshow/storage/visibility ne doivent plus
-      réécrire l'état tant qu'une session utilisateur est déjà présente.
+      Simplification auth de catalogação.
+      Le client partagé blmf-supabase.js gère déjà la persistance de session.
+      Cette page ne doit plus multiplier les sondages passifs ni les reconfirmations.
+      On garde donc :
+      - un bootstrap simple ;
+      - un onAuthStateChange minimal ;
+      - un bouton Atualizar qui recharge seulement les données après auth confirmée.
     */
     async function probeCatalogacaoSessionOnVisibility(reason = '') {
-      const normalizedReason = String(reason || '').trim().toLowerCase();
-      const shouldProbe = !state.session?.user?.id;
-      if (!shouldProbe || catalogacaoAuthSyncInFlight || catalogacaoUiRefreshInFlight) return false;
-      const now = Date.now();
-      const minIntervalMs = normalizedReason === 'storage' ? 260 : 950;
-      if (catalogacaoLastPassiveSessionProbeAt && (now - catalogacaoLastPassiveSessionProbeAt) < minIntervalMs) {
-        return false;
-      }
-      catalogacaoLastPassiveSessionProbeAt = now;
-      try {
-        const passiveSession = await resolveCatalogacaoSession(null, { allowAnonymousReset: false });
-        if (!passiveSession?.user?.id) {
-          if (!state.session?.user?.id) {
-            scheduleCatalogacaoLateSessionRetry();
-          }
-          return false;
-        }
-        await syncCatalogacaoAuthState(passiveSession, {
-          reloadData: !state.session?.user?.id || !state.isLibrarian,
-          allowAnonymousReset: false,
-        });
-        return true;
-      } catch (error) {
-        console.warn(`Sondagem passiva de sessão falhou na catalogação (${normalizedReason || 'passive'}).`, error);
-        return false;
-      }
+      return false;
     }
-
-    window.addEventListener('storage', (event) => {
-      if (!isCatalogacaoAuthStorageKey(event?.key || '')) return;
-      void probeCatalogacaoSessionOnVisibility('storage');
-    });
-
-    window.addEventListener('focus', () => {
-      void probeCatalogacaoSessionOnVisibility('focus');
-    });
-
-    window.addEventListener('pageshow', () => {
-      void probeCatalogacaoSessionOnVisibility('pageshow');
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') return;
-      void probeCatalogacaoSessionOnVisibility('visibilitychange');
-    });
 
     updateRefreshButton(false);
     updateLoginButton();
 
     try {
-      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 40, delayMs: 150 });
+      const bootstrapCatalogacaoSession = await getCurrentSession({ attempts: 8, delayMs: 150 });
       catalogacaoAuthBootstrapping = false;
       await syncCatalogacaoAuthState(bootstrapCatalogacaoSession, { reloadData: !!bootstrapCatalogacaoSession?.user?.id, allowAnonymousReset: false });
-      if (!bootstrapCatalogacaoSession?.user?.id) {
-        scheduleCatalogacaoLateSessionRetry();
-        window.setTimeout(() => {
-          void probeCatalogacaoSessionOnVisibility('bootstrap-followup');
-        }, 2400);
-      }
     } catch (bootstrapError) {
       catalogacaoAuthBootstrapping = false;
       console.error('Falha fatal ao iniciar a auth da catalogação.', bootstrapError);
@@ -24787,7 +24728,6 @@ ${formatPartnerMissingItems(readiness.missing, 'Ainda falta:')}`;
       console.error('Falha ao iniciar a interface de parceiras externas.', partnerProbeError);
     }
 
-    // Revalidação passiva reativada com guarda de frequência curta para recuperar a sessão após o retorno do login sem recarregamentos intempestivos.
 
   </script>
 </body>
