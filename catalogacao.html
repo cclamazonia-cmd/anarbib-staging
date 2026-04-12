@@ -13503,11 +13503,15 @@ ${next}`.trim();
         || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
 
       if (!accessRow && state.session?.user?.id && !hasExplicitCatalogacaoDenial(accessRead.identityRow || {})) {
+        await wait(320);
+        accessRead = await fetchAccessRecord(userId);
+        const delayedCachedAccess = readCatalogacaoAccessCache(userId);
+        const delayedCachedAccessByEmail = readCatalogacaoAccessCacheByEmail(sessionEmail);
         accessRow = accessRead.record
           || buildProvisionalCatalogacaoAccess(accessRead.identityRow, accessRead.allRows, accessRead.error)
           || buildCatalogacaoSessionFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error)
-          || cachedAccess
-          || cachedAccessByEmail
+          || delayedCachedAccess
+          || delayedCachedAccessByEmail
           || buildCatalogacaoNoDenialFallback(state.session, accessRead.identityRow, accessRead.allRows, accessRead.error);
       }
 
